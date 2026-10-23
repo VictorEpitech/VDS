@@ -584,6 +584,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/registry/modules/{module_id}/state": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Module State */
+        put: operations["set_module_state_api_v1_registry_modules__module_id__state_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/schedules": {
         parameters: {
             query?: never;
@@ -1627,6 +1644,23 @@ export interface components {
             };
             /** Version */
             version: string;
+        };
+        /** ModuleStateIn */
+        ModuleStateIn: {
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "enabled" | "disabled";
+        };
+        /** ModuleStateOut */
+        ModuleStateOut: {
+            /** Id */
+            id: string;
+            /** Last Error */
+            last_error: string | null;
+            /** State */
+            state: string;
         };
         /** OffSlot */
         OffSlot: {
@@ -3795,6 +3829,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ModuleSettingsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_module_state_api_v1_registry_modules__module_id__state_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                module_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModuleStateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModuleStateOut"];
                 };
             };
             /** @description Validation Error */

@@ -47,11 +47,13 @@ Chaque lot se termine par une **démo sur un écran réel du campus**.
 
 ### Lot 3 — Multi-sites et alimentation
 Conception et découpage L3-T0…T12 : `docs/architecture-lot3.md` (contrat vds-core 1.2.0).
-- [ ] Backlog sécurité mineur 6, 7, 8, 10, 11, 12 (L3-T0, en premier)
-- [ ] Agent de site : relais WebSocket sortant, cache média
-- [ ] Pilotes : ADB, Samsung WS, WoL, CEC, écran noir + assistant de détection
-- [ ] Planning d'alimentation + exceptions
-- [ ] Supervision + notifier mail
+- [x] Backlog sécurité mineur 6, 7, 8, 10, 11, 12 (L3-T0, en premier)
+- [x] Agent de site : relais WebSocket sortant, cache média
+- [x] Pilotes : ADB, Samsung WS, WoL, CEC, écran noir + assistant de détection
+- [x] Planning d'alimentation + exceptions
+- [x] Supervision + notifier mail
+- [x] E2E réel serveur + agent (`make e2e-agent`, `apps/site-agent/e2e/`) : agent créé, `/ws/agent` TLS, plan via `agent/plan`, cascade Samsung (refus) → ADB → WoL, exécution hors ligne serveur coupé, rejeu au retour, `power.failed` → incident → mail (faux SMTP) → résolution, aux deux `VDS_BASE_PATH`
+- [x] Écarts de l'E2E résolus (contrat non modifié) : (1) `power/state.py` (`PowerStateTracker`) écrit `power_state.desired` (plan résolu, recalculé toutes les 15 s et sur les événements de plan ; `desired_since` = début du créneau) puis `observed`/`power_action` depuis `power.changed|power.failed` (agent ou player, `reason` relu de la commande `power.set` par `request_id`, rejeu d'outbox dédoublonné) : `scheduled_off` se produit en conditions réelles ; (2) `PUT /api/v1/registry/modules/{id}/state` (`enabled|disabled`, admin, audité `module.enabled|disabled`, activation à chaud, codes `module.not_found` 404 / contrat 409) ; (3) arrêt propre : écoute LISTEN sur une connexion `engine.connect()` invalidée à l'annulation (plus de MissingGreenlet) et fermeture du pair (`WebSocketDisconnect`, dont 1011 à l'arrêt d'uvicorn) traitée par la session d'agent au lieu d'une exception ; l'E2E vérifie `power_state`/`power_action` et l'absence de `MissingGreenlet`/1011 au SIGTERM
 
 ### Lot 4 — Mises en page et diffusion complète
 - [ ] Éditeur de grille + calques, paysage/portrait

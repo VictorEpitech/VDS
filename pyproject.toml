@@ -35,6 +35,7 @@ select = ["E", "F", "I", "UP", "B", "ASYNC", "S"]
 "modules/power.*/agent/**" = ["ASYNC109"]  # timeout borné explicite des protocoles TV
 "modules/power.*/tests/**" = ["ASYNC109", "S105", "S110", "S112", "S303"]
 "apps/site-agent/tests/**" = ["ASYNC109", "S105", "S110"]
+"apps/site-agent/e2e/**" = ["S101", "S603", "S607", "S608", "E501", "ASYNC109", "T201"]
 "**/tests/test_[dpas]*.py" = ["F811"]  # fixtures importées de test_auth
 
 [tool.mypy]

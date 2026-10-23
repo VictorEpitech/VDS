@@ -2,7 +2,7 @@ export PATH := $(HOME)/.local/bin:$(PATH)
 COMPOSE = docker compose -f docker/compose.yaml $(if $(wildcard .env),--env-file .env)
 COMPOSE_DEV = docker compose -f docker/compose.yaml -f docker/compose.dev.yaml $(if $(wildcard .env),--env-file .env)
 
-.PHONY: dev test lint e2e api-types api-types-check i18n-check test-db
+.PHONY: dev test lint e2e e2e-agent api-types api-types-check i18n-check test-db
 
 dev:
 	$(COMPOSE_DEV) up --build -d --wait
@@ -34,6 +34,12 @@ e2e:
 	pnpm --filter @vds/admin e2e
 	pnpm --filter @vds/player e2e
 	pnpm --filter @vds/player e2e:real
+	$(MAKE) e2e-agent
+
+# Vrai serveur + vrai agent (pilotes fakes TCP/WSS/UDP, faux SMTP), aux deux VDS_BASE_PATH.
+# Conteneur PG jetable créé et supprimé par le test (port 4390).
+e2e-agent:
+	uv run pytest apps/site-agent/e2e -q -p no:cacheprovider
 
 i18n-check:
 	pnpm --filter @vds/admin i18n:check
