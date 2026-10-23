@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from vds_sdk import Event, EventBus
@@ -22,6 +22,9 @@ CODE_LENGTH = 6
 CODE_TTL = timedelta(minutes=15)
 POLL_INTERVAL_S = 3
 HEARTBEAT_INTERVAL_S = 60
+PAIRING_RETENTION = timedelta(hours=1)  # conservation des demandes expirées avant purge
+DEVICE_TOKEN_TTL = timedelta(days=90)  # expiration glissante, prolongée par les heartbeats
+DEVICE_TOKEN_RENEW_AFTER = timedelta(hours=1)  # au plus une écriture d'expiration par heure
 
 
 def format_code(code: str) -> str:
@@ -46,6 +49,11 @@ class PairingService:
     # --- côté player ------------------------------------------------------
     async def start(self, device: DeviceInfo) -> tuple[PairingRequest, str]:
         secret = secrets.token_urlsafe(24)
+        await self._s.execute(
+            delete(PairingRequest).where(
+                PairingRequest.expires_at < datetime.now(UTC) - PAIRING_RETENTION
+            )
+        )
         for _ in range(5):
             code = "".join(secrets.choice(CODE_ALPHABET) for _ in range(CODE_LENGTH))
             row = PairingRequest(
@@ -128,6 +136,7 @@ class PairingService:
             model=info.get("model"),
             app_version=info.get("app_version"),
             paired_by=row.claimed_by,
+            expires_at=now + DEVICE_TOKEN_TTL,
         )
         self._s.add(device)
         await self._s.flush()
@@ -236,8 +245,18 @@ def _unpaired(dev: ScreenDevice, reason: str) -> Event:
 async def heartbeat(
     session: AsyncSession, device_id: UUID, body: dict[str, Any], app_version: str | None
 ) -> None:
-    values: dict[str, Any] = {"last_seen_at": datetime.now(UTC), "last_heartbeat": body}
+    now = datetime.now(UTC)
+    values: dict[str, Any] = {"last_seen_at": now, "last_heartbeat": body}
     if app_version:
         values["app_version"] = app_version
     await session.execute(update(ScreenDevice).where(ScreenDevice.id == device_id).values(**values))
+    # expiration glissante : un appareil vivant n'expire pas, un appareil abandonné si
+    await session.execute(
+        update(ScreenDevice)
+        .where(
+            ScreenDevice.id == device_id,
+            ScreenDevice.expires_at < now + DEVICE_TOKEN_TTL - DEVICE_TOKEN_RENEW_AFTER,
+        )
+        .values(expires_at=now + DEVICE_TOKEN_TTL)
+    )
     await session.commit()

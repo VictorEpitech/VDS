@@ -44,6 +44,7 @@ class Site(Base, Timestamps):
     organization_id: Mapped[UUID] = mapped_column(ForeignKey("organization.id"))
     name: Mapped[str] = mapped_column(Text)
     slug: Mapped[str] = mapped_column(Text, unique=True)
+    timezone: Mapped[str] = mapped_column(Text, server_default="Europe/Paris")
     archived_at: Mapped[datetime | None] = tstz(nullable=True, now=False)
 
 
@@ -403,3 +404,6 @@ class ScheduleRule(Base, Timestamps):
     weekdays: Mapped[int] = mapped_column(SmallInteger)
     start_minute: Mapped[int] = mapped_column(SmallInteger)
     end_minute: Mapped[int] = mapped_column(SmallInteger)
+
+
+from vds_server.db import models_power  # noqa: E402,F401  (enregistre les tables du lot 3)

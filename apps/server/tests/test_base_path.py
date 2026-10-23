@@ -109,11 +109,13 @@ async def test_foreign_origin_403(client: AsyncClient, base: str) -> None:
         assert r.json()["error"]["code"] == "errors.origin_mismatch"
 
 
-async def test_same_origin_and_bearer_ok(client: AsyncClient, base: str) -> None:
+async def test_same_origin_ok_bearer_not_exempt_on_cookie_routes(
+    client: AsyncClient, base: str
+) -> None:
     url = f"{_prefix(base)}/api/v1/_probe"
     assert (await client.post(url, headers={"Origin": "https://vds.test"})).status_code == 200
     assert (await client.post(url, headers={"Sec-Fetch-Site": "same-origin"})).status_code == 200
-    assert (await client.post(url, headers={"Authorization": "Bearer t"})).status_code == 200
+    assert (await client.post(url, headers={"Authorization": "Bearer t"})).status_code == 403
 
 
 def test_return_to(settings: Settings, base: str) -> None:

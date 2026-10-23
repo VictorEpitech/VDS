@@ -30,7 +30,7 @@ def _manifest(mid: str, **over: object) -> dict[str, object]:
     base: dict[str, object] = {
         "id": mid,
         "version": "0.1.0",
-        "core": ">=1.0 <2.0",
+        "core": ">=1.2 <2.0",
         "kind": "notifier",
         "name": {"fr": "D", "en": "D"},
         "description": {"fr": "D", "en": "D"},
@@ -156,7 +156,7 @@ async def test_critical_event_outbox_delivery(maker: async_sessionmaker[AsyncSes
 async def test_incompatible_core_recorded(
     maker: async_sessionmaker[AsyncSession], tmp_path: Path
 ) -> None:
-    _write(tmp_path, _manifest("notify.old", core=">=2.0 <3.0"))
+    _write(tmp_path, _manifest("notify.old", core=">=2.0 <3.0", kind="player-adapter"))
     reg = ModuleRegistry(maker, CoreBus(maker), tmp_path)
     await reg.start()
     row = await reg.get("notify.old")

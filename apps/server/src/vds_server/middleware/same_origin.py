@@ -1,4 +1,7 @@
-"""Contrôle de même origine sur les écritures sous <base>/api/ sans Bearer."""
+"""Contrôle de même origine sur les écritures sous <base>/api/.
+
+Le Bearer n'exempte que les routes à jeton d'appareil ou d'agent (jamais l'API admin à cookie).
+"""
 
 from starlette.datastructures import Headers
 from starlette.responses import JSONResponse
@@ -23,6 +26,9 @@ class SameOriginMiddleware:
         self.api_prefix = f"{settings.prefix}/api/"
         # démarrage d'appairage : anonyme, sans cookie, appelé par le player (origine arbitraire)
         self.exempt = {f"{settings.prefix}/api/v1/player/pairings"}
+        # routes à jeton (pas de cookie, pas de CSRF possible) : exemptées si Bearer présent
+        self.bearer_exact = {f"{settings.prefix}/api/v1/player/heartbeat"}
+        self.bearer_prefixes = (f"{settings.prefix}/api/v1/agent/",)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if (
@@ -34,7 +40,10 @@ class SameOriginMiddleware:
             await self.app(scope, receive, send)
             return
         headers = Headers(scope=scope)
-        if headers.get("authorization", "").lower().startswith("bearer "):
+        path = scope["path"]
+        if headers.get("authorization", "").lower().startswith("bearer ") and (
+            path in self.bearer_exact or path.startswith(self.bearer_prefixes)
+        ):
             await self.app(scope, receive, send)
             return
         site = headers.get("sec-fetch-site")

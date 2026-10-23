@@ -1,6 +1,7 @@
 """Point d'entrée ASGI. Tout est monté sous VDS_BASE_PATH."""
 
-from collections.abc import Callable, Sequence
+import os
+from collections.abc import Awaitable, Callable, Sequence
 from contextlib import AbstractAsyncContextManager
 from typing import Annotated, Any
 from uuid import UUID
@@ -10,11 +11,14 @@ from fastapi import APIRouter, Depends, FastAPI
 from vds_server.api.v1 import diffusion, health, inventory, me, media_files, player, registry
 from vds_server.config.api import ConfigDeps
 from vds_server.config.api import build_router as build_config_router
+from vds_server.config.reader import ModuleConfigReader
+from vds_server.config.schemas import CORE_NAMESPACE
 from vds_server.core.auth import Principal
 from vds_server.core.errors import install_error_handlers
 from vds_server.core.runtime import Runtime
 from vds_server.middleware.headers import SecurityHeadersMiddleware
 from vds_server.middleware.same_origin import SameOriginMiddleware
+from vds_server.middleware.upload_limit import UploadLimitMiddleware
 from vds_server.settings import Settings
 from vds_server.web import spa
 
@@ -83,9 +87,19 @@ def create_app(
         root.mount(settings.prefix, inner)
     else:
         root.mount("/", inner)
+    if runtime is not None:
+        root.add_middleware(UploadLimitMiddleware, settings=settings, limit=_upload_limit(runtime))
     root.add_middleware(SameOriginMiddleware, settings=settings)
     root.add_middleware(SecurityHeadersMiddleware)
     return root
+
+
+def _upload_limit(rt: Runtime) -> Callable[[], Awaitable[int]]:
+    async def limit() -> int:
+        cfg = await ModuleConfigReader(rt.maker, rt.schemas, CORE_NAMESPACE).resolve()
+        return int(cfg.get("media_max_upload_mb", 2048)) * 1024 * 1024
+
+    return limit
 
 
 def _actor_id(rt: Runtime) -> Callable[..., Any]:
@@ -96,5 +110,8 @@ def _actor_id(rt: Runtime) -> Callable[..., Any]:
 
 
 def app_factory() -> FastAPI:
+    if "*" in os.environ.get("FORWARDED_ALLOW_IPS", ""):
+        # un proxy « de confiance » universel permettrait de forger l'IP cliente (limiteurs)
+        raise RuntimeError("errors.forwarded_allow_ips_wildcard")
     settings = Settings()
     return create_app(settings, runtime=Runtime(settings))

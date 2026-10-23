@@ -189,7 +189,7 @@ async def test_device_reader_hook(app: FastAPI, admin: AsyncClient, p: str) -> N
         r = await device.post(  # un jeton d'appareil ne permet pas d'envoyer
             f"{p}/api/v1/media", files={"file": ("a.png", PNG, "image/png")}, headers=auth
         )
-        assert r.status_code == 401
+        assert r.status_code == 403  # Bearer n'exempte plus le contrôle de même origine
 
 
 async def test_real_device_token_reads_media(
