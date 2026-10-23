@@ -1,0 +1,21 @@
+{
+  "id": "power.wol",
+  "version": "0.1.0",
+  "core": ">=1.2 <2.0",
+  "kind": "power-driver",
+  "name": { "fr": "Alimentation par Wake-on-LAN", "en": "Wake-on-LAN power" },
+  "description": {
+    "fr": "Rallume une TV ou un boîtier par paquet magique sur le réseau local (allumage uniquement).",
+    "en": "Wakes a TV or box with a magic packet on the local network (power on only)."
+  },
+  "targets": ["site-agent"],
+  "entrypoints": { "site-agent": "agent.module:WolDriver" },
+  "requires": {},
+  "capabilities": ["power.on"],
+  "permissions": ["lan.access"],
+  "events": { "listens": [], "emits": [] },
+  "config": { "$ref": "config.schema.json" },
+  "i18n": ["fr", "en"],
+  "author": "V-Tech",
+  "signature": null
+}

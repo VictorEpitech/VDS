@@ -1,0 +1,13 @@
+{
+  "module": { "name": "Samsung power (WebSocket API)", "description": "Drives a 2023 Samsung Tizen TV through the local WebSocket API." },
+  "config": { "power_samsung": {
+    "host": { "title": "TV IP address", "description": "Address of the TV on the local network." },
+    "mac": { "title": "MAC address", "description": "MAC of the TV network interface, for Wake-on-LAN (Ethernet preferred)." },
+    "port": { "title": "WebSocket port", "description": "TLS port of the API (8002 by default)." },
+    "name": { "title": "Name shown on the TV", "description": "Device name shown when authorising on the TV." },
+    "unreachable_means_off": { "title": "Unreachable means off", "description": "Treat the TV as off when it stops answering on the network." }
+  } },
+  "power": { "samsung": {
+    "accept_on_tv": "Accept the connection request displayed on the TV."
+  } }
+}

@@ -1,0 +1,21 @@
+{
+  "id": "power.samsung-ws",
+  "version": "0.1.0",
+  "core": ">=1.2 <2.0",
+  "kind": "power-driver",
+  "name": { "fr": "Alimentation Samsung (API WebSocket)", "en": "Samsung power (WebSocket API)" },
+  "description": {
+    "fr": "Pilote une TV Samsung Tizen grand public 2023 par l'API WebSocket locale (port 8002) et Wake-on-LAN pour l'allumage.",
+    "en": "Drives a 2023 consumer Samsung Tizen TV through the local WebSocket API (port 8002) and Wake-on-LAN to power on."
+  },
+  "targets": ["site-agent"],
+  "entrypoints": { "site-agent": "agent.module:SamsungWsDriver" },
+  "requires": {},
+  "capabilities": ["power.on", "power.off", "power.state"],
+  "permissions": ["lan.access", "screens.read"],
+  "events": { "listens": [], "emits": [] },
+  "config": { "$ref": "config.schema.json" },
+  "i18n": ["fr", "en"],
+  "author": "V-Tech",
+  "signature": null
+}

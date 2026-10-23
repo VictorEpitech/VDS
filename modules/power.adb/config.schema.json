@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "host": {
+      "type": "string", "default": "", "maxLength": 253,
+      "title": "config.power_adb.host.title", "description": "config.power_adb.host.description",
+      "x-vds-level": "simple", "x-vds-scopes": ["screen"]
+    },
+    "port": {
+      "type": "integer", "minimum": 1, "maximum": 65535, "default": 5555,
+      "title": "config.power_adb.port.title", "description": "config.power_adb.port.description",
+      "x-vds-level": "advanced", "x-vds-scopes": ["organization", "site", "group", "screen"]
+    },
+    "timeout_ms": {
+      "type": "integer", "minimum": 500, "maximum": 20000, "default": 5000,
+      "title": "config.power_adb.timeout_ms.title", "description": "config.power_adb.timeout_ms.description",
+      "x-vds-level": "advanced", "x-vds-scopes": ["organization", "site", "group", "screen"]
+    },
+    "unreachable_means_off": {
+      "type": "boolean", "default": false,
+      "title": "config.power_adb.unreachable_means_off.title",
+      "description": "config.power_adb.unreachable_means_off.description",
+      "x-vds-level": "advanced", "x-vds-scopes": ["organization", "site", "group", "screen"]
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "id": "power.adb",
+  "version": "0.1.0",
+  "core": ">=1.2 <2.0",
+  "kind": "power-driver",
+  "name": { "fr": "Alimentation par ADB (Android TV / Google TV)", "en": "ADB power (Android TV / Google TV)" },
+  "description": {
+    "fr": "Allume et éteint une TV Android ou Google TV (TCL 2023) par ADB réseau, état lu via dumpsys power.",
+    "en": "Turns an Android TV or Google TV (TCL 2023) on and off over network ADB, state read with dumpsys power."
+  },
+  "targets": ["site-agent"],
+  "entrypoints": { "site-agent": "agent.module:AdbDriver" },
+  "requires": {},
+  "capabilities": ["power.on", "power.off", "power.state"],
+  "permissions": ["lan.access", "screens.read"],
+  "events": { "listens": [], "emits": [] },
+  "config": { "$ref": "config.schema.json" },
+  "i18n": ["fr", "en"],
+  "author": "V-Tech",
+  "signature": null
+}

@@ -1,0 +1,8 @@
+{
+  "module": { "name": "Alimentation par Wake-on-LAN", "description": "Rallume par paquet magique (allumage uniquement)." },
+  "config": { "power_wol": {
+    "mac": { "title": "Adresse MAC", "description": "Adresse MAC de l'interface réseau de la TV (Ethernet de préférence)." },
+    "broadcast": { "title": "Adresse de diffusion", "description": "Broadcast du réseau local de la TV (ex. 192.168.1.255)." },
+    "port": { "title": "Port UDP", "description": "Port du paquet magique (9 par défaut)." }
+  } }
+}

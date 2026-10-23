@@ -1,0 +1,13 @@
+{
+  "module": { "name": "Alimentation Samsung (API WebSocket)", "description": "Pilote une TV Samsung Tizen 2023 par l'API WebSocket locale." },
+  "config": { "power_samsung": {
+    "host": { "title": "Adresse IP de la TV", "description": "Adresse de la TV sur le réseau local." },
+    "mac": { "title": "Adresse MAC", "description": "MAC de l'interface réseau de la TV, pour Wake-on-LAN (Ethernet de préférence)." },
+    "port": { "title": "Port WebSocket", "description": "Port TLS de l'API (8002 par défaut)." },
+    "name": { "title": "Nom affiché sur la TV", "description": "Nom de l'appareil montré lors de l'autorisation sur la TV." },
+    "unreachable_means_off": { "title": "Injoignable = éteinte", "description": "Considère la TV éteinte quand elle ne répond plus au réseau." }
+  } },
+  "power": { "samsung": {
+    "accept_on_tv": "Acceptez la demande de connexion affichée sur la TV."
+  } }
+}

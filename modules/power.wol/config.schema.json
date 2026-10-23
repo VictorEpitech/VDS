@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "mac": {
+      "type": "string", "default": "", "maxLength": 17,
+      "title": "config.power_wol.mac.title", "description": "config.power_wol.mac.description",
+      "x-vds-level": "simple", "x-vds-scopes": ["screen"]
+    },
+    "broadcast": {
+      "type": "string", "default": "255.255.255.255", "maxLength": 45,
+      "title": "config.power_wol.broadcast.title", "description": "config.power_wol.broadcast.description",
+      "x-vds-level": "advanced", "x-vds-scopes": ["organization", "site", "group", "screen"]
+    },
+    "port": {
+      "type": "integer", "minimum": 1, "maximum": 65535, "default": 9,
+      "title": "config.power_wol.port.title", "description": "config.power_wol.port.description",
+      "x-vds-level": "advanced", "x-vds-scopes": ["organization", "site", "group", "screen"]
+    }
+  }
+}

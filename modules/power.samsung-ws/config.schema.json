@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "host": {
+      "type": "string", "default": "", "maxLength": 253,
+      "title": "config.power_samsung.host.title", "description": "config.power_samsung.host.description",
+      "x-vds-level": "simple", "x-vds-scopes": ["screen"]
+    },
+    "mac": {
+      "type": "string", "default": "", "maxLength": 17,
+      "title": "config.power_samsung.mac.title", "description": "config.power_samsung.mac.description",
+      "x-vds-level": "simple", "x-vds-scopes": ["screen"]
+    },
+    "port": {
+      "type": "integer", "minimum": 1, "maximum": 65535, "default": 8002,
+      "title": "config.power_samsung.port.title", "description": "config.power_samsung.port.description",
+      "x-vds-level": "advanced", "x-vds-scopes": ["organization", "site", "group", "screen"]
+    },
+    "name": {
+      "type": "string", "default": "VDS", "minLength": 1, "maxLength": 40,
+      "title": "config.power_samsung.name.title", "description": "config.power_samsung.name.description",
+      "x-vds-level": "advanced", "x-vds-scopes": ["organization", "site", "group", "screen"]
+    },
+    "unreachable_means_off": {
+      "type": "boolean", "default": false,
+      "title": "config.power_samsung.unreachable_means_off.title",
+      "description": "config.power_samsung.unreachable_means_off.description",
+      "x-vds-level": "advanced", "x-vds-scopes": ["organization", "site", "group", "screen"]
+    }
+  }
+}

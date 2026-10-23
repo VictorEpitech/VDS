@@ -1,0 +1,8 @@
+{
+  "module": { "name": "Wake-on-LAN power", "description": "Wakes with a magic packet (power on only)." },
+  "config": { "power_wol": {
+    "mac": { "title": "MAC address", "description": "MAC address of the TV network interface (Ethernet preferred)." },
+    "broadcast": { "title": "Broadcast address", "description": "Broadcast of the TV local network (e.g. 192.168.1.255)." },
+    "port": { "title": "UDP port", "description": "Magic packet port (9 by default)." }
+  } }
+}

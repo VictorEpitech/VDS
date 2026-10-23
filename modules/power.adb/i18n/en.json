@@ -1,0 +1,15 @@
+{
+  "module": {
+    "name": "ADB power (Android TV / Google TV)",
+    "description": "Turns an Android TV or Google TV on and off over network ADB."
+  },
+  "config": { "power_adb": {
+    "host": { "title": "TV IP address", "description": "Address of the TV on the local network." },
+    "port": { "title": "ADB port", "description": "Network debugging port (5555 by default)." },
+    "timeout_ms": { "title": "Maximum delay (ms)", "description": "Maximum duration of one ADB operation." },
+    "unreachable_means_off": { "title": "Unreachable means off", "description": "Treat the TV as off when it stops answering (deep standby without network)." }
+  } },
+  "power": { "adb": {
+    "accept_on_tv": "Accept the debugging key on the TV (tick \"Always allow\")."
+  } }
+}
