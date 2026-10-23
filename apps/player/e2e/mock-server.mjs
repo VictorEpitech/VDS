@@ -87,6 +87,10 @@ const fresh = () => ({
     { id: "it_red", media: "red", ms: 2000 },
     { id: "it_blue", media: "blue", ms: 2000 },
   ],
+  power: null, // [[h0, h1, "on"|"off"]] depuis minuit UTC du jour simulé ; null = pas de plan
+  pollS: 2, // poll_interval_s renvoyé au heartbeat
+  wsBlocked: false, // refuse l'upgrade WS (proxy qui ne le transmet pas)
+  ws: { upgrades: 0, auths: [], closed: [] },
   slots: null, // [[h0, h1, kind]] en heures depuis minuit UTC du jour simulé ; null = tout play
   heartbeats: [],
   mediaHits: {},
@@ -139,6 +143,9 @@ function schedule() {
       "content.video": { version: "0.1.0", element: "vds-content-video", script: "modules/content.video/assets/player.js" },
     },
   };
+  if (S.power) {
+    doc.power = S.power.map(([a, b, state]) => ({ from: iso(day + a * 3600000), to: iso(day + b * 3600000), state }));
+  }
   const revision = "sha256:" + createHash("sha256").update(JSON.stringify(doc)).digest("hex");
   return { ...doc, revision, server_time: new Date(now).toISOString() };
 }
@@ -189,14 +196,26 @@ async function control(req, res, url) {
       S = fresh();
       return json(res, 200, {});
     case "/__test/state":
-      return json(res, 200, { down: S.down, heartbeats: S.heartbeats, mediaHits: S.mediaHits, hits: S.hits, rejected: S.rejected, pairing: S.pairing && { code: S.pairing.code } });
+      return json(res, 200, { ws: { ...S.ws, open: sockets.size }, down: S.down, heartbeats: S.heartbeats, mediaHits: S.mediaHits, hits: S.hits, rejected: S.rejected, pairing: S.pairing && { code: S.pairing.code } });
     case "/__test/set":
       if ("down" in body) S.down = Boolean(body.down);
       if ("revoked" in body) S.revoked = Boolean(body.revoked);
       if ("slots" in body) S.slots = body.slots;
+      if ("power" in body) S.power = body.power;
+      if ("pollS" in body) S.pollS = Number(body.pollS);
+      if ("wsBlocked" in body) S.wsBlocked = Boolean(body.wsBlocked);
       if ("items" in body) S.items = body.items;
       if ("clock" in body) S.clock = body.clock ? { base: Date.parse(body.clock), at: Date.now() } : null;
       return json(res, 200, {});
+    case "/__test/ws": {
+      // push : schedule.changed à tous les sockets ; drop : coupure brutale ; close : fermeture avec code.
+      for (const sock of [...sockets]) {
+        if (body.action === "push") wsSend(sock, "schedule.changed", { revision: schedule().revision });
+        else if (body.action === "drop") sock.destroy();
+        else if (body.action === "close") wsClose(sock, Number(body.code));
+      }
+      return json(res, 200, {});
+    }
     case "/__test/claim": {
       const code = String(body.code ?? "").replace("-", "");
       if (!S.pairing || S.pairing.code.replace("-", "") !== code) return json(res, 404, {});
@@ -209,6 +228,69 @@ async function control(req, res, url) {
       return json(res, 404, {});
   }
 }
+
+// --- WebSocket /ws/player (RFC 6455 minimal : trames texte, fragmentation non gérée) -------
+const sockets = new Set();
+function wsSend(sock, type, data) {
+  const payload = Buffer.from(JSON.stringify({ v: 1, type, id: randomBytes(8).toString("hex"), ts: new Date().toISOString(), data }));
+  const head = payload.length < 126 ? Buffer.from([0x81, payload.length]) : Buffer.from([0x81, 126, payload.length >> 8, payload.length & 255]);
+  sock.write(Buffer.concat([head, payload]));
+}
+function wsClose(sock, code) {
+  sock.end(Buffer.from([0x88, 2, code >> 8, code & 255]));
+}
+function wsFrames(buf) {
+  const out = [];
+  let i = 0;
+  while (i + 2 <= buf.length) {
+    const op = buf[i] & 15;
+    let len = buf[i + 1] & 127;
+    let o = i + 2;
+    if (len === 126) {
+      len = buf.readUInt16BE(o);
+      o += 2;
+    }
+    const mask = buf.subarray(o, o + 4);
+    o += 4;
+    const data = Buffer.from(buf.subarray(o, o + len)).map((b, k) => b ^ mask[k % 4]);
+    out.push({ op, text: data.toString() });
+    i = o + len;
+  }
+  return out;
+}
+const upgrade = (req, sock) => {
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const offered = String(req.headers["sec-websocket-protocol"] ?? "").split(",").map((x) => x.trim());
+  if (url.pathname !== `${PREFIX}/ws/player` || S.down || S.wsBlocked || !req.headers["sec-websocket-key"]) {
+    S.rejected++;
+    sock.end("HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n");
+    return;
+  }
+  S.ws.upgrades++;
+  const accept = createHash("sha1").update(req.headers["sec-websocket-key"] + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").digest("base64");
+  const proto = offered.includes("vds.player.v1") ? "Sec-WebSocket-Protocol: vds.player.v1\r\n" : "";
+  sock.write(`HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ${accept}\r\n${proto}\r\n`);
+  if (!proto) return wsClose(sock, 4426);
+  sockets.add(sock);
+  let authed = false;
+  sock.on("data", (buf) => {
+    for (const f of wsFrames(buf)) {
+      if (f.op === 8) return sock.end();
+      if (f.op !== 1) continue;
+      const m = JSON.parse(f.text);
+      if (!authed) {
+        S.ws.auths.push({ type: m.type, token: m.data?.token ?? null, url: req.url });
+        if (m.type !== "auth" || m.data?.token !== S.token) return wsClose(sock, 4401);
+        if (S.revoked) return wsClose(sock, 4410);
+        authed = true;
+        wsSend(sock, "welcome", { device_id: "dev-1", screen_id: "screen-1", heartbeat_s: 60, server_time: new Date(serverNow()).toISOString(), revision: schedule().revision });
+      }
+    }
+  });
+  const gone = () => sockets.delete(sock);
+  sock.on("close", gone);
+  sock.on("error", gone);
+};
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
@@ -287,7 +369,7 @@ const server = http.createServer(async (req, res) => {
     if (!deviceAuth(req, res)) return;
     const body = await readBody(req);
     S.heartbeats.push(body);
-    return json(res, 200, { revision: schedule().revision, server_time: new Date(serverNow()).toISOString(), poll_interval_s: 2, commands: [] });
+    return json(res, 200, { revision: schedule().revision, server_time: new Date(serverNow()).toISOString(), poll_interval_s: S.pollS, commands: [] });
   }
   const media = /^\/media\/([a-z0-9-]+)\/([a-z0-9-]+)$/.exec(p);
   if (media) {
@@ -308,4 +390,5 @@ const server = http.createServer(async (req, res) => {
   return json(res, 404, { code: "errors.not_found" });
 });
 
+server.on("upgrade", upgrade);
 server.listen(PORT, "127.0.0.1", () => console.log(`mock vds on ${PORT} base=${BASE}`));

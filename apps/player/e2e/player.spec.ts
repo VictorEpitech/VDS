@@ -11,6 +11,7 @@ interface MockState {
   mediaHits: Record<string, number>;
   hits: number;
   rejected: number;
+  ws: { upgrades: number; open: number; auths: { type: string; token: string | null; url: string }[] };
 }
 
 async function ctl(info: TestInfo, path: string, body?: unknown): Promise<MockState> {
@@ -184,4 +185,61 @@ test("jamais deux <video> chargées en même temps (un seul décodeur matériel 
     await page.waitForTimeout(100);
   }
   expect(max).toBe(1);
+});
+
+test("WS : schedule.changed poussé met à jour la lecture sans attendre le sondage ; le jeton n'est pas dans l'URL", async ({ page }, info) => {
+  await ctl(info, "set", { pollS: 300, items: [{ id: "it_red", media: "red", ms: 60_000 }] });
+  await pairAndPlay(page, info);
+  await expect.poll(async () => (await ctl(info, "state")).ws.open, { timeout: 10_000 }).toBe(1);
+  const st = await ctl(info, "state");
+  expect(st.ws.auths[0]!.type).toBe("auth");
+  expect(st.ws.auths[0]!.token).toMatch(/^vds_dev_/);
+  expect(st.ws.auths[0]!.url).not.toContain("vds_dev_");
+  expect(st.ws.auths[0]!.url).toBe(`${meta(info).base}/ws/player`);
+  expect(await img(page).getAttribute("src")).toContain("/red/");
+  await ctl(info, "set", { items: [{ id: "it_blue", media: "blue", ms: 60_000 }] });
+  await ctl(info, "ws", { action: "push" });
+  await expect(img(page)).toHaveAttribute("src", /\/blue\//, { timeout: 10_000 });
+});
+
+test("WS bloqué (proxy) : repli sur le sondage HTTP, la lecture suit", async ({ page }, info) => {
+  await ctl(info, "set", { wsBlocked: true, pollS: 2, items: [{ id: "it_red", media: "red", ms: 60_000 }] });
+  await pairAndPlay(page, info);
+  expect((await ctl(info, "state")).ws.open).toBe(0);
+  await ctl(info, "set", { items: [{ id: "it_blue", media: "blue", ms: 60_000 }] });
+  await expect(img(page)).toHaveAttribute("src", /\/blue\//, { timeout: 20_000 });
+});
+
+test("WS coupé : le player continue de jouer et se reconnecte", async ({ page }, info) => {
+  await ctl(info, "set", { pollS: 300, items: [{ id: "it_red", media: "red", ms: 60_000 }] });
+  await pairAndPlay(page, info);
+  await expect.poll(async () => (await ctl(info, "state")).ws.open, { timeout: 10_000 }).toBe(1);
+  await ctl(info, "ws", { action: "drop" });
+  await expect(img(page)).toBeVisible();
+  await expect.poll(async () => (await ctl(info, "state")).ws.open, { timeout: 20_000 }).toBe(1);
+});
+
+test("WS : 4410 efface l'état et ramène à l'appairage", async ({ page }, info) => {
+  await ctl(info, "set", { pollS: 300 });
+  await pairAndPlay(page, info);
+  await expect.poll(async () => (await ctl(info, "state")).ws.open, { timeout: 10_000 }).toBe(1);
+  await ctl(info, "ws", { action: "close", code: 4410 });
+  await expect(page.getByTestId("pairing-code")).toBeVisible({ timeout: 20_000 });
+});
+
+test("plan d'alimentation : écran noir à l'heure et rallumage, sans serveur", async ({ page }, info) => {
+  const t0 = "2026-10-24T07:59:40Z";
+  // Lecture toute la journée ; le plan éteint de 08:00 à 18:00 (jour férié simulé).
+  await ctl(info, "set", { clock: t0, power: [[0, 8, "on"], [8, 18, "off"], [18, 48, "on"]] });
+  await page.clock.install({ time: new Date(t0) });
+  await pairAndPlay(page, info);
+  await ctl(info, "set", { down: true });
+  await page.clock.fastForward("00:40"); // 08:00:20
+  await expect(page.locator(".system-black")).toBeVisible({ timeout: 10_000 });
+  await expect(img(page)).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator(".system-black")).toBeVisible({ timeout: 15_000 }); // reste éteint après rechargement
+  await page.clock.fastForward("10:00:00"); // 18:00:20
+  await expect(img(page)).toBeVisible({ timeout: 15_000 });
+  await ctl(info, "set", { down: false });
 });

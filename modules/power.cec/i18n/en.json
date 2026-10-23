@@ -1,0 +1,3 @@
+{
+  "module": { "name": "HDMI-CEC power", "description": "Powers the screen on and to standby over HDMI-CEC from the player (Android native bridge)." }
+}

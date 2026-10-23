@@ -24,6 +24,7 @@ import android.webkit.WebViewClient
 import android.content.RestrictionsManager
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
+import app.vds.relay.CecDispatcher
 import app.vds.relay.Relay
 import app.vds.relay.RelayConfig
 import kotlin.concurrent.thread
@@ -47,6 +48,7 @@ class MainActivity : Activity() {
     private val bridge = VdsBridge(
         trusted = { cfg?.let { currentUrl.startsWith("${it.localOrigin(Relay.DEFAULT_PORT)}${it.basePath}/player/") } == true },
         onReload = { runOnUiThread { reloadPlayer() } },
+        cec = CecDispatcher(AndroidCec(this)),
     )
 
     private val watchdog = object : Runnable {
@@ -171,8 +173,8 @@ class MainActivity : Activity() {
             !WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)
         ) return
         val rules = setOf(c.localOrigin(Relay.DEFAULT_PORT))
-        WebViewCompat.addWebMessageListener(view, VdsBridge.LISTENER_NAME, rules) { _, message, _, isMainFrame, _ ->
-            bridge.onMessage(isMainFrame, message.data)
+        WebViewCompat.addWebMessageListener(view, VdsBridge.LISTENER_NAME, rules) { _, message, _, isMainFrame, replyProxy ->
+            bridge.onMessage(isMainFrame, message.data) { replyProxy.postMessage(it) }
         }
         WebViewCompat.addDocumentStartJavaScript(view, VdsBridge.script(VdsBridge.infoJson(c.insecureUpstream)), rules)
         bridgeInstalled = true

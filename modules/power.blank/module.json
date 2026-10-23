@@ -1,0 +1,20 @@
+{
+  "id": "power.blank",
+  "version": "0.1.0",
+  "core": ">=1.2 <2.0",
+  "kind": "power-driver",
+  "name": { "fr": "Écran noir", "en": "Black screen" },
+  "description": {
+    "fr": "Noir plein écran et lecture suspendue pendant les plages éteintes ; filet de sécurité visible quand rien d'autre ne fonctionne.",
+    "en": "Full-screen black with playback suspended during off periods; visible safety net when nothing else works."
+  },
+  "targets": ["player"],
+  "entrypoints": {},
+  "requires": {},
+  "capabilities": ["power.on", "power.off"],
+  "permissions": [],
+  "events": { "listens": [], "emits": [] },
+  "i18n": ["fr", "en"],
+  "author": "V-Tech",
+  "signature": null
+}

@@ -1,16 +1,21 @@
-import { getPlatformBridge } from "@vds/sdk-ts";
+import { getPlatformBridge, registerPowerDriver } from "@vds/sdk-ts";
 import type { Locale, ScheduleDocument } from "@vds/sdk-ts";
 import { AssetCache } from "./assets";
 import { DeviceRevokedError } from "./api";
 import { setDrift } from "./clock";
 import { ContentLoader } from "./content-loader";
 import { clearAll, kvGet, scheduleGet } from "./db";
+import { now } from "./clock";
 import { Engine } from "./engine";
 import { DEFAULT_INTERVAL_S, beat } from "./heartbeat";
 import type { RemoteCommand } from "./heartbeat";
 import type { Screens } from "./screens";
 import { KV } from "./shared";
+import { createBlackscreenDriver } from "./power/blackscreen";
+import { createCecDriver } from "./power/cec";
+import { PowerController } from "./power/controller";
 import { Syncer } from "./sync";
+import { PlayerSocket } from "./ws";
 import { reloadPage } from "./watchdog";
 
 export interface RuntimeDeps {
@@ -36,7 +41,10 @@ export async function startRuntime(d: RuntimeDeps): Promise<Runtime> {
   if (typeof drift === "number") setDrift(drift);
 
   let active: ScheduleDocument | null = (await scheduleGet()) ?? null;
+  // Plan d'alimentation : exécuté par le player seul (règle 5), à chaque tick, serveur ou non.
+  let power: PowerController | null = null;
   const engine = new Engine({
+    onTick: () => power?.tick(),
     screens: d.screens,
     loader: new ContentLoader(d.server),
     assets,
@@ -45,6 +53,10 @@ export async function startRuntime(d: RuntimeDeps): Promise<Runtime> {
     isOnline: () => navigator.onLine,
   });
 
+  registerPowerDriver(createCecDriver());
+  registerPowerDriver(createBlackscreenDriver({ setBlackout: (on) => engine.setSuspended(on) }));
+  power = new PowerController({ now, getDoc: () => active, report: (code) => engine.report(code) });
+
   let resolveRevoked: () => void = () => {};
   const revoked = new Promise<void>((r) => (resolveRevoked = r));
   let revokedOnce = false;
@@ -52,6 +64,7 @@ export async function startRuntime(d: RuntimeDeps): Promise<Runtime> {
     if (revokedOnce) return;
     revokedOnce = true;
     life.abort();
+    socket.stop();
     engine.stop();
     // Jeton, programmation, journal, révision et cache média : retour à l'appairage.
     await clearAll().catch(() => {});
@@ -80,6 +93,17 @@ export async function startRuntime(d: RuntimeDeps): Promise<Runtime> {
     report: () => {},
   });
   const sync = (): Promise<void> => guard(() => syncer.trigger());
+
+  // Canal WS facultatif : réactivité seulement, le sondage HTTP ci-dessous reste la voie nominale.
+  const socket = new PlayerSocket({
+    server: d.server,
+    token: () => d.token,
+    onScheduleChanged: (rev) => {
+      if (rev !== active?.revision) void sync();
+    },
+    onRevoked: () => void onRevoked(),
+  });
+  socket.start();
 
   const maintenance = { on: false };
   const onCommands = (cmds: RemoteCommand[]): void => {
@@ -137,6 +161,7 @@ export async function startRuntime(d: RuntimeDeps): Promise<Runtime> {
     revoked,
     stop: () => {
       life.abort();
+      socket.stop();
       engine.stop();
     },
   };

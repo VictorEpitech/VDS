@@ -1,0 +1,20 @@
+{
+  "id": "power.cec",
+  "version": "0.1.0",
+  "core": ">=1.2 <2.0",
+  "kind": "power-driver",
+  "name": { "fr": "Alimentation par HDMI-CEC", "en": "HDMI-CEC power" },
+  "description": {
+    "fr": "Rallume et met en veille l'écran par HDMI-CEC depuis le player (pont natif Android).",
+    "en": "Powers the screen on and to standby over HDMI-CEC from the player (Android native bridge)."
+  },
+  "targets": ["player"],
+  "entrypoints": {},
+  "requires": {},
+  "capabilities": ["power.on", "power.off", "power.state"],
+  "permissions": [],
+  "events": { "listens": [], "emits": [] },
+  "i18n": ["fr", "en"],
+  "author": "V-Tech",
+  "signature": null
+}

@@ -1,0 +1,3 @@
+{
+  "module": { "name": "Alimentation par HDMI-CEC", "description": "Rallume et met en veille l'écran par HDMI-CEC depuis le player (pont natif Android)." }
+}

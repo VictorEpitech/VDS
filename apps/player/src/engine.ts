@@ -63,6 +63,8 @@ export interface EngineDeps {
   server: string;
   locale: Locale;
   isOnline: () => boolean;
+  /** Appelé à chaque tick (1 s), après l'application du créneau : plan d'alimentation hors ligne. */
+  onTick?: () => void;
 }
 
 class ZoneRunner {
@@ -275,7 +277,16 @@ export class Engine {
     return null;
   }
 
-  private report = (code: string, itemId?: string): void => {
+  /** Écran noir imposé par le plan d'alimentation : lecture suspendue, éléments libérés. */
+  private suspended = false;
+
+  setSuspended(on: boolean): void {
+    if (this.suspended === on) return;
+    this.suspended = on;
+    this.tick();
+  }
+
+  report = (code: string, itemId?: string): void => {
     const at = new Date(now()).toISOString();
     const entry: PlayerError = itemId ? { at, code, item_id: itemId } : { at, code };
     this.errs.push(entry);
@@ -298,6 +309,11 @@ export class Engine {
     } catch {
       this.report("engine_error");
     }
+    try {
+      this.deps.onTick?.();
+    } catch {
+      this.report("power_error");
+    }
     if (this.running) this.timer = setTimeout(this.tick, 1000);
   };
 
@@ -305,6 +321,13 @@ export class Engine {
     const { screens } = this.deps;
     const doc = this.doc;
     if (screens.active === "maintenance") return;
+    if (this.suspended) {
+      this.clearRunners();
+      this.slotKey = "";
+      this.currentKind = "off";
+      screens.show("black");
+      return;
+    }
     if (!doc) {
       this.clearRunners();
       this.currentKind = "none";
