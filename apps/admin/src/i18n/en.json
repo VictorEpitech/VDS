@@ -1,0 +1,59 @@
+{
+  "app": {
+    "name": "VDS",
+    "title": "VDS - Digital signage"
+  },
+  "a11y": {
+    "skip_to_content": "Skip to content"
+  },
+  "nav": {
+    "main": "Main navigation",
+    "home": "Home",
+    "screens": "Screens",
+    "logout": "Sign out",
+    "links": {
+      "back_to_studio": "Back to the Studio"
+    }
+  },
+  "language": {
+    "label": "Language",
+    "fr": "Français",
+    "en": "English"
+  },
+  "footer": {
+    "version": "Version"
+  },
+  "states": {
+    "online": "Online",
+    "scheduled_off": "Scheduled off",
+    "offline": "Offline",
+    "power_failed": "Power failed",
+    "overridden": "Overridden",
+    "pairing": "Pairing"
+  },
+  "home": {
+    "title": "Dashboard",
+    "intro": "Manage your screens, your sites and their schedules.",
+    "server": {
+      "title": "Server",
+      "checking": "Checking",
+      "online": "Server reachable",
+      "offline": "Server unreachable"
+    },
+    "legend": {
+      "title": "Screen states"
+    }
+  },
+  "screens": {
+    "title": "Screens",
+    "empty": "No screens yet. Paired screens will show up here."
+  },
+  "errors": {
+    "not_found": {
+      "title": "Page not found",
+      "body": "This page does not exist or has been moved.",
+      "back": "Back to home"
+    },
+    "runtime_config_missing": "The runtime configuration could not be found. Reload the page or contact your administrator."
+  }
+}

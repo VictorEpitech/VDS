@@ -1,0 +1,6 @@
+packages:
+  - apps/admin
+  - apps/player
+  - packages/sdk-ts
+allowBuilds:
+  esbuild: true

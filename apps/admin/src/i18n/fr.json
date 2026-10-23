@@ -1,0 +1,59 @@
+{
+  "app": {
+    "name": "VDS",
+    "title": "VDS - Affichage dynamique"
+  },
+  "a11y": {
+    "skip_to_content": "Aller au contenu"
+  },
+  "nav": {
+    "main": "Navigation principale",
+    "home": "Accueil",
+    "screens": "Écrans",
+    "logout": "Se déconnecter",
+    "links": {
+      "back_to_studio": "Retour au Studio"
+    }
+  },
+  "language": {
+    "label": "Langue",
+    "fr": "Français",
+    "en": "English"
+  },
+  "footer": {
+    "version": "Version"
+  },
+  "states": {
+    "online": "En ligne",
+    "scheduled_off": "Hors service prévu",
+    "offline": "Hors ligne",
+    "power_failed": "Échec d'alimentation",
+    "overridden": "Forçage en cours",
+    "pairing": "Appairage"
+  },
+  "home": {
+    "title": "Tableau de bord",
+    "intro": "Pilotez vos écrans, vos sites et leur programmation.",
+    "server": {
+      "title": "Serveur",
+      "checking": "Vérification en cours",
+      "online": "Serveur joignable",
+      "offline": "Serveur injoignable"
+    },
+    "legend": {
+      "title": "États d'un écran"
+    }
+  },
+  "screens": {
+    "title": "Écrans",
+    "empty": "Aucun écran pour le moment. Les écrans appairés apparaîtront ici."
+  },
+  "errors": {
+    "not_found": {
+      "title": "Page introuvable",
+      "body": "Cette page n'existe pas ou a été déplacée.",
+      "back": "Retour à l'accueil"
+    },
+    "runtime_config_missing": "La configuration d'exécution est introuvable. Rechargez la page ou contactez votre administrateur."
+  }
+}
