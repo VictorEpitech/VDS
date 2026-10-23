@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">VDS Player</string>
+    <string name="setup_title">Adresse du serveur</string>
+    <string name="setup_hint">https://vds.exemple.fr</string>
+    <string name="setup_validate">Se connecter</string>
+    <string name="setup_checking">Vérification…</string>
+    <string name="setup_error_url">Adresse invalide.</string>
+    <string name="setup_error_unreachable">Serveur injoignable.</string>
+    <string name="maintenance_title">Maintenance</string>
+    <string name="maintenance_code_label">Code</string>
+    <string name="loading">Chargement…</string>
+    <string name="restriction_server_url">URL du serveur (configuration gérée)</string>
+</resources>
