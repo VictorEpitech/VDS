@@ -27,10 +27,13 @@ def hash_secret(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
 
 
-def bearer(request: Request) -> str | None:
-    header = request.headers.get("authorization", "")
+def bearer_value(header: str) -> str | None:
     scheme, _, value = header.partition(" ")
     return value.strip() or None if scheme.lower() == "bearer" else None
+
+
+def bearer(request: Request) -> str | None:
+    return bearer_value(request.headers.get("authorization", ""))
 
 
 @dataclass(frozen=True)

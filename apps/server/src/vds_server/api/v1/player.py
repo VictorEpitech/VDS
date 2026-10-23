@@ -25,6 +25,7 @@ from vds_server.player.service import (
     format_code,
     heartbeat,
 )
+from vds_server.power.plan import PowerPlanBuilder
 from vds_server.security.client_ip import client_ip
 
 
@@ -48,12 +49,16 @@ def build_router(rt: Runtime) -> APIRouter:
         return cfg.get("timezone")
 
     def builder(session: Session) -> ScheduleBuilder:
+        async def power_of(screen_id: UUID, now: datetime) -> list[dict[str, str]]:
+            return await PowerPlanBuilder(session, rt.schemas).player_slots(screen_id, now)
+
         return ScheduleBuilder(
             session,
             rt.registry.content_item_schema,
             rt.registry.content_entry,
             timezone_of,
             rt.registry.instance,
+            power_of,
         )
 
     Builder = Annotated[ScheduleBuilder, Depends(builder)]

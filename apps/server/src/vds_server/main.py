@@ -8,7 +8,17 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, FastAPI
 
-from vds_server.api.v1 import diffusion, health, inventory, me, media_files, player, registry
+from vds_server.api.v1 import (
+    agents,
+    diffusion,
+    health,
+    inventory,
+    me,
+    media_files,
+    player,
+    power,
+    registry,
+)
 from vds_server.config.api import ConfigDeps
 from vds_server.config.api import build_router as build_config_router
 from vds_server.config.reader import ModuleConfigReader
@@ -21,6 +31,7 @@ from vds_server.middleware.same_origin import SameOriginMiddleware
 from vds_server.middleware.upload_limit import UploadLimitMiddleware
 from vds_server.settings import Settings
 from vds_server.web import spa
+from vds_server.ws import agent as agent_ws
 
 Lifespan = Callable[[FastAPI], AbstractAsyncContextManager[None]]
 
@@ -62,8 +73,11 @@ def create_app(
         inner.include_router(inventory.build_router(runtime))
         inner.include_router(diffusion.build_router(runtime))
         inner.include_router(media_files.build_router(runtime))
+        inner.include_router(power.build_router(runtime))
         inner.include_router(player.build_router(runtime))
         inner.include_router(registry.build_router(runtime))
+        inner.include_router(agents.build_router(runtime))
+        inner.include_router(agent_ws.build_router(runtime))
         inner.include_router(
             build_config_router(
                 ConfigDeps(

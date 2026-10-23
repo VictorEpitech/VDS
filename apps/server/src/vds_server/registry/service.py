@@ -11,7 +11,15 @@ from typing import Any
 from fastapi import APIRouter
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from vds_sdk import CORE_API_VERSION, ContractError, Event, Module, ModuleManifest, ScopedBus
+from vds_sdk import (
+    CORE_API_VERSION,
+    ContractError,
+    Event,
+    Module,
+    ModuleManifest,
+    ScopedBus,
+    parse_event,
+)
 from vds_sdk.versions import satisfies
 
 from vds_server.core.mux import ModuleMux
@@ -287,6 +295,23 @@ class ModuleRegistry:
             self._set_state(row, state, error, datetime.now(UTC))
             if failure_count is not None:
                 row.failure_count = failure_count
+
+    def agent_events(self) -> dict[str, str]:
+        """Événements déclarés par les modules à cible site-agent : nom -> id du module."""
+        out: dict[str, str] = {}
+        for mid, d in self._known.items():
+            if d.error is None and "site-agent" in d.manifest.targets:
+                for e in d.manifest.events.emits:
+                    out[parse_event(e).name] = mid
+        return out
+
+    def agent_modules(self) -> list[tuple[str, str]]:
+        """(id, version) des modules à cible site-agent, compatibles."""
+        return [
+            (mid, d.manifest.version)
+            for mid, d in self._known.items()
+            if d.error is None and "site-agent" in d.manifest.targets
+        ]
 
     def info(self) -> list[dict[str, Any]]:
         return [{"id": k, "running": k in self._running} for k in self._known]

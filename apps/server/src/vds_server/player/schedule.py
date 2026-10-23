@@ -32,6 +32,7 @@ SCHEDULE_FORMAT = 1
 DEFAULT_TZ = "Europe/Paris"
 SchemaLookup = Callable[[str], dict[str, Any] | None]
 InstanceLookup = Callable[[str], Module | None]
+PowerLookup = Callable[[UUID, datetime], Any]  # async: -> [{from, to, state}]
 TimezoneLookup = Callable[[UUID], Any]  # async: screen_id -> fuseau IANA
 
 
@@ -115,7 +116,9 @@ class ScheduleBuilder:
         content_entry: SchemaLookup,
         timezone_of: TimezoneLookup,
         instance_of: InstanceLookup | None = None,
+        power_of: PowerLookup | None = None,
     ) -> None:
+        self._power_of = power_of
         self._instance_of = instance_of
         self._s = session
         self._item_schema = item_schema
@@ -150,6 +153,8 @@ class ScheduleBuilder:
             "assets": assets,
             "content_types": types,
         }
+        if self._power_of is not None:
+            body["power"] = await self._power_of(screen_id, now)
         body["revision"] = revision_of(body)
         return body
 

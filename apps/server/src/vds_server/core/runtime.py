@@ -12,6 +12,10 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from vds_sdk import Module, ModuleManifest
 from vds_sdk.server import AuthProvider, StorageBackend
 
+from vds_server.agents.auth import AgentAuth
+from vds_server.agents.bridge import EventBridge
+from vds_server.agents.hub import AgentHub
+from vds_server.agents.queue import CommandQueue
 from vds_server.config.reader import ModuleConfigReader
 from vds_server.config.registry_schemas import RegistrySchemaProvider
 from vds_server.core.auth import AuthPipeline
@@ -55,6 +59,10 @@ class Runtime:
         self.media_access = MediaAccess(self.pipeline)
         self.device_auth = DeviceAuth(self.maker)  # jeton d'appareil (player, médias)
         self.media_access.register_reader(self._device_reader)
+        self.agent_auth = AgentAuth(self.maker)  # jeton d'agent (WS, HTTP réservé à l'agent)
+        self.agent_hub = AgentHub()
+        self.command_queue = CommandQueue(self.maker)
+        self.agent_bridge = EventBridge(self.maker, self.bus, self.registry.agent_events)
 
     async def _device_reader(self, request: Request) -> bool:
         """Jeton d'appareil valide => lecture des médias ; absent, inconnu ou révoqué => non."""
@@ -105,6 +113,7 @@ class Runtime:
     async def lifespan(self, app: FastAPI) -> AsyncIterator[None]:
         await self.ensure_organization()
         await self.registry.start()
+        self.agent_hub.start(self.engine)
 
         async def pump() -> None:
             while True:
@@ -120,5 +129,6 @@ class Runtime:
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await task
+            await self.agent_hub.stop()
             await self.registry.stop()
             await self.engine.dispose()
