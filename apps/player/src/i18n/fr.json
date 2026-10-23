@@ -1,0 +1,19 @@
+{
+  "loading": { "label": "Chargement" },
+  "pairing": {
+    "title": "Appairage de l'écran",
+    "instruction": "Saisissez ce code dans l'administration pour associer cet écran.",
+    "code_label": "Code d'appairage"
+  },
+  "idle": { "label": "Aucun contenu à afficher" },
+  "maintenance": {
+    "title": "Maintenance",
+    "code_label": "Code",
+    "revision": "Révision",
+    "network": "Réseau",
+    "network_up": "connecté",
+    "network_down": "hors ligne",
+    "uptime": "Disponibilité",
+    "cache": "Médias en cache"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "loading": { "label": "Loading" },
+  "pairing": {
+    "title": "Screen pairing",
+    "instruction": "Enter this code in the administration to link this screen.",
+    "code_label": "Pairing code"
+  },
+  "idle": { "label": "No content to display" },
+  "maintenance": {
+    "title": "Maintenance",
+    "code_label": "Code",
+    "revision": "Revision",
+    "network": "Network",
+    "network_up": "online",
+    "network_down": "offline",
+    "uptime": "Uptime",
+    "cache": "Cached media"
+  }
+}

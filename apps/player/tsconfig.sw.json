@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "types": [], "lib": ["ES2023", "WebWorker"] },
+  "include": ["src/sw", "src/shared.ts", "src/range.ts", "src/vite-env.d.ts"]
+}
