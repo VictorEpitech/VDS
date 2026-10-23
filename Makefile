@@ -6,7 +6,7 @@ COMPOSE_DEV = docker compose -f docker/compose.yaml -f docker/compose.dev.yaml $
 
 dev:
 	$(COMPOSE_DEV) up --build -d --wait
-	@echo "VDS up: http://localhost:$${VDS_PORT:-8000}/health"
+	@port=$$(grep -E "^VDS_PORT=" .env 2>/dev/null | tail -1 | cut -d= -f2); echo "VDS up: http://localhost:$${port:-$${VDS_PORT:-8000}}/health"
 
 # PostgreSQL 17 jetable pour les tests (mot de passe aléatoire, jamais écrit dans le dépôt).
 # Usage : eval "$$(make -s test-db)"
