@@ -48,9 +48,13 @@ def make_cert(d: Path) -> tuple[str, str]:
 
 
 def welcome_data(
-    modules: list[str], resume_from: int = 0, plan_revision: str | None = None
+    modules: list[str],
+    resume_from: int = 0,
+    plan_revision: str | None = None,
+    cache: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return {
+        "cache": cache or {},
         "agent_id": str(uuid4()),
         "site_id": str(uuid4()),
         "session_id": str(uuid4()),
@@ -67,6 +71,7 @@ class FakeServer:
         self.key = key
         self.modules = modules
         self.plan_revision = plan_revision
+        self.cache: dict[str, Any] | None = None
         self.received: list[Frame] = []
         self.headers: list[dict[str, str]] = []
         self.subprotocols: list[str | None] = []
@@ -102,7 +107,9 @@ class FakeServer:
             encode_frame(
                 Frame(
                     type="welcome",
-                    data=welcome_data(self.modules, self.resume_from, self.plan_revision),
+                    data=welcome_data(
+                        self.modules, self.resume_from, self.plan_revision, self.cache
+                    ),
                 )
             )
         )

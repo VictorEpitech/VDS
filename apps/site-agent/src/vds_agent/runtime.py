@@ -28,7 +28,9 @@ from vds_sdk.wire import (
 )
 
 from .bridge import AgentBus
+from .cache import MediaCache, SyncResult, fetch_manifest
 from .cascade import Cascade, ScreenDrivers, event_for
+from .lan import LanServer, parse_listen
 from .link import ServerLink
 from .modules import Discovered, LoadedDriver, apply_defaults, discover, instantiate
 from .plan import current_slot, fetch_plan
@@ -104,6 +106,12 @@ class Agent:
         self._tasks: set[asyncio.Task[Any]] = set()
         self._retry_at: dict[str, float] = {}
         self._locks: dict[str, asyncio.Lock] = {}
+        self.cache = MediaCache(settings.data_dir / "media", int(settings.cache_max_gb * 1024**3))
+        self.site_id: str | None = None
+        self.cache_stats = SyncResult(0, 0, 0)
+        self._cache_key: tuple[str, bytes] | None = None
+        self._cache_lock = asyncio.Lock()
+        self.lan: LanServer | None = None
 
     # --- démarrage --------------------------------------------------------------
     async def start(self) -> None:
@@ -113,6 +121,9 @@ class Agent:
         enabled = await self.store.kv_get("modules_enabled")
         if enabled is not None:  # hors ligne : dernier état connu
             await self._activate(enabled)
+        await self._load_cache_key()
+        self.site_id = await self.store.kv_get("site_id")
+        await self._start_lan()
 
     async def run(self) -> None:
         await self.start()
@@ -126,6 +137,8 @@ class Agent:
             await self.close()
 
     async def close(self) -> None:
+        if self.lan:
+            await self.lan.stop()
         for d in self.drivers.values():
             with contextlib.suppress(Exception):
                 await d.driver.teardown()
@@ -164,6 +177,9 @@ class Agent:
         enabled = [e.model_dump() for e in w.modules_enabled]
         await self.store.kv_set("modules_enabled", enabled)
         await self._activate(enabled)
+        self.site_id = str(w.site_id)
+        await self.store.kv_set("site_id", self.site_id)
+        await self._store_cache_key(w.cache.key_id, w.cache.key)
         if w.plan_revision and w.plan_revision != self.plan.get("revision"):
             self._spawn(self.refresh_plan())
 
@@ -182,6 +198,12 @@ class Agent:
             "uptime_s": int(time.monotonic() - self._started),
             "clock_offset_ms": self._clock_offset_ms,
             "plan_revision": self.plan.get("revision"),
+            "cache": {
+                "enabled": self.lan is not None,
+                "bytes": self.cache_stats.bytes,
+                "items": self.cache_stats.items,
+                "missing": self.cache_stats.missing,
+            },
             "modules": mods,
             "screens": [{"screen_id": k, "power": v} for k, v in self.observed.items()],
         }
@@ -363,7 +385,49 @@ class Agent:
             return ("ok" if ok else "failed"), (None if ok else "agent.plan_fetch_failed"), {}
         if cmd.name == "config.updated":
             return "ok", None, {}  # la config pilote vient du plan (rafraîchi par plan.updated)
-        return "failed", "agent.cache_unavailable", {}  # cache.sync : lot T9
+        if cmd.name == "cache.sync":
+            return await self.sync_cache()
+        return "failed", "agent.unknown_command", {}
+
+    # --- cache média ------------------------------------------------------------------
+    async def _load_cache_key(self) -> None:
+        stored = await self.store.state_get("agent.cache", "lan_key")  # chiffré (Fernet)
+        if stored:
+            self._cache_key = (stored["kid"], bytes.fromhex(stored["key"]))
+
+    async def _store_cache_key(self, kid: str | None, key: str | None) -> None:
+        if kid and key:
+            self._cache_key = (kid, bytes.fromhex(key))
+            await self.store.state_set("agent.cache", "lan_key", {"kid": kid, "key": key})
+        else:  # le serveur ne fournit plus de clé : le service LAN refuse tout
+            self._cache_key = None
+            await self.store.state_delete("agent.cache", "lan_key")
+
+    async def _start_lan(self) -> None:
+        if self.s.cache_lan_listen is None or self.lan is not None:
+            return  # désactivé par défaut : aucun port en écoute
+        try:
+            parse_listen(self.s.cache_lan_listen)
+        except ValueError:
+            log.warning("agent.cache_lan_listen_invalid")
+            return
+        self.lan = LanServer(self.cache, self.s.cache_lan_listen, lambda: self._cache_key)
+        await self.lan.start()
+
+    async def sync_cache(self) -> tuple[str, str | None, dict[str, Any]]:
+        async with self._cache_lock:
+            try:
+                manifest = await fetch_manifest(self._http, self.s.http_base, self.s.token)
+            except (httpx.HTTPError, ValueError):
+                log.warning("agent.cache_manifest_failed")
+                return "failed", "agent.cache_unavailable", {}
+            res = await self.cache.sync(self._http, self.s.http_base, self.s.token, manifest)
+        self.cache_stats = res
+        data = {"items": res.items, "bytes": res.bytes, "missing": res.missing}
+        await self.link.emit("cache.synced", {"site_id": self.site_id, **data})
+        if res.missing:
+            return "failed", "agent.cache_incomplete", data
+        return "ok", None, data
 
     async def probe(self, screen_id: str) -> tuple[str | None, PowerState]:
         entry = self.screen_entry(screen_id)

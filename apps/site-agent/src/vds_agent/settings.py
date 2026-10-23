@@ -45,6 +45,8 @@ class AgentSettings:
     modules_dir: Path = Path("/app/modules")
     ca_file: str | None = None
     state_key: str | None = None
+    cache_max_gb: float = 20.0
+    cache_lan_listen: str | None = None  # opt-in explicite : `ip:port`, désactivé par défaut
 
     @property
     def ws_url(self) -> str:
@@ -75,4 +77,6 @@ class AgentSettings:
             modules_dir=Path(e.get("VDS_MODULES_DIR", "/app/modules")),
             ca_file=e.get("VDS_AGENT_CA_FILE") or None,
             state_key=_read_secret(e, "VDS_AGENT_STATE_KEY"),
+            cache_max_gb=float(e.get("VDS_AGENT_CACHE_MAX_GB", "20")),
+            cache_lan_listen=e.get("VDS_AGENT_CACHE_LAN_LISTEN") or None,
         )
