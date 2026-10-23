@@ -1,0 +1,22 @@
+{
+  "id": "kind.nom-du-module",
+  "version": "0.1.0",
+  "core": ">=1.0 <2.0",
+  "kind": "power-driver | content-type | notifier | trigger | auth-provider | theme | storage | player-adapter",
+  "name": { "fr": "Nom lisible", "en": "Readable name" },
+  "description": { "fr": "Ce que fait le module en une phrase.", "en": "What the module does in one sentence." },
+  "targets": ["server"],
+  "entrypoints": { "server": "server.module:NomDuModule" },
+  "requires": {},
+  "capabilities": [],
+  "permissions": [],
+  "events": {
+    "listens": [],
+    "emits": []
+  },
+  "config": { "$ref": "config.schema.json" },
+  "assets": null,
+  "i18n": ["fr", "en"],
+  "author": "V-Tech",
+  "signature": null
+}

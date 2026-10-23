@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "title": "config.enabled.title",
+      "description": "config.enabled.description",
+      "x-vds-level": "simple"
+    },
+    "timeout_ms": {
+      "type": "integer",
+      "minimum": 500,
+      "maximum": 30000,
+      "default": 5000,
+      "title": "config.timeout_ms.title",
+      "description": "config.timeout_ms.description",
+      "x-vds-level": "advanced"
+    }
+  },
+  "x-vds-groups": [
+    { "id": "general", "title": "config.groups.general", "fields": ["enabled"] },
+    { "id": "network", "title": "config.groups.network", "fields": ["timeout_ms"] }
+  ]
+}

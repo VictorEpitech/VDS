@@ -1,0 +1,114 @@
+/* Charte V-Tech — tokens VDS (MD3)
+   Source : docs/charte-graphique-v-tech.md
+   Les couleurs d'état (success, warning, error) sont une PROPOSITION à valider. */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap");
+
+:root {
+  /* Mode clair */
+  --vds-primary: #2A4B5A;
+  --vds-on-primary: #FFFFFF;
+  --vds-secondary: #5A717B;
+  --vds-on-secondary: #FFFFFF;
+  --vds-tertiary: #7D5260;
+  --vds-on-tertiary: #FFFFFF;
+  --vds-background: #F8FAFC;
+  --vds-on-background: #0F172A;
+  --vds-surface: #FFFFFF;
+  --vds-on-surface: #0F172A;
+  --vds-on-surface-variant: #475569;
+  /* Élévation tonale (pas d'ombres) */
+  --vds-surface-1: color-mix(in srgb, var(--vds-primary) 4%, var(--vds-surface));
+  --vds-surface-2: color-mix(in srgb, var(--vds-primary) 7%, var(--vds-surface));
+  --vds-surface-3: color-mix(in srgb, var(--vds-primary) 10%, var(--vds-surface));
+  --vds-outline: color-mix(in srgb, var(--vds-secondary) 40%, transparent);
+
+  /* États — proposition à valider */
+  --vds-error: #BA1A1A;
+  --vds-on-error: #FFFFFF;
+  --vds-success: #2E6B4F;
+  --vds-on-success: #FFFFFF;
+  --vds-warning: #8A5A00;
+  --vds-on-warning: #FFFFFF;
+
+  /* Typographie */
+  --vds-font-heading: "Inter", system-ui, sans-serif;
+  --vds-font-body: "Roboto", system-ui, sans-serif;
+  --vds-font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+
+  /* Formes */
+  --vds-radius-lg: 28px;
+  --vds-radius-md: 16px;
+  --vds-radius-sm: 8px;
+  --vds-radius-pill: 9999px;
+
+  /* Espacements */
+  --vds-space-1: 4px;
+  --vds-space-2: 8px;
+  --vds-space-3: 12px;
+  --vds-space-4: 16px;
+  --vds-space-6: 24px;
+  --vds-space-8: 32px;
+
+  /* Mouvement (MD3) */
+  --vds-duration-short: 200ms;
+  --vds-duration-medium: 300ms;
+  --vds-ease-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --vds-ease-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --vds-primary: #8BD3E6;
+    --vds-on-primary: #003544;
+    --vds-secondary: #B1CBD6;
+    --vds-on-secondary: #1C333C;
+    --vds-tertiary: #EFB8C8;
+    --vds-on-tertiary: #492532;
+    --vds-background: #0F172A;
+    --vds-on-background: #E2E8F0;
+    --vds-surface: #1E293B;
+    --vds-on-surface: #E2E8F0;
+    --vds-on-surface-variant: #94A3B8;
+    --vds-surface-1: color-mix(in srgb, #FFFFFF 3%, var(--vds-surface));
+    --vds-surface-2: color-mix(in srgb, #FFFFFF 6%, var(--vds-surface));
+    --vds-surface-3: color-mix(in srgb, #FFFFFF 9%, var(--vds-surface));
+    --vds-error: #FFB4AB;
+    --vds-on-error: #690005;
+    --vds-success: #8FD5B0;
+    --vds-on-success: #003822;
+    --vds-warning: #FFB95C;
+    --vds-on-warning: #462A00;
+  }
+}
+
+:root[data-theme="dark"] {
+  --vds-primary: #8BD3E6;
+  --vds-on-primary: #003544;
+  --vds-secondary: #B1CBD6;
+  --vds-on-secondary: #1C333C;
+  --vds-tertiary: #EFB8C8;
+  --vds-on-tertiary: #492532;
+  --vds-background: #0F172A;
+  --vds-on-background: #E2E8F0;
+  --vds-surface: #1E293B;
+  --vds-on-surface: #E2E8F0;
+  --vds-on-surface-variant: #94A3B8;
+  --vds-surface-1: color-mix(in srgb, #FFFFFF 3%, var(--vds-surface));
+  --vds-surface-2: color-mix(in srgb, #FFFFFF 6%, var(--vds-surface));
+  --vds-surface-3: color-mix(in srgb, #FFFFFF 9%, var(--vds-surface));
+  --vds-error: #FFB4AB;
+  --vds-on-error: #690005;
+  --vds-success: #8FD5B0;
+  --vds-on-success: #003822;
+  --vds-warning: #FFB95C;
+  --vds-on-warning: #462A00;
+}
+
+body {
+  background: var(--vds-background);
+  color: var(--vds-on-background);
+  font-family: var(--vds-font-body);
+}
+h1, h2, h3, h4, h5, h6 { font-family: var(--vds-font-heading); }
+code, kbd, samp, .vds-mono { font-family: var(--vds-font-mono); }

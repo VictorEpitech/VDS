@@ -1,0 +1,76 @@
+/* Charte Allia — tokens VDS (mode hébergé dans le Studio Allia)
+   Source : variables de app/globals.css du Studio (--marine, --vif, --ciel, --rose, --rose-t).
+   Polices auto-hébergées dans le module theme.allia (pas de CDN en mode hébergé).
+   Couleurs d'état et mode sombre : PROPOSITION à valider, la charte Allia ne les définit pas. */
+
+:root {
+  /* Couleurs de la charte Allia */
+  --allia-marine: #1d314b;
+  --allia-vif: #0e49be;
+  --allia-ciel: #ace0fc;
+  --allia-rose: #f5a5c6;
+  --allia-rose-t: #a8336a;
+
+  /* Rôles VDS */
+  --vds-primary: var(--allia-vif);
+  --vds-on-primary: #FFFFFF;
+  --vds-secondary: var(--allia-marine);
+  --vds-on-secondary: #FFFFFF;
+  --vds-tertiary: var(--allia-rose-t);
+  --vds-on-tertiary: #FFFFFF;
+  --vds-background: #FFFFFF;
+  --vds-on-background: var(--allia-marine);
+  --vds-surface: #FFFFFF;
+  --vds-on-surface: var(--allia-marine);
+  --vds-on-surface-variant: color-mix(in srgb, var(--allia-marine) 70%, #FFFFFF);
+  --vds-surface-1: color-mix(in srgb, var(--allia-ciel) 15%, #FFFFFF);
+  --vds-surface-2: color-mix(in srgb, var(--allia-ciel) 25%, #FFFFFF);
+  --vds-surface-3: color-mix(in srgb, var(--allia-ciel) 40%, #FFFFFF);
+  --vds-accent-surface: var(--allia-ciel);
+  --vds-accent-surface-2: var(--allia-rose);
+  --vds-outline: color-mix(in srgb, var(--allia-marine) 20%, transparent);
+
+  /* États — proposition à valider */
+  --vds-error: #B3261E;
+  --vds-on-error: #FFFFFF;
+  --vds-success: #2E6B4F;
+  --vds-on-success: #FFFFFF;
+  --vds-warning: #8A5A00;
+  --vds-on-warning: #FFFFFF;
+
+  /* Typographie */
+  --vds-font-heading: "Bricolage Grotesque", system-ui, sans-serif;
+  --vds-font-body: "Manrope", system-ui, sans-serif;
+  --vds-font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Formes et espacements (à aligner sur espace.css du Studio si besoin) */
+  --vds-radius-lg: 16px;
+  --vds-radius-md: 10px;
+  --vds-radius-sm: 6px;
+  --vds-radius-pill: 9999px;
+  --vds-space-1: 4px;
+  --vds-space-2: 8px;
+  --vds-space-3: 12px;
+  --vds-space-4: 16px;
+  --vds-space-6: 24px;
+  --vds-space-8: 32px;
+  --vds-touch-target: 44px;
+
+  /* Mouvement */
+  --vds-duration-short: 200ms;
+  --vds-duration-medium: 300ms;
+  --vds-ease-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --vds-ease-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+}
+
+body {
+  background: var(--vds-background);
+  color: var(--vds-on-background);
+  font-family: var(--vds-font-body);
+}
+h1, h2, h3, h4, h5, h6 { font-family: var(--vds-font-heading); color: var(--allia-marine); }
+code, kbd, samp, .vds-mono { font-family: var(--vds-font-mono); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; }
+}
