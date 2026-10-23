@@ -9,10 +9,15 @@ import { Login } from "../routes/Login";
 import { MediaLibrary } from "../routes/MediaLibrary";
 import { NotFound } from "../routes/NotFound";
 import { Pairing } from "../routes/Pairing";
+import { Notifications } from "../routes/Notifications";
 import { PlaylistEditor } from "../routes/PlaylistEditor";
 import { Playlists } from "../routes/Playlists";
+import { Power } from "../routes/Power";
 import { Schedules } from "../routes/Schedules";
 import { Screens } from "../routes/Screens";
+import { SiteDetail } from "../routes/SiteDetail";
+import { Sites } from "../routes/Sites";
+import { Supervision } from "../routes/Supervision";
 
 export const routes: RouteObject[] = [
   {
@@ -31,6 +36,11 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <Home /> },
           { path: "screens", element: <Screens /> },
+          { path: "sites", element: <Sites /> },
+          { path: "sites/:id", element: <SiteDetail /> },
+          { path: "supervision", element: <Supervision /> },
+          { path: "power", element: <Power /> },
+          { path: "notifications", element: <Notifications /> },
           { path: "pairing", element: <Pairing /> },
           { path: "media", element: <MediaLibrary /> },
           { path: "playlists", element: <Playlists /> },

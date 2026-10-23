@@ -10,7 +10,7 @@ import { useApi } from "./api";
  * que les modules tiers), lus depuis `GET /registry/content-types`. Rien n'est embarqué au build.
  */
 export interface JsonSchema {
-  type?: "string" | "integer" | "number" | "boolean" | "object";
+  type?: "string" | "integer" | "number" | "boolean" | "object" | "array";
   title?: string;
   description?: string;
   default?: unknown;
@@ -22,6 +22,12 @@ export interface JsonSchema {
   maxLength?: number;
   required?: string[];
   properties?: Record<string, JsonSchema>;
+  items?: JsonSchema;
+  maxItems?: number;
+  uniqueItems?: boolean;
+  /** Variable d'environnement qui fixe la valeur (champ non modifiable ici). */
+  "x-vds-env"?: string;
+  "x-vds-secret"?: boolean;
   "x-vds-level"?: "simple" | "advanced";
   /** Le champ référence un média de ce genre (image, video, document). */
   "x-vds-media"?: "image" | "video" | "document";

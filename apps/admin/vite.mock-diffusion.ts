@@ -131,7 +131,8 @@ function parseMultipart(body: Buffer, contentType: string): { file?: { name: str
 }
 
 export function createDiffusionMock() {
-  const site = { id: randomUUID(), name: "Moulins", slug: "moulins", archived_at: null };
+  const site = { id: randomUUID(), name: "Moulins", slug: "moulins", archived_at: null as string | null };
+  const sites = [site];
   const group = { id: randomUUID(), site_id: site.id, name: "Accueil" };
   const screens = [
     { id: randomUUID(), site_id: site.id, group_id: group.id, name: "Hall d'accueil", orientation: "landscape", archived_at: null },
@@ -185,7 +186,7 @@ export function createDiffusionMock() {
   const mediaUsedBy = (id: string) => playlists.filter((p) => p.items.some((i) => itemOut(i, 0).media_ids.includes(id))).map((p) => p.id);
 
   /** Retourne true si la route a été traitée ; `route` est relatif à /api/v1. */
-  return async function handle(req: IncomingMessage, res: ServerResponse, route: string, query: URLSearchParams): Promise<Handled> {
+  const handle = async function handle(req: IncomingMessage, res: ServerResponse, route: string, query: URLSearchParams): Promise<Handled> {
     const method = req.method ?? "GET";
     const send = (status: number, payload: unknown) => {
       res.statusCode = status;
@@ -207,7 +208,7 @@ export function createDiffusionMock() {
       }
     };
 
-    if (route === "/sites" && method === "GET") return send(200, [site]), true;
+    if (route === "/sites" && method === "GET") return send(200, sites), true;
     if (m(/^\/sites\/[^/]+\/groups$/) && method === "GET") return send(200, [group]), true;
     if (route === "/screens" && method === "GET") return send(200, screens.map(screenOut)), true;
     if (route === "/registry/content-types" && method === "GET") return send(200, contentTypes), true;
@@ -360,6 +361,7 @@ export function createDiffusionMock() {
     }
     return false;
   };
+  return Object.assign(handle, { world: { sites, group, screens } });
 
   function validateProps(type: string, props: Json): [number, string, Json?] | null {
     const field = ITEM_MEDIA_FIELD[type];

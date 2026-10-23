@@ -49,6 +49,10 @@ export function AppLayout() {
             <Icon name="screen" />
             {t("nav.screens")}
           </NavLink>
+          <NavLink to="/sites">
+            <Icon name="site" />
+            {t("nav.sites")}
+          </NavLink>
           <NavLink to="/media">
             <Icon name="media" />
             {t("nav.media")}
@@ -60,6 +64,18 @@ export function AppLayout() {
           <NavLink to="/schedules">
             <Icon name="schedule" />
             {t("nav.schedules")}
+          </NavLink>
+          <NavLink to="/power">
+            <Icon name="power" />
+            {t("nav.power")}
+          </NavLink>
+          <NavLink to="/supervision">
+            <Icon name="incident" />
+            {t("nav.supervision")}
+          </NavLink>
+          <NavLink to="/notifications">
+            <Icon name="mail" />
+            {t("nav.notifications")}
           </NavLink>
         </nav>
         <div className="app-tools">

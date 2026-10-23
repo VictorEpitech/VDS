@@ -749,6 +749,91 @@ fieldset.field > legend {
   min-block-size: var(--vds-touch-target);
 }
 
+.field textarea {
+  inline-size: 100%;
+  min-block-size: var(--vds-touch-target);
+  padding: var(--vds-space-2) var(--vds-space-3);
+  border: 1px solid var(--vds-outline);
+  border-radius: var(--vds-radius-sm);
+  background: var(--vds-surface);
+  color: var(--vds-on-surface);
+  font: inherit;
+  resize: vertical;
+}
+
+.field textarea[aria-invalid="true"] {
+  border-color: var(--vds-error);
+}
+
+.field :disabled {
+  color: var(--vds-on-surface-variant);
+}
+
+.provenance-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vds-space-1) var(--vds-space-3);
+  margin-block-start: var(--vds-space-1);
+}
+
+.provenance {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vds-space-1);
+  color: var(--vds-on-surface-variant);
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.provenance .vds-icon {
+  inline-size: 1.125em;
+  block-size: 1.125em;
+}
+
+.provenance[data-origin="here"] {
+  color: var(--vds-tertiary);
+}
+
+.token-box {
+  margin-block-end: var(--vds-space-4);
+  padding: var(--vds-space-4);
+  border: 2px solid var(--vds-warning);
+  border-radius: var(--vds-radius-md);
+  background: var(--vds-surface-1);
+}
+
+.token {
+  display: block;
+  padding: var(--vds-space-3);
+  border-radius: var(--vds-radius-sm);
+  background: var(--vds-surface-3);
+  color: var(--vds-on-surface);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-1);
+}
+
+.row-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vds-space-2);
+  padding-block: var(--vds-space-1);
+  border-block-end: 1px solid var(--vds-outline);
+  overflow-wrap: anywhere;
+}
+
+.section .section {
+  margin-block-start: var(--vds-space-4);
+}
+
 @media (min-width: 40rem) {
   .app-header {
     padding: var(--vds-space-4) var(--vds-space-6);

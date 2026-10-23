@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import { ErrorAlert } from "../../components/feedback";
 import { Icon } from "../../components/Icon";
 import type { Group, Playlist, Schedule, Screen, Site } from "../../lib/queries";
-import { defaultRule, hasDay, ruleProblem, toggleDay } from "./rules";
+import { RulesEditor } from "./RulesEditor";
+import { ruleProblem } from "./rules";
 
 export type TargetType = "screen" | "group" | "site";
 export interface ScheduleDraft {
@@ -39,7 +40,7 @@ export function countTargets(type: TargetType, id: string, screens: Screen[]): n
 }
 
 export function ScheduleForm({ schedule, screens, groups, sites, playlists, pending, error, onSubmit, onCancel }: Props) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const uid = useId();
   const formRef = useRef<HTMLFormElement>(null);
   const [name, setName] = useState(schedule?.name ?? "");
@@ -53,9 +54,7 @@ export function ScheduleForm({ schedule, screens, groups, sites, playlists, pend
   const [enabled, setEnabled] = useState(schedule?.enabled ?? true);
   const [invalid, setInvalid] = useState<Set<string>>(new Set());
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const lang = i18n.language;
 
-  const day = (i: number, style: "short" | "long") => new Intl.DateTimeFormat(lang, { weekday: style, timeZone: "UTC" }).format(Date.UTC(2024, 0, 1 + i));
   const options: { id: string; name: string }[] =
     targetType === "screen"
       ? screens.filter((s) => !s.archived_at).map((s) => ({ id: s.id, name: s.name }))
@@ -63,8 +62,6 @@ export function ScheduleForm({ schedule, screens, groups, sites, playlists, pend
         ? groups.map((g) => ({ id: g.id, name: g.name }))
         : sites.filter((s) => !s.archived_at).map((s) => ({ id: s.id, name: s.name }));
   const touched = targetId ? countTargets(targetType, targetId, screens) : null;
-
-  const setRule = (i: number, patch: Partial<(typeof rules)[number]>) => setRules((list) => list.map((r, j) => (j === i ? { ...r, ...patch } : r)));
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -164,62 +161,14 @@ export function ScheduleForm({ schedule, screens, groups, sites, playlists, pend
         {err("playlist", t("errors.field_required"), `${uid}-playlist-e`)}
       </div>
 
-      <fieldset className="field rules">
-        <legend>{t("schedules.rules.title")}</legend>
-        <p className="field-help">{rules.length === 0 ? t("schedules.rules.all_day") : t("schedules.rules.help")}</p>
-        {rules.map((r, i) => {
-          const problem = ruleProblem(r);
-          return (
-            <div key={i} className="rule card-inner" role="group" aria-label={t("schedules.rules.n", { n: i + 1 })}>
-              <div className="days" role="group" aria-label={t("schedules.rules.days")}>
-                {Array.from({ length: 7 }, (_, d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    className="btn btn-day"
-                    aria-pressed={hasDay(r.weekdays, d)}
-                    aria-label={day(d, "long")}
-                    onClick={() => setRule(i, { weekdays: toggleDay(r.weekdays, d) })}
-                  >
-                    {day(d, "short")}
-                  </button>
-                ))}
-              </div>
-              <div className="times">
-                <label>
-                  <span>{t("schedules.rules.start")}</span>
-                  <input type="time" value={r.start} onChange={(e) => setRule(i, { start: e.target.value })} aria-invalid={invalid.has(`rule-${i}`) && problem === "range" ? true : undefined} />
-                </label>
-                <label>
-                  <span>{t("schedules.rules.end")}</span>
-                  <input type="time" value={r.end} onChange={(e) => setRule(i, { end: e.target.value })} aria-invalid={invalid.has(`rule-${i}`) && problem === "range" ? true : undefined} />
-                </label>
-                <button type="button" className="btn btn-text btn-danger" onClick={() => setRules((l) => l.filter((_, j) => j !== i))}>
-                  <Icon name="delete" />
-                  {t("schedules.rules.remove")}
-                </button>
-              </div>
-              {invalid.has(`rule-${i}`) && problem ? (
-                <p className="field-error" role="alert">
-                  <Icon name="warning" />
-                  <span>{t(`schedules.rules.problem.${problem}`)}</span>
-                </p>
-              ) : null}
-            </div>
-          );
-        })}
-        <div className="actions">
-          <button type="button" className="btn btn-text" onClick={() => setRules((l) => [...l, defaultRule()])}>
-            <Icon name="add" />
-            {t("schedules.rules.add")}
-          </button>
-          {rules.length > 0 ? (
-            <button type="button" className="btn btn-text" onClick={() => setRules([])}>
-              {t("schedules.rules.clear")}
-            </button>
-          ) : null}
-        </div>
-      </fieldset>
+      <RulesEditor
+        rules={rules}
+        onChange={setRules}
+        invalid={new Set([...invalid].filter((k) => k.startsWith("rule-")).map((k) => Number(k.slice(5))))}
+        legend={t("schedules.rules.title")}
+        emptyHelp={t("schedules.rules.all_day")}
+        help={t("schedules.rules.help")}
+      />
 
       <details className="advanced" open={advancedOpen} onToggle={(e) => setAdvancedOpen((e.currentTarget as HTMLDetailsElement).open)}>
         <summary>{t("form.advanced")}</summary>

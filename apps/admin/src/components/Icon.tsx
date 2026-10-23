@@ -23,6 +23,17 @@ export const ICON_NAMES = [
   "revoke",
   "processing",
   "failed",
+  "site",
+  "agent",
+  "power",
+  "incident",
+  "check",
+  "rotate",
+  "calendar",
+  "mail",
+  "inherit",
+  "detect",
+  "copy",
 ] as const;
 export type IconName = (typeof ICON_NAMES)[number];
 

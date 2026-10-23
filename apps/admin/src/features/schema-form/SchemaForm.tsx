@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Icon } from "../../components/Icon";
 import type { JsonSchema } from "../../lib/content-types";
@@ -14,10 +14,32 @@ interface Props {
   errors?: Record<string, FieldError>;
   /** Médias sélectionnables pour un champ `x-vds-media`. */
   mediaOf?: (kind: "image" | "video" | "document") => Media[];
+  /** Champs non modifiables (ex. fixés par l'environnement) : affichés en lecture seule. */
+  readOnly?: (name: string) => boolean;
+  /** Contenu ajouté sous un champ (ex. badge de provenance et « revenir à l'héritage »). */
+  extra?: (name: string) => ReactNode;
+}
+
+/** Liste de chaînes : une valeur par ligne (le texte brut est conservé pendant la saisie). */
+function ListField({ common, value, onChange }: { common: Record<string, unknown>; value: string[]; onChange: (next: string[]) => void }) {
+  const [raw, setRaw] = useState(value.join("\n"));
+  return (
+    <textarea
+      {...common}
+      rows={Math.min(Math.max(raw.split("\n").length, 2), 8)}
+      spellCheck={false}
+      autoComplete="off"
+      value={raw}
+      onChange={(e) => {
+        setRaw(e.target.value);
+        onChange(e.target.value.split("\n").map((x) => x.trim()).filter(Boolean));
+      }}
+    />
+  );
 }
 
 /** Formulaire généré depuis un JSON Schema de module : champs `simple` visibles, volet « Avancé » pour les autres. */
-export function SchemaForm({ schema, ns, value, onChange, errors = {}, mediaOf }: Props) {
+export function SchemaForm({ schema, ns, value, onChange, errors = {}, mediaOf, readOnly, extra }: Props) {
   const { t } = useTranslation();
   const uid = useId();
   const fields = fieldsOf(schema);
@@ -40,7 +62,8 @@ export function SchemaForm({ schema, ns, value, onChange, errors = {}, mediaOf }
     const label = field.title ? t(field.title, { ns, defaultValue: name }) : name;
     const help = field.description ? t(field.description, { ns, defaultValue: "" }) : "";
     const describedBy = [help ? `${id}-help` : "", err ? `${id}-error` : ""].filter(Boolean).join(" ") || undefined;
-    const common = { id, name, "aria-invalid": err ? true : undefined, "aria-describedby": describedBy, required };
+    const locked = readOnly?.(name) ?? false;
+    const common = { id, name, "aria-invalid": err ? true : undefined, "aria-describedby": describedBy, required, disabled: locked || undefined };
     const v = value[name];
     let control;
     if (field["x-vds-media"]) {
@@ -67,6 +90,9 @@ export function SchemaForm({ schema, ns, value, onChange, errors = {}, mediaOf }
           ))}
         </select>
       );
+    } else if (field.type === "array") {
+      const list = Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+      control = <ListField common={common} value={list} onChange={(next) => set(name, next)} />;
     } else if (field.type === "boolean") {
       return (
         <div className="field field-check" key={name}>
@@ -85,6 +111,7 @@ export function SchemaForm({ schema, ns, value, onChange, errors = {}, mediaOf }
               {help}
             </p>
           ) : null}
+          {extra?.(name)}
         </div>
       );
     } else if (field.type === "integer" || field.type === "number") {
@@ -126,6 +153,7 @@ export function SchemaForm({ schema, ns, value, onChange, errors = {}, mediaOf }
             {help}
           </p>
         ) : null}
+        {extra?.(name)}
         {err ? (
           <p className="field-error" id={`${id}-error`}>
             <Icon name="warning" />

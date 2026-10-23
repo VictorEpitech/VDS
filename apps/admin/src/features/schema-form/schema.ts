@@ -34,7 +34,11 @@ export function validate(schema: JsonSchema, values: Values): Record<string, Fie
       if (schema.required?.includes(name)) errors[name] = { key: "required" };
       continue;
     }
-    if (typeof v === "number") {
+    if (Array.isArray(v)) {
+      const re = field.items?.pattern ? new RegExp(field.items.pattern) : null;
+      if (re && v.some((x) => typeof x !== "string" || !re.test(x))) errors[name] = { key: "pattern" };
+      else if (field.maxItems !== undefined && v.length > field.maxItems) errors[name] = { key: "too_many", params: { max: field.maxItems } };
+    } else if (typeof v === "number") {
       if ((field.minimum !== undefined && v < field.minimum) || (field.maximum !== undefined && v > field.maximum)) {
         errors[name] = { key: "range", params: { min: field.minimum ?? "", max: field.maximum ?? "" } };
       }

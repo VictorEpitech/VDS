@@ -135,7 +135,7 @@ test("clavier : lien d'évitement puis toute la navigation", async ({ page }, in
   await page.goto(home(info));
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   const reached = new Set<string>();
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 20; i++) {
     await page.keyboard.press("Tab");
     reached.add(await page.evaluate(() => document.activeElement?.textContent?.trim() ?? ""));
   }

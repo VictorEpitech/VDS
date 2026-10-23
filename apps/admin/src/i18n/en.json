@@ -16,7 +16,11 @@
     },
     "media": "Media library",
     "playlists": "Playlists",
-    "schedules": "Schedule"
+    "schedules": "Schedule",
+    "sites": "Sites",
+    "power": "Power",
+    "supervision": "Monitoring",
+    "notifications": "Notifications"
   },
   "language": {
     "label": "Language",
@@ -142,6 +146,46 @@
     },
     "screen": {
       "group_other_site": "This group belongs to another site."
+    },
+    "agents": {
+      "already_active": "This site already has an active agent. Revoke it before creating another.",
+      "command_args_invalid": "The command parameters are not valid.",
+      "command_screen_required": "Choose a screen for this command.",
+      "command_unknown": "This command does not exist.",
+      "not_found": "This agent no longer exists.",
+      "revoked": "This agent is revoked.",
+      "screen_not_in_site": "This screen does not belong to this site."
+    },
+    "power": {
+      "calendar_day_not_found": "This day no longer exists.",
+      "calendar_exists": "A calendar already uses this key.",
+      "calendar_not_found": "This calendar no longer exists.",
+      "exception_not_found": "This exception no longer exists.",
+      "plan_in_use": "This plan is attached to a site, group or screen and cannot be deleted.",
+      "plan_not_found": "This plan no longer exists.",
+      "scope_not_found": "This target no longer exists."
+    },
+    "incidents": {
+      "already_resolved": "This incident is already resolved.",
+      "not_found": "This incident no longer exists."
+    },
+    "registry": {
+      "module_not_found": "This module does not exist or has no settings."
+    },
+    "site": {
+      "archived": "This site is archived."
+    },
+    "group": {
+      "not_empty": "This group still contains screens."
+    },
+    "config": {
+      "key_from_env": "This value is set by the server environment.",
+      "key_unknown": "This setting does not exist.",
+      "level_invalid": "This level is not valid.",
+      "namespace_unknown": "This module has no settings.",
+      "scope_not_allowed": "This setting cannot be changed at this level.",
+      "target_unknown": "This target no longer exists.",
+      "value_invalid": "This value is not valid."
     }
   },
   "auth": {
@@ -200,7 +244,8 @@
       "required": "This field is required.",
       "range": "Enter a value between {min} and {max}.",
       "pattern": "This value has an invalid format.",
-      "too_long": "At most {max} characters."
+      "too_long": "At most {max} characters.",
+      "too_many": "At most {max} values."
     }
   },
   "pairing": {
@@ -337,5 +382,230 @@
       "action": "Delete",
       "confirm": "Delete {name}"
     }
+  },
+  "provenance": {
+    "here": "Set here",
+    "default": "Default value",
+    "env": "Set by the environment",
+    "inherited": "{level, select, organization {Inherited from the organization} site {Inherited from site {name}} group {Inherited from group {name}} screen {Inherited from screen {name}} other {Inherited}}",
+    "revert": "Revert to inherited",
+    "revert_for": "Revert to inherited: {field}"
+  },
+  "sites": {
+    "title": "Sites",
+    "intro": "Each site can have an agent that relays power commands to its screens.",
+    "empty": "No sites yet.",
+    "create": {
+      "action": "New site",
+      "title": "New site"
+    },
+    "name": "Name",
+    "slug": "Identifier",
+    "slug_help": "Lowercase letters, digits and hyphens.",
+    "screens_count": "{count, plural, =0 {no screens} one {# screen} other {# screens}}",
+    "no_agent": "No agent",
+    "manage": "Manage",
+    "manage_for": "Manage site {name}",
+    "back": "Back to sites",
+    "archive": {
+      "action": "Archive site",
+      "confirm": "Archive {name}"
+    }
+  },
+  "agents": {
+    "title": "Site agent",
+    "intro": "The agent runs on the site's network. It connects to the server with a secret token.",
+    "empty": "No agent. Create one to control the power of this site's screens.",
+    "one_active": "Only one active agent per site. Revoke the current agent to create another.",
+    "never_seen": "Never connected",
+    "token_prefix": "Token start",
+    "rotated_at": "Token renewed on",
+    "status": {
+      "online": "Online",
+      "offline": "Offline",
+      "unseen": "Never connected",
+      "revoked": "Revoked"
+    },
+    "create": {
+      "title": "New agent",
+      "name": "Agent name",
+      "help": "For example \"Technical room server\".",
+      "submit": "Create agent"
+    },
+    "rotate": {
+      "action": "Renew token",
+      "confirm": "Renew the token of {name}"
+    },
+    "revoke": {
+      "action": "Revoke agent",
+      "confirm": "Revoke {name}"
+    },
+    "token": {
+      "title": "Token for agent {name}",
+      "once": "Copy this token now and enter it in the agent configuration. It will never be shown again. The previous token stops working immediately.",
+      "copy": "Copy token",
+      "copied": "Token copied.",
+      "done": "I have copied the token"
+    }
+  },
+  "power": {
+    "title": "Power schedule",
+    "intro": "Choose when screens are on. Outside the ranges, they are off.",
+    "scope": {
+      "level": "Level",
+      "organization": "Organization",
+      "site": "Site",
+      "group": "Group",
+      "screen": "Screen"
+    },
+    "plans": {
+      "title": "Plans",
+      "intro": "A plan is a typical week: screens are on during its time slots.",
+      "create": "New plan",
+      "edit": "Edit plan",
+      "edit_for": "Edit {name}",
+      "name": "Name",
+      "description": "Description",
+      "rules": "On ranges",
+      "rules_empty": "With no range, the screen stays off.",
+      "rules_empty_short": "Always off",
+      "rules_help": "The screen is on during these ranges, site time.",
+      "empty": "No plans. Create one to schedule power-on times."
+    },
+    "exceptions": {
+      "title": "Exceptions",
+      "intro": "Public holidays, closures, special openings: an exception takes precedence over the plan.",
+      "create": "New exception",
+      "edit": "Edit exception",
+      "label": "Label",
+      "state": "During the exception",
+      "states": {
+        "on": "On",
+        "off": "Off"
+      },
+      "from": "First day",
+      "to": "Last day",
+      "range": "From {from} to {to}",
+      "window_help": "Without times, the exception covers the whole day.",
+      "empty": "No exceptions.",
+      "problem": {
+        "required": "Fill in the label, target and dates.",
+        "period": "The end date must be after the start date.",
+        "window": "Fill in both the start and end time, or neither.",
+        "range": "The end time must be after the start time."
+      }
+    },
+    "calendars": {
+      "title": "Calendars",
+      "intro": "Lists of days (public holidays, vacations) applied to plans.",
+      "create": "New calendar",
+      "key": "Key",
+      "key_help": "Lowercase letters, digits, dots and hyphens.",
+      "name_fr": "Name in French",
+      "name_en": "Name in English",
+      "empty": "No calendars.",
+      "days": "Calendar days",
+      "days_count": "{count, plural, =0 {no days} one {# day} other {# days}}",
+      "refreshed": "Updated on {when}",
+      "no_days": "No days.",
+      "day": "Day",
+      "day_label": "Label",
+      "add_day": "Add day",
+      "remove_day": "Remove {day}"
+    },
+    "attachment": {
+      "title": "Attachment",
+      "intro": "Attach a plan and calendars to the organization, a site, a group or a screen. Each level inherits from the level above.",
+      "plan": "Power plan",
+      "no_plan": "No plan",
+      "calendars": "Calendars",
+      "pick": "Choose a target.",
+      "saved": "Attachment saved.",
+      "resolved": "Upcoming slots",
+      "no_slots": "No upcoming slots."
+    }
+  },
+  "supervision": {
+    "title": "Monitoring",
+    "intro": "Fleet status, open incidents and remote commands.",
+    "last_seen": "Last signal: {when}",
+    "agent_offline": "The site agent is offline: commands are unavailable.",
+    "no_agent": "This site has no active agent: commands are unavailable.",
+    "park": {
+      "title": "Screen status",
+      "intro": "A screen switched off by the schedule is never an alert."
+    },
+    "power": {
+      "on": "Turn on",
+      "off": "Turn off",
+      "on_for": "Turn on {name}",
+      "off_for": "Turn off {name}"
+    },
+    "command": {
+      "pending": "Command sent, waiting for the agent's answer…",
+      "done_on": "{name} is on.",
+      "done_off": "{name} is off.",
+      "done_probe": "Reading complete.",
+      "state": "Reported state: {state}",
+      "failed": "The command failed: {reason}",
+      "reasons": {
+        "expired": "the agent did not answer in time",
+        "rejected": "the agent rejected the command",
+        "unknown": "unknown cause"
+      }
+    },
+    "detect": {
+      "run": "Detect",
+      "run_for": "Detect the control method of {name}",
+      "title": "Detection for {name}",
+      "none": "No control method detected. Check that the screen is on and on the same network.",
+      "confidence": "confidence {value}",
+      "use": "Use",
+      "use_for": "Use driver {driver}",
+      "applied": "Driver {driver} saved for this screen.",
+      "user_action": "action required on the screen"
+    },
+    "incidents": {
+      "title": "Incidents",
+      "filter": "Show",
+      "filters": {
+        "open": "Open",
+        "resolved": "Resolved",
+        "all": "All"
+      },
+      "empty": "No incidents.",
+      "state": {
+        "open": "Open",
+        "acknowledged": "Acknowledged",
+        "resolved": "Resolved"
+      },
+      "opened": "Opened on {when}",
+      "resolved": "Resolved on {when}",
+      "ack": "Acknowledge",
+      "ack_for": "Acknowledge: {name}",
+      "kinds": {
+        "screen": {
+          "offline": "Screen offline"
+        },
+        "agent": {
+          "offline": "Agent offline"
+        },
+        "power": {
+          "failed": "Power failure"
+        },
+        "module": {
+          "quarantined": "Module quarantined"
+        }
+      }
+    }
+  },
+  "notifications": {
+    "title": "Email notifications",
+    "intro": "Choose who is emailed when a screen or an agent stops responding."
+  },
+  "settings": {
+    "form_label": "Module settings",
+    "saved": "Settings saved.",
+    "env_var": "Variable {name}"
   }
 }

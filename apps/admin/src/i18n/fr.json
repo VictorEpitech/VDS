@@ -16,7 +16,11 @@
     },
     "media": "Médiathèque",
     "playlists": "Playlists",
-    "schedules": "Programmation"
+    "schedules": "Programmation",
+    "sites": "Sites",
+    "power": "Alimentation",
+    "supervision": "Supervision",
+    "notifications": "Notifications"
   },
   "language": {
     "label": "Langue",
@@ -142,6 +146,46 @@
     },
     "screen": {
       "group_other_site": "Ce groupe appartient à un autre site."
+    },
+    "agents": {
+      "already_active": "Ce site a déjà un agent actif. Révoquez-le avant d'en créer un autre.",
+      "command_args_invalid": "Les paramètres de la commande ne sont pas valides.",
+      "command_screen_required": "Choisissez un écran pour cette commande.",
+      "command_unknown": "Cette commande n'existe pas.",
+      "not_found": "Cet agent n'existe plus.",
+      "revoked": "Cet agent est révoqué.",
+      "screen_not_in_site": "Cet écran n'appartient pas à ce site."
+    },
+    "power": {
+      "calendar_day_not_found": "Ce jour n'existe plus.",
+      "calendar_exists": "Un calendrier porte déjà cette clé.",
+      "calendar_not_found": "Ce calendrier n'existe plus.",
+      "exception_not_found": "Cette exception n'existe plus.",
+      "plan_in_use": "Ce plan est rattaché à un site, un groupe ou un écran et ne peut pas être supprimé.",
+      "plan_not_found": "Ce plan n'existe plus.",
+      "scope_not_found": "Cette cible n'existe plus."
+    },
+    "incidents": {
+      "already_resolved": "Cet incident est déjà résolu.",
+      "not_found": "Cet incident n'existe plus."
+    },
+    "registry": {
+      "module_not_found": "Ce module n'existe pas ou n'a pas de réglages."
+    },
+    "site": {
+      "archived": "Ce site est archivé."
+    },
+    "group": {
+      "not_empty": "Ce groupe contient encore des écrans."
+    },
+    "config": {
+      "key_from_env": "Cette valeur est fixée par l'environnement du serveur.",
+      "key_unknown": "Ce réglage n'existe pas.",
+      "level_invalid": "Ce niveau n'est pas valide.",
+      "namespace_unknown": "Ce module n'a pas de réglages.",
+      "scope_not_allowed": "Ce réglage ne peut pas être modifié à ce niveau.",
+      "target_unknown": "Cette cible n'existe plus.",
+      "value_invalid": "Cette valeur n'est pas valide."
     }
   },
   "auth": {
@@ -200,7 +244,8 @@
       "required": "Ce champ est obligatoire.",
       "range": "Saisissez une valeur entre {min} et {max}.",
       "pattern": "Le format de cette valeur n'est pas valide.",
-      "too_long": "Au maximum {max} caractères."
+      "too_long": "Au maximum {max} caractères.",
+      "too_many": "Au maximum {max} valeurs."
     }
   },
   "pairing": {
@@ -337,5 +382,230 @@
       "action": "Supprimer",
       "confirm": "Supprimer {name}"
     }
+  },
+  "provenance": {
+    "here": "Défini ici",
+    "default": "Valeur par défaut",
+    "env": "Défini par l'environnement",
+    "inherited": "{level, select, organization {Hérité de l'organisation} site {Hérité du site {name}} group {Hérité du groupe {name}} screen {Hérité de l'écran {name}} other {Hérité}}",
+    "revert": "Revenir à l'héritage",
+    "revert_for": "Revenir à l'héritage : {field}"
+  },
+  "sites": {
+    "title": "Sites",
+    "intro": "Chaque site peut avoir un agent qui relaie les ordres d'alimentation vers ses écrans.",
+    "empty": "Aucun site pour le moment.",
+    "create": {
+      "action": "Nouveau site",
+      "title": "Nouveau site"
+    },
+    "name": "Nom",
+    "slug": "Identifiant",
+    "slug_help": "Lettres minuscules, chiffres et tirets.",
+    "screens_count": "{count, plural, =0 {aucun écran} one {# écran} other {# écrans}}",
+    "no_agent": "Aucun agent",
+    "manage": "Gérer",
+    "manage_for": "Gérer le site {name}",
+    "back": "Retour aux sites",
+    "archive": {
+      "action": "Archiver le site",
+      "confirm": "Archiver {name}"
+    }
+  },
+  "agents": {
+    "title": "Agent du site",
+    "intro": "L'agent est installé sur le réseau du site. Il se connecte au serveur avec un jeton secret.",
+    "empty": "Aucun agent. Créez-en un pour piloter l'alimentation des écrans de ce site.",
+    "one_active": "Un seul agent actif par site. Révoquez l'agent actuel pour en créer un autre.",
+    "never_seen": "Jamais connecté",
+    "token_prefix": "Début du jeton",
+    "rotated_at": "Jeton renouvelé le",
+    "status": {
+      "online": "En ligne",
+      "offline": "Hors ligne",
+      "unseen": "Jamais connecté",
+      "revoked": "Révoqué"
+    },
+    "create": {
+      "title": "Nouvel agent",
+      "name": "Nom de l'agent",
+      "help": "Par exemple « Serveur de la salle technique ».",
+      "submit": "Créer l'agent"
+    },
+    "rotate": {
+      "action": "Renouveler le jeton",
+      "confirm": "Renouveler le jeton de {name}"
+    },
+    "revoke": {
+      "action": "Révoquer l'agent",
+      "confirm": "Révoquer {name}"
+    },
+    "token": {
+      "title": "Jeton de l'agent {name}",
+      "once": "Copiez ce jeton maintenant et saisissez-le dans la configuration de l'agent. Il ne sera plus jamais affiché. L'ancien jeton cesse de fonctionner immédiatement.",
+      "copy": "Copier le jeton",
+      "copied": "Jeton copié.",
+      "done": "J'ai copié le jeton"
+    }
+  },
+  "power": {
+    "title": "Planning d'alimentation",
+    "intro": "Choisissez quand les écrans sont allumés. Hors des plages, ils sont éteints.",
+    "scope": {
+      "level": "Niveau",
+      "organization": "Organisation",
+      "site": "Site",
+      "group": "Groupe",
+      "screen": "Écran"
+    },
+    "plans": {
+      "title": "Plans",
+      "intro": "Un plan est une semaine type : les écrans sont allumés pendant ses créneaux.",
+      "create": "Nouveau plan",
+      "edit": "Modifier le plan",
+      "edit_for": "Modifier {name}",
+      "name": "Nom",
+      "description": "Description",
+      "rules": "Plages d'allumage",
+      "rules_empty": "Sans plage, l'écran reste éteint.",
+      "rules_empty_short": "Toujours éteint",
+      "rules_help": "L'écran est allumé pendant ces plages, heure du site.",
+      "empty": "Aucun plan. Créez-en un pour programmer les allumages."
+    },
+    "exceptions": {
+      "title": "Exceptions",
+      "intro": "Jours fériés, fermetures, ouvertures exceptionnelles : une exception prime sur le plan.",
+      "create": "Nouvelle exception",
+      "edit": "Modifier l'exception",
+      "label": "Libellé",
+      "state": "Pendant l'exception",
+      "states": {
+        "on": "Allumé",
+        "off": "Éteint"
+      },
+      "from": "Premier jour",
+      "to": "Dernier jour",
+      "range": "Du {from} au {to}",
+      "window_help": "Sans horaire, l'exception couvre toute la journée.",
+      "empty": "Aucune exception.",
+      "problem": {
+        "required": "Renseignez le libellé, la cible et les dates.",
+        "period": "La date de fin doit être après la date de début.",
+        "window": "Renseignez l'heure de début et l'heure de fin, ou aucune des deux.",
+        "range": "L'heure de fin doit être après l'heure de début."
+      }
+    },
+    "calendars": {
+      "title": "Calendriers",
+      "intro": "Listes de jours (jours fériés, vacances) qui s'appliquent aux plans.",
+      "create": "Nouveau calendrier",
+      "key": "Clé",
+      "key_help": "Lettres minuscules, chiffres, points et tirets.",
+      "name_fr": "Nom en français",
+      "name_en": "Nom en anglais",
+      "empty": "Aucun calendrier.",
+      "days": "Jours du calendrier",
+      "days_count": "{count, plural, =0 {aucun jour} one {# jour} other {# jours}}",
+      "refreshed": "Mis à jour le {when}",
+      "no_days": "Aucun jour.",
+      "day": "Jour",
+      "day_label": "Libellé",
+      "add_day": "Ajouter le jour",
+      "remove_day": "Retirer le {day}"
+    },
+    "attachment": {
+      "title": "Rattachement",
+      "intro": "Rattachez un plan et des calendriers à l'organisation, à un site, à un groupe ou à un écran. Chaque niveau hérite du niveau au-dessus.",
+      "plan": "Plan d'alimentation",
+      "no_plan": "Aucun plan",
+      "calendars": "Calendriers",
+      "pick": "Choisissez une cible.",
+      "saved": "Rattachement enregistré.",
+      "resolved": "Prochains créneaux",
+      "no_slots": "Aucun créneau à venir."
+    }
+  },
+  "supervision": {
+    "title": "Supervision",
+    "intro": "État du parc, incidents en cours et commandes à distance.",
+    "last_seen": "Dernier signal : {when}",
+    "agent_offline": "L'agent du site est hors ligne : les commandes sont indisponibles.",
+    "no_agent": "Ce site n'a pas d'agent actif : les commandes sont indisponibles.",
+    "park": {
+      "title": "État des écrans",
+      "intro": "Un écran éteint par le planning n'est jamais une alerte."
+    },
+    "power": {
+      "on": "Allumer",
+      "off": "Éteindre",
+      "on_for": "Allumer {name}",
+      "off_for": "Éteindre {name}"
+    },
+    "command": {
+      "pending": "Ordre envoyé, en attente de la réponse de l'agent…",
+      "done_on": "{name} est allumé.",
+      "done_off": "{name} est éteint.",
+      "done_probe": "Lecture terminée.",
+      "state": "État relevé : {state}",
+      "failed": "L'ordre a échoué : {reason}",
+      "reasons": {
+        "expired": "l'agent n'a pas répondu à temps",
+        "rejected": "l'agent a refusé l'ordre",
+        "unknown": "cause inconnue"
+      }
+    },
+    "detect": {
+      "run": "Détecter",
+      "run_for": "Détecter le mode de pilotage de {name}",
+      "title": "Détection pour {name}",
+      "none": "Aucun mode de pilotage détecté. Vérifiez que l'écran est allumé et sur le même réseau.",
+      "confidence": "fiabilité {value}",
+      "use": "Utiliser",
+      "use_for": "Utiliser le pilote {driver}",
+      "applied": "Pilote {driver} enregistré pour cet écran.",
+      "user_action": "action requise sur l'écran"
+    },
+    "incidents": {
+      "title": "Incidents",
+      "filter": "Afficher",
+      "filters": {
+        "open": "En cours",
+        "resolved": "Résolus",
+        "all": "Tous"
+      },
+      "empty": "Aucun incident.",
+      "state": {
+        "open": "Ouvert",
+        "acknowledged": "Acquitté",
+        "resolved": "Résolu"
+      },
+      "opened": "Ouvert le {when}",
+      "resolved": "Résolu le {when}",
+      "ack": "Acquitter",
+      "ack_for": "Acquitter : {name}",
+      "kinds": {
+        "screen": {
+          "offline": "Écran hors ligne"
+        },
+        "agent": {
+          "offline": "Agent hors ligne"
+        },
+        "power": {
+          "failed": "Échec d'alimentation"
+        },
+        "module": {
+          "quarantined": "Module mis en quarantaine"
+        }
+      }
+    }
+  },
+  "notifications": {
+    "title": "Notifications par e-mail",
+    "intro": "Choisissez qui est prévenu par e-mail quand un écran ou un agent ne répond plus."
+  },
+  "settings": {
+    "form_label": "Réglages du module",
+    "saved": "Réglages enregistrés.",
+    "env_var": "Variable {name}"
   }
 }

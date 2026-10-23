@@ -274,3 +274,47 @@ code, kbd, samp, .vds-mono { font-family: var(--vds-font-mono); }
   :root:not([data-theme="light"]) .vds-logo { background-image: url("logo-dark.svg"); }
 }
 :root[data-theme="dark"] .vds-logo { background-image: url("logo-dark.svg"); }
+.vds-icon[data-icon="site"] {
+  -webkit-mask-image: url("icons/site.svg");
+  mask-image: url("icons/site.svg");
+}
+.vds-icon[data-icon="agent"] {
+  -webkit-mask-image: url("icons/agent.svg");
+  mask-image: url("icons/agent.svg");
+}
+.vds-icon[data-icon="power"] {
+  -webkit-mask-image: url("icons/power.svg");
+  mask-image: url("icons/power.svg");
+}
+.vds-icon[data-icon="incident"] {
+  -webkit-mask-image: url("icons/incident.svg");
+  mask-image: url("icons/incident.svg");
+}
+.vds-icon[data-icon="check"] {
+  -webkit-mask-image: url("icons/check.svg");
+  mask-image: url("icons/check.svg");
+}
+.vds-icon[data-icon="rotate"] {
+  -webkit-mask-image: url("icons/rotate.svg");
+  mask-image: url("icons/rotate.svg");
+}
+.vds-icon[data-icon="calendar"] {
+  -webkit-mask-image: url("icons/calendar.svg");
+  mask-image: url("icons/calendar.svg");
+}
+.vds-icon[data-icon="mail"] {
+  -webkit-mask-image: url("icons/mail.svg");
+  mask-image: url("icons/mail.svg");
+}
+.vds-icon[data-icon="inherit"] {
+  -webkit-mask-image: url("icons/inherit.svg");
+  mask-image: url("icons/inherit.svg");
+}
+.vds-icon[data-icon="detect"] {
+  -webkit-mask-image: url("icons/detect.svg");
+  mask-image: url("icons/detect.svg");
+}
+.vds-icon[data-icon="copy"] {
+  -webkit-mask-image: url("icons/copy.svg");
+  mask-image: url("icons/copy.svg");
+}
