@@ -28,13 +28,22 @@ Chaque lot se termine par une **démo sur un écran réel du campus**.
 - [x] `make api-types` / `api-types-check` : OpenAPI → `packages/sdk-ts/src/api.generated.ts`, openapi-typescript 7.13.0 épinglé (T9)
 - [x] Modules de thème `theme.vtech` et `theme.allia` (T8 ; déclaratifs, tokens/polices/icônes/logo ; logos provisoires, couleurs d'état à valider)
 - [x] Admin React : squelette, thème chargé depuis le module actif, i18n FR/EN (T8 partielle : serveur simulé `vite.mock-server.ts`, à rebrancher sur `config.js` réel et `/api` une fois T5 livrée ; pas d'auth ni de formulaire de module)
-- [x] CI : build et publication des images (T10 : docker/*, ci.yml, images.yml, deploy/dokploy/README.md ; le serveur ne sert pas encore le player, placeholder embarqué dans /app/web/player)
+- [x] CI : build et publication des images (T10 : docker/*, ci.yml, images.yml, deploy/dokploy/README.md ; le player est servi sous `<base>/player/` depuis L2-T7)
 
 ### Lot 2 — Premier écran qui joue (jalon clé)
-- [ ] Player web : appairage, cache (SW + IndexedDB), lecture hors ligne, watchdog
-- [ ] App Android (TCL Google TV) en kiosque
-- [ ] Modules content-type : image, vidéo, PDF, URL
-- [ ] Playlists + programmation simple
+- [x] Contrat vds-core 1.1.0 : manifeste `content`, `ContentType`, `StorageBackend`, événements diffusion (L2-T1)
+- [x] Migration `0002_diffusion`, modèles, API CRUD médias (métadonnées) / playlists / programmation, rôles, audit, tests aux deux `VDS_BASE_PATH` (L2-T2 ; reste : octets T3, résolution et `player/schedule`)
+- [x] Module `storage.local` (`VDS_MEDIA_DIR`), envoi `POST /api/v1/media` (type par octets, taille `core.media_max_upload_mb`, sha256), service `<base>/media/<id>/<variant>` (Range, ETag, no-store, nosniff), crochet `rt.media_access.register_reader` pour le jeton d'appareil (L2-T3 ; jeton : T4)
+- [x] Appairage (code 6 car. 15 min, claim admin, jeton `vds_dev_…` haché remis une fois, révocation 401 `device_revoked`, heartbeat 60 s, audit/événements, dépendance `rt.device_auth`) (L2-T4)
+- [x] Player web : appairage, cache (SW + IndexedDB), lecture hors ligne, watchdog (L2-T7 : `apps/player`, serveur `<base>/player/` + CSP, content-types activés par défaut ; Playwright pairage → lecture → coupure → extinction/rallumage → révocation sur les deux `VDS_BASE_PATH` ; contraintes dans `architecture.md` › Contraintes de plateforme)
+- [x] App Android (TCL Google TV) en kiosque : code, relais et CI livrés (L2-T9 : `packaging/android`, Kotlin/Gradle, relais Ktor CIO + OkHttp, 10 tests JVM verts, `assembleDebug` + lint verts, `.github/workflows/android.yml`) ; **non vérifié sur matériel** : WebView + Service Worker sur `127.0.0.1`, Device Owner, démarrage au boot, relance en arrière-plan (procédure de recette dans le README)
+- [x] Modules content-type : image, vidéo, PDF, URL (L2-T6 : `modules/content.*`, `process_media` Pillow / ffprobe / pypdfium2, éléments `vds-content-*`, ffmpeg ajouté à l'image serveur ; tests `test_content_modules.py` et `content-modules.test.ts`)
+- [x] Playlists + programmation simple (L2-T5 : résolveur pur `diffusion/resolver.py`, `GET /api/v1/player/schedule?format=1` ETag/304, révision du heartbeat réelle, lecture média par jeton limitée à la programmation de l'écran ; programmation sans règle = toute la journée)
+- [x] Admin diffusion (L2-T8 : appairage code + choix d'écran, médiathèque avec progression et 409, éditeur de playlist à formulaire généré du schéma d'élément + ordre au clavier, programmation simple cible/créneaux HH:MM/priorité, révocation d'appareil ; schémas et i18n `content.*` embarqués au build faute d'endpoint de registre ; serveur simulé `vite.mock-diffusion.ts` ; vitest + Playwright 2 bases x 2 thèmes)
+- [x] Registre exposé à l'admin : `GET /api/v1/registry/content-types` (content-types actifs : manifeste localisé, `item.schema.json`, schéma de config, i18n, lus à chaud ; rôle éditeur) et `ScreenOut.device` (présence `online|offline|unseen|revoked` sur 3 heartbeats, plateforme, modèle, version, dernier vu, révoqué, résumé du dernier heartbeat ; jamais le jeton) (L2-suite ; tests `test_player_registry_api.py` aux deux base paths)
+- [x] E2E réel : `pnpm --filter @vds/player e2e:real` (`apps/player/e2e-real/`, `make e2e`) lance le vrai serveur + le vrai build du player + un PostgreSQL 17 dédié jetable par préfixe (`/` et `/espace/affichage`) : appairage, claim, programmation image, le player affiche le média servi avec son jeton. Corrige deux écarts révélés : `script` annoncé au player (`assets/assets/player.js` 404) et propriété d'élément `media` (schéma) lue comme `src` par `content.image` / `content.video`
+- [ ] Admin : brancher `registry/content-types` à la place des schémas/i18n `content.*` embarqués au build, et `ScreenOut.device` dans la liste des écrans (apps/admin non touché)
+- [ ] `content.pdf` : le player lit `props.pages` alors que le schéma d'élément ne porte que `media` (à résoudre côté `schedule.py`, avec les variantes de pages)
 
 ### Lot 3 — Multi-sites et alimentation
 - [ ] Agent de site : relais WebSocket sortant, cache média
@@ -79,6 +88,12 @@ Permission `users.provision` ajoutée au catalogue 1.0, réservée au kind `auth
 ### 23 octobre 2026 — Arbitrages lot 1 (Victor)
 Un groupe est rattaché à un seul site · `Cache-Control: no-store` aussi sur les médias et en mode autonome · registre d'images : GHCR · installation d'archive de module à chaud reportée après le lot 1.
 
+### 23 octobre 2026 — Lot 2 diffusion et player (architecte, vds-core 1.1.0)
+Contrat **vds-core 1.1.0** (mineur, additif : bloc manifeste `content`, `ContentType`, `StorageBackend`, `ctx.core.media`, événements `media.*`/`playlist.*`/`schedule.*`/`screen.paired|unpaired`, `sdk-ts` `content.ts` + `player.ts` ; modules 1.0 inchangés) · appairage : code 6 car. Crockford 15 min, réclamé par un admin, jeton `vds_dev_…` remis une seule fois au polling, stocké haché, un appareil actif par écran, révocation = 401 `device_revoked` → le player efface tout · programmation résolue `GET /api/v1/player/schedule?format=1` (ETag = révision, créneaux absolus J+J+1, URL relatives, layout implicite plein écran) · résolution lot 2 : cible la plus spécifique puis priorité ; alternance/override au lot 4 · migration `0002_diffusion` (screen_device, pairing_request, media, media_variant, playlist, playlist_item, playlist_item_media, schedule, schedule_rule) · octets via module `storage.local` (`VDS_MEDIA_DIR`) · content-types `content.image|video|pdf|url` en web components, PDF rendu en pages par `pypdfium2` · cache SW (shell + médias, Range servi depuis le cache) + IndexedDB, aucun flux en lecture · watchdog page + pont Android `VdsNative` · app Android Kotlin WebView, URL serveur saisie au 1er lancement, Device Owner sinon kiosque doux · **`/ws/player` reporté au lot 3** (heartbeat 60 s + `commands` vides en lot 2) · `tag`/`screen_tag` reportés au lot 4. Détail : `docs/architecture.md` › Diffusion et player.
+
+### 23 octobre 2026 — Lecture hors ligne par plateforme (architecte, lot 2, sans changement de contrat)
+Un seul cache (SW + IndexedDB du player web), chaque empaquetage garantit un contexte sécurisé · Android : relais HTTP en boucle `127.0.0.1:47800` dans l'app, toujours actif, la WebView charge le player par `localhost` (T9) · Pi : stratégie Chromium `OverrideSecurityRestrictionsOnInsecureOrigin` (lot 5) · Tizen et PWA : HTTPS à certificat public obligatoire, sinon boîtier externe · écartés : `shouldInterceptRequest` (corps des POST inaccessibles), cache natif via `VdsNative`, app en `file://` · HTTPS autonome documenté (ACME HTTP-01, DNS-01, `tls internal` admin seulement), profil Compose `https` au lot 5 · aucun changement noyau ni serveur. Détail : `docs/architecture.md` › Lecture hors ligne par plateforme.
+
 ## Risques
 
 | Risque | Parade |
@@ -117,3 +132,7 @@ Un groupe est rattaché à un seul site · `Cache-Control: no-store` aussi sur l
 
 ### T7 — Authentification (lot 1)
 Rôles V1 = `admin` / `editor` (pas de « lecteur » : absent des docs et du CHECK en base) · lecture du parc et de la config : éditeur ; écriture : admin · `Identity.role = None` → rôle conservé en base, `editor` à la création · le compte noyau d'un provider est créé via la façade `ctx.core.users.provision` réservée au kind `auth-provider` (intégrée au catalogue comme permission `users.provision`, voir décision ci-dessous) · routes de module montées à chaud via `ModuleMux` · migrations : branches `core` et `<id module>`, `alembic upgrade heads` (`python -m vds_server.migrate`).
+
+### 23 octobre 2026 — Revue sécurité : correctifs et backlog début du lot 3
+Corrigés : (3) `content.pdf` rend dans un sous-processus jetable (`render_worker.py`, `python -I`, env vide, rlimits mémoire/CPU/fichier, délai ; échec ⇒ média `failed`, codes `content.pdf.invalid|too_many_pages|timeout|render_failed`) · (9) `ffprobe` : env minimal, rlimits, timeout · (4) `content.url` refuse toute URL de même origine que `VDS_PUBLIC_ORIGIN` (serveur) ou `location.origin` (player), quel que soit `VDS_BASE_PATH` ; plus de `allow-scripts allow-same-origin` possible sur une URL de même origine · médias servis avec `Content-Security-Policy: sandbox`.
+Backlog (début du lot 3) : mineurs 6, 7, 8, 11, 12 de la revue sécurité ; 10 : l'admin n'a pas de CSP (à ajouter).

@@ -32,6 +32,8 @@ lint:
 
 e2e:
 	pnpm --filter @vds/admin e2e
+	pnpm --filter @vds/player e2e
+	pnpm --filter @vds/player e2e:real
 
 i18n-check:
 	pnpm --filter @vds/admin i18n:check

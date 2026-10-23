@@ -291,7 +291,7 @@ Conventions : clés `uuid` par `gen_random_uuid()`, horodatages `timestamptz`, `
 
 Module `auth.local` (branche Alembic `auth.local`) : `m_auth_local_credential(user_id PK→user_account, password_hash argon2id, must_change)`, `m_auth_local_session(id, user_id, token_hash UNIQUE, expires_at, revoked_at, last_seen_at)`.
 
-Ajouts prévus (additifs, lots suivants) : `tag` + `screen_tag` (ciblage transversal, lot 2), jetons d'appareil (lot 2), `site_agent` (lot 3), groupes d'utilisateurs / validation (lot 4). Points d'accroche réservés : position dans un mur (colonnes futures sur `screen`), `conditions` sur `schedule`, clés d'API (`Authorization: Bearer` déjà exempté du contrôle d'origine).
+Ajouts prévus (additifs, lots suivants) : jetons d'appareil, médias, playlists, programmation (lot 2, migration `0002_diffusion`, voir « Diffusion et player »), `tag` + `screen_tag` (ciblage transversal, reporté au lot 4), `site_agent` (lot 3), groupes d'utilisateurs / validation (lot 4). Points d'accroche réservés : position dans un mur (colonnes futures sur `screen`), `conditions` sur `schedule`, clés d'API (`Authorization: Bearer` déjà exempté du contrôle d'origine).
 
 ## Configuration héritée — résolution
 
@@ -354,6 +354,235 @@ Règles : assistant de détection à l'ajout ; vérification après chaque ordre
 | Override | layout prioritaire sur un créneau |
 
 Résolution par écran : override actif > alternance des schedules actifs > hors plage = éteint (ou écran noir). Le serveur calcule ; le player reçoit le résultat pour J et J+1.
+
+## Diffusion et player (décision lot 2, vds-core 1.1.0)
+
+Jalon : un écran TCL réel joue une playlist. Tout ce qui suit est identique dans les deux modes ; toutes les URL échangées avec le player sont **relatives à l'URL serveur stockée par l'appareil** (préfixe compris), jamais absolues. Tests d'API et Playwright paramétrés sur `VDS_BASE_PATH=/` et `/espace/affichage`.
+
+### Compatibilité vds-core 1.1.0 (mineure, additive)
+
+- Manifeste : bloc `content` obligatoire si `kind = content-type` (voir ci-dessous). Un module 1.0 reste valide ; un module content-type déclare `"core": ">=1.1 <2.0"`.
+- `vds_sdk.server` : interfaces `ContentType` et `StorageBackend` ; façade `ctx.core.media` (permissions existantes `media.read` / `media.write`, aucune nouvelle permission).
+- `vds_sdk.events` : domaines `media`, `playlist`, `schedule` ; verbes `screen.paired`, `screen.unpaired`.
+- `packages/sdk-ts` : `content.ts` (contrat web component, `CONTENT_API_VERSION = 1`) et `player.ts` (format de programmation résolue, `SCHEDULE_FORMAT = 1`).
+
+### Appairage et jeton d'appareil
+
+1. Player non appairé : `POST <base>/api/v1/player/pairings` `{ device: { platform, model, app_version, user_agent, screen_w, screen_h } }` (sans auth, limité par IP via `ctx.core.http.client_ip()`) → `201 { pairing_id, code, poll_secret, expires_at, poll_interval_s: 3 }`. `code` = 6 caractères Crockford base32 sans ambiguïté, affiché `ABC-234` ; validité 15 min ; seul un admin connecté peut l'utiliser, il n'est donc pas secret vis-à-vis du public.
+2. Admin : `POST <base>/api/v1/pairings/claim` `{ code, screen_id }` (cookie + contrôle de même origine, rôle admin) → `200 { screen_id }`. L'écran est créé avant dans l'admin (même parcours).
+3. Player : `GET <base>/api/v1/player/pairings/{pairing_id}` avec `Authorization: Bearer <poll_secret>` → `202` en attente · `200 { device_token, screen_id, server_time }` **une seule fois** (le jeton est généré à cet instant, seul son hash est stocké ; aucun jeton en clair en base) · `410` expiré ou déjà consommé.
+4. Jeton d'appareil : `vds_dev_<32 octets base64url>`, opaque, stocké en `sha256`. Toutes les routes `/api/v1/player/*` et `<base>/media/*` l'acceptent en `Authorization: Bearer` (donc exemptées du contrôle d'origine). Le préfixe `vds_dev_` réserve `vds_key_` aux futures clés d'API publique.
+5. Révocation : `DELETE <base>/api/v1/screens/{id}/device` (admin) → `revoked_at`, audit, `screen.unpaired {screen_id, reason: "revoked"}`. Un nouvel appairage révoque l'ancien jeton (un seul appareil actif par écran, `reason: "replaced"`). Le player qui reçoit `401 errors.device_revoked` efface jeton, programmation et cache média, puis revient à l'écran d'appairage. Toute autre erreur (réseau, 5xx) = poursuite hors ligne. Pas d'expiration ni de rotation en V1 (`expires_at` nullable réservé).
+6. Événements : `screen.paired {screen_id, device_id, platform}`, `screen.unpaired {screen_id, device_id, reason}`. Le heartbeat n'est **pas** publié sur le bus (bruit) ; il met à jour `screen_device.last_seen_at` (la supervision du lot 3 en dérivera `screen.status_changed`).
+
+### Synchronisation (lot 2 : polling, pas de `/ws`)
+
+- `POST <base>/api/v1/player/heartbeat` toutes les 60 s (`core.player.poll_interval_s`) : `{ revision, playing: {item_id, since} | null, cache: {bytes, quota, missing: [asset_key]}, app_version, uptime_s, stale: bool, errors: [{at, code, item_id?}] }` → `200 { revision, server_time, poll_interval_s, commands: [] }`. Si `revision` diffère de la sienne, le player recharge la programmation. `commands` est le point d'accroche des actions à distance (capture, rechargement), vide en lot 2.
+- `/ws/player` est **reporté au lot 3**, livré avec `/ws/agent` (même enveloppe de messages, diffusion multi-workers par `LISTEN/NOTIFY`). Le polling reste le repli permanent prévu par l'architecture ; seul le délai de propagation (≤ 60 s) change.
+
+### Programmation résolue servie au player
+
+`GET <base>/api/v1/player/schedule?format=1` (Bearer) → `ETag: "<revision>"`, `If-None-Match` → `304`. Le serveur sert le format demandé et le précédent ; ajout de champ optionnel = même format, tout autre changement = `format` N+1.
+
+```json
+{
+  "format": 1,
+  "revision": "sha256:…",
+  "server_time": "2026-10-23T14:02:11Z",
+  "screen": { "id": "…", "name": "Accueil", "orientation": "landscape" },
+  "timezone": "Europe/Paris",
+  "valid_from": "2026-10-23T00:00:00+02:00",
+  "valid_until": "2026-10-25T00:00:00+02:00",
+  "slots": [
+    { "start": "2026-10-23T00:00:00+02:00", "end": "2026-10-23T08:00:00+02:00", "kind": "off", "mode": "black" },
+    { "start": "2026-10-23T08:00:00+02:00", "end": "2026-10-23T19:00:00+02:00", "kind": "play",
+      "layout": { "zones": [ { "id": "main", "x": 0, "y": 0, "w": 1, "h": 1, "playlist": "pl_…" } ] },
+      "source": { "schedule_id": "…" } }
+  ],
+  "playlists": {
+    "pl_…": { "items": [
+      { "id": "it_…", "content_type": "content.image", "duration_ms": 10000,
+        "props": { "src": "media/<media_id>/original" }, "assets": ["media/<media_id>/original"], "requires_network": false }
+    ] }
+  },
+  "assets": { "media/<media_id>/original": { "sha256": "…", "bytes": 123456, "mime": "image/jpeg" } },
+  "content_types": { "content.image": { "version": "1.0.0", "element": "vds-content-image", "script": "modules/content.image/assets/player.js" } }
+}
+```
+
+- `slots` couvrent `[valid_from, valid_until)` sans trou, en instants absolus avec décalage (changement d'heure calculé côté serveur). Le player corrige sa dérive d'horloge avec `server_time`.
+- `revision` = sha256 du JSON canonique hors `server_time` : stable tant que rien ne change.
+- Lot 2 : un seul layout implicite plein écran (zone `main`) ; la forme `zones` est déjà celle de la grille du lot 4 (calques = zones supplémentaires). Créneau `off` = écran noir côté player (les pilotes d'alimentation arrivent au lot 3, ils liront les mêmes créneaux).
+- Au-delà de `valid_until` sans réseau, le player rejoue le motif de J+1 décalé de jours entiers (mêmes heures locales) et signale `stale: true`.
+- Résolution lot 2 (fonction pure `vds_server.diffusion.resolver.resolve(target_chain, schedules, tz, day) -> list[Slot]`) : parmi les schedules actifs à l'instant, cible la plus spécifique (écran > groupe > site > organisation), puis `priority` décroissante, puis `updated_at` le plus récent. Aucun actif = `off`. Alternance et override : lot 4, insérés dans la même fonction.
+
+### Modèle de données (migration `0002_diffusion`, noyau)
+
+| Table | Colonnes clés | Contraintes |
+| --- | --- | --- |
+| `screen_device` | id, screen_id, token_hash, platform, model, app_version, paired_at, paired_by, last_seen_at, last_heartbeat jsonb, expires_at null, revoked_at, revoked_by | `UNIQUE (token_hash)` ; index unique partiel `(screen_id) WHERE revoked_at IS NULL` |
+| `pairing_request` | id, code citext, poll_secret_hash, device jsonb, status (`pending`/`claimed`/`consumed`/`expired`), screen_id null, claimed_by, expires_at | index unique partiel `(code) WHERE status = 'pending'` ; purge des lignes expirées |
+| `media` | id, kind (`image`/`video`/`document`), title, original_filename, mime, bytes, sha256, width, height, duration_ms, page_count, storage_backend, storage_key (relatif), status (`processing`/`ready`/`failed`), error, created_by | index `(sha256)` (dédoublonnage proposé à l'envoi) |
+| `media_variant` | media_id, name (`original`, `page-<n>`, `poster`, `thumb`), mime, bytes, sha256, width, height, storage_key | PK `(media_id, name)` ; FK `ON DELETE CASCADE` |
+| `playlist` | id, name, description, created_by, updated_by | — |
+| `playlist_item` | id, playlist_id, position, content_type (id de module), props jsonb, duration_ms null, enabled | FK `ON DELETE CASCADE` ; `UNIQUE (playlist_id, position) DEFERRABLE` |
+| `playlist_item_media` | item_id, media_id | PK des deux ; FK média `ON DELETE RESTRICT` (un média utilisé ne se supprime pas) ; extrait par le noyau des props marquées `x-vds-media` |
+| `schedule` | id, name, playlist_id, target_type (`organization`/`site`/`group`/`screen`), target_id, priority int, starts_on date null, ends_on date null, enabled, conditions jsonb null | `CHECK` sur target_type (extensible : `tag` au lot 4) ; `conditions` = point d'accroche, ignoré en V1 ; `layout_id` ajouté au lot 4 |
+| `schedule_rule` | id, schedule_id, weekdays smallint (masque lundi = 1), start_minute smallint, end_minute smallint (minutes depuis minuit, API en `HH:MM`) | `CHECK (0 <= start_minute < end_minute <= 1440)` (`24:00` = 1440, non représentable en `time` côté Python) ; pas de créneau qui passe minuit en V1 (deux règles) |
+
+Événements (domaines partagés, `vds_sdk.events`) : `media.uploaded {media_id, kind, mime}`, `media.ready {media_id}`, `media.failed {media_id, code}`, `media.deleted`, `playlist.created|updated|deleted {playlist_id}`, `schedule.created|updated|deleted {schedule_id}`. Aucun n'est critique en lot 2.
+
+### Stockage des médias
+
+- Octets : module `storage.local` (kind `storage`), racine `VDS_MEDIA_DIR` (`x-vds-env`, défaut `/data/media`, volume `vds-media`). Clé relative `<2 premiers hex>/<media_id>/<variant>.<ext>`. Le noyau ne connaît que l'interface :
+
+```python
+class StorageBackend(Module):
+    async def put(self, key: str, chunks: AsyncIterator[bytes], *, mime: str) -> StoredObject: ...  # bytes, sha256
+    async def open(self, key: str) -> AsyncIterator[bytes]: ...
+    async def local_path(self, key: str) -> Path | None: ...  # None si non local -> flux
+    async def delete(self, key: str) -> None: ...
+```
+
+- Envoi : `POST <base>/api/v1/media` multipart (éditeur), limite `core.media.max_upload_mb` (défaut 2048 ; le proxy Dokploy doit suivre). Service : `GET <base>/media/<media_id>/<variant>` (cookie de session **ou** jeton d'appareil), `Range` pris en charge, `ETag` = sha256, `Cache-Control: private, no-store` conservé (le player cache lui-même). En V1, tout appareil appairé de l'instance lit tous ses médias (une organisation par instance).
+- Traitement : à l'envoi, le noyau confie le média au module content-type dont `content.media.accepts` couvre le MIME ; statut `processing` jusqu'au retour de `process_media`, puis `media.ready`.
+
+### Contrat content-type
+
+Manifeste (extrait, `content.pdf`) :
+
+```json
+"kind": "content-type",
+"targets": ["server", "player", "admin"],
+"content": {
+  "item_schema": "item.schema.json",
+  "player": { "element": "vds-content-pdf", "script": "assets/player.js" },
+  "media": { "accepts": ["application/pdf"] },
+  "requires_network": false
+}
+```
+
+`item.schema.json` suit les règles du schéma de config (`title`/`description` i18n, `x-vds-level`) ; une propriété `"x-vds-media": "image" | "video" | "document"` désigne une référence de média (sélecteur dans l'admin, extraction vers `playlist_item_media`, résolution en `assets`).
+
+```python
+class ContentType(Module):  # vds_sdk.server.content
+    async def process_media(self, media: MediaRef, store: MediaStore) -> MediaMeta: ...  # défaut : aucune variante
+    async def to_player(self, props: dict[str, Any], media: Mapping[UUID, MediaInfo]) -> PlayerItemSpec: ...
+    # PlayerItemSpec = {props, assets: list[str], duration_ms: int | None} ; défaut : props telles quelles
+```
+
+```ts
+// packages/sdk-ts/src/content.ts
+export const CONTENT_API_VERSION = 1;
+export interface ContentContext {
+  locale: "fr" | "en";
+  orientation: "landscape" | "portrait";
+  zone: { width: number; height: number };
+  resolveUrl(relative: string): string; // relatif à l'URL serveur -> URL servie par le SW
+}
+export interface VdsContentElement extends HTMLElement {
+  configure(props: unknown, ctx: ContentContext): void;
+  prepare(): Promise<void>; // charge et décode ; rejet = élément sauté
+  start(): void;            // visible ; démarre lecture / pagination
+  stop(): void;             // libère (pause, revoke, vide le DOM)
+}
+// événements émis : "vds-ended" (fin naturelle), "vds-error" (detail: { code: string })
+```
+
+Cycle : le player prépare l'élément suivant hors écran (`prepare` ≤ 10 s), bascule, `start`, puis passe au suivant à `duration_ms` ou sur `vds-ended` si `duration_ms` est nul (plafond 2 × durée connue ou 30 min). Modules du lot 2 :
+
+| Module | Rendu | Particularités |
+| --- | --- | --- |
+| `content.image` | `<img>` décodé (`decode()`), `object-fit` selon `props.fit` | — |
+| `content.video` | `<video muted playsinline>`, son si `props.audio` | durée lue par `ffprobe` dans `process_media` ; `vds-ended` en fin |
+| `content.pdf` | images `page-<n>` paginées, `props.page_duration_ms` | pages rendues par `pypdfium2` (licence permissive) dans `process_media`, largeur 3840 |
+| `content.url` | `<iframe sandbox="allow-scripts allow-same-origin">` sans `allow-top-navigation` | `requires_network: true` : sauté hors ligne ; sites refusant l'iframe = limite documentée |
+
+Les modules intégrés s'exécutent dans la page du player ; les modules tiers passeront par une iframe sandbox (déjà prévu). CSP propre à `<base>/player/` : `script-src 'self'`, `media-src 'self' blob:`, `frame-src https:`.
+
+### Player web : cache, hors ligne, watchdog
+
+- Servi sous `<base>/player/` ; l'URL serveur = `new URL("..", location.href)`, donc correcte quel que soit `VDS_BASE_PATH`. Écrans système (appairage, attente) : thème actif via `<base>/config.js`, libellés FR/EN, aucune info technique hormis le code d'appairage.
+- **Service Worker** (portée `<base>/player/`, il intercepte aussi `<base>/media/*` demandés par la page) : cache `vds-shell-<version>` (application + `player.js` des content-types) et cache `vds-media-v1` indexé par clé relative ; ajoute le jeton d'appareil aux requêtes vers le serveur ; répond aux requêtes `Range` des vidéos en découpant la réponse en cache (`206`).
+- **IndexedDB** `vds-player` : `kv` (jeton, URL serveur, dérive d'horloge), `schedule` (programmation courante et suivante), `log` (anneau de 500 entrées, remonté par le heartbeat).
+- Téléchargement : séquentiel, sha256 vérifié, `navigator.storage.persist()`. Une nouvelle révision n'est activée qu'une fois les assets du créneau en cours et du suivant en cache ; un élément dont l'asset manque est sauté (jamais de lecture en flux). Purge des assets non référencés après bascule.
+- Watchdog : (1) dans la page, élément bloqué ou `prepare` en échec = saut + `errors[]` ; boucle principale qui horodate chaque tick ; (2) côté Android, pont natif `VdsNative.ping()` toutes les 10 s : sans ping depuis 60 s, rechargement de la WebView ; 3 rechargements en 10 min = redémarrage de l'activité ; (3) rechargement quotidien dans un créneau `off` (ou 04:00 locale). Les autres empaquetages (Pi, Tizen) fourniront leur propre surveillance au lot 5.
+
+```ts
+// packages/sdk-ts/src/player.ts : pont plateforme (détection de capacité, pas de mode)
+export interface PlatformBridge {
+  ping(): void;
+  info(): { platform: string; model: string; app_version: string; os_version: string };
+  reload(): void;
+}
+// window.VdsNative si présent (Android), sinon implémentation web sans effet
+```
+
+### Contraintes de plateforme découvertes (L2-T7, `apps/player`)
+
+- **Contexte sécurisé obligatoire pour le hors ligne** : le Service Worker, `caches` et `crypto.subtle` n'existent qu'en HTTPS ou sur `localhost`. Un serveur en `http://192.168.x.x` donne une page sans SW : pas de cache média, pas de lecture hors ligne, items sautés (les médias exigent le jeton). Réponse par plateforme : voir « Lecture hors ligne par plateforme » ci-dessous.
+- **Jeton d'appareil et éléments natifs** : `<img>`, `<video>` et les `import()` ne peuvent pas porter `Authorization`. Le SW lit le jeton dans IndexedDB (`kv.token`) et l'ajoute aux requêtes `media/*` marquées `X-Vds-Net` (téléchargement par la page) ; toute autre requête `media/*` est servie **uniquement** depuis `vds-media-v1` (absent = 404, l'élément est sauté, jamais de flux).
+- **Portée du SW** : enregistré à `<base>/player/sw.js` (portée `<base>/player/`), il intercepte néanmoins `<base>/media/*`, `<base>/config.js` et `<base>/modules/*` car ces requêtes viennent d'une page contrôlée. Au premier chargement la page attend `controllerchange` (≤ 5 s, `clients.claim()`), sinon aucun téléchargement n'est possible.
+- **Page et shell** : réseau d'abord avec repli cache après 3 s (`vds-shell-<build>`), précache à l'installation (index, bundles référencés, `config.js`, feuille du thème, ses polices/logo/icônes). `<base href>` est injecté par le serveur sur `<base>/player/` ; l'URL serveur = `new URL("..", location.href)`.
+- **Scripts des content-types** : `<base>/modules/content.*/assets/player.js` est servi sans authentification (code public, aucun secret) afin que le SW puisse le mettre en cache ; seuls `theme.*` et `content.*` sont exposés.
+- **SHA-256 incrémental en JS** : `crypto.subtle.digest` n'est pas incrémental (vidéos de plusieurs centaines de Mo en mémoire) et absent hors contexte sécurisé. Le hash est donc calculé en flux sur la réponse relue depuis le cache, en rendant la main toutes les 4 Mo. Une vidéo qui ne correspond pas est supprimée du cache. La découpe `Range` passe par `Blob.slice` (corps de cache adossé au disque dans Chromium).
+- **CSP du player** (`<base>/player/`) : `script-src 'self'`, `media-src 'self' blob:`, `frame-src https:`, `connect-src 'self'` ; les content-types intégrés n'utilisent que `style.cssText` (autorisé), aucun style ou script en ligne.
+- **Horloge** : la dérive `server_time - horloge locale` est recalculée à chaque réponse (appairage, programmation, heartbeat) et persistée (`kv.drift_ms`) ; une TV sans NTP qui redémarre hors ligne réutilise la dernière dérive. Au-delà de `valid_until`, le motif de la dernière journée est rejoué en **heure murale** (pas de décalage de 24 h fixe : le changement d'heure reste correct).
+- **Un seul préchargement, jamais deux `<video>`** : la zone prépare l'élément suivant pendant que le courant joue (au plus 2 éléments dans le DOM), sauf pour un élément `exclusive` (`content.video`, un seul décodeur matériel sur TV) suivi d'un élément du même type : il est libéré avant la préparation du suivant (court noir possible entre deux vidéos). Test `jamais deux <video>` (Playwright). Reste à valider sur le TCL.
+- **Kiosque dans la page** : clavier, molette, menu contextuel, glisser et sélection neutralisés, piège `popstate` pour la touche Retour ; les touches matérielles de la télécommande restent à neutraliser côté empaquetage (Android `onKeyDown`, Tizen `registerKey`, Chromium `--kiosk`).
+- **Écran d'appairage** : seul le code (mono) est affiché ; l'adresse de l'admin n'y figure pas (pas d'information technique au public), contrairement à ce que suggérait `design.md` › Écrans système.
+- **Commandes du heartbeat** (provisoire, lot 2) : le player comprend `{type: "reload"}`, `{type: "maintenance", code}` (écran de maintenance : code, révision, réseau, disponibilité) et `{type: "maintenance_end"}` ; le contrat définitif viendra avec `/ws/player` au lot 3.
+- **Rechargement quotidien** : après 20 h de page, dans un créneau `off` ou à 04:00 de l'heure locale de l'appareil (pas du site).
+- **Tests Playwright** : le Chromium de Playwright n'embarque pas H.264 ; le clip vidéo des tests est un WebM VP8 enregistré par Playwright lui-même (`e2e/global-setup.ts`, aucun ffmpeg système). Le serveur simulé `e2e/mock-server.mjs` reproduit le contrat réel (à garder aligné avec `apps/server/tests/test_pairing.py` et `test_player_schedule.py`).
+- **Activation par défaut** : au démarrage, les modules intégrés `kind: content-type` jamais touchés (état `discovered`) sont activés ; un module désactivé ou en quarantaine par l'admin n'est jamais réactivé.
+
+### Lecture hors ligne par plateforme (décision lot 2)
+
+Principe : **un seul player web, un seul cache (SW + IndexedDB)**. On ne duplique pas la logique de cache en natif ; chaque empaquetage a pour seule obligation de servir le player dans un **contexte sécurisé**, quelle que soit l'URL du serveur (`http://IP-locale` comprise). Rien dans le noyau ni dans le serveur : c'est l'affaire de l'empaquetage et de la documentation d'installation (règle 11).
+
+| Plateforme | Mécanisme retenu | Lot |
+| --- | --- | --- |
+| Android WebView (TCL Google TV) | **Relais local en boucle** dans l'app : la WebView charge `http://127.0.0.1:47800<base>/player/` (`localhost` = contexte sécurisé), le relais retransmet au serveur configuré. Toujours actif, que le serveur soit en HTTP ou HTTPS. | 2 (T9) |
+| Pi Chromium kiosque | Stratégie gérée Chromium `OverrideSecurityRestrictionsOnInsecureOrigin: ["<origine serveur>"]` (`/etc/chromium/policies/managed/vds.json`), écrite par l'image Pi. Pas de drapeau `--unsafely-treat-insecure-origin-as-secure` (bandeau « drapeau non pris en charge » visible du public). Repli : même relais en boucle que l'Android. | 5 |
+| Tizen | Exige un serveur en **HTTPS à certificat public** (une TV Samsung ne peut pas approuver une AC privée) ; sinon boîtier externe Android/Pi. Tranché avec la question ouverte « Tizen ou boîtier ». | 5 |
+| PWA / navigateur quelconque | HTTPS obligatoire (ou `localhost`). Aucun contournement. | — |
+
+**Relais Android (contrat pour `packaging/android/`)** :
+- Écoute **uniquement** `127.0.0.1:47800` (port fixe : l'origine, donc IndexedDB et les caches du SW, doit rester stable d'un démarrage à l'autre). Port occupé : 3 essais puis écran natif de maintenance avec un code (`E_RELAY_PORT`), sans autre détail.
+- Ne relaie que `<base>/*` vers `<url serveur>` (même chemin, `Host` réécrit) : jamais de relais ouvert. Ne transmet ni `Cookie` ni `Origin`/`Referer`/`Sec-Fetch-*` ; il n'ajoute aucun jeton (le jeton reste dans IndexedDB, posé par le SW) : une autre app du téléviseur qui joindrait le port n'obtient rien de plus qu'un client anonyme.
+- Transparence HTTP : méthodes et corps intacts (POST d'appairage et de heartbeat), flux sans mise en mémoire (vidéos de centaines de Mo), `Range`/`206`, `ETag`/`If-None-Match`/`304`, en-têtes de réponse (CSP, `Cache-Control`) recopiés. Erreur réseau amont = `502` (le player passe en hors ligne comme pour une coupure).
+- Lot 3 : relais du WebSocket `<base>/ws/player` (montée de protocole) ; prévoir la bibliothèque en conséquence.
+- Changement d'URL serveur (ADB, réinstallation) : l'origine locale ne change pas, donc l'app purge `WebStorage.deleteAllData()`, les caches et l'enregistrement du SW avant de recharger.
+- Côté serveur, rien à changer : les routes du player sont sous jeton `Bearer` ou exemptées (`/api/v1/player/pairings`) du contrôle de même origine.
+
+**Écartés** : interception `shouldInterceptRequest` sur une origine HTTPS fictive (pas d'accès au corps des POST, `Range` et SW à réimplémenter) ; cache natif via le pont `VdsNative` (deuxième implémentation du cache à maintenir) ; app embarquée en `file://` (pas de SW, version découplée du serveur) ; drapeaux Chromium de la WebView (inaccessibles en production).
+
+**HTTPS en mode autonome (documentation d'installation)** : recommandé dans tous les cas (seule voie pour PWA et Tizen), non requis pour Android et Pi.
+1. Domaine joignable depuis Internet : Caddy en frontal, certificat ACME automatique.
+2. Domaine non joignable (réseau interne) : Caddy avec défi ACME DNS-01 (module DNS du registrar, image construite en CI).
+3. Pas de domaine : HTTP sur l'IP locale ; `tls internal` de Caddy seulement pour l'admin (AC à installer sur les postes d'admin), jamais pour les players.
+Lot 2 : ces trois cas sont documentés ; un profil Compose `https` (service Caddy, `VDS_PUBLIC_ORIGIN` aligné) est livré au lot 5 avec l'installation en un clic.
+
+**Visibilité** : un player sans contexte sécurisé et sans pont natif ne peut rien jouer ; il le signale dans `errors[]` du heartbeat (`player.insecure_context`) pour que l'admin l'affiche, l'écran public restant sur l'écran d'attente sans information technique.
+
+### Empaquetage Android minimal (`packaging/android/`)
+
+- Kotlin, `minSdk 28`, une `Activity` plein écran immersive, `FLAG_KEEP_SCREEN_ON`, WebView système (Google TV 2023 : WebView à jour, Service Worker disponible).
+- Premier lancement : écran natif de saisie de l'URL serveur (préfixe compris, ex. `https://allia-innovation.fr/espace/affichage` ou `https://vds.client.fr`), vérifiée par `GET <url>/health`, stockée en `SharedPreferences` ; également injectable par `adb shell am start -n app.vds.player/.ProvisionActivity --es server_url <url>` (activité protégée par la permission signature `DUMP`, shell uniquement) ou par configuration gérée (restriction `server_url`) ; `MainActivity` n'accepte plus l'URL d'un intent. Changement ultérieur : uniquement par réinstallation ou ADB en lot 2 (déverrouillage maintenance : lot 5).
+- WebView : JavaScript + DOM storage, `mediaPlaybackRequiresUserGesture = false`, aucun accès fichier, page chargée via le relais en boucle (`http://127.0.0.1:47800<base>/player/`, voir « Lecture hors ligne par plateforme »), navigation limitée à `http://127.0.0.1:47800<base>/` (toute autre URL de premier niveau bloquée ; les iframes de `content.url` restent dans la page), appui long et touche Retour neutralisés, pont `VdsNative` injecté uniquement dans la frame principale d'origine `http://127.0.0.1:47800`. `<base>` = chemin de l'URL serveur saisie (`/` ou `/espace/affichage`).
+- Kiosque : `startLockTask()` si l'app est Device Owner (`dpm set-device-owner`, procédure documentée) ; sinon kiosque « doux » : démarrage sur `BOOT_COMPLETED`, relance si l'activité passe en arrière-plan. Installation par ADB réseau ; APK signé construit en CI.
+- C'est la base du futur module `player.android` (kind `player-adapter`) : capture, redémarrage et CEC passent par `commands` du heartbeat puis `/ws/player` au lot 3.
+
+**Contraintes découvertes (L2-T9, `packaging/android/`)** :
+- **Bibliothèques** : relais = Ktor CIO (serveur, boucle seule) + OkHttp 4.12 (client amont), module Gradle JVM pur `relay` testable sans SDK Android (`./gradlew :relay:test`, 10 tests : Range/206, ETag/304, POST intact et gros corps en flux, pas de Cookie/Origin/Referer, `Authorization` du player transmis, portée `<base>`, `..` rejeté, 302 réécrit vers la boucle, 502 vide, port occupé). Android Gradle Plugin 8.2.1, Kotlin 1.9.22, Gradle 8.8, JDK 17+.
+- **`Accept-Encoding`** : fixé à `identity` si le client n'en envoie pas, sinon OkHttp décompresse et fausse `Content-Length`/`Range`. `Set-Cookie`, HSTS et `Alt-Svc` amont sont retirés ; `Location` absolu vers le serveur est réécrit vers `127.0.0.1:47800`.
+- **Purge au changement d'URL** : `WebStorage.deleteAllData()` ne garantit pas l'effacement des enregistrements de Service Worker ; le relais sert donc une page locale `/__vds/purge` (jamais relayée) qui désenregistre les SW, vide `caches`, IndexedDB et `localStorage`, puis renvoie vers `<base>/player/`. Le stockage est marqué « pour l'URL X » (`SharedPreferences`) seulement quand le player se charge.
+- **Pont `VdsNative`** : une interface JS Android ne renvoie que des chaînes. `info()` renvoie un JSON ; `pairing.ts` le décode. le pont n'utilise plus `addJavascriptInterface` (exposé à toutes les frames) mais `androidx.webkit` `addWebMessageListener` + `addDocumentStartJavaScript` avec règle d'origine locale : `window.VdsNative` (`ping`/`reload` par `postMessage`, `info()` figé dans le script) n'existe que dans les frames de l'origine du relais, et le natif refuse tout message hors frame principale ou hors `<base>/player/`. Exige WebView avec `WEB_MESSAGE_LISTENER` et `DOCUMENT_START_SCRIPT` (androidx.webkit 1.9) ; sinon pas de pont et watchdog natif désactivé. Watchdog natif : rechargement si aucun `ping` pendant 90 s.
+- **WebSocket (lot 3)** : `wsBase` de `config.js` est construit avec `VDS_PUBLIC_ORIGIN` quand il est défini, donc absolu vers le serveur ; le relais ne le verrait pas. À régler au lot 3 (`wsBase` relatif à l'origine de la page pour les players, ou relais WS).
+- **Cleartext** : `usesCleartextTraffic="false"` + `network_security_config` n'autorisant le clair que vers `127.0.0.1`/`localhost` ; amont en HTTPS obligatoire (`RelayConfig.parse` refuse `http://` hors boucle). Option LAN explicite : build `-Pvds.lanHttp=true` (config réseau permissive, `BuildConfig.ALLOW_LAN_HTTP`), signalée par `player.insecure_upstream` dans `errors[]` du heartbeat (via `info().insecure_upstream`), jamais affichée au public. Le port 47800 est joignable par toute autre app du téléviseur : le relais ne porte aucun jeton, mais un client local anonyme peut atteindre les routes publiques du serveur.
+- **Kiosque doux, limites** : depuis Android 10, un `BroadcastReceiver` ne peut pas toujours lancer une activité depuis l'arrière-plan, de même pour la relance après passage en arrière-plan. Compensations : l'app déclare `HOME` (à choisir comme écran d'accueil, `cmd package set-home-activity`) et, en Device Owner, `addPersistentPreferredActivity` + `startLockTask()`. **Non éprouvé sur la TCL** ; le mode Device Owner est la seule garantie.
+- **Processus** : pas de service au premier plan ; le relais vit dans l'`Application`. Si Android tue le processus, la relance de l'activité (boot, HOME, lock task) le recrée. Un service au premier plan reste une option si la recette montre des morts.
+- **Contexte non sécurisé** : le heartbeat du player ajoute `player.insecure_context` à `errors[]` quand `window.isSecureContext` est faux (jamais affiché au public).
 
 ## Données, sécurité, déploiement
 

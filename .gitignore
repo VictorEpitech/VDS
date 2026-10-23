@@ -13,3 +13,4 @@ dist/
 /media/
 test-results/
 playwright-report/
+apps/player/e2e/.fixtures/
