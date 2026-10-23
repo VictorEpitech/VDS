@@ -5,6 +5,9 @@ Le module ne dépend que de `vds_sdk` et de la façade `ctx.core` (base, http, a
 
 import asyncio
 import hashlib
+import hmac
+import logging
+import os
 import secrets
 from typing import Annotated, Any
 from urllib.parse import quote
@@ -16,10 +19,11 @@ from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import text
-from vds_sdk import ModuleContext
+from vds_sdk import AccessDenied, ModuleContext
 from vds_sdk.server import AuthProvider, AuthRequest, Identity
 
 PROVIDER = "auth.local"
+LOG = logging.getLogger("vds.auth.local")
 COOKIE = "vds_session"
 _HASHER = PasswordHasher()
 _DUMMY_HASH = _HASHER.hash("dummy-password-for-timing")  # égalise le coût si l'e-mail est inconnu
@@ -41,6 +45,7 @@ class BootstrapIn(_In):
     email: str = EMAIL
     display_name: str = Field(min_length=1, max_length=120)
     password: str = PASSWORD
+    bootstrap_token: str = Field(min_length=1, max_length=256)
 
 
 class LoginIn(_In):
@@ -85,6 +90,14 @@ def _too_many(retry_after: int) -> JSONResponse:
     )
 
 
+async def _lock_key(s: Any, kind: str, key: str) -> None:
+    """Verrou transactionnel sur le hash de la clé : sérialise comptage et insertion."""
+    await s.execute(
+        text("SELECT pg_advisory_xact_lock(hashtextextended(:k, 0))"),
+        {"k": f"auth.local:{kind}:{key}"},
+    )
+
+
 async def _retry_after(s: Any, kind: str, key: str, limit: int) -> int | None:
     """Secondes avant la fin du blocage si `limit` échecs sont dans la fenêtre, sinon None."""
     rows = (
@@ -124,9 +137,26 @@ async def _verify(hashed: str, password: str) -> bool:
 
 class AuthLocal(AuthProvider):
     ctx: Any
+    _bootstrap_token: str | None = None
 
     async def setup(self, ctx: ModuleContext) -> None:
         self.ctx = ctx
+        async with ctx.core.db.session() as s:
+            n = (await s.execute(text("SELECT count(*) FROM m_auth_local_credential"))).scalar()
+        if n:
+            self._bootstrap_token = None
+            return
+        token = os.environ.get("VDS_BOOTSTRAP_TOKEN") or None
+        if token is None:
+            token = secrets.token_urlsafe(24)
+            LOG.warning("auth.local: jeton d'amorçage à usage unique : %s", token)
+        self._bootstrap_token = token
+
+    def _token_ok(self, given: str) -> bool:
+        expected = self._bootstrap_token
+        if expected is None:
+            return False
+        return hmac.compare_digest(given.encode(), expected.encode())
 
     # --- interface AuthProvider -----------------------------------------
     async def authenticate(self, request: AuthRequest) -> Identity | None:
@@ -138,8 +168,9 @@ class AuthLocal(AuthProvider):
             row = (
                 await s.execute(
                     text(
-                        "SELECT u.external_id, u.email, u.display_name"
+                        "SELECT u.external_id, u.email, u.display_name, c.must_change"
                         " FROM m_auth_local_session m JOIN user_account u ON u.id = m.user_id"
+                        " LEFT JOIN m_auth_local_credential c ON c.user_id = u.id"
                         " WHERE m.token_hash = :h AND m.revoked_at IS NULL"
                         " AND m.expires_at > now() AND u.auth_provider = :p"
                     ),
@@ -148,6 +179,8 @@ class AuthLocal(AuthProvider):
             ).first()
             if row is None:
                 return None
+            if row[3] and request.path != self.ctx.core.http.url(f"/api/v1/m/{PROVIDER}/password"):
+                raise AccessDenied("auth_local.password_change_required")
             await s.execute(
                 text(
                     "UPDATE m_auth_local_session SET last_seen_at = now()"
@@ -186,6 +219,7 @@ class AuthLocal(AuthProvider):
     async def _create_user(
         self, s: Any, email: str, display_name: str, password: str, role: Any, must_change: bool
     ) -> UUID:
+        email = email.strip().lower()
         taken = (
             await s.execute(text("SELECT 1 FROM user_account WHERE email = :e"), {"e": email})
         ).first()
@@ -218,6 +252,11 @@ class AuthLocal(AuthProvider):
 
         @router.post("/bootstrap", status_code=201, response_model=LoginOut)
         async def bootstrap(body: BootstrapIn, response: Response) -> Any:
+            async with core.db.session() as s:
+                if (await s.execute(text("SELECT count(*) FROM m_auth_local_credential"))).scalar():
+                    return _err("auth_local.already_initialized", 409)
+            if not self._token_ok(body.bootstrap_token):
+                return _err("auth_local.bootstrap_token_invalid", 403)
             _, min_len = await self._settings()
             if len(body.password) < min_len:
                 return _err("auth_local.password_too_short", 422)
@@ -238,6 +277,7 @@ class AuthLocal(AuthProvider):
                 )
                 await self._open_session(s, user_id, response)
                 await s.commit()
+            self._bootstrap_token = None  # usage unique
             return LoginOut(redirect_to=core.http.safe_return_to(None))
 
         @router.post("/login", response_model=LoginOut)
@@ -245,6 +285,8 @@ class AuthLocal(AuthProvider):
             ident = body.email.strip().lower()
             ip = core.http.client_ip(request)
             async with core.db.session() as s:
+                await _lock_key(s, "identifier", ident)
+                await _lock_key(s, "ip", ip)
                 waits = [
                     w
                     for w in (
@@ -263,7 +305,7 @@ class AuthLocal(AuthProvider):
                             " JOIN m_auth_local_credential c ON c.user_id = u.id"
                             " WHERE u.email = :e AND u.auth_provider = :p"
                         ),
-                        {"e": body.email, "p": PROVIDER},
+                        {"e": ident, "p": PROVIDER},
                     )
                 ).first()
                 ok = await _verify(row[2] if row else _DUMMY_HASH, body.password)
@@ -357,7 +399,7 @@ class AuthLocal(AuthProvider):
 
         @router.post("/password", status_code=204)
         async def change_password(
-            body: PasswordIn, who: Annotated[Any, Depends(principal)]
+            body: PasswordIn, request: Request, who: Annotated[Any, Depends(principal)]
         ) -> Response:
             _, min_len = await self._settings()
             if len(body.new) < min_len:
@@ -380,6 +422,13 @@ class AuthLocal(AuthProvider):
                         " updated_at = now() WHERE user_id = :u"
                     ),
                     {"p": await _hash(body.new), "u": who.user_id},
+                )
+                await s.execute(
+                    text(
+                        "UPDATE m_auth_local_session SET revoked_at = now()"
+                        " WHERE user_id = :u AND revoked_at IS NULL AND token_hash <> :h"
+                    ),
+                    {"u": who.user_id, "h": _digest(request.cookies.get(COOKIE, ""))},
                 )
                 core.audit.record(
                     s,

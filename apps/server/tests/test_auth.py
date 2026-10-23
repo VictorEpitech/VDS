@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,7 @@ from vds_server.settings import Settings
 REPO_MODULES = Path(__file__).resolve().parents[3] / "modules"
 ORIGIN = "https://vds.test"
 SAME = {"Origin": ORIGIN}
+TOKEN = "test-bootstrap-token-0123456789"  # noqa: S105
 PASSWORD = "correct horse battery"  # noqa: S105 - mot de passe de test
 
 
@@ -49,7 +51,10 @@ async def clean(migrated_db_url: str) -> AsyncIterator[None]:
 
 
 @pytest.fixture
-async def app(base: str, migrated_db_url: str, clean: None) -> AsyncIterator[FastAPI]:
+async def app(
+    base: str, migrated_db_url: str, clean: None, monkeypatch: pytest.MonkeyPatch
+) -> AsyncIterator[FastAPI]:
+    monkeypatch.setenv("VDS_BOOTSTRAP_TOKEN", TOKEN)
     settings = Settings(
         base_path=base,
         database_url=migrated_db_url,
@@ -59,7 +64,7 @@ async def app(base: str, migrated_db_url: str, clean: None) -> AsyncIterator[Fas
     runtime = Runtime(settings)
     application = create_app(settings, runtime=runtime)
     async with runtime.lifespan(application):
-        assert runtime.startup_ok()
+        assert runtime.startup_ok(), runtime.registry.startup_errors
         yield application
 
 
@@ -76,7 +81,12 @@ async def anon(app: FastAPI) -> AsyncIterator[AsyncClient]:
 async def bootstrap(c: AsyncClient, p: str) -> None:
     r = await c.post(
         f"{p}/api/v1/m/auth.local/bootstrap",
-        json={"email": "root@vds.test", "display_name": "Root", "password": PASSWORD},
+        json={
+            "email": "root@vds.test",
+            "display_name": "Root",
+            "password": PASSWORD,
+            "bootstrap_token": TOKEN,
+        },
         headers=SAME,
     )
     assert r.status_code == 201, r.text
@@ -103,6 +113,12 @@ async def editor(app: FastAPI, admin: AsyncClient, p: str) -> AsyncIterator[Asyn
             headers=SAME,
         )
         assert r.status_code == 200
+        r = await c.post(
+            f"{p}/api/v1/m/auth.local/password",
+            json={"current": PASSWORD, "new": PASSWORD + "-new"},
+            headers=SAME,
+        )
+        assert r.status_code == 204, r.text
         yield c
 
 
@@ -121,7 +137,12 @@ async def test_first_admin_login_logout(anon: AsyncClient, p: str) -> None:
     assert (await anon.get(f"{p}/api/v1/me")).status_code == 401
     r = await anon.post(
         f"{m}/bootstrap",
-        json={"email": "root@vds.test", "display_name": "Root", "password": "court"},
+        json={
+            "email": "root@vds.test",
+            "display_name": "Root",
+            "password": "court",
+            "bootstrap_token": TOKEN,
+        },
         headers=SAME,
     )
     assert r.status_code == 422 and r.json()["code"] == "auth_local.password_too_short"
@@ -132,7 +153,12 @@ async def test_first_admin_login_logout(anon: AsyncClient, p: str) -> None:
     assert me["role"] == "admin" and me["provider"] == "auth.local"
     again = await anon.post(
         f"{m}/bootstrap",
-        json={"email": "x@vds.test", "display_name": "X", "password": PASSWORD},
+        json={
+            "email": "x@vds.test",
+            "display_name": "X",
+            "password": PASSWORD,
+            "bootstrap_token": TOKEN,
+        },
         headers=SAME,
     )
     assert again.status_code == 409 and again.json()["code"] == "auth_local.already_initialized"
@@ -441,7 +467,7 @@ async def test_theme_switch_in_config_js(
     application: FastAPI = create_app(settings, runtime=runtime)
     pre = "" if base == "/" else base
     async with runtime.lifespan(application):
-        assert runtime.startup_ok()
+        assert runtime.startup_ok(), runtime.registry.startup_errors
         async with AsyncClient(transport=ASGITransport(app=application), base_url=ORIGIN) as c:
             js = (await c.get(f"{pre}/config.js")).text
             assert f'"id": "{theme}"' in js
@@ -452,3 +478,144 @@ async def test_theme_switch_in_config_js(
 def test_i18n_theme_dirs_exist() -> None:
     for m in ("theme.vtech", "theme.allia", "auth.local"):
         assert (Path(REPO_MODULES) / m / "i18n").is_dir()
+
+
+def _boot_body(token: str, email: str = "root@vds.test") -> dict[str, str]:
+    return {
+        "email": email,
+        "display_name": "Root",
+        "password": PASSWORD,
+        "bootstrap_token": token,
+    }
+
+
+async def test_bootstrap_requires_token(anon: AsyncClient, p: str) -> None:
+    m = f"{p}/api/v1/m/auth.local"
+    for bad in ("wrong", TOKEN[:-1], TOKEN + "x"):
+        r = await anon.post(f"{m}/bootstrap", json=_boot_body(bad), headers=SAME)
+        assert r.status_code == 403 and r.json()["code"] == "auth_local.bootstrap_token_invalid"
+    no_token = {k: v for k, v in _boot_body(TOKEN).items() if k != "bootstrap_token"}
+    assert (await anon.post(f"{m}/bootstrap", json=no_token, headers=SAME)).status_code == 422
+    assert (await anon.get(f"{m}/status")).json() == {"initialized": False}
+    r = await anon.post(f"{m}/bootstrap", json=_boot_body(TOKEN), headers=SAME)
+    assert r.status_code == 201
+    # jeton invalidé après usage
+    r = await anon.post(f"{m}/bootstrap", json=_boot_body(TOKEN, "b@vds.test"), headers=SAME)
+    assert r.status_code in (403, 409)
+
+
+async def test_bootstrap_token_generated_and_logged_once(
+    migrated_db_url: str,
+    clean: None,
+    base: str,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    monkeypatch.delenv("VDS_BOOTSTRAP_TOKEN", raising=False)
+    settings = Settings(
+        base_path=base,
+        database_url=migrated_db_url,
+        public_origin=ORIGIN,
+        modules_dir=REPO_MODULES,
+    )
+    runtime = Runtime(settings)
+    application = create_app(settings, runtime=runtime)
+    pre = "" if base == "/" else base
+    with caplog.at_level("WARNING", logger="vds.auth.local"):
+        async with runtime.lifespan(application):
+            records = [r for r in caplog.records if r.name == "vds.auth.local"]
+            assert len(records) == 1
+            token = records[0].getMessage().rsplit(" ", 1)[-1]
+            assert len(token) >= 24
+            async with new_client(application) as c:
+                m = f"{pre}/api/v1/m/auth.local"
+                r = await c.post(f"{m}/bootstrap", json=_boot_body("nope"), headers=SAME)
+                assert r.status_code == 403
+                r = await c.post(f"{m}/bootstrap", json=_boot_body(token), headers=SAME)
+                assert r.status_code == 201
+    # un admin existe : aucun nouveau jeton n'est généré au redémarrage
+    caplog.clear()
+    runtime2 = Runtime(settings)
+    app2 = create_app(settings, runtime=runtime2)
+    with caplog.at_level("WARNING", logger="vds.auth.local"):
+        async with runtime2.lifespan(app2):
+            assert not [r for r in caplog.records if r.name == "vds.auth.local"]
+
+
+async def test_must_change_blocks_until_password_changed(
+    app: FastAPI, admin: AsyncClient, p: str
+) -> None:
+    m = f"{p}/api/v1/m/auth.local"
+    r = await admin.post(
+        f"{m}/users",
+        json={
+            "email": "Mixed@VDS.test",
+            "display_name": "M",
+            "password": PASSWORD,
+            "role": "editor",
+        },
+        headers=SAME,
+    )
+    assert r.status_code == 201
+    async with new_client(app) as c1, new_client(app) as c2:
+        for c in (c1, c2):
+            r = await _login(c, p, "MIXED@vds.TEST", PASSWORD)
+            assert r.status_code == 200
+        r = await c1.get(f"{p}/api/v1/me")
+        assert r.status_code == 403
+        assert "auth_local.password_change_required" in r.text
+        assert (await c1.get(f"{p}/api/v1/sites")).status_code == 403
+        r = await c1.post(
+            f"{m}/password", json={"current": PASSWORD, "new": PASSWORD + "-2"}, headers=SAME
+        )
+        assert r.status_code == 204
+        assert (await c1.get(f"{p}/api/v1/me")).status_code == 200
+        # les autres sessions sont révoquées
+        assert (await c2.get(f"{p}/api/v1/me")).status_code == 401
+
+
+async def test_logout_allowed_while_must_change(app: FastAPI, admin: AsyncClient, p: str) -> None:
+    m = f"{p}/api/v1/m/auth.local"
+    await admin.post(
+        f"{m}/users",
+        json={"email": "n@vds.test", "display_name": "N", "password": PASSWORD, "role": "editor"},
+        headers=SAME,
+    )
+    async with new_client(app) as c:
+        await _login(c, p, "n@vds.test", PASSWORD)
+        assert (await c.get(f"{p}/api/v1/sites")).status_code == 403
+        assert (await c.post(f"{m}/logout", headers=SAME)).status_code == 204
+
+
+async def test_email_taken_is_case_insensitive(admin: AsyncClient, p: str) -> None:
+    r = await admin.post(
+        f"{p}/api/v1/m/auth.local/users",
+        json={
+            "email": "ROOT@vds.test",
+            "display_name": "D",
+            "password": PASSWORD,
+            "role": "editor",
+        },
+        headers=SAME,
+    )
+    assert r.status_code == 409
+
+
+async def test_rate_limit_concurrent_attempts_are_serialized(
+    anon: AsyncClient, p: str, app: FastAPI
+) -> None:
+    await bootstrap(anon, p)
+    m = f"{p}/api/v1/m/auth.local"
+
+    async def attempt() -> int:
+        async with new_client(app) as c:
+            r = await c.post(
+                f"{m}/login",
+                json={"email": "root@vds.test", "password": "wrong-wrong-wrong"},
+                headers=SAME,
+            )
+            return r.status_code
+
+    codes = await asyncio.gather(*(attempt() for _ in range(15)))
+    assert codes.count(401) == 5
+    assert codes.count(429) == 10
