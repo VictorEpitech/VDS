@@ -2,7 +2,13 @@
 name = "vds-agent"
 version = "0.0.0"
 requires-python = ">=3.12"
-dependencies = ["vds-sdk"]
+dependencies = [
+    "cryptography>=50.0.2",
+    "httpx>=0.28.1",
+    "jsonschema>=4.26.0",
+    "vds-sdk",
+    "websockets>=17.3",
+]
 
 [build-system]
 requires = ["hatchling"]
