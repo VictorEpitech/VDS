@@ -438,7 +438,9 @@ Jalon : un écran TCL réel joue une playlist. Tout ce qui suit est identique da
 
 ```python
 class StorageBackend(Module):
-    async def put(self, key: str, chunks: AsyncIterator[bytes], *, mime: str) -> StoredObject: ...  # bytes, sha256
+    async def put(
+        self, key: str, chunks: AsyncIterator[bytes], *, mime: str
+    ) -> StoredObject: ...  # bytes, sha256
     async def open(self, key: str) -> AsyncIterator[bytes]: ...
     async def local_path(self, key: str) -> Path | None: ...  # None si non local -> flux
     async def delete(self, key: str) -> None: ...
@@ -466,8 +468,13 @@ Manifeste (extrait, `content.pdf`) :
 
 ```python
 class ContentType(Module):  # vds_sdk.server.content
-    async def process_media(self, media: MediaRef, store: MediaStore) -> MediaMeta: ...  # défaut : aucune variante
-    async def to_player(self, props: dict[str, Any], media: Mapping[UUID, MediaInfo]) -> PlayerItemSpec: ...
+    async def process_media(
+        self, media: MediaRef, store: MediaStore
+    ) -> MediaMeta: ...  # défaut : aucune variante
+    async def to_player(
+        self, props: dict[str, Any], media: Mapping[UUID, MediaInfo]
+    ) -> PlayerItemSpec: ...
+
     # PlayerItemSpec = {props, assets: list[str], duration_ms: int | None} ; défaut : props telles quelles
 ```
 
