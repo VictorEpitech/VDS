@@ -96,6 +96,9 @@ async def world(admin: AsyncClient, p: str, migrated_db_url: str) -> dict[str, A
         h=uuid4().hex,
         t=NOW - timedelta(hours=1),
     )
+    # le suivi d'alimentation du serveur a déjà posé sa ligne (horloge réelle) : on repart d'un
+    # état « non calculé » pour que ces tests pilotent l'horloge et power_state eux-mêmes
+    await sql(migrated_db_url, "DELETE FROM power_state")
     return {"site": site, "screen": screen, "url": migrated_db_url}
 
 

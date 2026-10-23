@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from typing import Any, Protocol
 from uuid import uuid4
 
+from fastapi import WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from vds_sdk import Event, EventBus
 from vds_sdk.wire import (
@@ -117,6 +118,8 @@ class AgentSession:
             raw = await asyncio.wait_for(self._ws.receive_text(), timeout)
         except TimeoutError as exc:
             raise _Closed(CLOSE_GOING_AWAY, "idle_timeout") from exc
+        except WebSocketDisconnect as exc:  # fermeture par le pair ou arrêt du serveur
+            raise _Closed(exc.code, "peer_closed") from exc
         now = time.monotonic()
         self._window = [t for t in self._window if now - t < 1.0]
         self._window.append(now)

@@ -62,22 +62,25 @@ class AgentHub:
     async def _listen(self, engine: AsyncEngine) -> None:
         # Si LISTEN échoue, les sessions restent réveillées par leur sondage périodique.
         while True:
-            conn = None
             try:
-                conn = await engine.raw_connection()
-                driver: Any = conn.driver_connection
-                await driver.add_listener(
-                    CHANNEL, lambda _c, _pid, _ch, payload: self.dispatch(payload)
-                )
-                while True:
-                    await asyncio.sleep(30)
-                    await driver.execute("SELECT 1")
+                # `engine.connect()` : la connexion est rendue au pool dans le contexte asyncio
+                # (fermer un `raw_connection()` hors greenlet lève MissingGreenlet à l'arrêt).
+                async with engine.connect() as conn:
+                    raw = await conn.get_raw_connection()
+                    driver: Any = raw.driver_connection
+                    await driver.add_listener(
+                        CHANNEL, lambda _c, _pid, _ch, payload: self.dispatch(payload)
+                    )
+                    try:
+                        while True:
+                            await asyncio.sleep(30)
+                            await driver.execute("SELECT 1")
+                    finally:
+                        # connexion dédiée au LISTEN : fermée, jamais rendue au pool
+                        with contextlib.suppress(Exception):
+                            await conn.invalidate()
             except asyncio.CancelledError:
                 raise
             except Exception:
                 log.warning("command listener lost, retrying")
                 await asyncio.sleep(5)
-            finally:
-                if conn is not None:
-                    with contextlib.suppress(Exception):
-                        conn.close()

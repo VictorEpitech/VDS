@@ -31,6 +31,7 @@ from vds_server.diffusion.access import MediaAccess
 from vds_server.events import CoreBus
 from vds_server.player.device_auth import DeviceAuth, bearer
 from vds_server.player.schedule import screen_media_ids
+from vds_server.power.state import PowerStateTracker
 from vds_server.registry import ModuleRegistry
 from vds_server.settings import Settings
 from vds_server.supervision import Supervisor
@@ -74,6 +75,8 @@ class Runtime:
             ModuleConfigReader(self.maker, self.schemas, CORE_NAMESPACE).resolve,
         )
         self.supervisor.register(self.bus.subscribe)
+        self.power_state = PowerStateTracker(self.maker, self.schemas)
+        self.power_state.register(self.bus.subscribe)
         self.plan_pusher = PlanPusher(self.maker, self.schemas, self.command_queue)
         self.plan_pusher.register(self.bus.subscribe)
 
@@ -146,6 +149,7 @@ class Runtime:
         await self.registry.start()
         self.agent_hub.start(self.engine)
         self.supervisor.start()
+        self.power_state.start()
 
         async def pump() -> None:
             while True:
@@ -161,6 +165,7 @@ class Runtime:
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await task
+            await self.power_state.stop()
             await self.supervisor.stop()
             await self.agent_hub.stop()
             await self.registry.stop()
