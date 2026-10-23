@@ -75,6 +75,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Media */
+        get: operations["list_media_api_v1_media_get"];
+        put?: never;
+        /** Upload Media */
+        post: operations["upload_media_api_v1_media_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/{media_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Media */
+        get: operations["get_media_api_v1_media__media_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Media */
+        delete: operations["delete_media_api_v1_media__media_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Media */
+        patch: operations["patch_media_api_v1_media__media_id__patch"];
+        trace?: never;
+    };
     "/api/v1/organization": {
         parameters: {
             query?: never;
@@ -91,6 +128,234 @@ export interface paths {
         head?: never;
         /** Patch Organization */
         patch: operations["patch_organization_api_v1_organization_patch"];
+        trace?: never;
+    };
+    "/api/v1/pairings/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Claim */
+        post: operations["claim_api_v1_pairings_claim_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/player/heartbeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Player Heartbeat */
+        post: operations["player_heartbeat_api_v1_player_heartbeat_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/player/pairings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Pairing */
+        post: operations["start_pairing_api_v1_player_pairings_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/player/pairings/{pairing_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Poll Pairing */
+        get: operations["poll_pairing_api_v1_player_pairings__pairing_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/player/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Player Schedule */
+        get: operations["player_schedule_api_v1_player_schedule_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/playlists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Playlists */
+        get: operations["list_playlists_api_v1_playlists_get"];
+        put?: never;
+        /** Create Playlist */
+        post: operations["create_playlist_api_v1_playlists_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/playlists/{playlist_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Playlist */
+        get: operations["get_playlist_api_v1_playlists__playlist_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Playlist */
+        delete: operations["delete_playlist_api_v1_playlists__playlist_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Playlist */
+        patch: operations["patch_playlist_api_v1_playlists__playlist_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/playlists/{playlist_id}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Item */
+        post: operations["add_item_api_v1_playlists__playlist_id__items_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/playlists/{playlist_id}/items/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Reorder Items */
+        put: operations["reorder_items_api_v1_playlists__playlist_id__items_order_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/playlists/{playlist_id}/items/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Item */
+        delete: operations["delete_item_api_v1_playlists__playlist_id__items__item_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Item */
+        patch: operations["patch_item_api_v1_playlists__playlist_id__items__item_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/registry/content-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Content Types */
+        get: operations["list_content_types_api_v1_registry_content_types_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/schedules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Schedules */
+        get: operations["list_schedules_api_v1_schedules_get"];
+        put?: never;
+        /** Create Schedule */
+        post: operations["create_schedule_api_v1_schedules_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/schedules/{schedule_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Schedule */
+        get: operations["get_schedule_api_v1_schedules__schedule_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Schedule */
+        delete: operations["delete_schedule_api_v1_schedules__schedule_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Schedule */
+        patch: operations["patch_schedule_api_v1_schedules__schedule_id__patch"];
         trace?: never;
     };
     "/api/v1/screens": {
@@ -128,6 +393,23 @@ export interface paths {
         head?: never;
         /** Patch Screen */
         patch: operations["patch_screen_api_v1_screens__screen_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/screens/{screen_id}/device": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke Device */
+        delete: operations["revoke_device_api_v1_screens__screen_id__device_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/sites": {
@@ -202,10 +484,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/media/{media_id}/{variant}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Serve Media */
+        get: operations["serve_media_media__media_id___variant__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AssetRef */
+        AssetRef: {
+            /** Bytes */
+            bytes: number;
+            /** Mime */
+            mime: string;
+            /** Sha256 */
+            sha256: string | null;
+        };
+        /** Body_upload_media_api_v1_media_post */
+        Body_upload_media_api_v1_media_post: {
+            /** File */
+            file: string;
+            /** Sha256 */
+            sha256?: string | null;
+            /** Title */
+            title?: string | null;
+        };
+        /** CacheState */
+        CacheState: {
+            /** Bytes */
+            bytes?: number | null;
+            /** Missing */
+            missing?: string[];
+            /** Quota */
+            quota?: number | null;
+        };
         /** ConfigOut */
         ConfigOut: {
             /** Values */
@@ -249,6 +575,114 @@ export interface components {
             /** Scope Id */
             scope_id?: string | null;
         };
+        /** ContentTypeEntry */
+        ContentTypeEntry: {
+            /** Element */
+            element: string;
+            /** Script */
+            script: string;
+            /** Version */
+            version: string;
+        };
+        /** ContentTypeOut */
+        ContentTypeOut: {
+            /** Accepts */
+            accepts: string[];
+            /** Config Schema */
+            config_schema: {
+                [key: string]: unknown;
+            } | null;
+            /** Description */
+            description: {
+                [key: string]: string;
+            };
+            /** Element */
+            element: string;
+            /** I18N */
+            i18n: {
+                [key: string]: {
+                    [key: string]: unknown;
+                };
+            };
+            /** Id */
+            id: string;
+            /** Item Schema */
+            item_schema: {
+                [key: string]: unknown;
+            };
+            /** Name */
+            name: {
+                [key: string]: string;
+            };
+            /** Requires Network */
+            requires_network: boolean;
+            /** Version */
+            version: string;
+        };
+        /** DeviceHeartbeatOut */
+        DeviceHeartbeatOut: {
+            /**
+             * Missing Assets
+             * @default 0
+             */
+            missing_assets: number;
+            /** Revision */
+            revision?: string | null;
+            /**
+             * Stale
+             * @default false
+             */
+            stale: boolean;
+            /** Uptime S */
+            uptime_s?: number | null;
+        };
+        /** DeviceInfo */
+        DeviceInfo: {
+            /** App Version */
+            app_version?: string | null;
+            /** Model */
+            model?: string | null;
+            /** Platform */
+            platform: string;
+            /** Screen H */
+            screen_h?: number | null;
+            /** Screen W */
+            screen_w?: number | null;
+            /** User Agent */
+            user_agent?: string | null;
+        };
+        /**
+         * DeviceStateOut
+         * @description Appareil appairé d'un écran (jamais le jeton ni son empreinte).
+         */
+        DeviceStateOut: {
+            /** App Version */
+            app_version: string | null;
+            heartbeat: components["schemas"]["DeviceHeartbeatOut"] | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Last Seen At */
+            last_seen_at: string | null;
+            /** Model */
+            model: string | null;
+            /**
+             * Paired At
+             * Format: date-time
+             */
+            paired_at: string;
+            /** Platform */
+            platform: string;
+            /**
+             * Presence
+             * @enum {string}
+             */
+            presence: "online" | "offline" | "unseen" | "revoked";
+            /** Revoked At */
+            revoked_at: string | null;
+        };
         /** GroupCreate */
         GroupCreate: {
             /** Name */
@@ -284,6 +718,121 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** Heartbeat */
+        Heartbeat: {
+            /** App Version */
+            app_version?: string | null;
+            cache?: components["schemas"]["CacheState"] | null;
+            /** Errors */
+            errors?: {
+                [key: string]: unknown;
+            }[];
+            /** Playing */
+            playing?: {
+                [key: string]: unknown;
+            } | null;
+            /** Revision */
+            revision?: string | null;
+            /**
+             * Stale
+             * @default false
+             */
+            stale: boolean;
+            /** Uptime S */
+            uptime_s?: number | null;
+        };
+        /** HeartbeatAck */
+        HeartbeatAck: {
+            /** Commands */
+            commands: {
+                [key: string]: unknown;
+            }[];
+            /** Poll Interval S */
+            poll_interval_s: number;
+            /** Revision */
+            revision: string | null;
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+        };
+        /** ItemCreate */
+        ItemCreate: {
+            /** Content Type */
+            content_type: string;
+            /** Duration Ms */
+            duration_ms?: number | null;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** Position */
+            position?: number | null;
+            /** Props */
+            props?: {
+                [key: string]: unknown;
+            };
+        };
+        /** ItemOrder */
+        ItemOrder: {
+            /** Item Ids */
+            item_ids: string[];
+        };
+        /** ItemOut */
+        ItemOut: {
+            /** Content Type */
+            content_type: string;
+            /** Duration Ms */
+            duration_ms: number | null;
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Media Ids */
+            media_ids: string[];
+            /** Position */
+            position: number;
+            /** Props */
+            props: {
+                [key: string]: unknown;
+            };
+        };
+        /** ItemPatch */
+        ItemPatch: {
+            /** Duration Ms */
+            duration_ms?: number | null;
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Props */
+            props?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /** Layout */
+        Layout: {
+            /** Zones */
+            zones: components["schemas"]["LayoutZone"][];
+        };
+        /** LayoutZone */
+        LayoutZone: {
+            /** H */
+            h: number;
+            /** Id */
+            id: string;
+            /** Playlist */
+            playlist: string;
+            /** W */
+            w: number;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+        };
         /** MeOut */
         MeOut: {
             /** Display Name */
@@ -301,6 +850,144 @@ export interface components {
             provider: string;
             /** Role */
             role: string;
+        };
+        /** MediaDetailOut */
+        MediaDetailOut: {
+            /** Bytes */
+            bytes: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Duration Ms */
+            duration_ms: number | null;
+            /** Error */
+            error: string | null;
+            /** Height */
+            height: number | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "image" | "video" | "document";
+            /** Mime */
+            mime: string;
+            /** Original Filename */
+            original_filename: string | null;
+            /** Page Count */
+            page_count: number | null;
+            /** Sha256 */
+            sha256: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "processing" | "ready" | "failed";
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Used By */
+            used_by: string[];
+            /** Variants */
+            variants: components["schemas"]["MediaVariantOut"][];
+            /** Width */
+            width: number | null;
+        };
+        /** MediaOut */
+        MediaOut: {
+            /** Bytes */
+            bytes: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Duration Ms */
+            duration_ms: number | null;
+            /** Error */
+            error: string | null;
+            /** Height */
+            height: number | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "image" | "video" | "document";
+            /** Mime */
+            mime: string;
+            /** Original Filename */
+            original_filename: string | null;
+            /** Page Count */
+            page_count: number | null;
+            /** Sha256 */
+            sha256: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "processing" | "ready" | "failed";
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Width */
+            width: number | null;
+        };
+        /** MediaPatch */
+        MediaPatch: {
+            /** Title */
+            title: string;
+        };
+        /** MediaVariantOut */
+        MediaVariantOut: {
+            /** Bytes */
+            bytes: number;
+            /** Height */
+            height: number | null;
+            /** Mime */
+            mime: string;
+            /** Name */
+            name: string;
+            /** Sha256 */
+            sha256: string | null;
+            /** Width */
+            width: number | null;
+        };
+        /** OffSlot */
+        OffSlot: {
+            /** End */
+            end: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "off";
+            /**
+             * Mode
+             * @default black
+             * @constant
+             */
+            mode: "black";
+            /** Start */
+            start: string;
         };
         /** OrganizationOut */
         OrganizationOut: {
@@ -329,6 +1016,327 @@ export interface components {
             /** Name */
             name?: string | null;
         };
+        /** PairingClaim */
+        PairingClaim: {
+            /** Code */
+            code: string;
+            /**
+             * Screen Id
+             * Format: uuid
+             */
+            screen_id: string;
+        };
+        /** PairingClaimed */
+        PairingClaimed: {
+            /**
+             * Screen Id
+             * Format: uuid
+             */
+            screen_id: string;
+        };
+        /** PairingDone */
+        PairingDone: {
+            /** Device Token */
+            device_token: string;
+            /**
+             * Screen Id
+             * Format: uuid
+             */
+            screen_id: string;
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+        };
+        /** PairingPending */
+        PairingPending: {
+            /**
+             * Status
+             * @default pending
+             */
+            status: string;
+        };
+        /** PairingStart */
+        PairingStart: {
+            device: components["schemas"]["DeviceInfo"];
+        };
+        /** PairingStarted */
+        PairingStarted: {
+            /** Code */
+            code: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Pairing Id
+             * Format: uuid
+             */
+            pairing_id: string;
+            /** Poll Interval S */
+            poll_interval_s: number;
+            /** Poll Secret */
+            poll_secret: string;
+        };
+        /** PlaySlot */
+        PlaySlot: {
+            /** End */
+            end: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "play";
+            layout: components["schemas"]["Layout"];
+            source: components["schemas"]["SlotSource"];
+            /** Start */
+            start: string;
+        };
+        /** PlayerItem */
+        PlayerItem: {
+            /** Assets */
+            assets: string[];
+            /** Content Type */
+            content_type: string;
+            /** Duration Ms */
+            duration_ms: number | null;
+            /** Id */
+            id: string;
+            /** Props */
+            props: {
+                [key: string]: unknown;
+            };
+            /** Requires Network */
+            requires_network: boolean;
+        };
+        /** PlayerPlaylist */
+        PlayerPlaylist: {
+            /** Items */
+            items: components["schemas"]["PlayerItem"][];
+        };
+        /** PlaylistCreate */
+        PlaylistCreate: {
+            /** Description */
+            description?: string | null;
+            /** Name */
+            name: string;
+        };
+        /** PlaylistDetailOut */
+        PlaylistDetailOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Item Count */
+            item_count: number;
+            /** Items */
+            items: components["schemas"]["ItemOut"][];
+            /** Name */
+            name: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** PlaylistOut */
+        PlaylistOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Item Count */
+            item_count: number;
+            /** Name */
+            name: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** PlaylistPatch */
+        PlaylistPatch: {
+            /** Description */
+            description?: string | null;
+            /** Name */
+            name?: string | null;
+        };
+        /** RuleIn */
+        RuleIn: {
+            /** End */
+            end: string;
+            /** Start */
+            start: string;
+            /** Weekdays */
+            weekdays: number;
+        };
+        /** RuleOut */
+        RuleOut: {
+            /** End */
+            end: string;
+            /** Start */
+            start: string;
+            /** Weekdays */
+            weekdays: number;
+        };
+        /** ScheduleCreate */
+        ScheduleCreate: {
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** Ends On */
+            ends_on?: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Playlist Id
+             * Format: uuid
+             */
+            playlist_id: string;
+            /**
+             * Priority
+             * @default 0
+             */
+            priority: number;
+            /** Rules */
+            rules?: components["schemas"]["RuleIn"][];
+            /** Starts On */
+            starts_on?: string | null;
+            /**
+             * Target Id
+             * Format: uuid
+             */
+            target_id: string;
+            /**
+             * Target Type
+             * @enum {string}
+             */
+            target_type: "organization" | "site" | "group" | "screen";
+        };
+        /** ScheduleDocument */
+        ScheduleDocument: {
+            /** Assets */
+            assets: {
+                [key: string]: components["schemas"]["AssetRef"];
+            };
+            /** Content Types */
+            content_types: {
+                [key: string]: components["schemas"]["ContentTypeEntry"];
+            };
+            /**
+             * Format
+             * @default 1
+             * @constant
+             */
+            format: 1;
+            /** Playlists */
+            playlists: {
+                [key: string]: components["schemas"]["PlayerPlaylist"];
+            };
+            /** Revision */
+            revision: string;
+            screen: components["schemas"]["ScreenRef"];
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+            /** Slots */
+            slots: (components["schemas"]["OffSlot"] | components["schemas"]["PlaySlot"])[];
+            /** Timezone */
+            timezone: string;
+            /** Valid From */
+            valid_from: string;
+            /** Valid Until */
+            valid_until: string;
+        };
+        /** ScheduleOut */
+        ScheduleOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Enabled */
+            enabled: boolean;
+            /** Ends On */
+            ends_on: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Playlist Id
+             * Format: uuid
+             */
+            playlist_id: string;
+            /** Priority */
+            priority: number;
+            /** Rules */
+            rules: components["schemas"]["RuleOut"][];
+            /** Starts On */
+            starts_on: string | null;
+            /**
+             * Target Id
+             * Format: uuid
+             */
+            target_id: string;
+            /**
+             * Target Type
+             * @enum {string}
+             */
+            target_type: "organization" | "site" | "group" | "screen";
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** SchedulePatch */
+        SchedulePatch: {
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Ends On */
+            ends_on?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Playlist Id */
+            playlist_id?: string | null;
+            /** Priority */
+            priority?: number | null;
+            /** Rules */
+            rules?: components["schemas"]["RuleIn"][] | null;
+            /** Starts On */
+            starts_on?: string | null;
+            /** Target Id */
+            target_id?: string | null;
+            /** Target Type */
+            target_type?: ("organization" | "site" | "group" | "screen") | null;
+        };
         /** ScreenCreate */
         ScreenCreate: {
             /** Group Id */
@@ -351,6 +1359,7 @@ export interface components {
         ScreenOut: {
             /** Archived At */
             archived_at: string | null;
+            device?: components["schemas"]["DeviceStateOut"] | null;
             /** Group Id */
             group_id: string | null;
             /**
@@ -382,6 +1391,21 @@ export interface components {
             /** Orientation */
             orientation?: ("landscape" | "portrait") | null;
         };
+        /** ScreenRef */
+        ScreenRef: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Orientation
+             * @enum {string}
+             */
+            orientation: "landscape" | "portrait";
+        };
         /** SiteCreate */
         SiteCreate: {
             /** Name */
@@ -411,6 +1435,14 @@ export interface components {
             name?: string | null;
             /** Slug */
             slug?: string | null;
+        };
+        /** SlotSource */
+        SlotSource: {
+            /**
+             * Schedule Id
+             * Format: uuid
+             */
+            schedule_id: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -650,6 +1682,169 @@ export interface operations {
             };
         };
     };
+    list_media_api_v1_media_get: {
+        parameters: {
+            query?: {
+                kind?: ("image" | "video" | "document") | null;
+                status?: ("processing" | "ready" | "failed") | null;
+                q?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_media_api_v1_media_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_media_api_v1_media_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_media_api_v1_media__media_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_media_api_v1_media__media_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_media_api_v1_media__media_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MediaPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_organization_api_v1_organization_get: {
         parameters: {
             query?: never;
@@ -690,6 +1885,648 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrganizationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    claim_api_v1_pairings_claim_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PairingClaim"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PairingClaimed"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    player_heartbeat_api_v1_player_heartbeat_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Heartbeat"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HeartbeatAck"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_pairing_api_v1_player_pairings_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PairingStart"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PairingStarted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    poll_pairing_api_v1_player_pairings__pairing_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pairing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PairingDone"] | components["schemas"]["PairingPending"];
+                };
+            };
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PairingPending"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    player_schedule_api_v1_player_schedule_get: {
+        parameters: {
+            query?: {
+                format?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleDocument"];
+                };
+            };
+            /** @description Programmation inchangée (If-None-Match) */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_playlists_api_v1_playlists_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaylistOut"][];
+                };
+            };
+        };
+    };
+    create_playlist_api_v1_playlists_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlaylistCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaylistDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_playlist_api_v1_playlists__playlist_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                playlist_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaylistDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_playlist_api_v1_playlists__playlist_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                playlist_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_playlist_api_v1_playlists__playlist_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                playlist_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlaylistPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaylistDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_item_api_v1_playlists__playlist_id__items_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                playlist_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ItemCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reorder_items_api_v1_playlists__playlist_id__items_order_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                playlist_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ItemOrder"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaylistDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_item_api_v1_playlists__playlist_id__items__item_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                playlist_id: string;
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_item_api_v1_playlists__playlist_id__items__item_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                playlist_id: string;
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ItemPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_content_types_api_v1_registry_content_types_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContentTypeOut"][];
+                };
+            };
+        };
+    };
+    list_schedules_api_v1_schedules_get: {
+        parameters: {
+            query?: {
+                target_type?: ("organization" | "site" | "group" | "screen") | null;
+                target_id?: string | null;
+                playlist_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_schedule_api_v1_schedules_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_schedule_api_v1_schedules__schedule_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                schedule_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_schedule_api_v1_schedules__schedule_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                schedule_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_schedule_api_v1_schedules__schedule_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                schedule_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SchedulePatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleOut"];
                 };
             };
             /** @description Validation Error */
@@ -852,6 +2689,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ScreenOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_device_api_v1_screens__screen_id__device_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                screen_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -1105,6 +2971,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthOut"];
+                };
+            };
+        };
+    };
+    serve_media_media__media_id___variant__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                media_id: string;
+                variant: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -28,6 +28,8 @@ PYTHON_TARGETS = frozenset({"server", "site-agent"})
 
 MODULE_ID_RE = re.compile(r"^[a-z][a-z0-9]*\.[a-z0-9][a-z0-9-]*$")
 ENTRYPOINT_RE = re.compile(r"^[A-Za-z_][\w.]*:[A-Za-z_]\w*$")
+CONTENT_PLAYER_ELEMENT_RE = re.compile(r"^vds-content-[a-z0-9]+(-[a-z0-9]+)*$")
+CONTENT_MEDIA_ACCEPTS_RE = re.compile(r"^[a-z]+/[a-z0-9.+*-]+$")
 
 
 class _Strict(BaseModel):
@@ -71,6 +73,63 @@ class ThemeSpec(_Strict):
     color_schemes: list[Literal["light", "dark"]] = Field(min_length=1)
 
 
+class ContentPlayer(_Strict):
+    """Spécification du lecteur pour un type de contenu."""
+
+    element: str
+
+    @field_validator("element")
+    @classmethod
+    def _element(cls, v: str) -> str:
+        if not CONTENT_PLAYER_ELEMENT_RE.match(v):
+            raise ValueError("module.content_player_element_invalid")
+        return v
+
+    script: str
+
+    @field_validator("script")
+    @classmethod
+    def _script(cls, v: str) -> str:
+        if v.startswith("/") or ".." in v:
+            raise ValueError("module.content_player_script_invalid")
+        return v
+
+
+class ContentMedia(_Strict):
+    """Spécification des formats supportés par un type de contenu."""
+
+    accepts: list[str]
+
+    @field_validator("accepts")
+    @classmethod
+    def _accepts(cls, v: list[str]) -> list[str]:
+        if not v:
+            raise ValueError("module.content_media_accepts_empty")
+        for accept in v:
+            if not CONTENT_MEDIA_ACCEPTS_RE.match(accept):
+                raise ValueError("module.content_media_accept_invalid")
+        return v
+
+
+class ContentSpec(_Strict):
+    """Spécification du type de contenu d'un module."""
+
+    item_schema: str
+
+    @field_validator("item_schema")
+    @classmethod
+    def _item_schema(cls, v: str) -> str:
+        if v.startswith("/") or ".." in v:
+            raise ValueError("module.content_item_schema_invalid")
+        if not v.endswith(".json"):
+            raise ValueError("module.content_item_schema_not_json")
+        return v
+
+    player: ContentPlayer
+    media: ContentMedia | None = None
+    requires_network: bool = False
+
+
 class ModuleManifest(_Strict):
     id: str
     version: str
@@ -90,6 +149,7 @@ class ModuleManifest(_Strict):
     author: str
     signature: str | None = None
     theme: ThemeSpec | None = None
+    content: ContentSpec | None = None
 
     @field_validator("id")
     @classmethod
@@ -150,6 +210,16 @@ class ModuleManifest(_Strict):
             for t in self.targets:
                 if t in PYTHON_TARGETS and t not in self.entrypoints:
                     raise ValueError("module.entrypoint_missing")
+        if self.kind == "content-type":
+            if self.content is None:
+                raise ValueError("module.content_type_missing_content")
+            if not satisfies("1.1.0", self.core):
+                raise ValueError("module.content_type_core_incompatible")
+            if satisfies("1.0.0", self.core):
+                raise ValueError("module.content_type_core_incompatible")
+        else:
+            if self.content is not None:
+                raise ValueError("module.content_type_unexpected")
         return self
 
     def check_core_compat(self, core_version: str = CORE_API_VERSION) -> None:
@@ -170,6 +240,14 @@ def load_manifest(path: Path, *, core_version: str = CORE_API_VERSION) -> Module
         if not ref.is_relative_to(path.parent.resolve()):
             raise ContractError("module.config_ref_outside")
         validate_config_schema(json.loads(ref.read_text(encoding="utf-8")))
+    if manifest.content is not None:
+        item_schema_path = path.parent / manifest.content.item_schema
+        if not item_schema_path.exists():
+            raise ContractError("module.content_item_schema_missing")
+        validate_config_schema(json.loads(item_schema_path.read_text(encoding="utf-8")))
+        player_script_path = path.parent / manifest.content.player.script
+        if not player_script_path.exists():
+            raise ContractError("module.content_player_script_missing")
     return manifest
 
 

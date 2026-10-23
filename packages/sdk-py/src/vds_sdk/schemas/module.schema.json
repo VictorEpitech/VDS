@@ -15,6 +15,79 @@
       "title": "ConfigRef",
       "type": "object"
     },
+    "ContentMedia": {
+      "additionalProperties": false,
+      "description": "Sp\u00e9cification des formats support\u00e9s par un type de contenu.",
+      "properties": {
+        "accepts": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Accepts",
+          "type": "array"
+        }
+      },
+      "required": [
+        "accepts"
+      ],
+      "title": "ContentMedia",
+      "type": "object"
+    },
+    "ContentPlayer": {
+      "additionalProperties": false,
+      "description": "Sp\u00e9cification du lecteur pour un type de contenu.",
+      "properties": {
+        "element": {
+          "title": "Element",
+          "type": "string"
+        },
+        "script": {
+          "title": "Script",
+          "type": "string"
+        }
+      },
+      "required": [
+        "element",
+        "script"
+      ],
+      "title": "ContentPlayer",
+      "type": "object"
+    },
+    "ContentSpec": {
+      "additionalProperties": false,
+      "description": "Sp\u00e9cification du type de contenu d'un module.",
+      "properties": {
+        "item_schema": {
+          "title": "Item Schema",
+          "type": "string"
+        },
+        "player": {
+          "$ref": "#/$defs/ContentPlayer"
+        },
+        "media": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ContentMedia"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "requires_network": {
+          "default": false,
+          "title": "Requires Network",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "item_schema",
+        "player"
+      ],
+      "title": "ContentSpec",
+      "type": "object"
+    },
     "Events": {
       "additionalProperties": false,
       "properties": {
@@ -291,6 +364,17 @@
       "anyOf": [
         {
           "$ref": "#/$defs/ThemeSpec"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "content": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ContentSpec"
         },
         {
           "type": "null"

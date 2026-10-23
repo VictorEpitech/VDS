@@ -2,11 +2,14 @@
 
 import logging
 from abc import ABC
-from typing import Any, Literal, Protocol
+from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from pydantic import BaseModel
 
 from .bus import ScopedBus
+
+if TYPE_CHECKING:
+    from .server.media import MediaFacade
 
 ScopeLevel = Literal["organization", "site", "group", "screen"]
 
@@ -27,6 +30,8 @@ class ConfigReader(Protocol):
 
 class CoreApi(Protocol):
     """Façade du noyau filtrée par permissions (méthodes ajoutées par les lots)."""
+
+    media: "MediaFacade"  # permissions media.read / media.write (aucune nouvelle)
 
 
 class ModuleContext(Protocol):
