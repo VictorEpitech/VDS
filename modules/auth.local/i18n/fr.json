@@ -1,0 +1,29 @@
+{
+  "module": {
+    "name": "Connexion locale",
+    "description": "Comptes VDS avec mot de passe, pour le mode autonome."
+  },
+  "config": {
+    "auth_local": {
+      "session_ttl_hours": {
+        "title": "Durée de session (heures)",
+        "description": "Temps avant de devoir se reconnecter."
+      },
+      "password_min_length": {
+        "title": "Longueur minimale du mot de passe",
+        "description": "Nombre minimal de caractères pour un nouveau mot de passe."
+      }
+    }
+  },
+  "errors": {
+    "auth_local": {
+      "invalid_credentials": "Identifiants incorrects.",
+      "already_initialized": "Le premier administrateur existe déjà.",
+      "password_too_short": "Mot de passe trop court.",
+      "email_taken": "Cette adresse e-mail est déjà utilisée."
+    },
+    "auth": {
+      "too_many_attempts": "Trop de tentatives de connexion. Réessayez plus tard."
+    }
+  }
+}

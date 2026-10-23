@@ -1,0 +1,21 @@
+{
+  "id": "auth.local",
+  "version": "0.1.0",
+  "core": ">=1.0 <2.0",
+  "kind": "auth-provider",
+  "name": { "fr": "Connexion locale", "en": "Local sign-in" },
+  "description": {
+    "fr": "Comptes VDS avec mot de passe, pour le mode autonome.",
+    "en": "VDS accounts with password, for standalone mode."
+  },
+  "targets": ["server"],
+  "entrypoints": { "server": "server.module:AuthLocal" },
+  "requires": {},
+  "capabilities": ["auth.password"],
+  "permissions": ["http.routes", "db.own-tables", "users.read", "users.provision"],
+  "events": { "listens": [], "emits": [] },
+  "config": { "$ref": "config.schema.json" },
+  "i18n": ["fr", "en"],
+  "author": "V-Tech",
+  "signature": null
+}

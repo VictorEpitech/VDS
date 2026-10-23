@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "session_ttl_hours": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 720,
+      "default": 12,
+      "title": "config.auth_local.session_ttl_hours.title",
+      "description": "config.auth_local.session_ttl_hours.description",
+      "x-vds-level": "simple",
+      "x-vds-scopes": ["organization"]
+    },
+    "password_min_length": {
+      "type": "integer",
+      "minimum": 8,
+      "maximum": 128,
+      "default": 12,
+      "title": "config.auth_local.password_min_length.title",
+      "description": "config.auth_local.password_min_length.description",
+      "x-vds-level": "advanced",
+      "x-vds-scopes": ["organization"]
+    }
+  }
+}

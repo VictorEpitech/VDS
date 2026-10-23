@@ -1,0 +1,29 @@
+{
+  "module": {
+    "name": "Local sign-in",
+    "description": "VDS accounts with password, for standalone mode."
+  },
+  "config": {
+    "auth_local": {
+      "session_ttl_hours": {
+        "title": "Session length (hours)",
+        "description": "Time before having to sign in again."
+      },
+      "password_min_length": {
+        "title": "Minimum password length",
+        "description": "Minimum number of characters for a new password."
+      }
+    }
+  },
+  "errors": {
+    "auth_local": {
+      "invalid_credentials": "Incorrect credentials.",
+      "already_initialized": "The first administrator already exists.",
+      "password_too_short": "Password too short.",
+      "email_taken": "This email address is already in use."
+    },
+    "auth": {
+      "too_many_attempts": "Too many sign-in attempts. Try again later."
+    }
+  }
+}
