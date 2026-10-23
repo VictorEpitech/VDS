@@ -1,13 +1,34 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { authUiFor } from "../auth/providers";
+import { useSession } from "../auth/session";
+import { useApi } from "../lib/api";
 import { useRuntimeConfig } from "../lib/runtime-config";
 import { Icon } from "./Icon";
 import { LanguageSwitch } from "./LanguageSwitch";
 
 export function AppLayout() {
   const { t, i18n } = useTranslation();
-  const { auth, version } = useRuntimeConfig();
+  const config = useRuntimeConfig();
+  const { auth, version } = config;
+  const ui = authUiFor(auth.provider);
+  const api = useApi();
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const session = useSession();
+
+  const logout = async () => {
+    try {
+      await ui?.logout(config, api);
+    } catch {
+      /* serveur injoignable : retour à la connexion quand même */
+    } finally {
+      qc.clear();
+      navigate("/login", { replace: true });
+    }
+  };
 
   useEffect(() => {
     document.title = t("app.title");
@@ -37,7 +58,18 @@ export function AppLayout() {
             </a>
           ))}
           <LanguageSwitch />
-          {auth.logoutUrl ? (
+          {session.data?.display_name ? (
+            <span className="app-user">
+              <Icon name="user" />
+              <span>{session.data.display_name}</span>
+            </span>
+          ) : null}
+          {ui ? (
+            <button type="button" className="btn btn-text" onClick={() => void logout()}>
+              <Icon name="logout" />
+              {t("nav.logout")}
+            </button>
+          ) : auth.logoutUrl ? (
             <a className="btn btn-text" href={auth.logoutUrl}>
               <Icon name="logout" />
               {t("nav.logout")}

@@ -20,7 +20,7 @@ export default defineConfig({
   })),
   projects: combos.map((c) => ({
     name: c.name,
-    metadata: { base: c.base === "/" ? "" : c.base, theme: c.theme },
+    metadata: { base: c.base === "/" ? "" : c.base, theme: c.theme, auth: c.auth },
     use: {
       baseURL: `http://127.0.0.1:${c.port}`,
       browserName: "chromium" as const,

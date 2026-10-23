@@ -54,6 +54,69 @@
       "body": "Cette page n'existe pas ou a été déplacée.",
       "back": "Retour à l'accueil"
     },
-    "runtime_config_missing": "La configuration d'exécution est introuvable. Rechargez la page ou contactez votre administrateur."
+    "runtime_config_missing": "La configuration d'exécution est introuvable. Rechargez la page ou contactez votre administrateur.",
+    "unknown": "Une erreur est survenue. Réessayez.",
+    "server_unreachable": "Serveur injoignable. Vérifiez votre connexion puis réessayez.",
+    "field_required": "Ce champ est obligatoire.",
+    "field_email": "Saisissez une adresse e-mail valide.",
+    "origin_mismatch": "Requête refusée : origine inattendue.",
+    "internal": "Erreur interne du serveur.",
+    "auth": {
+      "unauthenticated": "Vous n'êtes pas connecté.",
+      "forbidden": "Vous n'avez pas accès à cette fonction.",
+      "account_inactive": "Ce compte est désactivé.",
+      "provider_unavailable": "Le service de connexion est indisponible.",
+      "too_many_attempts": "Trop de tentatives de connexion. Réessayez plus tard."
+    },
+    "auth_local": {
+      "invalid_credentials": "Identifiants incorrects.",
+      "already_initialized": "Le premier administrateur existe déjà.",
+      "password_too_short": "Mot de passe trop court.",
+      "bootstrap_token_invalid": "Jeton d'amorçage invalide.",
+      "password_change_required": "Vous devez changer votre mot de passe avant de continuer.",
+      "email_taken": "Cette adresse e-mail est déjà utilisée."
+    }
+  },
+  "auth": {
+    "checking": {
+      "title": "Vérification de la session",
+      "label": "Vérification en cours"
+    },
+    "redirecting": "Redirection vers la connexion",
+    "failure": {
+      "title": "Accès impossible",
+      "retry": "Réessayer"
+    },
+    "login": {
+      "title": "Connexion",
+      "intro": "Connectez-vous pour gérer vos écrans.",
+      "fields": {
+        "email": "Adresse e-mail",
+        "password": "Mot de passe"
+      },
+      "submit": "Se connecter",
+      "already_initialized": "Le premier administrateur existe déjà. Connectez-vous.",
+      "first_start": "Premier démarrage ? Créer le compte administrateur"
+    },
+    "bootstrap": {
+      "title": "Premier démarrage",
+      "intro": "Créez le compte administrateur. Le jeton d'amorçage figure dans la configuration ou les journaux du serveur.",
+      "fields": {
+        "email": "Adresse e-mail",
+        "display_name": "Nom affiché",
+        "password": "Mot de passe",
+        "bootstrap_token": "Jeton d'amorçage"
+      },
+      "submit": "Créer le compte"
+    },
+    "change_password": {
+      "title": "Changer le mot de passe",
+      "intro": "Votre mot de passe doit être changé avant de continuer.",
+      "fields": {
+        "current": "Mot de passe actuel",
+        "new": "Nouveau mot de passe"
+      },
+      "submit": "Changer le mot de passe"
+    }
   }
 }

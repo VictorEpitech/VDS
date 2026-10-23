@@ -231,6 +231,115 @@ a {
   font-size: 0.875rem;
 }
 
+/* Écrans d'accès : connexion, amorçage, changement de mot de passe. */
+.auth-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.auth-card {
+  inline-size: 100%;
+  max-inline-size: 28rem;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-4);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-1);
+}
+
+.field label {
+  font-weight: 500;
+}
+
+.field input {
+  min-block-size: var(--vds-touch-target);
+  padding-inline: var(--vds-space-4);
+  border: 1px solid var(--vds-outline);
+  border-radius: var(--vds-radius-sm);
+  background: var(--vds-surface);
+  color: var(--vds-on-surface);
+  font: inherit;
+}
+
+.field input.mono,
+.mono {
+  font-family: var(--vds-font-mono);
+}
+
+.field input[aria-invalid="true"] {
+  border-color: var(--vds-error);
+}
+
+.field-error,
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--vds-space-2);
+  margin: 0;
+}
+
+.field-error {
+  color: var(--vds-error);
+  font-size: 0.875rem;
+}
+
+.alert {
+  padding: var(--vds-space-3) var(--vds-space-4);
+  border: 1px solid var(--alert-color);
+  border-radius: var(--vds-radius-md);
+  background: var(--vds-surface);
+  color: var(--vds-on-surface);
+}
+
+.alert .vds-icon {
+  color: var(--alert-color);
+}
+
+.alert-error {
+  --alert-color: var(--vds-error);
+}
+
+.alert-info {
+  --alert-color: var(--vds-primary);
+  margin-block-end: var(--vds-space-4);
+}
+
+.form-alert-slot:focus {
+  outline: none;
+}
+
+.form-alert-slot:empty {
+  /* Région d'alerte toujours présente (annonce lecteur d'écran), sans espace visible. */
+  margin-block-start: calc(var(--vds-space-4) * -1);
+}
+
+.btn:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.app-user {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vds-space-2);
+  min-block-size: var(--vds-touch-target);
+  color: var(--vds-on-surface-variant);
+}
+
+.auth-card a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--vds-touch-target);
+}
+
 @media (min-width: 40rem) {
   .app-header {
     padding: var(--vds-space-4) var(--vds-space-6);

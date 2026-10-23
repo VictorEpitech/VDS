@@ -20,7 +20,9 @@
       "invalid_credentials": "Incorrect credentials.",
       "already_initialized": "The first administrator already exists.",
       "password_too_short": "Password too short.",
-      "email_taken": "This email address is already in use."
+      "email_taken": "This email address is already in use.",
+      "bootstrap_token_invalid": "Invalid bootstrap token.",
+      "password_change_required": "You must change your password before continuing."
     },
     "auth": {
       "too_many_attempts": "Too many sign-in attempts. Try again later."

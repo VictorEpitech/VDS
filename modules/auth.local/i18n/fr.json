@@ -20,7 +20,9 @@
       "invalid_credentials": "Identifiants incorrects.",
       "already_initialized": "Le premier administrateur existe déjà.",
       "password_too_short": "Mot de passe trop court.",
-      "email_taken": "Cette adresse e-mail est déjà utilisée."
+      "email_taken": "Cette adresse e-mail est déjà utilisée.",
+      "bootstrap_token_invalid": "Jeton d'amorçage invalide.",
+      "password_change_required": "Vous devez changer votre mot de passe avant de continuer."
     },
     "auth": {
       "too_many_attempts": "Trop de tentatives de connexion. Réessayez plus tard."

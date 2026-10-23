@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import type { Health } from "@vds/sdk-ts";
 import { useTranslation } from "react-i18next";
 import { StatusBadge, type ScreenState } from "../components/StatusBadge";
 import { useAppUrl } from "../lib/runtime-config";
@@ -13,8 +14,13 @@ export function Home() {
     queryFn: async () => {
       const res = await fetch(url("/health"), { credentials: "same-origin" });
       if (!res.ok) throw new Error("errors.server_unreachable");
+      const body = (await res.json()) as Health;
+      if (body.status !== "ok") throw new Error("errors.server_unreachable");
       return true;
     },
+    // État réel du serveur : pas de nouvelle tentative silencieuse, rafraîchi régulièrement.
+    retry: false,
+    refetchInterval: 30_000,
   });
   const server: { state: ScreenState; label: string } = health.isPending
     ? { state: "pairing", label: t("home.server.checking") }

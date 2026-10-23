@@ -54,6 +54,69 @@
       "body": "This page does not exist or has been moved.",
       "back": "Back to home"
     },
-    "runtime_config_missing": "The runtime configuration could not be found. Reload the page or contact your administrator."
+    "runtime_config_missing": "The runtime configuration could not be found. Reload the page or contact your administrator.",
+    "unknown": "Something went wrong. Try again.",
+    "server_unreachable": "Server unreachable. Check your connection and try again.",
+    "field_required": "This field is required.",
+    "field_email": "Enter a valid email address.",
+    "origin_mismatch": "Request refused: unexpected origin.",
+    "internal": "Internal server error.",
+    "auth": {
+      "unauthenticated": "You are not signed in.",
+      "forbidden": "You do not have access to this feature.",
+      "account_inactive": "This account is disabled.",
+      "provider_unavailable": "The sign-in service is unavailable.",
+      "too_many_attempts": "Too many sign-in attempts. Try again later."
+    },
+    "auth_local": {
+      "invalid_credentials": "Incorrect credentials.",
+      "already_initialized": "The first administrator already exists.",
+      "password_too_short": "Password too short.",
+      "bootstrap_token_invalid": "Invalid bootstrap token.",
+      "password_change_required": "You must change your password before continuing.",
+      "email_taken": "This email address is already in use."
+    }
+  },
+  "auth": {
+    "checking": {
+      "title": "Checking your session",
+      "label": "Checking"
+    },
+    "redirecting": "Redirecting to sign-in",
+    "failure": {
+      "title": "Access unavailable",
+      "retry": "Try again"
+    },
+    "login": {
+      "title": "Sign in",
+      "intro": "Sign in to manage your screens.",
+      "fields": {
+        "email": "Email address",
+        "password": "Password"
+      },
+      "submit": "Sign in",
+      "already_initialized": "The first administrator already exists. Sign in.",
+      "first_start": "First start? Create the administrator account"
+    },
+    "bootstrap": {
+      "title": "First start",
+      "intro": "Create the administrator account. The bootstrap token is in the server configuration or logs.",
+      "fields": {
+        "email": "Email address",
+        "display_name": "Display name",
+        "password": "Password",
+        "bootstrap_token": "Bootstrap token"
+      },
+      "submit": "Create account"
+    },
+    "change_password": {
+      "title": "Change password",
+      "intro": "Your password must be changed before you continue.",
+      "fields": {
+        "current": "Current password",
+        "new": "New password"
+      },
+      "submit": "Change password"
+    }
   }
 }

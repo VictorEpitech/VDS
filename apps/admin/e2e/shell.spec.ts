@@ -15,7 +15,9 @@ async function primary(page: Page): Promise<string> {
 
 const failures = new WeakMap<Page, string[]>();
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page }, info) => {
+  // Session d'amorçage du serveur simulé (les parcours de connexion sont dans auth.spec.ts).
+  await page.context().addCookies([{ name: "vds_session", value: "e2e-admin", url: info.project.use.baseURL! }]);
   const list: string[] = [];
   failures.set(page, list);
   page.on("requestfailed", (r) => list.push(`failed ${r.url()}`));

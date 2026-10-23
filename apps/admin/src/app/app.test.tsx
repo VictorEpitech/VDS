@@ -41,10 +41,16 @@ async function setup(cfg: RuntimeConfig, path = "/") {
   );
 }
 
+const ME = { id: "u1", display_name: "Ada", email: "ada@vds.test", role: "admin", provider: "auth.local", locale: null };
+
 beforeEach(() => {
   vi.stubGlobal(
     "fetch",
-    vi.fn(() => Promise.resolve(new Response('{"status":"ok"}', { status: 200 }))),
+    vi.fn((url: string) =>
+      Promise.resolve(
+        new Response(JSON.stringify(url.endsWith("/me") ? ME : { status: "ok" }), { status: 200 }),
+      ),
+    ),
   );
 });
 
@@ -53,30 +59,41 @@ describe("admin", () => {
     await setup(config(), "/espace/affichage/");
     expect(await screen.findByRole("heading", { level: 1, name: "Tableau de bord" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Écrans" })).toHaveAttribute("href", "/espace/affichage/screens");
-    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe("/espace/affichage/health");
+    await screen.findByText("Serveur joignable");
+    const urls = vi.mocked(fetch).mock.calls.map((c) => c[0]);
+    expect(urls).toContain("/espace/affichage/health");
+    expect(urls).toContain("/espace/affichage/api/v1/me");
     expect(await screen.findByText("Serveur joignable")).toBeInTheDocument();
   });
 
   it("liens de la config (aucune branche par mode) et déconnexion", async () => {
     await setup(config(), "/espace/affichage/");
-    expect(screen.getByRole("link", { name: "Retour au Studio" })).toHaveAttribute("href", "/espace");
+    expect(await screen.findByRole("link", { name: "Retour au Studio" })).toHaveAttribute("href", "/espace");
     expect(screen.getByRole("link", { name: "Se déconnecter" })).toBeInTheDocument();
   });
 
-  it("sans lien ni déconnexion en mode autonome", async () => {
-    await setup(config({ basePath: "", auth: { provider: "auth.local", loginUrl: null, logoutUrl: null, links: [] } }));
+  it("mode autonome : pas de lien d'enveloppe, déconnexion par le module (bouton)", async () => {
+    await setup(
+      config({ basePath: "", apiBase: "/api/v1", auth: { provider: "auth.local", loginUrl: null, logoutUrl: null, links: [] } }),
+    );
+    expect(await screen.findByRole("button", { name: "Se déconnecter" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Retour au Studio" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Se déconnecter" })).toBeNull();
   });
 
   it("serveur injoignable : état hors ligne avec libellé", async () => {
-    vi.mocked(fetch).mockResolvedValue(new Response("", { status: 503 }));
+    vi.mocked(fetch).mockImplementation((url) =>
+      Promise.resolve(
+        String(url).endsWith("/me") ? new Response(JSON.stringify(ME)) : new Response("", { status: 503 }),
+      ),
+    );
     await setup(config({ basePath: "" }));
     expect(await screen.findByText("Serveur injoignable")).toBeInTheDocument();
   });
 
   it("bascule FR/EN", async () => {
     await setup(config(), "/espace/affichage/");
+    await screen.findByRole("heading", { level: 1, name: "Tableau de bord" });
     await userEvent.click(screen.getByRole("button", { name: "English" }));
     await waitFor(() => expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Dashboard"));
     expect(document.documentElement.lang).toBe("en");
