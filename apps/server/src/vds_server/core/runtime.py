@@ -12,12 +12,14 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from vds_sdk import Module, ModuleManifest
 from vds_sdk.server import AuthProvider, StorageBackend
 
-from vds_server.agents.auth import AgentAuth
+from vds_server.agents.auth import TOKEN_PREFIX, AgentAuth
 from vds_server.agents.bridge import EventBridge
+from vds_server.agents.cache import site_media_ids
 from vds_server.agents.hub import AgentHub
 from vds_server.agents.queue import CommandQueue
 from vds_server.config.reader import ModuleConfigReader
 from vds_server.config.registry_schemas import RegistrySchemaProvider
+from vds_server.config.schemas import CORE_NAMESPACE
 from vds_server.core.auth import AuthPipeline
 from vds_server.core.errors import ApiError
 from vds_server.core.facade import ModuleCore
@@ -30,6 +32,7 @@ from vds_server.player.device_auth import DeviceAuth, bearer
 from vds_server.player.schedule import screen_media_ids
 from vds_server.registry import ModuleRegistry
 from vds_server.settings import Settings
+from vds_server.supervision import Supervisor
 
 OUTBOX_POLL_S = 5.0
 
@@ -59,10 +62,17 @@ class Runtime:
         self.media_access = MediaAccess(self.pipeline)
         self.device_auth = DeviceAuth(self.maker)  # jeton d'appareil (player, médias)
         self.media_access.register_reader(self._device_reader)
+        self.media_access.register_reader(self._agent_reader)
         self.agent_auth = AgentAuth(self.maker)  # jeton d'agent (WS, HTTP réservé à l'agent)
         self.agent_hub = AgentHub()
         self.command_queue = CommandQueue(self.maker)
         self.agent_bridge = EventBridge(self.maker, self.bus, self.registry.agent_events)
+        self.supervisor = Supervisor(
+            self.maker,
+            self.bus,
+            ModuleConfigReader(self.maker, self.schemas, CORE_NAMESPACE).resolve,
+        )
+        self.supervisor.register(self.bus.subscribe)
 
     async def _device_reader(self, request: Request) -> bool:
         """Jeton d'appareil valide => lecture des médias ; absent, inconnu ou révoqué => non."""
@@ -79,6 +89,24 @@ class Runtime:
             raise ApiError("media.not_found", 404) from exc
         async with self.maker() as session:
             if media_id not in await screen_media_ids(session, device.screen_id):
+                raise ApiError("media.forbidden", 403)
+        return True
+
+    async def _agent_reader(self, request: Request) -> bool:
+        """Jeton d'agent valide => lecture des seuls médias programmés sur son site."""
+        token = bearer(request)
+        if token is None or not token.startswith(TOKEN_PREFIX):
+            return False
+        try:
+            principal = await self.agent_auth(request)
+        except ApiError:
+            return False
+        try:
+            media_id = UUID(str(request.path_params.get("media_id")))
+        except ValueError as exc:
+            raise ApiError("media.not_found", 404) from exc
+        async with self.maker() as session:
+            if media_id not in await site_media_ids(session, principal.site_id):
                 raise ApiError("media.forbidden", 403)
         return True
 
@@ -114,6 +142,7 @@ class Runtime:
         await self.ensure_organization()
         await self.registry.start()
         self.agent_hub.start(self.engine)
+        self.supervisor.start()
 
         async def pump() -> None:
             while True:
@@ -129,6 +158,7 @@ class Runtime:
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await task
+            await self.supervisor.stop()
             await self.agent_hub.stop()
             await self.registry.stop()
             await self.engine.dispose()

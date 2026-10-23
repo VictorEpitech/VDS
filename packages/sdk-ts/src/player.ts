@@ -16,6 +16,15 @@ export interface ScheduleDocument {
   playlists: Record<string, Playlist>;
   assets: Record<string, AssetRef>;
   content_types: Record<string, ContentTypeEntry>;
+  /** Plan d'alimentation résolu (J et J+1), exécuté par le player même hors ligne. Absent = toujours allumé. */
+  power?: PowerSlot[];
+}
+
+/** Créneau d'alimentation : ISO 8601 avec décalage, `from` inclus, `to` exclu. */
+export interface PowerSlot {
+  from: string;
+  to: string;
+  state: "on" | "off";
 }
 
 export interface OffSlot {
@@ -77,6 +86,11 @@ export interface PlatformBridge {
   ping(): void;
   info(): { platform: string; model: string; app_version: string; os_version: string; insecure_upstream?: boolean };
   reload(): void;
+  /**
+   * Pont CEC (Android) : `action` = probe | on | off | state. Résout un JSON
+   * `{ok, state, verified, code?}`. Absent hors Android ou sans CEC.
+   */
+  cec?(action: "probe" | "on" | "off" | "state"): Promise<string>;
 }
 
 declare global {

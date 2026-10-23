@@ -7,15 +7,13 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from vds_sdk import ScopeRef
 
-from vds_server.config.reader import ModuleConfigReader
-from vds_server.config.schemas import CORE_NAMESPACE
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
 from vds_server.core.runtime import Runtime
 from vds_server.player import schemas as sc
 from vds_server.player.device_auth import DevicePrincipal, bearer
+from vds_server.player.factory import schedule_builder
 from vds_server.player.ratelimit import RateLimiter
 from vds_server.player.schedule import SCHEDULE_FORMAT, ScheduleBuilder
 from vds_server.player.service import (
@@ -25,7 +23,6 @@ from vds_server.player.service import (
     format_code,
     heartbeat,
 )
-from vds_server.power.plan import PowerPlanBuilder
 from vds_server.security.client_ip import client_ip
 
 
@@ -42,24 +39,8 @@ def build_router(rt: Runtime) -> APIRouter:
 
     Pairing = Annotated[PairingService, Depends(svc)]
 
-    async def timezone_of(screen_id: UUID) -> object:
-        cfg = await ModuleConfigReader(rt.maker, rt.schemas, CORE_NAMESPACE).resolve(
-            ScopeRef(level="screen", id=str(screen_id))
-        )
-        return cfg.get("timezone")
-
     def builder(session: Session) -> ScheduleBuilder:
-        async def power_of(screen_id: UUID, now: datetime) -> list[dict[str, str]]:
-            return await PowerPlanBuilder(session, rt.schemas).player_slots(screen_id, now)
-
-        return ScheduleBuilder(
-            session,
-            rt.registry.content_item_schema,
-            rt.registry.content_entry,
-            timezone_of,
-            rt.registry.instance,
-            power_of,
-        )
+        return schedule_builder(rt, session)
 
     Builder = Annotated[ScheduleBuilder, Depends(builder)]
 

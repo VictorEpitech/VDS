@@ -20,6 +20,7 @@ from vds_sdk.wire import (
     AgentHeartbeat,
     AgentHello,
     AgentWelcome,
+    CacheInfo,
     CmdResult,
     EventData,
     Frame,
@@ -70,12 +71,14 @@ class AgentSession:
         queue: CommandQueue,
         bridge: EventBridge,
         modules_enabled: Callable[[], list[ModuleEnabled]] = list,
+        cache_info: Callable[[SiteAgent], CacheInfo] = lambda _row: CacheInfo(),
         hello_timeout_s: float | None = None,
         poll_s: float | None = None,
         idle_timeout_s: float | None = None,
     ) -> None:
         self._ws, self._maker, self._bus, self._hub = ws, maker, bus, hub
         self._queue, self._bridge, self._modules = queue, bridge, modules_enabled
+        self._cache_info = cache_info
         self._hello_timeout = HELLO_TIMEOUT_S if hello_timeout_s is None else hello_timeout_s
         self._poll = POLL_S if poll_s is None else poll_s
         self._idle = IDLE_TIMEOUT_S if idle_timeout_s is None else idle_timeout_s
@@ -214,6 +217,7 @@ class AgentSession:
             server_time=datetime.now(UTC),
             resume_from=agent_seq,
             modules_enabled=self._modules(),
+            cache=self._cache_info(row),
         )
         await self._send(Frame(type="welcome", data=welcome.model_dump(mode="json")))
 

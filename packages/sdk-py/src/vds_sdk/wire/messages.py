@@ -58,6 +58,9 @@ class AgentHello(_M):
 class CacheInfo(_M):
     enabled: bool = False
     key_id: str | None = None
+    key: str | None = Field(
+        default=None, repr=False
+    )
 
 
 class AgentWelcome(_M):

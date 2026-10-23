@@ -109,6 +109,7 @@
           "$ref": "#/$defs/CacheInfo",
           "default": {
             "enabled": false,
+            "key": null,
             "key_id": null
           }
         },
@@ -175,6 +176,18 @@
           "default": false,
           "title": "Enabled",
           "type": "boolean"
+        },
+        "key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Key"
         },
         "key_id": {
           "anyOf": [

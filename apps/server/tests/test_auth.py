@@ -348,7 +348,9 @@ async def test_users_provision_permission_gates_facade(app: FastAPI) -> None:
     base = load_manifest(REPO_MODULES / "auth.local" / "module.json").model_dump()
     assert "users.provision" in base["permissions"]
     ModuleCore(rt, ModuleManifest.model_validate(base)).users  # noqa: B018
-    base["permissions"] = [x for x in base["permissions"] if x != "users.provision"]
+    base["permissions"] = [
+        x for x in base["permissions"] if x not in ("users.provision", "users.read")
+    ]
     with pytest.raises(PermissionDenied):
         ModuleCore(rt, ModuleManifest.model_validate(base)).users  # noqa: B018
 

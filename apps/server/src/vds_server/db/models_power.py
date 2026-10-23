@@ -221,3 +221,5 @@ class Incident(Base):
     details: Mapped[Any] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
     opened_at: Mapped[datetime] = tstz(now=False)
     resolved_at: Mapped[datetime | None] = tstz(nullable=True, now=False)
+    acknowledged_at: Mapped[datetime | None] = tstz(nullable=True, now=False)
+    acknowledged_by: Mapped[UUID | None] = _user_fk()

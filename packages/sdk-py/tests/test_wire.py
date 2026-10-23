@@ -109,9 +109,7 @@ def test_closed_command_lists() -> None:
 
 
 def test_player_event_whitelist_and_auth() -> None:
-    ev = Frame(
-        type="event", seq=1, data={"name": "screen.deleted", "occurred_at": NOW.isoformat()}
-    )
+    ev = Frame(type="event", seq=1, data={"name": "screen.deleted", "occurred_at": NOW.isoformat()})
     with pytest.raises(WireError):
         parse_data(ev, "player", "to_server")
     auth = parse_data(Frame(type="auth", data={"token": "vds_dev_x"}), "player", "to_server")

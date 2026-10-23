@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     organization_name: str = "VDS"
     quarantine_failures: int = 5
     quarantine_window_s: int = 600
+    secret_key: str | None = None  # VDS_SECRET_KEY : dérive les clés du service LAN de cache
 
     @field_validator("base_path")
     @classmethod

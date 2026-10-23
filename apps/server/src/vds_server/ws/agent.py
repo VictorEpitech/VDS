@@ -10,6 +10,7 @@ from vds_sdk.wire import (
 )
 
 from vds_server.agents.auth import lookup
+from vds_server.agents.cache import cache_info
 from vds_server.agents.session import AgentSession
 from vds_server.core.runtime import Runtime
 from vds_server.player.device_auth import bearer_value
@@ -50,6 +51,7 @@ def build_router(rt: Runtime) -> APIRouter:
             queue=rt.command_queue,
             bridge=rt.agent_bridge,
             modules_enabled=modules_enabled,
+            cache_info=lambda row: cache_info(rt.settings.secret_key, row),
         ).run()
 
     return router
