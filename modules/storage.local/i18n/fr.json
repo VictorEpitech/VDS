@@ -1,0 +1,14 @@
+{
+  "module": {
+    "name": "Stockage sur disque",
+    "description": "Médias stockés sur le disque du serveur (volume VDS_MEDIA_DIR)."
+  },
+  "config": {
+    "storage_local": {
+      "media_dir": {
+        "title": "Dossier des médias",
+        "description": "Racine de stockage des fichiers (définie par le déploiement)."
+      }
+    }
+  }
+}

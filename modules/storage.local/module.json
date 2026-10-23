@@ -1,0 +1,21 @@
+{
+  "id": "storage.local",
+  "version": "0.1.0",
+  "core": ">=1.1 <2.0",
+  "kind": "storage",
+  "name": { "fr": "Stockage sur disque", "en": "Local disk storage" },
+  "description": {
+    "fr": "Médias stockés sur le disque du serveur (volume VDS_MEDIA_DIR).",
+    "en": "Media stored on the server disk (VDS_MEDIA_DIR volume)."
+  },
+  "targets": ["server"],
+  "entrypoints": { "server": "server.module:StorageLocal" },
+  "requires": {},
+  "capabilities": ["storage.local"],
+  "permissions": ["fs.media"],
+  "events": { "listens": [], "emits": [] },
+  "config": { "$ref": "config.schema.json" },
+  "i18n": ["fr", "en"],
+  "author": "V-Tech",
+  "signature": null
+}

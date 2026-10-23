@@ -1,0 +1,14 @@
+{
+  "module": {
+    "name": "Local disk storage",
+    "description": "Media stored on the server disk (VDS_MEDIA_DIR volume)."
+  },
+  "config": {
+    "storage_local": {
+      "media_dir": {
+        "title": "Media folder",
+        "description": "Root folder for stored files (set by the deployment)."
+      }
+    }
+  }
+}

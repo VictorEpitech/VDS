@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "media_dir": {
+      "type": "string",
+      "minLength": 1,
+      "default": "/data/media",
+      "title": "config.storage_local.media_dir.title",
+      "description": "config.storage_local.media_dir.description",
+      "x-vds-level": "advanced",
+      "x-vds-scopes": ["organization"],
+      "x-vds-env": "VDS_MEDIA_DIR"
+    }
+  }
+}
