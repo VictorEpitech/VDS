@@ -1,0 +1,42 @@
+name: vds
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-vds}
+      POSTGRES_DB: ${POSTGRES_DB:-vds}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?définir POSTGRES_PASSWORD dans .env}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  server:
+    image: ${VDS_SERVER_IMAGE:-vds-server:local}
+    build:
+      context: ..
+      dockerfile: docker/server.Dockerfile
+    environment:
+      VDS_BASE_PATH: ${VDS_BASE_PATH:-/}
+      VDS_AUTH_PROVIDER: ${VDS_AUTH_PROVIDER:-auth.local}
+      VDS_THEME: ${VDS_THEME:-theme.vtech}
+      VDS_DEFAULT_LOCALE: ${VDS_DEFAULT_LOCALE:-fr}
+      VDS_PUBLIC_ORIGIN: ${VDS_PUBLIC_ORIGIN:-}
+      VDS_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-vds}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-vds}
+    volumes:
+      - media-data:/data/media
+    ports:
+      - "${VDS_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,os;b=os.environ.get('VDS_BASE_PATH','/').rstrip('/');urllib.request.urlopen(f'http://127.0.0.1:8000{b}/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+volumes:
+  db-data:
+  media-data:

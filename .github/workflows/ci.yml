@@ -1,0 +1,117 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: make lint
+      - run: make i18n-check
+  api-types:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: make api-types-check
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        base_path: ["/", "/espace/affichage"]
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: vds
+          POSTGRES_DB: vds_test
+          POSTGRES_PASSWORD: ${{ github.run_id }}-ci-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vds -d vds_test"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      VDS_BASE_PATH: ${{ matrix.base_path }}
+      VDS_TEST_DATABASE_URL: postgresql+asyncpg://vds:${{ github.run_id }}-ci-only@127.0.0.1:5432/vds_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: uv run pytest
+  vitest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r --if-present test
+  e2e:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ["root-*", "subpath-*"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @vds/admin exec playwright install --with-deps chromium
+      - run: pnpm --filter @vds/admin exec vite build
+      - run: pnpm --filter @vds/admin exec playwright test --project "${{ matrix.project }}"
+  docker-smoke:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        base_path: ["/", "/espace/affichage"]
+    env:
+      POSTGRES_PASSWORD: ${{ github.run_id }}-ci-only
+      VDS_BASE_PATH: ${{ matrix.base_path }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose -f docker/compose.yaml up --build -d --wait
+      - run: |
+          prefix="${VDS_BASE_PATH%/}"
+          curl -fsS "http://127.0.0.1:8000${prefix}/health"
+      - if: failure()
+        run: docker compose -f docker/compose.yaml logs --no-color
+      - if: always()
+        run: docker compose -f docker/compose.yaml down -v

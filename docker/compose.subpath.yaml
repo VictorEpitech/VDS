@@ -1,0 +1,5 @@
+# Surcharge : docker compose -f docker/compose.yaml -f docker/compose.subpath.yaml up
+services:
+  server:
+    environment:
+      VDS_BASE_PATH: /espace/affichage
