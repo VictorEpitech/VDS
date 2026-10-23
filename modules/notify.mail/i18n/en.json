@@ -1,0 +1,57 @@
+{
+  "module": {
+    "name": "Email notifications",
+    "description": "Sends an email when incidents open and resolve (screen or agent offline, power failure)."
+  },
+  "config": {
+    "notify_mail": {
+      "smtp_host": { "title": "SMTP server", "description": "Host name of the outgoing mail server. Set by the VDS_SMTP_HOST environment variable." },
+      "smtp_port": { "title": "SMTP port", "description": "587 (STARTTLS) or 465 (implicit TLS). Set by VDS_SMTP_PORT." },
+      "smtp_security": { "title": "Encryption", "description": "starttls or tls; there is no plain mode and the certificate is always verified. Set by VDS_SMTP_SECURITY." },
+      "smtp_username": { "title": "SMTP username", "description": "Sending account. Set by VDS_SMTP_USERNAME." },
+      "smtp_password": { "title": "SMTP password", "description": "Never shown nor stored in the database: provided only by VDS_SMTP_PASSWORD." },
+      "from": { "title": "Sender address", "description": "Sender of the emails. Set by VDS_MAIL_FROM." },
+      "notify_admins": { "title": "Notify administrators", "description": "Sends notifications to all active administrator accounts." },
+      "extra_recipients": { "title": "Additional recipients", "description": "Email addresses notified in addition to administrators." },
+      "kinds": { "title": "Notified incident types", "description": "Incident types that trigger an email." },
+      "send_resolved": { "title": "Notify on resolution", "description": "Also sends an email when the incident is resolved." }
+    }
+  },
+  "errors": {
+    "notify_mail": {
+      "not_configured": "No SMTP server is configured (VDS_SMTP_HOST and VDS_MAIL_FROM).",
+      "smtp_auth": "The SMTP server rejected the authentication.",
+      "smtp_tls": "The SMTP server certificate could not be verified.",
+      "timeout": "The SMTP server is not responding.",
+      "connect": "Could not connect to the SMTP server.",
+      "smtp_rejected": "The SMTP server rejected the message."
+    }
+  },
+  "mail": {
+    "subject": {
+      "opened": "[VDS] {title}: {name}",
+      "resolved": "[VDS] Resolved - {title}: {name}"
+    },
+    "intro": {
+      "opened": "An incident has just been detected.",
+      "resolved": "The following incident is resolved."
+    },
+    "kind": {
+      "screen_offline": "Screen offline",
+      "agent_offline": "Site agent offline",
+      "power_failed": "Screen power failure",
+      "module_quarantined": "Module quarantined",
+      "unknown": "Incident"
+    },
+    "field": {
+      "screen": "Screen",
+      "agent": "Site agent",
+      "module": "Module",
+      "site": "Site",
+      "severity": "Severity",
+      "time": "Time"
+    },
+    "severity": { "info": "Information", "warning": "Warning", "critical": "Critical" },
+    "open_link": "Open in VDS: {link}"
+  }
+}

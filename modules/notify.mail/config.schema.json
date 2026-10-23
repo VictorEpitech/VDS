@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "smtp_host": {
+      "type": "string", "default": "", "maxLength": 253,
+      "title": "config.notify_mail.smtp_host.title", "description": "config.notify_mail.smtp_host.description",
+      "x-vds-level": "advanced", "x-vds-scopes": ["organization"], "x-vds-env": "VDS_SMTP_HOST"
+    },
+    "smtp_port": {
+      "type": "integer", "minimum": 1, "maximum": 65535, "default": 587,
+      "title": "config.notify_mail.smtp_port.title", "description": "config.notify_mail.smtp_port.description",
+      "x-vds-level": "advanced", "x-vds-scopes": ["organization"], "x-vds-env": "VDS_SMTP_PORT"
+    },
+    "smtp_security": {
+      "type": "string", "enum": ["starttls", "tls"], "default": "starttls",
+      "title": "config.notify_mail.smtp_security.title", "description": "config.notify_mail.smtp_security.description",
+      "x-vds-level": "advanced", "x-vds-scopes": ["organization"], "x-vds-env": "VDS_SMTP_SECURITY"
+    },
+    "smtp_username": {
+      "type": "string", "default": "", "maxLength": 254,
+      "title": "config.notify_mail.smtp_username.title", "description": "config.notify_mail.smtp_username.description",
+      "x-vds-level": "advanced", "x-vds-scopes": ["organization"], "x-vds-env": "VDS_SMTP_USERNAME"
+    },
+    "smtp_password": {
+      "type": "string", "default": "", "maxLength": 512,
+      "title": "config.notify_mail.smtp_password.title", "description": "config.notify_mail.smtp_password.description",
+      "x-vds-level": "advanced", "x-vds-scopes": ["organization"], "x-vds-env": "VDS_SMTP_PASSWORD", "x-vds-secret": true
+    },
+    "from": {
+      "type": "string", "default": "", "maxLength": 254,
+      "title": "config.notify_mail.from.title", "description": "config.notify_mail.from.description",
+      "x-vds-level": "advanced", "x-vds-scopes": ["organization"], "x-vds-env": "VDS_MAIL_FROM"
+    },
+    "notify_admins": {
+      "type": "boolean", "default": true,
+      "title": "config.notify_mail.notify_admins.title", "description": "config.notify_mail.notify_admins.description",
+      "x-vds-level": "simple", "x-vds-scopes": ["organization"]
+    },
+    "extra_recipients": {
+      "type": "array", "items": { "type": "string", "maxLength": 254, "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$" },
+      "uniqueItems": true, "maxItems": 50, "default": [],
+      "title": "config.notify_mail.extra_recipients.title", "description": "config.notify_mail.extra_recipients.description",
+      "x-vds-level": "simple", "x-vds-scopes": ["organization"]
+    },
+    "kinds": {
+      "type": "array", "items": { "type": "string", "maxLength": 80 }, "uniqueItems": true,
+      "default": ["screen.offline", "agent.offline", "power.failed", "module.quarantined"],
+      "title": "config.notify_mail.kinds.title", "description": "config.notify_mail.kinds.description",
+      "x-vds-level": "advanced", "x-vds-scopes": ["organization"]
+    },
+    "send_resolved": {
+      "type": "boolean", "default": true,
+      "title": "config.notify_mail.send_resolved.title", "description": "config.notify_mail.send_resolved.description",
+      "x-vds-level": "advanced", "x-vds-scopes": ["organization"]
+    }
+  }
+}

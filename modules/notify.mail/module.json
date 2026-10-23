@@ -1,0 +1,21 @@
+{
+  "id": "notify.mail",
+  "version": "0.1.0",
+  "core": ">=1.2 <2.0",
+  "kind": "notifier",
+  "name": { "fr": "Notifications par e-mail", "en": "Email notifications" },
+  "description": {
+    "fr": "Envoie un e-mail à l'ouverture et à la résolution des incidents (écran ou agent hors ligne, échec d'alimentation).",
+    "en": "Sends an email when incidents open and resolve (screen or agent offline, power failure)."
+  },
+  "targets": ["server"],
+  "entrypoints": { "server": "server.module:NotifyMail" },
+  "requires": {},
+  "capabilities": ["notify.mail"],
+  "permissions": ["net.outbound", "users.read", "incidents.read", "db.own-tables"],
+  "events": { "listens": ["incident.opened", "incident.resolved"], "emits": [] },
+  "config": { "$ref": "config.schema.json" },
+  "i18n": ["fr", "en"],
+  "author": "V-Tech",
+  "signature": null
+}

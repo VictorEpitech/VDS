@@ -1,0 +1,57 @@
+{
+  "module": {
+    "name": "Notifications par e-mail",
+    "description": "Envoie un e-mail à l'ouverture et à la résolution des incidents (écran ou agent hors ligne, échec d'alimentation)."
+  },
+  "config": {
+    "notify_mail": {
+      "smtp_host": { "title": "Serveur SMTP", "description": "Nom d'hôte du serveur d'envoi. Défini par la variable d'environnement VDS_SMTP_HOST." },
+      "smtp_port": { "title": "Port SMTP", "description": "587 (STARTTLS) ou 465 (TLS implicite). Défini par VDS_SMTP_PORT." },
+      "smtp_security": { "title": "Chiffrement", "description": "starttls ou tls ; le mode clair n'existe pas et le certificat est toujours vérifié. Défini par VDS_SMTP_SECURITY." },
+      "smtp_username": { "title": "Identifiant SMTP", "description": "Compte d'envoi. Défini par VDS_SMTP_USERNAME." },
+      "smtp_password": { "title": "Mot de passe SMTP", "description": "Jamais affiché ni stocké en base : fourni uniquement par VDS_SMTP_PASSWORD." },
+      "from": { "title": "Adresse d'expédition", "description": "Expéditeur des e-mails. Défini par VDS_MAIL_FROM." },
+      "notify_admins": { "title": "Prévenir les administrateurs", "description": "Envoie les notifications à tous les comptes administrateurs actifs." },
+      "extra_recipients": { "title": "Destinataires supplémentaires", "description": "Adresses e-mail prévenues en plus des administrateurs." },
+      "kinds": { "title": "Types d'incident notifiés", "description": "Types d'incident qui déclenchent un e-mail." },
+      "send_resolved": { "title": "Prévenir à la résolution", "description": "Envoie aussi un e-mail quand l'incident est résolu." }
+    }
+  },
+  "errors": {
+    "notify_mail": {
+      "not_configured": "Aucun serveur SMTP n'est configuré (VDS_SMTP_HOST et VDS_MAIL_FROM).",
+      "smtp_auth": "Le serveur SMTP a refusé l'authentification.",
+      "smtp_tls": "Le certificat du serveur SMTP n'a pas pu être vérifié.",
+      "timeout": "Le serveur SMTP ne répond pas.",
+      "connect": "Connexion au serveur SMTP impossible.",
+      "smtp_rejected": "Le serveur SMTP a refusé le message."
+    }
+  },
+  "mail": {
+    "subject": {
+      "opened": "[VDS] {title} : {name}",
+      "resolved": "[VDS] Résolu - {title} : {name}"
+    },
+    "intro": {
+      "opened": "Un incident vient d'être détecté.",
+      "resolved": "L'incident suivant est résolu."
+    },
+    "kind": {
+      "screen_offline": "Écran hors ligne",
+      "agent_offline": "Agent de site hors ligne",
+      "power_failed": "Échec de l'alimentation de l'écran",
+      "module_quarantined": "Module mis en quarantaine",
+      "unknown": "Incident"
+    },
+    "field": {
+      "screen": "Écran",
+      "agent": "Agent de site",
+      "module": "Module",
+      "site": "Site",
+      "severity": "Gravité",
+      "time": "Heure"
+    },
+    "severity": { "info": "Information", "warning": "Avertissement", "critical": "Critique" },
+    "open_link": "Ouvrir dans VDS : {link}"
+  }
+}
