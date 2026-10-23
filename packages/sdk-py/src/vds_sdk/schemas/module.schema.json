@@ -1,0 +1,314 @@
+{
+  "$defs": {
+    "ConfigRef": {
+      "additionalProperties": false,
+      "properties": {
+        "$ref": {
+          "minLength": 1,
+          "title": "$Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "$ref"
+      ],
+      "title": "ConfigRef",
+      "type": "object"
+    },
+    "Events": {
+      "additionalProperties": false,
+      "properties": {
+        "listens": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Listens",
+          "type": "array"
+        },
+        "emits": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Emits",
+          "type": "array"
+        }
+      },
+      "title": "Events",
+      "type": "object"
+    },
+    "LocalizedText": {
+      "additionalProperties": false,
+      "properties": {
+        "fr": {
+          "minLength": 1,
+          "title": "Fr",
+          "type": "string"
+        },
+        "en": {
+          "minLength": 1,
+          "title": "En",
+          "type": "string"
+        }
+      },
+      "required": [
+        "fr",
+        "en"
+      ],
+      "title": "LocalizedText",
+      "type": "object"
+    },
+    "ThemeLogo": {
+      "additionalProperties": false,
+      "properties": {
+        "light": {
+          "title": "Light",
+          "type": "string"
+        },
+        "dark": {
+          "title": "Dark",
+          "type": "string"
+        }
+      },
+      "required": [
+        "light",
+        "dark"
+      ],
+      "title": "ThemeLogo",
+      "type": "object"
+    },
+    "ThemeSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "css": {
+          "title": "Css",
+          "type": "string"
+        },
+        "fonts": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Fonts",
+          "type": "array"
+        },
+        "logo": {
+          "$ref": "#/$defs/ThemeLogo"
+        },
+        "icons": {
+          "enum": [
+            "material-symbols",
+            "lucide"
+          ],
+          "title": "Icons",
+          "type": "string"
+        },
+        "color_schemes": {
+          "items": {
+            "enum": [
+              "light",
+              "dark"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Color Schemes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "css",
+        "logo",
+        "icons",
+        "color_schemes"
+      ],
+      "title": "ThemeSpec",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "version": {
+      "title": "Version",
+      "type": "string"
+    },
+    "core": {
+      "title": "Core",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "player-adapter",
+        "power-driver",
+        "content-type",
+        "trigger",
+        "notifier",
+        "auth-provider",
+        "theme",
+        "storage"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "name": {
+      "$ref": "#/$defs/LocalizedText"
+    },
+    "description": {
+      "$ref": "#/$defs/LocalizedText"
+    },
+    "targets": {
+      "items": {
+        "enum": [
+          "server",
+          "site-agent",
+          "admin",
+          "player"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Targets",
+      "type": "array"
+    },
+    "entrypoints": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "default": {},
+      "propertyNames": {
+        "enum": [
+          "server",
+          "site-agent",
+          "admin",
+          "player"
+        ]
+      },
+      "title": "Entrypoints",
+      "type": "object"
+    },
+    "requires": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "default": {},
+      "title": "Requires",
+      "type": "object"
+    },
+    "capabilities": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Capabilities",
+      "type": "array"
+    },
+    "permissions": {
+      "default": [],
+      "items": {
+        "enum": [
+          "screens.read",
+          "screens.write",
+          "sites.read",
+          "config.read.core",
+          "users.read",
+          "media.read",
+          "media.write",
+          "lan.access",
+          "net.outbound",
+          "fs.media",
+          "http.routes",
+          "db.own-tables",
+          "users.provision"
+        ],
+        "type": "string"
+      },
+      "title": "Permissions",
+      "type": "array"
+    },
+    "events": {
+      "$ref": "#/$defs/Events",
+      "default": {
+        "listens": [],
+        "emits": []
+      }
+    },
+    "config": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ConfigRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "assets": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Assets"
+    },
+    "i18n": {
+      "default": [
+        "fr",
+        "en"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "title": "I18N",
+      "type": "array"
+    },
+    "author": {
+      "title": "Author",
+      "type": "string"
+    },
+    "signature": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Signature"
+    },
+    "theme": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ThemeSpec"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "id",
+    "version",
+    "core",
+    "kind",
+    "name",
+    "description",
+    "targets",
+    "author"
+  ],
+  "title": "ModuleManifest",
+  "type": "object"
+}
