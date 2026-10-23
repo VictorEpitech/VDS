@@ -20,6 +20,8 @@ Documentation uniquement, aucun secret. Détail : `docs/integration-studio-allia
 | `VDS_PUBLIC_ORIGIN` | `https://allia-innovation.fr` |
 | `VDS_DATABASE_URL` | `postgresql+asyncpg://<user>:<mot de passe>@vds-db:5432/vds` |
 | `VDS_SECRET_KEY` | secret généré (Dokploy) |
+| `FORWARDED_ALLOW_IPS` | IP ou CIDR du proxy de confiance (Traefik) autorisé à fixer `X-Forwarded-*`, ex. le sous-réseau du réseau Docker de Dokploy. Défaut `127.0.0.1` : aucun en-tête de proxy n'est cru. Ne jamais mettre `*` |
+| `VDS_BOOTSTRAP_TOKEN` | mode autonome seulement (`auth.local`) : jeton à usage unique du premier admin ; absent, il est généré et écrit une fois dans les journaux tant qu'aucun admin n'existe |
 | `STUDIO_SESSION_URL` | `http://<service-website-interne>/api/espace/vds/session` |
 | `STUDIO_SHARED_SECRET` | secret Dokploy, identique à `VDS_STUDIO_SECRET` côté `website` |
 
