@@ -1,0 +1,54 @@
+{
+  "id": "theme.vtech",
+  "version": "0.1.0",
+  "core": ">=1.0 <2.0",
+  "kind": "theme",
+  "name": {
+    "fr": "Thème V-Tech",
+    "en": "V-Tech theme"
+  },
+  "description": {
+    "fr": "Charte V-Tech (Material Design 3), clair et sombre, mode autonome.",
+    "en": "V-Tech design system (Material Design 3), light and dark, standalone mode."
+  },
+  "targets": [
+    "server"
+  ],
+  "entrypoints": {},
+  "requires": {},
+  "capabilities": [],
+  "permissions": [],
+  "events": {
+    "listens": [],
+    "emits": []
+  },
+  "config": {
+    "$ref": "config.schema.json"
+  },
+  "assets": "assets",
+  "i18n": [
+    "fr",
+    "en"
+  ],
+  "author": "V-Tech",
+  "signature": null,
+  "theme": {
+    "css": "assets/theme.css",
+    "fonts": [
+      "assets/fonts/inter-latin-ext-wght-normal.woff2",
+      "assets/fonts/inter-latin-wght-normal.woff2",
+      "assets/fonts/jetbrains-mono-latin-wght-normal.woff2",
+      "assets/fonts/roboto-latin-400-normal.woff2",
+      "assets/fonts/roboto-latin-500-normal.woff2"
+    ],
+    "logo": {
+      "light": "assets/logo-light.svg",
+      "dark": "assets/logo-dark.svg"
+    },
+    "icons": "material-symbols",
+    "color_schemes": [
+      "light",
+      "dark"
+    ]
+  }
+}
