@@ -1,0 +1,51 @@
+{
+  "id": "theme.allia",
+  "version": "0.1.0",
+  "core": ">=1.0 <2.0",
+  "kind": "theme",
+  "name": {
+    "fr": "Thème Allia",
+    "en": "Allia theme"
+  },
+  "description": {
+    "fr": "Charte Allia pour le mode hébergé dans le Studio Allia.",
+    "en": "Allia design system for the mode hosted in the Allia Studio."
+  },
+  "targets": [
+    "server"
+  ],
+  "entrypoints": {},
+  "requires": {},
+  "capabilities": [],
+  "permissions": [],
+  "events": {
+    "listens": [],
+    "emits": []
+  },
+  "config": {
+    "$ref": "config.schema.json"
+  },
+  "assets": "assets",
+  "i18n": [
+    "fr",
+    "en"
+  ],
+  "author": "V-Tech",
+  "signature": null,
+  "theme": {
+    "css": "assets/theme.css",
+    "fonts": [
+      "assets/fonts/bricolage-grotesque-latin-wght-normal.woff2",
+      "assets/fonts/jetbrains-mono-latin-wght-normal.woff2",
+      "assets/fonts/manrope-latin-wght-normal.woff2"
+    ],
+    "logo": {
+      "light": "assets/logo.svg",
+      "dark": "assets/logo.svg"
+    },
+    "icons": "lucide",
+    "color_schemes": [
+      "light"
+    ]
+  }
+}
