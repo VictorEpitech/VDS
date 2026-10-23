@@ -619,3 +619,91 @@ async def test_rate_limit_concurrent_attempts_are_serialized(
     codes = await asyncio.gather(*(attempt() for _ in range(15)))
     assert codes.count(401) == 5
     assert codes.count(429) == 10
+
+
+def _seed_settings(base: str, url: str) -> Settings:
+    return Settings(
+        base_path=base, database_url=url, public_origin=ORIGIN, modules_dir=REPO_MODULES
+    )
+
+
+def _seed_boot(settings: Settings) -> tuple[Runtime, FastAPI]:
+    runtime = Runtime(settings)
+    return runtime, create_app(settings, runtime=runtime)
+
+
+async def _seed_emails(url: str) -> list[str]:
+    engine = create_async_engine(url, poolclass=pool.NullPool)
+    async with engine.connect() as conn:
+        rows = (await conn.execute(text("SELECT email FROM user_account"))).scalars().all()
+    await engine.dispose()
+    return list(rows)
+
+
+async def test_admin_seed_created_idempotent_and_bootstrap_disabled(
+    migrated_db_url: str,
+    clean: None,
+    base: str,
+    p: str,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    monkeypatch.delenv("VDS_BOOTSTRAP_TOKEN", raising=False)
+    monkeypatch.setenv("VDS_ADMIN_EMAIL", "Seed@VDS.test")
+    monkeypatch.setenv("VDS_ADMIN_PASSWORD", PASSWORD)
+    m = f"{p}/api/v1/m/auth.local"
+    settings = _seed_settings(base, migrated_db_url)
+    login = {"email": "seed@vds.test", "password": PASSWORD}
+    with caplog.at_level("DEBUG"):
+        runtime, application = _seed_boot(settings)
+        async with runtime.lifespan(application), new_client(application) as c:
+            assert (await c.get(f"{m}/status")).json() == {"initialized": True}
+            r = await c.post(f"{m}/bootstrap", json=_boot_body("x"), headers=SAME)
+            assert r.status_code == 409
+            assert (await c.post(f"{m}/login", json=login, headers=SAME)).status_code == 200
+        # second démarrage avec un autre mot de passe : rien n'est écrasé ni dupliqué
+        monkeypatch.setenv("VDS_ADMIN_PASSWORD", "another long password!")
+        runtime2, app2 = _seed_boot(settings)
+        async with runtime2.lifespan(app2), new_client(app2) as c:
+            assert (await c.post(f"{m}/login", json=login, headers=SAME)).status_code == 200
+    assert PASSWORD not in caplog.text and "another long password" not in caplog.text
+    assert not [r for r in caplog.records if r.name == "vds.auth.local" and r.levelname != "INFO"]
+    assert await _seed_emails(migrated_db_url) == ["seed@vds.test"]
+
+
+async def test_admin_seed_never_overrides_existing_users(
+    app: FastAPI,
+    anon: AsyncClient,
+    p: str,
+    base: str,
+    migrated_db_url: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    await bootstrap(anon, p)
+    monkeypatch.setenv("VDS_ADMIN_EMAIL", "other@vds.test")
+    monkeypatch.setenv("VDS_ADMIN_PASSWORD", PASSWORD)
+    runtime, application = _seed_boot(_seed_settings(base, migrated_db_url))
+    async with runtime.lifespan(application):
+        pass
+    assert await _seed_emails(migrated_db_url) == ["root@vds.test"]
+
+
+async def test_admin_seed_short_password_ignored_token_kept(
+    migrated_db_url: str,
+    clean: None,
+    base: str,
+    p: str,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    monkeypatch.setenv("VDS_ADMIN_EMAIL", "seed@vds.test")
+    monkeypatch.setenv("VDS_ADMIN_PASSWORD", "short")
+    monkeypatch.setenv("VDS_BOOTSTRAP_TOKEN", TOKEN)
+    m = f"{p}/api/v1/m/auth.local"
+    runtime, application = _seed_boot(_seed_settings(base, migrated_db_url))
+    with caplog.at_level("DEBUG"):
+        async with runtime.lifespan(application), new_client(application) as c:
+            assert (await c.get(f"{m}/status")).json() == {"initialized": False}
+            r = await c.post(f"{m}/bootstrap", json=_boot_body(TOKEN), headers=SAME)
+            assert r.status_code == 201
+    assert "short" not in caplog.text

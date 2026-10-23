@@ -37,6 +37,10 @@ curl -si http://localhost:8000/health | head -20
 
 ## 3. Créer le premier admin
 
+Option rapide : définir `VDS_ADMIN_EMAIL` et `VDS_ADMIN_PASSWORD` dans `.env` avant le premier démarrage. Si aucun compte n'existe, l'admin est créé au démarrage (idempotent, jamais d'écrasement, mot de passe soumis à `password_min_length`, jamais journalisé). Aucun jeton n'est alors généré et `/bootstrap` répond 409 `auth_local.already_initialized` : passer directement à la connexion. Variables absentes ou invalides : amorçage par jeton ci-dessous. Retirer le mot de passe de `.env` après le premier démarrage.
+
+Amorçage par jeton :
+
 ```
 B=http://localhost:8000          # URL de base (ajouter le préfixe au point 9)
 O=http://localhost:8000          # valeur de l'en-tête Origin (sans chemin)

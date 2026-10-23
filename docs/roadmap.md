@@ -112,5 +112,8 @@ Un groupe est rattaché à un seul site · `Cache-Control: no-store` aussi sur l
 - [ ] `Cache-Control: no-store` aussi sur les médias et en mode autonome (proposé : oui, le player et l'agent cachent eux-mêmes)
 - **Contrat de thème côté admin (T8)** : `assets/theme.css` porte tokens `--vds-*`, polices auto-hébergées, icônes (`.vds-icon[data-icon=<nom sémantique>]`, masque CSS) et logo (`.vds-logo`) ; `config.theme.icons/logo` ne sont pas nécessaires. Les liens du mode (ex. « Retour au Studio ») viennent de `config.auth.links` (`{id, href}`, libellé `nav.links.<id>`). Config ESLint dans `apps/admin` (pas à la racine).
 
+### 23 octobre 2026 — Admin initial via l'environnement (auth.local)
+`VDS_ADMIN_EMAIL` + `VDS_ADMIN_PASSWORD` : si définis et qu'aucun compte n'existe, `auth.local` crée le premier admin au démarrage (idempotent, jamais d'écrasement, même politique de longueur, mot de passe jamais journalisé). Pas de jeton généré, `/bootstrap` répond 409. Variables absentes ou invalides : jeton d'amorçage inchangé. `auth.studio-allia` ne les utilise pas.
+
 ### T7 — Authentification (lot 1)
 Rôles V1 = `admin` / `editor` (pas de « lecteur » : absent des docs et du CHECK en base) · lecture du parc et de la config : éditeur ; écriture : admin · `Identity.role = None` → rôle conservé en base, `editor` à la création · le compte noyau d'un provider est créé via la façade `ctx.core.users.provision` réservée au kind `auth-provider` (intégrée au catalogue comme permission `users.provision`, voir décision ci-dessous) · routes de module montées à chaud via `ModuleMux` · migrations : branches `core` et `<id module>`, `alembic upgrade heads` (`python -m vds_server.migrate`).

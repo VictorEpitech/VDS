@@ -8,6 +8,7 @@ import hashlib
 import hmac
 import logging
 import os
+import re
 import secrets
 from typing import Annotated, Any
 from urllib.parse import quote
@@ -146,11 +147,50 @@ class AuthLocal(AuthProvider):
         if n:
             self._bootstrap_token = None
             return
+        if await self._seed_admin_from_env():
+            self._bootstrap_token = None  # admin créé : pas de jeton, /bootstrap répond 409
+            return
         token = os.environ.get("VDS_BOOTSTRAP_TOKEN") or None
         if token is None:
             token = secrets.token_urlsafe(24)
             LOG.warning("auth.local: jeton d'amorçage à usage unique : %s", token)
         self._bootstrap_token = token
+
+    async def _seed_admin_from_env(self) -> bool:
+        """Crée le premier admin depuis VDS_ADMIN_EMAIL / VDS_ADMIN_PASSWORD.
+
+        Idempotent : ne fait rien si un compte existe. Le mot de passe n'est jamais journalisé.
+        Retourne True si un admin a été créé ; sinon l'amorçage par jeton reste actif.
+        """
+        email = (os.environ.get("VDS_ADMIN_EMAIL") or "").strip()
+        password = os.environ.get("VDS_ADMIN_PASSWORD") or ""
+        if not email or not password:
+            return False
+        _, min_len = await self._settings()
+        if (
+            len(password) < min_len
+            or len(password) > 256
+            or len(email) > 254
+            or not re.fullmatch(r"[^@\s]+@[^@\s]+", email)
+        ):
+            LOG.error("auth.local: VDS_ADMIN_EMAIL / VDS_ADMIN_PASSWORD invalides, ignorés")
+            return False
+        async with self.ctx.core.db.session() as s:
+            await s.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": _BOOTSTRAP_LOCK})
+            if (await s.execute(text("SELECT count(*) FROM m_auth_local_credential"))).scalar():
+                return False
+            user_id = await self._create_user(s, email, "Admin", password, "admin", False)
+            self.ctx.core.audit.record(
+                s,
+                action="auth.bootstrap",
+                actor_id=str(user_id),
+                target_type="user",
+                target_id=str(user_id),
+                details={"source": "env"},
+            )
+            await s.commit()
+        LOG.info("auth.local: admin initial créé depuis l'environnement")
+        return True
 
     def _token_ok(self, given: str) -> bool:
         expected = self._bootstrap_token

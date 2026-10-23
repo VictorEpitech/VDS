@@ -269,7 +269,7 @@ Note : les routes de module (`/api/v1/m/<id>/`) sont montées dynamiquement et n
 
 - **Contrôle de même origine** (les deux modes) : toute méthode non sûre sous `<base>/api/` sans `Authorization: Bearer` exige `Sec-Fetch-Site: same-origin` ou un `Origin` égal à `VDS_PUBLIC_ORIGIN` (à défaut, l'origine reconstruite derrière proxy de confiance). Sinon 403 `errors.origin_mismatch`.
 - **En-têtes** (les deux modes, aucune branche) : `X-Robots-Tag: noindex`, `X-Frame-Options: DENY`, `Cache-Control: private, no-store` sur tout le préfixe ; le player et l'agent font leur propre cache.
-- Ce qui varie selon le déploiement passe par : `VDS_BASE_PATH`, `VDS_AUTH_PROVIDER`, `VDS_THEME`, `VDS_DEFAULT_LOCALE`, `VDS_PUBLIC_ORIGIN`, et les clés `x-vds-env` des modules (`STUDIO_SESSION_URL`, `STUDIO_SHARED_SECRET` appartiennent à `auth.studio-allia`). Autres variables : `VDS_DATABASE_URL`, `VDS_SECRET_KEY`, `VDS_MEDIA_DIR`, `VDS_MODULES_DIR`.
+- Ce qui varie selon le déploiement passe par : `VDS_BASE_PATH`, `VDS_AUTH_PROVIDER`, `VDS_THEME`, `VDS_DEFAULT_LOCALE`, `VDS_PUBLIC_ORIGIN`, et les clés `x-vds-env` des modules (`STUDIO_SESSION_URL`, `STUDIO_SHARED_SECRET` appartiennent à `auth.studio-allia` ; `VDS_ADMIN_EMAIL`, `VDS_ADMIN_PASSWORD` appartiennent à `auth.local` : premier admin créé au démarrage si aucun compte n'existe, sans jeton d'amorçage). Autres variables : `VDS_DATABASE_URL`, `VDS_SECRET_KEY`, `VDS_MEDIA_DIR`, `VDS_MODULES_DIR`.
 - Tests : fixture pytest paramétrée sur `/` et `/espace/affichage` pour toute la suite API ; Playwright lancé sur les deux (surcharge `docker/compose.subpath.yaml`) ; matrice CI.
 
 ## Modèle de données initial (migration `0001_socle`, PostgreSQL 17)
