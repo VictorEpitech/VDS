@@ -31,7 +31,10 @@ select = ["E", "F", "I", "UP", "B", "ASYNC", "S"]
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["S101"]
-"**/tests/test_[dp]*.py" = ["F811"]  # fixtures importées de test_auth
+"modules/power.*/agent/**" = ["ASYNC109"]  # timeout borné explicite des protocoles TV
+"modules/power.*/tests/**" = ["ASYNC109", "S105", "S110", "S112", "S303"]
+"apps/site-agent/tests/**" = ["ASYNC109", "S105", "S110"]
+"**/tests/test_[dpa]*.py" = ["F811"]  # fixtures importées de test_auth
 
 [tool.mypy]
 strict = true
@@ -42,4 +45,4 @@ files = ["apps/server/src", "apps/server/tests", "apps/site-agent/src", "package
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["apps/server/tests", "packages/sdk-py/tests"]
+testpaths = ["apps/server/tests", "packages/sdk-py/tests", "apps/site-agent/tests", "modules"]

@@ -612,3 +612,14 @@ Lot 2 : ces trois cas sont documentés ; un profil Compose `https` (service Cadd
 | Statistiques | Journal de lecture remonté par le player |
 | API publique | Clés d'accès + scopes |
 | Catalogue | Signature et métadonnées dans le manifeste |
+
+## Limites découvertes, agent de site et pilotes (lot 3, L3-T7/T8a)
+
+- Contrat : le skill `vds-power-driver` décrit encore `on/off/state/probe` ; le contrat figé est `docs/architecture-lot3.md` § 2.3 (`set_power/get_state/detect`), implémenté tel quel.
+- La trame `event` (`EventData`) n'a pas de champ `source` : le module émetteur n'est pas transmis, seul `driver` figure dans le payload ; l'agent est l'émetteur de `power.*` (cascade côté agent).
+- `retries` = nombre d'essais par pilote (défaut 2 = un retry). Un pilote sans `power.state` (WoL) est vérifié par un autre pilote de l'écran ; sans relecture possible, `power.changed{verified:false}` (écart assumé avec « verified requis », pour ne pas signaler d'échec sur un site WoL seul).
+- Secrets d'appareil (clé ADB, jeton Samsung, empreinte TLS) : table `module_state` de `agent.db`, chiffrée Fernet ; clé dans `VDS_AGENT_STATE_KEY(_FILE)` sinon `state.key` (0600) à côté de la base : protège d'une copie de la base seule, pas d'un hôte compromis (préférer un secret Docker).
+- Révocation `4410` : l'agent efface états, outbox et plan, puis s'arrête (le jeton d'environnement n'est pas supprimé).
+- CEC Active Source au rallumage : exécuté par le player (T8b), pas par l'agent.
+- ADB : pas de STLS ; TV en veille profonde souvent injoignable (voir `docs/drivers/power.adb.md`). Samsung : `KEY_POWER` bascule ; empreinte épinglée au premier contact. Aucun pilote testé sur matériel réel dans ce lot.
+- Modules : le runtime n'active que l'intersection `welcome.modules_enabled` à version identique ; hors ligne, le dernier `modules_enabled` connu est réutilisé (aucune activation avant le premier `welcome`). `cache.sync` répond `failed/agent.cache_unavailable` (T9).
