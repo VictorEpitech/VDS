@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# Image unique : API + admin (build Vite) + player (placeholder tant que le lot 2 n'existe pas).
+# Image unique : API + admin + player (builds Vite).
 FROM node:22-slim AS web
 RUN corepack enable
 WORKDIR /repo
@@ -20,6 +20,9 @@ RUN mkdir -p /out/player \
 
 FROM python:3.12-slim
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+# ffprobe : durée et dimensions des vidéos (module content.video).
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
+ && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY pyproject.toml uv.lock .python-version ./
 COPY apps/server apps/server

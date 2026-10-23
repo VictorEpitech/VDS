@@ -1,5 +1,6 @@
 """Cycle de vie des modules : sync en table `module`, activation, désactivation, quarantaine."""
 
+import json
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -23,6 +24,7 @@ from .runtime import load_server_module, make_context
 log = logging.getLogger("vds.registry")
 
 ACTIVATABLE = {"discovered", "disabled", "quarantined"}
+DEFAULT_ENABLED_KINDS = {"content-type"}
 
 
 @dataclass
@@ -81,9 +83,18 @@ class ModuleRegistry:
     async def start(self) -> None:
         await self.sync()
         async with self.maker() as s:
-            wanted = {
-                r.id for r in (await s.execute(select(ModuleRow))).scalars() if r.state == "enabled"
-            }
+            rows = list((await s.execute(select(ModuleRow))).scalars())
+        wanted = {r.id for r in rows if r.state == "enabled"}
+        # Types de contenu intégrés : actifs par défaut (sinon un média envoyé n'est pas traité).
+        # Un module désactivé ou en quarantaine par l'admin n'est jamais réactivé ici.
+        wanted |= {
+            r.id
+            for r in rows
+            if r.state == "discovered"
+            and r.kind in DEFAULT_ENABLED_KINDS
+            and r.id in self._known
+            and not self._known[r.id].error
+        }
         for mid in self.required:
             if mid not in self._known:
                 self.startup_errors[mid] = "module.required_missing"
@@ -135,6 +146,67 @@ class ModuleRegistry:
     def config_schema(self, module_id: str) -> dict[str, Any] | None:
         d = self._known.get(module_id)
         return d.config_schema if d else None
+
+    def content_item_schema(self, module_id: str) -> dict[str, Any] | None:
+        """Schéma des éléments d'un content-type actif ; None si inconnu, inactif ou autre kind."""
+        run = self._running.get(module_id)
+        content = run.found.manifest.content if run else None
+        if run is None or content is None:
+            return None
+        loaded: Any = json.loads((run.found.path / content.item_schema).read_text("utf-8"))
+        return dict(loaded)
+
+    def content_entry(self, module_id: str) -> dict[str, Any] | None:
+        """Entrée player d'un content-type actif (version, élément, script, réseau) ; sinon None."""
+        run = self._running.get(module_id)
+        content = run.found.manifest.content if run else None
+        if run is None or content is None:
+            return None
+        return {
+            "version": run.found.manifest.version,
+            "element": content.player.element,
+            "script": f"modules/{module_id}/{content.player.script}",
+            "requires_network": content.requires_network,
+        }
+
+    def content_types(self) -> list[dict[str, Any]]:
+        """Content-types actifs : manifeste, schémas (élément, config), traductions, lus à chaud."""
+        out: list[dict[str, Any]] = []
+        for mid, run in sorted(self._running.items()):
+            m, content = run.found.manifest, run.found.manifest.content
+            if content is None:
+                continue
+            i18n: dict[str, Any] = {}
+            for locale in m.i18n:
+                f = run.found.path / "i18n" / f"{locale}.json"
+                if f.is_file():
+                    i18n[locale] = json.loads(f.read_text("utf-8"))
+            item_schema: Any = json.loads((run.found.path / content.item_schema).read_text("utf-8"))
+            out.append(
+                {
+                    "id": mid,
+                    "version": m.version,
+                    "name": m.name.model_dump(),
+                    "description": m.description.model_dump(),
+                    "element": content.player.element,
+                    "accepts": content.media.accepts if content.media else [],
+                    "requires_network": content.requires_network,
+                    "item_schema": item_schema,
+                    "config_schema": run.found.config_schema,
+                    "i18n": i18n,
+                }
+            )
+        return out
+
+    def content_processor(self, mime: str) -> tuple[str, Module] | None:
+        """Module content-type actif dont `content.media.accepts` couvre ce MIME."""
+        for mid, run in sorted(self._running.items()):
+            content = run.found.manifest.content
+            if content is None or run.instance is None or not content.media:
+                continue
+            if mime in content.media.accepts:
+                return mid, run.instance
+        return None
 
     def instance(self, module_id: str) -> Module | None:
         run = self._running.get(module_id)

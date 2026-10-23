@@ -21,12 +21,15 @@ class SameOriginMiddleware:
         self.app = app
         self.settings = settings
         self.api_prefix = f"{settings.prefix}/api/"
+        # démarrage d'appairage : anonyme, sans cookie, appelé par le player (origine arbitraire)
+        self.exempt = {f"{settings.prefix}/api/v1/player/pairings"}
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if (
             scope["type"] != "http"
             or scope["method"] in _SAFE
             or not scope["path"].startswith(self.api_prefix)
+            or scope["path"] in self.exempt
         ):
             await self.app(scope, receive, send)
             return

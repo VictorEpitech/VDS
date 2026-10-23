@@ -25,6 +25,16 @@ CORE_SCHEMA: dict[str, Any] = {
             "default": "fr",
             "x-vds-level": "simple",
         },
+        "media_max_upload_mb": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 16384,
+            "title": "config.core.media_max_upload_mb.title",
+            "description": "config.core.media_max_upload_mb.description",
+            "default": 2048,
+            "x-vds-level": "advanced",
+            "x-vds-scopes": ["organization"],
+        },
     },
 }
 

@@ -7,7 +7,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, FastAPI
 
-from vds_server.api.v1 import health, inventory, me
+from vds_server.api.v1 import diffusion, health, inventory, me, media_files, player, registry
 from vds_server.config.api import ConfigDeps
 from vds_server.config.api import build_router as build_config_router
 from vds_server.core.auth import Principal
@@ -56,6 +56,10 @@ def create_app(
         pipeline = runtime.pipeline
         inner.include_router(me.build_router(runtime))
         inner.include_router(inventory.build_router(runtime))
+        inner.include_router(diffusion.build_router(runtime))
+        inner.include_router(media_files.build_router(runtime))
+        inner.include_router(player.build_router(runtime))
+        inner.include_router(registry.build_router(runtime))
         inner.include_router(
             build_config_router(
                 ConfigDeps(

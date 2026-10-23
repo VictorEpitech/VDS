@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse, HTMLResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 
 from vds_server.settings import Settings
 
@@ -45,8 +45,16 @@ def build_config_js(settings: Settings, auth_info: AuthInfo = no_auth) -> str:
     return "window.__VDS__ = " + json.dumps(cfg).replace("</", "<\\/") + ";\n"
 
 
-def inject_base_href(html: str, settings: Settings) -> str:
-    tag = f'<base href="{settings.prefix}/">'
+PLAYER_CSP = (
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; "
+    "connect-src 'self'; frame-src https:; worker-src 'self'; object-src 'none'; "
+    "base-uri 'self'"
+)
+
+
+def inject_base_href(html: str, settings: Settings, sub: str = "") -> str:
+    tag = f'<base href="{settings.prefix}/{sub}">'
     lower = html.lower()
     i = lower.find("<head")
     if i == -1:
@@ -81,12 +89,43 @@ def build_router(settings: Settings, auth_info: AuthInfo = no_auth) -> APIRouter
             return candidate
         return None
 
+    player_dir = settings.player_dir
+    player_html: str | None = None
+    if player_dir is not None and (player_dir / "index.html").is_file():
+        player_html = inject_base_href(
+            (player_dir / "index.html").read_text("utf-8"), settings, "player/"
+        )
+
+    def _player_file(rel: str) -> Path | None:
+        if player_dir is None or not rel:
+            return None
+        root = player_dir.resolve()
+        candidate = (root / rel).resolve()
+        if candidate.is_file() and candidate.is_relative_to(root) and rel != "index.html":
+            return candidate
+        return None
+
+    @router.get("/player", include_in_schema=False)
+    async def player_redirect() -> Response:
+        return RedirectResponse(f"{settings.prefix}/player/", status_code=307)
+
+    @router.get("/player/{path:path}", include_in_schema=False)
+    async def player(path: str) -> Response:
+        # Ressources de l'application (JS, CSS, sw.js) ; `<base>/player/` seul = page du player.
+        f = _player_file(path)
+        if f is not None:
+            return FileResponse(f, headers={"Content-Security-Policy": PLAYER_CSP})
+        if player_html is None or path:
+            raise HTTPException(status_code=404, detail="errors.not_found")
+        return HTMLResponse(player_html, headers={"Content-Security-Policy": PLAYER_CSP})
+
     modules_root = settings.modules_dir.resolve()
 
     @router.get("/modules/{module_id}/assets/{rel:path}", include_in_schema=False)
     async def module_asset(module_id: str, rel: str) -> Response:
-        # Seuls les thèmes exposent des ressources publiques (tokens, polices, icônes, logo).
-        if not module_id.startswith("theme.") or not _MODULE_ID.fullmatch(module_id):
+        # Ressources publiques : thèmes (tokens, polices, icônes, logo) et code `player.js` des
+        # content-types (aucun secret ; le player les met en cache pour le hors ligne).
+        if not module_id.startswith(("theme.", "content.")) or not _MODULE_ID.fullmatch(module_id):
             raise HTTPException(status_code=404, detail="errors.not_found")
         root = (modules_root / module_id / "assets").resolve()
         candidate = (root / rel).resolve()

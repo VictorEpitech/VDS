@@ -18,8 +18,10 @@ class Settings(BaseSettings):
     default_locale: str = "fr"
     auth_provider: str = "auth.local"
     theme: str = "theme.vtech"
+    storage: str = "storage.local"
     version: str = "0.0.0"
     admin_dir: Path | None = None
+    player_dir: Path | None = None
     modules_dir: Path = Path("modules")
     organization_name: str = "VDS"
     quarantine_failures: int = 5

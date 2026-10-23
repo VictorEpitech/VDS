@@ -1,6 +1,6 @@
 """Modèles du socle (miroir de la migration 0001_socle)."""
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
@@ -12,6 +12,7 @@ from sqlalchemy import (
     ForeignKeyConstraint,
     Index,
     Integer,
+    SmallInteger,
     Text,
     UniqueConstraint,
     text,
@@ -209,3 +210,196 @@ class AuditLog(Base, Timestamps):
     target_type: Mapped[str | None] = mapped_column(Text)
     target_id: Mapped[str | None] = mapped_column(Text)
     details: Mapped[Any] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
+
+
+# --- Diffusion (miroir de 0002_diffusion) ------------------------------------
+
+
+class ScreenDevice(Base, Timestamps):
+    __tablename__ = "screen_device"
+    __table_args__ = (
+        UniqueConstraint("token_hash"),
+        Index(
+            "uq_screen_device_active_screen",
+            "screen_id",
+            unique=True,
+            postgresql_where=text("revoked_at IS NULL"),
+        ),
+    )
+
+    id: Mapped[UUID] = uuid_pk()
+    screen_id: Mapped[UUID] = mapped_column(ForeignKey("screen.id", ondelete="CASCADE"))
+    token_hash: Mapped[str] = mapped_column(Text)
+    platform: Mapped[str] = mapped_column(Text)
+    model: Mapped[str | None] = mapped_column(Text)
+    app_version: Mapped[str | None] = mapped_column(Text)
+    paired_at: Mapped[datetime] = tstz()
+    paired_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("user_account.id", ondelete="SET NULL")
+    )
+    last_seen_at: Mapped[datetime | None] = tstz(nullable=True, now=False)
+    last_heartbeat: Mapped[Any | None] = mapped_column(JSONB)
+    expires_at: Mapped[datetime | None] = tstz(nullable=True, now=False)
+    revoked_at: Mapped[datetime | None] = tstz(nullable=True, now=False)
+    revoked_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("user_account.id", ondelete="SET NULL")
+    )
+
+
+class PairingRequest(Base, Timestamps):
+    __tablename__ = "pairing_request"
+    __table_args__ = (
+        CheckConstraint("status IN ('pending','claimed','consumed','expired')", name="status"),
+        Index(
+            "uq_pairing_request_pending_code",
+            "code",
+            unique=True,
+            postgresql_where=text("status = 'pending'"),
+        ),
+        Index("ix_pairing_request_expires_at", "expires_at"),
+    )
+
+    id: Mapped[UUID] = uuid_pk()
+    code: Mapped[str] = mapped_column(CITEXT)
+    poll_secret_hash: Mapped[str] = mapped_column(Text)
+    device: Mapped[Any] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
+    status: Mapped[str] = mapped_column(Text, server_default="pending")
+    screen_id: Mapped[UUID | None] = mapped_column(ForeignKey("screen.id", ondelete="CASCADE"))
+    claimed_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("user_account.id", ondelete="SET NULL")
+    )
+    expires_at: Mapped[datetime] = tstz(now=False)
+
+
+class Media(Base, Timestamps):
+    __tablename__ = "media"
+    __table_args__ = (
+        CheckConstraint("kind IN ('image','video','document')", name="kind"),
+        CheckConstraint("status IN ('processing','ready','failed')", name="status"),
+        Index("ix_media_sha256", "sha256"),
+        Index("ix_media_kind", "kind"),
+    )
+
+    id: Mapped[UUID] = uuid_pk()
+    kind: Mapped[str] = mapped_column(Text)
+    title: Mapped[str] = mapped_column(Text)
+    original_filename: Mapped[str | None] = mapped_column(Text)
+    mime: Mapped[str] = mapped_column(Text)
+    bytes: Mapped[int] = mapped_column(BigInteger, server_default="0")
+    sha256: Mapped[str | None] = mapped_column(Text)
+    width: Mapped[int | None] = mapped_column(Integer)
+    height: Mapped[int | None] = mapped_column(Integer)
+    duration_ms: Mapped[int | None] = mapped_column(Integer)
+    page_count: Mapped[int | None] = mapped_column(Integer)
+    storage_backend: Mapped[str | None] = mapped_column(Text)
+    storage_key: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text, server_default="processing")
+    error: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("user_account.id", ondelete="SET NULL")
+    )
+
+
+class MediaVariant(Base, Timestamps):
+    __tablename__ = "media_variant"
+
+    media_id: Mapped[UUID] = mapped_column(
+        ForeignKey("media.id", ondelete="CASCADE"), primary_key=True
+    )
+    name: Mapped[str] = mapped_column(Text, primary_key=True)
+    mime: Mapped[str] = mapped_column(Text)
+    bytes: Mapped[int] = mapped_column(BigInteger, server_default="0")
+    sha256: Mapped[str | None] = mapped_column(Text)
+    width: Mapped[int | None] = mapped_column(Integer)
+    height: Mapped[int | None] = mapped_column(Integer)
+    storage_key: Mapped[str] = mapped_column(Text)
+
+
+class Playlist(Base, Timestamps):
+    __tablename__ = "playlist"
+
+    id: Mapped[UUID] = uuid_pk()
+    name: Mapped[str] = mapped_column(Text)
+    description: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("user_account.id", ondelete="SET NULL")
+    )
+    updated_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("user_account.id", ondelete="SET NULL")
+    )
+
+
+class PlaylistItem(Base, Timestamps):
+    __tablename__ = "playlist_item"
+    __table_args__ = (
+        CheckConstraint("duration_ms IS NULL OR duration_ms > 0", name="duration"),
+        UniqueConstraint("playlist_id", "position", deferrable=True, initially="DEFERRED"),
+    )
+
+    id: Mapped[UUID] = uuid_pk()
+    playlist_id: Mapped[UUID] = mapped_column(ForeignKey("playlist.id", ondelete="CASCADE"))
+    position: Mapped[int] = mapped_column(Integer)
+    content_type: Mapped[str] = mapped_column(Text)
+    props: Mapped[Any] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
+    duration_ms: Mapped[int | None] = mapped_column(Integer)
+    enabled: Mapped[bool] = mapped_column(server_default=text("true"))
+
+
+class PlaylistItemMedia(Base):
+    __tablename__ = "playlist_item_media"
+    __table_args__ = (Index("ix_playlist_item_media_media_id", "media_id"),)
+
+    item_id: Mapped[UUID] = mapped_column(
+        ForeignKey("playlist_item.id", ondelete="CASCADE"), primary_key=True
+    )
+    media_id: Mapped[UUID] = mapped_column(
+        ForeignKey("media.id", ondelete="RESTRICT"), primary_key=True
+    )
+
+
+class Schedule(Base, Timestamps):
+    __tablename__ = "schedule"
+    __table_args__ = (
+        CheckConstraint(
+            "target_type IN ('organization','site','group','screen')", name="target_type"
+        ),
+        CheckConstraint(
+            "starts_on IS NULL OR ends_on IS NULL OR starts_on <= ends_on", name="period"
+        ),
+        Index("ix_schedule_target", "target_type", "target_id"),
+        Index("ix_schedule_playlist_id", "playlist_id"),
+    )
+
+    id: Mapped[UUID] = uuid_pk()
+    name: Mapped[str] = mapped_column(Text)
+    playlist_id: Mapped[UUID] = mapped_column(ForeignKey("playlist.id", ondelete="RESTRICT"))
+    target_type: Mapped[str] = mapped_column(Text)
+    target_id: Mapped[UUID] = mapped_column()
+    priority: Mapped[int] = mapped_column(Integer, server_default="0")
+    starts_on: Mapped[date | None] = mapped_column()
+    ends_on: Mapped[date | None] = mapped_column()
+    enabled: Mapped[bool] = mapped_column(server_default=text("true"))
+    conditions: Mapped[Any | None] = mapped_column(JSONB)  # point d'accroche, ignoré en V1
+    created_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("user_account.id", ondelete="SET NULL")
+    )
+    updated_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("user_account.id", ondelete="SET NULL")
+    )
+
+
+class ScheduleRule(Base, Timestamps):
+    __tablename__ = "schedule_rule"
+    __table_args__ = (
+        CheckConstraint("weekdays BETWEEN 1 AND 127", name="weekdays"),
+        CheckConstraint(
+            "start_minute >= 0 AND start_minute < end_minute AND end_minute <= 1440", name="range"
+        ),
+        Index("ix_schedule_rule_schedule_id", "schedule_id"),
+    )
+
+    id: Mapped[UUID] = uuid_pk()
+    schedule_id: Mapped[UUID] = mapped_column(ForeignKey("schedule.id", ondelete="CASCADE"))
+    weekdays: Mapped[int] = mapped_column(SmallInteger)
+    start_minute: Mapped[int] = mapped_column(SmallInteger)
+    end_minute: Mapped[int] = mapped_column(SmallInteger)

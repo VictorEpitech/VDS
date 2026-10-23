@@ -48,3 +48,11 @@ async def conn(migrated_db_url: str) -> AsyncIterator[AsyncConnection]:
         yield connection
         await trans.rollback()
     await engine.dispose()
+
+
+@pytest.fixture(autouse=True)
+def _default_media_dir(
+    tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """storage.local est requis au démarrage : jamais d'écriture dans /data/media en test."""
+    monkeypatch.setenv("VDS_MEDIA_DIR", str(tmp_path_factory.mktemp("media")))

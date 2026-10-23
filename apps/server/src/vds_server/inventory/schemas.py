@@ -75,6 +75,30 @@ class ScreenPatch(_In):
     archived: bool | None = None
 
 
+Presence = Literal["online", "offline", "unseen", "revoked"]
+
+
+class DeviceHeartbeatOut(BaseModel):
+    revision: str | None = None
+    stale: bool = False
+    uptime_s: int | None = None
+    missing_assets: int = 0
+
+
+class DeviceStateOut(BaseModel):
+    """Appareil appairé d'un écran (jamais le jeton ni son empreinte)."""
+
+    id: UUID
+    presence: Presence
+    platform: str
+    model: str | None
+    app_version: str | None
+    paired_at: datetime
+    last_seen_at: datetime | None
+    revoked_at: datetime | None
+    heartbeat: DeviceHeartbeatOut | None
+
+
 class ScreenOut(_Out):
     id: UUID
     site_id: UUID
@@ -82,3 +106,4 @@ class ScreenOut(_Out):
     name: str
     orientation: Orientation
     archived_at: datetime | None
+    device: DeviceStateOut | None = None  # None : écran non appairé

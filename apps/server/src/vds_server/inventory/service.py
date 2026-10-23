@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from vds_sdk import Event, EventBus
@@ -12,7 +12,7 @@ from vds_sdk import Event, EventBus
 from vds_server.core import audit
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
-from vds_server.db.models import Organization, Screen, ScreenGroup, Site
+from vds_server.db.models import Organization, Schedule, Screen, ScreenGroup, Site
 from vds_server.inventory import schemas as sc
 
 
@@ -118,9 +118,19 @@ class InventoryService:
         screens = await self._count(Screen, Screen.site_id == site_id)
         if groups or screens:
             raise ApiError("site.not_empty", 409, groups=groups, screens=screens)
+        dropped = await self._drop_schedules("site", site_id)
         await self._s.delete(site)
-        self._audit("site.deleted", "site", site_id, slug=site.slug)
+        self._audit("site.deleted", "site", site_id, slug=site.slug, schedules_deleted=dropped)
         await self._commit("site.not_empty")
+
+    async def _drop_schedules(self, target_type: str, target_id: UUID) -> int:
+        """Une programmation ne survit pas à sa cible (pas de FK polymorphe)."""
+        res = await self._s.execute(
+            delete(Schedule).where(
+                Schedule.target_type == target_type, Schedule.target_id == target_id
+            )
+        )
+        return int(res.rowcount or 0)  # type: ignore[attr-defined]
 
     async def _count(self, model: Any, *where: Any) -> int:
         return int(
@@ -160,8 +170,15 @@ class InventoryService:
         screens = await self._count(Screen, Screen.group_id == group_id)
         if screens:
             raise ApiError("group.not_empty", 409, screens=screens)
+        dropped = await self._drop_schedules("group", group_id)
         await self._s.delete(group)
-        self._audit("group.deleted", "group", group_id, site_id=str(group.site_id))
+        self._audit(
+            "group.deleted",
+            "group",
+            group_id,
+            site_id=str(group.site_id),
+            schedules_deleted=dropped,
+        )
         await self._commit("group.not_empty")
 
     # --- écrans ----------------------------------------------------------
@@ -220,6 +237,13 @@ class InventoryService:
 
     async def delete_screen(self, screen_id: UUID) -> None:
         screen = await self.get_screen(screen_id)
+        dropped = await self._drop_schedules("screen", screen_id)
         await self._s.delete(screen)
-        self._audit("screen.deleted", "screen", screen_id, site_id=str(screen.site_id))
+        self._audit(
+            "screen.deleted",
+            "screen",
+            screen_id,
+            site_id=str(screen.site_id),
+            schedules_deleted=dropped,
+        )
         await self._commit("screen.conflict")

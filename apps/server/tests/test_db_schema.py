@@ -113,3 +113,37 @@ async def test_models_match_migration(conn: AsyncConnection) -> None:
 def test_downgrade_then_upgrade(migrated_db_url: str, alembic_cfg: Config) -> None:
     command.downgrade(alembic_cfg, "base")
     command.upgrade(alembic_cfg, "heads")
+
+
+async def test_diffusion_constraints(session: AsyncSession) -> None:
+    _, a, _ = await _seed(session)
+    screen = Screen(site_id=a.id, name="Hall")
+    session.add(screen)
+    await session.flush()
+    revoked = (
+        "INSERT INTO screen_device (screen_id, token_hash, platform, revoked_at) "
+        "VALUES (:s, :h, 'web', now())"
+    )
+    for h in ("h1", "h2"):  # plusieurs appareils révoqués : permis
+        await session.execute(text(revoked), {"s": screen.id, "h": h})
+    ins = "INSERT INTO screen_device (screen_id, token_hash, platform) VALUES (:s, :h, 'web')"
+    await session.execute(text(ins), {"s": screen.id, "h": "h3"})
+    with pytest.raises(IntegrityError):  # un seul appareil actif par écran
+        async with session.begin_nested():
+            await session.execute(text(ins), {"s": screen.id, "h": "h4"})
+    new_pl = text("INSERT INTO playlist (name) VALUES ('p') RETURNING id")
+    pl = (await session.execute(new_pl)).scalar_one()
+    new_sc = text(
+        "INSERT INTO schedule (name, playlist_id, target_type, target_id) "
+        "VALUES ('s', :p, 'screen', :t) RETURNING id"
+    )
+    sid = (await session.execute(new_sc, {"p": pl, "t": screen.id})).scalar_one()
+    rule = text(
+        "INSERT INTO schedule_rule (schedule_id, weekdays, start_minute, end_minute) "
+        "VALUES (:s, 1, :a, :b)"
+    )
+    await session.execute(rule, {"s": sid, "a": 600, "b": 1440})
+    for lo, hi in ((600, 600), (700, 600), (0, 1441)):
+        with pytest.raises(IntegrityError):
+            async with session.begin_nested():
+                await session.execute(rule, {"s": sid, "a": lo, "b": hi})

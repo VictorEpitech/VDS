@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from vds_server.core.auth import Principal
 from vds_server.core.runtime import Runtime
 from vds_server.inventory import schemas as sc
+from vds_server.inventory.devices import screens_out
 from vds_server.inventory.service import InventoryService
 
 
@@ -81,6 +82,7 @@ def build_router(rt: Runtime) -> APIRouter:
     @router.get("/screens", response_model=list[sc.ScreenOut])
     async def list_screens(
         s: Read,
+        session: Session,
         site_id: UUID | None = None,
         group_id: UUID | None = None,
         include_archived: bool = False,
@@ -88,19 +90,21 @@ def build_router(rt: Runtime) -> APIRouter:
         rows = await s.list_screens(
             site_id=site_id, group_id=group_id, include_archived=include_archived
         )
-        return [sc.ScreenOut.model_validate(r) for r in rows]
+        return await screens_out(session, rows)
 
     @router.post("/screens", response_model=sc.ScreenOut, status_code=201)
-    async def create_screen(body: sc.ScreenCreate, s: Write) -> sc.ScreenOut:
-        return sc.ScreenOut.model_validate(await s.create_screen(body))
+    async def create_screen(body: sc.ScreenCreate, s: Write, session: Session) -> sc.ScreenOut:
+        return (await screens_out(session, [await s.create_screen(body)]))[0]
 
     @router.get("/screens/{screen_id}", response_model=sc.ScreenOut)
-    async def get_screen(screen_id: UUID, s: Read) -> sc.ScreenOut:
-        return sc.ScreenOut.model_validate(await s.get_screen(screen_id))
+    async def get_screen(screen_id: UUID, s: Read, session: Session) -> sc.ScreenOut:
+        return (await screens_out(session, [await s.get_screen(screen_id)]))[0]
 
     @router.patch("/screens/{screen_id}", response_model=sc.ScreenOut)
-    async def patch_screen(screen_id: UUID, body: sc.ScreenPatch, s: Write) -> sc.ScreenOut:
-        return sc.ScreenOut.model_validate(await s.update_screen(screen_id, body))
+    async def patch_screen(
+        screen_id: UUID, body: sc.ScreenPatch, s: Write, session: Session
+    ) -> sc.ScreenOut:
+        return (await screens_out(session, [await s.update_screen(screen_id, body)]))[0]
 
     @router.delete("/screens/{screen_id}", status_code=204)
     async def delete_screen(screen_id: UUID, s: Write) -> Response:

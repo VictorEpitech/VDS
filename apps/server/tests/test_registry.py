@@ -66,6 +66,7 @@ async def test_builtin_modules_synced(maker: async_sessionmaker[AsyncSession]) -
     async with maker() as s:
         rows = {r.id: r for r in (await s.execute(select(ModuleRow))).scalars()}
     assert {"theme.vtech", "theme.allia"} <= rows.keys()
+    assert {"content.image", "content.video", "content.pdf", "content.url"} <= rows.keys()
     assert rows["theme.vtech"].state == "enabled" and rows["theme.vtech"].source == "builtin"
     assert rows["theme.allia"].state == "discovered"
     assert rows["theme.vtech"].config_schema is not None
@@ -76,6 +77,23 @@ async def test_builtin_modules_synced(maker: async_sessionmaker[AsyncSession]) -
     row = await reg.get("theme.allia")
     assert row is not None and row.state == "disabled"
     await reg.stop()
+
+
+async def test_content_types_enabled_by_default(maker: async_sessionmaker[AsyncSession]) -> None:
+    reg = ModuleRegistry(maker, CoreBus(maker), REPO_MODULES, required=("theme.vtech",))
+    await reg.start()
+    ids = ["content.image", "content.video", "content.pdf", "content.url"]
+    assert all(reg.is_running(i) for i in ids)
+    assert reg.content_processor("image/png") is not None
+    await reg.disable("content.url")  # choix de l'admin : jamais réactivé au redémarrage
+    await reg.stop()
+    reg2 = ModuleRegistry(maker, CoreBus(maker), REPO_MODULES, required=("theme.vtech",))
+    await reg2.start()
+    assert reg2.is_running("content.image") and not reg2.is_running("content.url")
+    async with maker() as s:
+        row = await s.get(ModuleRow, "content.url")
+    assert row is not None and row.state == "disabled"
+    await reg2.stop()
 
 
 async def test_undeclared_publish_refused(
