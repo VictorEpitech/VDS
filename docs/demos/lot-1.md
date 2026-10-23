@@ -41,14 +41,19 @@ curl -si http://localhost:8000/health | head -20
 B=http://localhost:8000          # URL de base (ajouter le préfixe au point 9)
 O=http://localhost:8000          # valeur de l'en-tête Origin (sans chemin)
 read -rs PW; echo                # saisir un mot de passe (12 caractères ou plus)
+# Jeton d'amorçage à usage unique : VDS_BOOTSTRAP_TOKEN s'il est défini, sinon celui écrit une fois
+# dans les journaux au démarrage (tant qu'aucun admin n'existe).
+docker compose -f docker/compose.yaml logs server | grep -i amorçage
+read -rs TOKEN; echo             # coller le jeton
 curl -s $B/api/v1/m/auth.local/status | jq .
 curl -s -c jar -H "Origin: $O" -H 'Content-Type: application/json' \
-  -d "$(jq -n --arg p "$PW" '{email:"admin@vds.local",display_name:"Admin",password:$p}')" \
+  -d "$(jq -n --arg p "$PW" --arg t "$TOKEN" '{email:"admin@vds.local",display_name:"Admin",password:$p,bootstrap_token:$t}')" \
   $B/api/v1/m/auth.local/bootstrap | jq .
 ```
 
 - [ ] Amorçage : 201, rôle `admin`.
-- [ ] Rejouer l'amorçage : refusé (un seul premier admin).
+- [ ] Rejouer l'amorçage : refusé (un seul premier admin ; le jeton est invalidé après usage).
+- [ ] Jeton absent ou faux : 403 `auth_local.bootstrap_token_invalid`.
 - [ ] Sans cookie : `curl -s -o /dev/null -w '%{http_code}\n' $B/api/v1/sites` donne 401.
 - [ ] Écriture avec `-H 'Origin: https://evil.test'` : 403 `errors.origin_mismatch`.
 
