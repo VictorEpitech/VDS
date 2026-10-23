@@ -1,0 +1,54 @@
+{
+  "id": "content.pdf",
+  "version": "0.1.0",
+  "core": ">=1.1 <2.0",
+  "kind": "content-type",
+  "name": {
+    "fr": "PDF",
+    "en": "PDF"
+  },
+  "description": {
+    "fr": "Affiche un document PDF page par page.",
+    "en": "Shows a PDF document page by page."
+  },
+  "targets": [
+    "server",
+    "player",
+    "admin"
+  ],
+  "entrypoints": {
+    "server": "server.module:ContentPdf"
+  },
+  "requires": {},
+  "capabilities": [
+    "content.pdf"
+  ],
+  "permissions": [],
+  "events": {
+    "listens": [],
+    "emits": []
+  },
+  "config": {
+    "$ref": "config.schema.json"
+  },
+  "assets": "assets",
+  "content": {
+    "item_schema": "item.schema.json",
+    "player": {
+      "element": "vds-content-pdf",
+      "script": "assets/player.js"
+    },
+    "media": {
+      "accepts": [
+        "application/pdf"
+      ]
+    },
+    "requires_network": false
+  },
+  "i18n": [
+    "fr",
+    "en"
+  ],
+  "author": "V-Tech",
+  "signature": null
+}

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "render_width": {
+      "type": "integer",
+      "default": 3840,
+      "title": "config.content_pdf.render_width.title",
+      "description": "config.content_pdf.render_width.description",
+      "x-vds-level": "advanced",
+      "minimum": 1280,
+      "maximum": 3840,
+      "x-vds-scopes": [
+        "organization"
+      ]
+    },
+    "max_pages": {
+      "type": "integer",
+      "default": 100,
+      "title": "config.content_pdf.max_pages.title",
+      "description": "config.content_pdf.max_pages.description",
+      "x-vds-level": "advanced",
+      "minimum": 1,
+      "maximum": 500,
+      "x-vds-scopes": [
+        "organization"
+      ]
+    }
+  }
+}

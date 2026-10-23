@@ -1,0 +1,32 @@
+{
+  "module": {
+    "name": "Image",
+    "description": "Affiche une image fixe (JPEG, PNG, WebP, GIF) pendant la durée de l'élément de playlist."
+  },
+  "config": {
+    "content_image": {
+      "thumb_size": {
+        "title": "Taille des vignettes",
+        "description": "Côté maximal, en pixels, des vignettes générées à l'envoi."
+      }
+    }
+  },
+  "item": {
+    "content_image": {
+      "media": {
+        "title": "Image",
+        "description": "Image à afficher."
+      },
+      "fit": {
+        "title": "Ajustement",
+        "description": "Contain : image entière avec marges. Cover : remplit la zone en rognant."
+      }
+    }
+  },
+  "errors": {
+    "content_image": {
+      "invalid": "Image illisible ou corrompue.",
+      "too_large": "Image trop grande (dimensions)."
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "probe_timeout_s": {
+      "type": "integer",
+      "default": 30,
+      "title": "config.content_video.probe_timeout_s.title",
+      "description": "config.content_video.probe_timeout_s.description",
+      "x-vds-level": "advanced",
+      "minimum": 5,
+      "maximum": 300,
+      "x-vds-scopes": [
+        "organization"
+      ]
+    }
+  }
+}

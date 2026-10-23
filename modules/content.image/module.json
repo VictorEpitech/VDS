@@ -1,0 +1,57 @@
+{
+  "id": "content.image",
+  "version": "0.1.0",
+  "core": ">=1.1 <2.0",
+  "kind": "content-type",
+  "name": {
+    "fr": "Image",
+    "en": "Image"
+  },
+  "description": {
+    "fr": "Affiche une image fixe (JPEG, PNG, WebP, GIF) pendant la durée de l'élément de playlist.",
+    "en": "Shows a still image (JPEG, PNG, WebP, GIF) for the playlist item duration."
+  },
+  "targets": [
+    "server",
+    "player",
+    "admin"
+  ],
+  "entrypoints": {
+    "server": "server.module:ContentImage"
+  },
+  "requires": {},
+  "capabilities": [
+    "content.image"
+  ],
+  "permissions": [],
+  "events": {
+    "listens": [],
+    "emits": []
+  },
+  "config": {
+    "$ref": "config.schema.json"
+  },
+  "assets": "assets",
+  "content": {
+    "item_schema": "item.schema.json",
+    "player": {
+      "element": "vds-content-image",
+      "script": "assets/player.js"
+    },
+    "media": {
+      "accepts": [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/gif"
+      ]
+    },
+    "requires_network": false
+  },
+  "i18n": [
+    "fr",
+    "en"
+  ],
+  "author": "V-Tech",
+  "signature": null
+}

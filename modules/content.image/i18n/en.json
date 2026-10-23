@@ -1,0 +1,32 @@
+{
+  "module": {
+    "name": "Image",
+    "description": "Shows a still image (JPEG, PNG, WebP, GIF) for the playlist item duration."
+  },
+  "config": {
+    "content_image": {
+      "thumb_size": {
+        "title": "Thumbnail size",
+        "description": "Maximum side, in pixels, of thumbnails generated on upload."
+      }
+    }
+  },
+  "item": {
+    "content_image": {
+      "media": {
+        "title": "Image",
+        "description": "Image to display."
+      },
+      "fit": {
+        "title": "Fit",
+        "description": "Contain: whole image with margins. Cover: fills the zone, cropping."
+      }
+    }
+  },
+  "errors": {
+    "content_image": {
+      "invalid": "Unreadable or corrupted image.",
+      "too_large": "Image too large (dimensions)."
+    }
+  }
+}

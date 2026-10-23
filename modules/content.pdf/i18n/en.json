@@ -1,0 +1,38 @@
+{
+  "module": {
+    "name": "PDF",
+    "description": "Shows a PDF document page by page."
+  },
+  "config": {
+    "content_pdf": {
+      "render_width": {
+        "title": "Render width (px)",
+        "description": "Width of pages rendered on upload."
+      },
+      "max_pages": {
+        "title": "Maximum pages",
+        "description": "Maximum number of pages accepted per document."
+      }
+    }
+  },
+  "item": {
+    "content_pdf": {
+      "media": {
+        "title": "PDF document",
+        "description": "Document to display."
+      },
+      "page_duration_ms": {
+        "title": "Duration per page (ms)",
+        "description": "Display time of each page."
+      }
+    }
+  },
+  "errors": {
+    "content_pdf": {
+      "invalid": "Unreadable, protected or corrupted PDF.",
+      "too_many_pages": "PDF too long (page count).",
+      "timeout": "PDF rendering took too long.",
+      "render_failed": "PDF rendering failed."
+    }
+  }
+}

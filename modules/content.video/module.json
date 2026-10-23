@@ -1,0 +1,56 @@
+{
+  "id": "content.video",
+  "version": "0.1.0",
+  "core": ">=1.1 <2.0",
+  "kind": "content-type",
+  "name": {
+    "fr": "Vidéo",
+    "en": "Video"
+  },
+  "description": {
+    "fr": "Lit une vidéo (MP4, WebM) jusqu'à sa fin, avec ou sans son.",
+    "en": "Plays a video (MP4, WebM) to its end, with or without sound."
+  },
+  "targets": [
+    "server",
+    "player",
+    "admin"
+  ],
+  "entrypoints": {
+    "server": "server.module:ContentVideo"
+  },
+  "requires": {},
+  "capabilities": [
+    "content.video"
+  ],
+  "permissions": [],
+  "events": {
+    "listens": [],
+    "emits": []
+  },
+  "config": {
+    "$ref": "config.schema.json"
+  },
+  "assets": "assets",
+  "content": {
+    "item_schema": "item.schema.json",
+    "player": {
+      "element": "vds-content-video",
+      "script": "assets/player.js"
+    },
+    "media": {
+      "accepts": [
+        "video/mp4",
+        "video/webm",
+        "video/quicktime"
+      ]
+    },
+    "requires_network": false
+  },
+  "i18n": [
+    "fr",
+    "en"
+  ],
+  "author": "V-Tech",
+  "signature": null
+}

@@ -1,0 +1,37 @@
+{
+  "module": {
+    "name": "Video",
+    "description": "Plays a video (MP4, WebM) to its end, with or without sound."
+  },
+  "config": {
+    "content_video": {
+      "probe_timeout_s": {
+        "title": "Analysis timeout (s)",
+        "description": "Maximum time to analyse an uploaded video (ffprobe)."
+      }
+    }
+  },
+  "item": {
+    "content_video": {
+      "media": {
+        "title": "Video",
+        "description": "Video to play."
+      },
+      "audio": {
+        "title": "Sound",
+        "description": "Enable the video sound (muted by default)."
+      },
+      "fit": {
+        "title": "Fit",
+        "description": "Contain: whole video with margins. Cover: fills the zone, cropping."
+      }
+    }
+  },
+  "errors": {
+    "content_video": {
+      "invalid": "Unreadable or corrupted video.",
+      "probe_unavailable": "Video analysis is unavailable on the server.",
+      "probe_timeout": "Video analysis took too long."
+    }
+  }
+}

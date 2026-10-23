@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "url"
+  ],
+  "properties": {
+    "url": {
+      "type": "string",
+      "pattern": "^https://[^\\s]+$",
+      "maxLength": 2048,
+      "title": "item.content_url.url.title",
+      "description": "item.content_url.url.description",
+      "x-vds-level": "simple"
+    },
+    "reload_interval_s": {
+      "type": "integer",
+      "default": 0,
+      "title": "item.content_url.reload_interval_s.title",
+      "description": "item.content_url.reload_interval_s.description",
+      "x-vds-level": "advanced",
+      "minimum": 0,
+      "maximum": 86400
+    }
+  }
+}

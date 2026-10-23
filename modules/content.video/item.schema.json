@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "media"
+  ],
+  "properties": {
+    "media": {
+      "type": "string",
+      "format": "uuid",
+      "x-vds-media": "video",
+      "title": "item.content_video.media.title",
+      "description": "item.content_video.media.description",
+      "x-vds-level": "simple"
+    },
+    "audio": {
+      "type": "boolean",
+      "default": false,
+      "title": "item.content_video.audio.title",
+      "description": "item.content_video.audio.description",
+      "x-vds-level": "simple"
+    },
+    "fit": {
+      "type": "string",
+      "default": "contain",
+      "title": "item.content_video.fit.title",
+      "description": "item.content_video.fit.description",
+      "x-vds-level": "advanced",
+      "enum": [
+        "contain",
+        "cover"
+      ]
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "module": {
+    "name": "Page web",
+    "description": "Affiche une page web (https) dans un cadre isolé. Nécessite le réseau : sautée hors ligne."
+  },
+  "config": {
+    "content_url": {
+      "allowed_hosts": {
+        "title": "Domaines autorisés",
+        "description": "Liste de noms de domaine autorisés. Vide : tout site https est accepté."
+      }
+    }
+  },
+  "item": {
+    "content_url": {
+      "url": {
+        "title": "Adresse",
+        "description": "Adresse https de la page. Certains sites refusent l'affichage dans un cadre."
+      },
+      "reload_interval_s": {
+        "title": "Rechargement (s)",
+        "description": "Recharge la page à intervalle régulier. 0 : jamais."
+      }
+    }
+  },
+  "errors": {
+    "content_url": {
+      "invalid_url": "Adresse invalide (https requis).",
+      "host_not_allowed": "Domaine non autorisé.",
+      "same_origin": "L'adresse pointe vers le serveur VDS lui-même."
+    }
+  }
+}

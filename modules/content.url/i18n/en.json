@@ -1,0 +1,33 @@
+{
+  "module": {
+    "name": "Web page",
+    "description": "Shows a web page (https) in a sandboxed frame. Needs network: skipped offline."
+  },
+  "config": {
+    "content_url": {
+      "allowed_hosts": {
+        "title": "Allowed domains",
+        "description": "List of allowed domain names. Empty: any https site is accepted."
+      }
+    }
+  },
+  "item": {
+    "content_url": {
+      "url": {
+        "title": "Address",
+        "description": "https address of the page. Some sites refuse to be shown in a frame."
+      },
+      "reload_interval_s": {
+        "title": "Reload (s)",
+        "description": "Reloads the page at a regular interval. 0: never."
+      }
+    }
+  },
+  "errors": {
+    "content_url": {
+      "invalid_url": "Invalid address (https required).",
+      "host_not_allowed": "Domain not allowed.",
+      "same_origin": "The address points to the VDS server itself."
+    }
+  }
+}

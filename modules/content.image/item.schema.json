@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "media"
+  ],
+  "properties": {
+    "media": {
+      "type": "string",
+      "format": "uuid",
+      "x-vds-media": "image",
+      "title": "item.content_image.media.title",
+      "description": "item.content_image.media.description",
+      "x-vds-level": "simple"
+    },
+    "fit": {
+      "type": "string",
+      "default": "contain",
+      "title": "item.content_image.fit.title",
+      "description": "item.content_image.fit.description",
+      "x-vds-level": "simple",
+      "enum": [
+        "contain",
+        "cover"
+      ]
+    }
+  }
+}

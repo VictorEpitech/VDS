@@ -1,0 +1,37 @@
+{
+  "module": {
+    "name": "Vidéo",
+    "description": "Lit une vidéo (MP4, WebM) jusqu'à sa fin, avec ou sans son."
+  },
+  "config": {
+    "content_video": {
+      "probe_timeout_s": {
+        "title": "Délai d'analyse (s)",
+        "description": "Durée maximale de l'analyse d'une vidéo envoyée (ffprobe)."
+      }
+    }
+  },
+  "item": {
+    "content_video": {
+      "media": {
+        "title": "Vidéo",
+        "description": "Vidéo à lire."
+      },
+      "audio": {
+        "title": "Son",
+        "description": "Activer le son de la vidéo (coupé par défaut)."
+      },
+      "fit": {
+        "title": "Ajustement",
+        "description": "Contain : vidéo entière avec marges. Cover : remplit la zone en rognant."
+      }
+    }
+  },
+  "errors": {
+    "content_video": {
+      "invalid": "Vidéo illisible ou corrompue.",
+      "probe_unavailable": "Analyse vidéo indisponible sur le serveur.",
+      "probe_timeout": "Analyse de la vidéo trop longue."
+    }
+  }
+}

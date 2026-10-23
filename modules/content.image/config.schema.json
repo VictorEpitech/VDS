@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "thumb_size": {
+      "type": "integer",
+      "default": 320,
+      "title": "config.content_image.thumb_size.title",
+      "description": "config.content_image.thumb_size.description",
+      "x-vds-level": "advanced",
+      "minimum": 64,
+      "maximum": 1024,
+      "x-vds-scopes": [
+        "organization"
+      ]
+    }
+  }
+}

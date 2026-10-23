@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "allowed_hosts": {
+      "type": "array",
+      "default": [],
+      "title": "config.content_url.allowed_hosts.title",
+      "description": "config.content_url.allowed_hosts.description",
+      "x-vds-level": "advanced",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "x-vds-scopes": [
+        "organization"
+      ]
+    }
+  }
+}
