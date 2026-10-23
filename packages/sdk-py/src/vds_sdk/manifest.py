@@ -1,4 +1,4 @@
-"""Modèles Pydantic du manifeste `module.json` (contrat vds-core 1.0.0)."""
+"""Modèles Pydantic du manifeste `module.json` (contrat vds-core 1.2.0)."""
 
 import json
 import re
@@ -24,6 +24,7 @@ Kind = Literal[
     "storage",
 ]
 Target = Literal["server", "site-agent", "admin", "player"]
+POWER_CAPABILITIES = frozenset({"power.on", "power.off", "power.state", "power.input"})
 PYTHON_TARGETS = frozenset({"server", "site-agent"})
 
 MODULE_ID_RE = re.compile(r"^[a-z][a-z0-9]*\.[a-z0-9][a-z0-9-]*$")
@@ -210,6 +211,16 @@ class ModuleManifest(_Strict):
             for t in self.targets:
                 if t in PYTHON_TARGETS and t not in self.entrypoints:
                     raise ValueError("module.entrypoint_missing")
+        if self.kind in ("power-driver", "notifier"):
+            if not satisfies("1.2.0", self.core) or satisfies("1.1.0", self.core):
+                raise ValueError("contract.kind_requires_1_2")
+        if self.kind == "power-driver":
+            if not set(self.targets) <= {"site-agent", "player"}:
+                raise ValueError("module.power_driver_target_invalid")
+            if not set(self.capabilities) <= POWER_CAPABILITIES:
+                raise ValueError("module.power_driver_capability_invalid")
+        if self.kind == "notifier" and self.targets != ["server"]:
+            raise ValueError("module.notifier_target_invalid")
         if self.kind == "content-type":
             if self.content is None:
                 raise ValueError("module.content_type_missing_content")

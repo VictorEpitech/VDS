@@ -51,3 +51,36 @@ CORE_EVENT_PAYLOAD_1_1: dict[str, tuple[str, ...]] = {
     "screen.paired": ("screen_id", "device_id", "platform"),
     "screen.unpaired": ("screen_id", "device_id", "reason"),
 }
+
+CORE_EVENT_DOMAINS_1_2: frozenset[str] = CORE_EVENT_DOMAINS_1_1 | {
+    "agent",
+    "power",
+    "incident",
+    "cache",
+}
+
+CORE_EVENT_PAYLOAD_1_2: dict[str, tuple[str, ...]] = {
+    **CORE_EVENT_PAYLOAD_1_1,
+    "agent.enrolled": ("agent_id", "site_id"),
+    "agent.rotated": ("agent_id", "site_id"),
+    "agent.revoked": ("agent_id", "site_id"),
+    "agent.connected": ("agent_id", "site_id", "version"),
+    "agent.disconnected": ("agent_id", "site_id", "reason"),
+    "power.requested": ("request_id", "screen_id", "state", "reason"),
+    "power.changed": ("screen_id", "state", "driver", "verified"),  # + request_id optionnel
+    "power.failed": ("screen_id", "state", "attempted", "code"),  # + request_id optionnel
+    "power.plan_changed": ("scope_level",),  # + scope_id optionnel
+    "screen.status_changed": ("screen_id", "status", "previous"),
+    "incident.opened": ("incident_id", "kind", "subject_type", "subject_id", "severity"),
+    "incident.resolved": ("incident_id", "kind", "subject_type", "subject_id", "severity"),
+    "cache.synced": ("site_id", "items", "bytes", "missing"),
+}
+
+CORE_EVENTS_1_2: frozenset[str] = CORE_EVENTS_1_1 | frozenset(
+    set(CORE_EVENT_PAYLOAD_1_2) - set(CORE_EVENT_PAYLOAD_1_1)
+)
+
+# Événements dont la livraison est critique (outbox obligatoire).
+CRITICAL_EVENTS_1_2: frozenset[str] = frozenset(
+    {"agent.revoked", "power.requested", "power.failed", "incident.opened", "incident.resolved"}
+)

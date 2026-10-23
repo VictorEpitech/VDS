@@ -1,0 +1,692 @@
+{
+  "$defs": {
+    "AgentHeartbeat": {
+      "additionalProperties": false,
+      "properties": {
+        "cache": {
+          "$ref": "#/$defs/CacheStats",
+          "default": {
+            "bytes": 0,
+            "enabled": false,
+            "items": 0,
+            "missing": 0
+          }
+        },
+        "clock_offset_ms": {
+          "default": 0,
+          "title": "Clock Offset Ms",
+          "type": "integer"
+        },
+        "modules": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ModuleStatus"
+          },
+          "title": "Modules",
+          "type": "array"
+        },
+        "plan_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Plan Revision"
+        },
+        "screens": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ScreenPower"
+          },
+          "title": "Screens",
+          "type": "array"
+        },
+        "uptime_s": {
+          "default": 0,
+          "title": "Uptime S",
+          "type": "integer"
+        }
+      },
+      "title": "AgentHeartbeat",
+      "type": "object"
+    },
+    "AgentHello": {
+      "additionalProperties": false,
+      "properties": {
+        "agent_version": {
+          "title": "Agent Version",
+          "type": "string"
+        },
+        "core": {
+          "title": "Core",
+          "type": "string"
+        },
+        "host": {
+          "$ref": "#/$defs/HostInfo"
+        },
+        "lan": {
+          "$ref": "#/$defs/LanInfo",
+          "default": {
+            "ipv4": []
+          }
+        },
+        "last_server_seq": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Last Server Seq",
+          "type": "integer"
+        },
+        "modules": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ModuleRef"
+          },
+          "title": "Modules",
+          "type": "array"
+        }
+      },
+      "required": [
+        "agent_version",
+        "core",
+        "host"
+      ],
+      "title": "AgentHello",
+      "type": "object"
+    },
+    "AgentWelcome": {
+      "additionalProperties": false,
+      "properties": {
+        "agent_id": {
+          "format": "uuid",
+          "title": "Agent Id",
+          "type": "string"
+        },
+        "cache": {
+          "$ref": "#/$defs/CacheInfo",
+          "default": {
+            "enabled": false,
+            "key_id": null
+          }
+        },
+        "heartbeat_s": {
+          "default": 30,
+          "title": "Heartbeat S",
+          "type": "integer"
+        },
+        "modules_enabled": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ModuleEnabled"
+          },
+          "title": "Modules Enabled",
+          "type": "array"
+        },
+        "plan_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Plan Revision"
+        },
+        "resume_from": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Resume From",
+          "type": "integer"
+        },
+        "server_time": {
+          "format": "date-time",
+          "title": "Server Time",
+          "type": "string"
+        },
+        "session_id": {
+          "format": "uuid",
+          "title": "Session Id",
+          "type": "string"
+        },
+        "site_id": {
+          "format": "uuid",
+          "title": "Site Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "agent_id",
+        "site_id",
+        "session_id",
+        "server_time"
+      ],
+      "title": "AgentWelcome",
+      "type": "object"
+    },
+    "CacheInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "key_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Key Id"
+        }
+      },
+      "title": "CacheInfo",
+      "type": "object"
+    },
+    "CacheStats": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "default": 0,
+          "title": "Bytes",
+          "type": "integer"
+        },
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "items": {
+          "default": 0,
+          "title": "Items",
+          "type": "integer"
+        },
+        "missing": {
+          "default": 0,
+          "title": "Missing",
+          "type": "integer"
+        }
+      },
+      "title": "CacheStats",
+      "type": "object"
+    },
+    "Cmd": {
+      "additionalProperties": false,
+      "properties": {
+        "args": {
+          "additionalProperties": true,
+          "default": {},
+          "title": "Args",
+          "type": "object"
+        },
+        "cmd_id": {
+          "format": "uuid",
+          "title": "Cmd Id",
+          "type": "string"
+        },
+        "correlation_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Correlation Id"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "screen_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Screen Id"
+        }
+      },
+      "required": [
+        "cmd_id",
+        "name",
+        "expires_at"
+      ],
+      "title": "Cmd",
+      "type": "object"
+    },
+    "CmdResult": {
+      "additionalProperties": false,
+      "properties": {
+        "cmd_id": {
+          "format": "uuid",
+          "title": "Cmd Id",
+          "type": "string"
+        },
+        "code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Code"
+        },
+        "data": {
+          "additionalProperties": true,
+          "default": {},
+          "title": "Data",
+          "type": "object"
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "failed",
+            "expired",
+            "rejected"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "cmd_id",
+        "status"
+      ],
+      "title": "CmdResult",
+      "type": "object"
+    },
+    "EmptyArgs": {
+      "additionalProperties": false,
+      "properties": {},
+      "title": "EmptyArgs",
+      "type": "object"
+    },
+    "EventData": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "title": "Occurred At",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "default": {},
+          "title": "Payload",
+          "type": "object"
+        },
+        "version": {
+          "default": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "occurred_at"
+      ],
+      "title": "EventData",
+      "type": "object"
+    },
+    "Frame": {
+      "additionalProperties": false,
+      "properties": {
+        "ack": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ack"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "seq": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seq"
+        },
+        "ts": {
+          "format": "date-time",
+          "title": "Ts",
+          "type": "string"
+        },
+        "type": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "const": 1,
+          "default": 1,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "Frame",
+      "type": "object"
+    },
+    "HostInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "arch": {
+          "title": "Arch",
+          "type": "string"
+        },
+        "os": {
+          "title": "Os",
+          "type": "string"
+        }
+      },
+      "required": [
+        "os",
+        "arch"
+      ],
+      "title": "HostInfo",
+      "type": "object"
+    },
+    "LanInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "ipv4": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Ipv4",
+          "type": "array"
+        }
+      },
+      "title": "LanInfo",
+      "type": "object"
+    },
+    "ModuleEnabled": {
+      "additionalProperties": false,
+      "properties": {
+        "config_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Config Revision"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "title": "ModuleEnabled",
+      "type": "object"
+    },
+    "ModuleRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "title": "ModuleRef",
+      "type": "object"
+    },
+    "ModuleStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Code"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "status"
+      ],
+      "title": "ModuleStatus",
+      "type": "object"
+    },
+    "PlayerAuth": {
+      "additionalProperties": false,
+      "properties": {
+        "token": {
+          "minLength": 1,
+          "title": "Token",
+          "type": "string"
+        }
+      },
+      "required": [
+        "token"
+      ],
+      "title": "PlayerAuth",
+      "type": "object"
+    },
+    "PlayerWelcome": {
+      "additionalProperties": false,
+      "properties": {
+        "device_id": {
+          "format": "uuid",
+          "title": "Device Id",
+          "type": "string"
+        },
+        "heartbeat_s": {
+          "default": 60,
+          "title": "Heartbeat S",
+          "type": "integer"
+        },
+        "revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revision"
+        },
+        "screen_id": {
+          "format": "uuid",
+          "title": "Screen Id",
+          "type": "string"
+        },
+        "server_time": {
+          "format": "date-time",
+          "title": "Server Time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "device_id",
+        "screen_id",
+        "server_time"
+      ],
+      "title": "PlayerWelcome",
+      "type": "object"
+    },
+    "PowerObserved": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "At"
+        },
+        "driver": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Driver"
+        },
+        "observed": {
+          "enum": [
+            "on",
+            "off",
+            "standby",
+            "unknown"
+          ],
+          "title": "Observed",
+          "type": "string"
+        }
+      },
+      "required": [
+        "observed"
+      ],
+      "title": "PowerObserved",
+      "type": "object"
+    },
+    "ScheduleChanged": {
+      "additionalProperties": false,
+      "properties": {
+        "revision": {
+          "title": "Revision",
+          "type": "string"
+        }
+      },
+      "required": [
+        "revision"
+      ],
+      "title": "ScheduleChanged",
+      "type": "object"
+    },
+    "ScreenPower": {
+      "additionalProperties": false,
+      "properties": {
+        "power": {
+          "$ref": "#/$defs/PowerObserved"
+        },
+        "screen_id": {
+          "format": "uuid",
+          "title": "Screen Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "screen_id",
+        "power"
+      ],
+      "title": "ScreenPower",
+      "type": "object"
+    }
+  },
+  "title": "vds wire v1",
+  "x-agent-commands": [
+    "power.set",
+    "power.probe",
+    "power.detect",
+    "plan.updated",
+    "config.updated",
+    "cache.sync"
+  ],
+  "x-player-commands": [
+    "reload",
+    "identify",
+    "screenshot",
+    "power.set",
+    "power.probe"
+  ]
+}

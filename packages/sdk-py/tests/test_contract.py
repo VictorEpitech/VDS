@@ -24,15 +24,15 @@ TEMPLATES = ROOT / ".claude/skills/vds-module/templates"
 
 def valid() -> dict[str, Any]:
     return {
-        "id": "power.samsung-ws",
+        "id": "trigger.demo",
         "version": "1.2.0",
         "core": ">=1.0 <2.0",
-        "kind": "power-driver",
+        "kind": "trigger",
         "name": {"fr": "a", "en": "b"},
         "description": {"fr": "a", "en": "b"},
         "targets": ["server", "site-agent"],
         "entrypoints": {"server": "server.module:D", "site-agent": "agent.module:D"},
-        "permissions": ["lan.access"],
+        "permissions": ["screens.read"],
         "events": {"listens": ["power.requested"], "emits": ["power.changed@2"]},
         "author": "V-Tech",
     }
@@ -45,11 +45,11 @@ def test_valid_manifest() -> None:
 
 def test_template_module_json_valid(tmp_path: Path) -> None:
     raw = json.loads((TEMPLATES / "module.json").read_text())
-    raw["id"] = "power.exemple"
-    raw["kind"] = "power-driver"
+    raw["id"] = "trigger.exemple"
+    raw["kind"] = "trigger"
     (tmp_path / "module.json").write_text(json.dumps(raw))
     (tmp_path / "config.schema.json").write_text((TEMPLATES / "config.schema.json").read_text())
-    assert load_manifest(tmp_path / "module.json").id == "power.exemple"
+    assert load_manifest(tmp_path / "module.json").id == "trigger.exemple"
 
 
 def test_template_config_schema_valid() -> None:
@@ -137,7 +137,7 @@ async def test_scoped_bus_enforces_declarations() -> None:
     raw = FakeBus()
     bus = ScopedBus(raw, MM.model_validate(valid()))
     await bus.publish("power.changed", {"on": True}, version=2)
-    assert raw.published[0].source == "power.samsung-ws"
+    assert raw.published[0].source == "trigger.demo"
     with pytest.raises(UndeclaredEvent):
         await bus.publish("power.requested")
     with pytest.raises(UndeclaredEvent):

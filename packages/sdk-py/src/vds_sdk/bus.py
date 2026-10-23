@@ -17,6 +17,7 @@ class Event(BaseModel):
     version: int = 1
     payload: dict[str, Any] = {}
     source: str | None = None  # module_id émetteur, renseigné par le ScopedBus
+    origin: str = "server"  # "server" ou "agent:<site_id>" (1.2)
 
 
 EventHandler = Callable[[Event], Awaitable[None]]

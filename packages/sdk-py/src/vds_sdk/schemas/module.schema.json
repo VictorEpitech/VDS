@@ -296,7 +296,10 @@
           "fs.media",
           "http.routes",
           "db.own-tables",
-          "users.provision"
+          "users.provision",
+          "power.control",
+          "power.calendars.write",
+          "incidents.read"
         ],
         "type": "string"
       },

@@ -28,15 +28,15 @@ def _write_module(
 
 def valid_manifest() -> dict[str, Any]:
     return {
-        "id": "power.samsung-ws",
+        "id": "trigger.demo",
         "version": "1.2.0",
         "core": ">=1.0 <2.0",
-        "kind": "power-driver",
+        "kind": "trigger",
         "name": {"fr": "a", "en": "b"},
         "description": {"fr": "a", "en": "b"},
         "targets": ["server", "site-agent"],
         "entrypoints": {"server": "server.module:D", "site-agent": "agent.module:D"},
-        "permissions": ["lan.access"],
+        "permissions": ["screens.read"],
         "events": {"listens": ["power.requested"], "emits": ["power.changed@2"]},
         "author": "V-Tech",
     }
@@ -62,19 +62,18 @@ def valid_content_type() -> dict[str, Any]:
     }
 
 
-def test_core_version_is_1_1() -> None:
-    """CORE_API_VERSION == "1.1.0"."""
-    assert CORE_API_VERSION == "1.1.0"
+def test_core_version_is_1_2() -> None:
+    assert CORE_API_VERSION == "1.2.0"
 
 
 def test_module_1_0_still_valid(tmp_path: Path) -> None:
     """Un manifeste kind "service"-like 1.0 (sans bloc content,."""
     raw = valid_manifest()
     raw["core"] = ">=1.0 <2.0"
-    raw["kind"] = "power-driver"
+    raw["kind"] = "trigger"
     _write_module(tmp_path, raw)
-    assert load_manifest(tmp_path / "module.json", core_version="1.0.0").id == "power.samsung-ws"
-    assert load_manifest(tmp_path / "module.json", core_version="1.1.0").id == "power.samsung-ws"
+    assert load_manifest(tmp_path / "module.json", core_version="1.0.0").id == "trigger.demo"
+    assert load_manifest(tmp_path / "module.json", core_version="1.1.0").id == "trigger.demo"
 
 
 def test_content_type_requires_content_block(tmp_path: Path) -> None:
@@ -91,7 +90,7 @@ def test_content_block_refused_on_other_kinds(tmp_path: Path) -> None:
     """bloc content sur un kind différent de content-type -> refusé."""
     raw = valid_manifest()
     raw["core"] = ">=1.1 <2.0"
-    raw["kind"] = "power-driver"
+    raw["kind"] = "trigger"
     raw["content"] = {
         "item_schema": "item.schema.json",
         "player": {"element": "vds-content-video-player", "script": "player.js"},
