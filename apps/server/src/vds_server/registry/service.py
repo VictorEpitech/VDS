@@ -155,6 +155,27 @@ class ModuleRegistry:
         d = self._known.get(module_id)
         return d.config_schema if d else None
 
+    def settings_entry(self, module_id: str) -> dict[str, Any] | None:
+        """Réglages d'un module non-content : schéma de config, noms et traductions ; sinon None."""
+        d = self._known.get(module_id)
+        if d is None or d.error is not None or d.config_schema is None:
+            return None
+        if d.manifest.content is not None:
+            return None
+        i18n: dict[str, Any] = {}
+        for locale in d.manifest.i18n:
+            f = d.path / "i18n" / f"{locale}.json"
+            if f.is_file():
+                i18n[locale] = json.loads(f.read_text("utf-8"))
+        return {
+            "id": module_id,
+            "version": d.manifest.version,
+            "name": d.manifest.name.model_dump(),
+            "description": d.manifest.description.model_dump(),
+            "config_schema": d.config_schema,
+            "i18n": i18n,
+        }
+
     def content_item_schema(self, module_id: str) -> dict[str, Any] | None:
         """Schéma des éléments d'un content-type actif ; None si inconnu, inactif ou autre kind."""
         run = self._running.get(module_id)

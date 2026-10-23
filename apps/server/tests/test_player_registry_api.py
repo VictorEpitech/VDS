@@ -22,6 +22,18 @@ async def test_content_types_registry(admin: AsyncClient, editor: AsyncClient, p
         assert "image/png" in img["accepts"] and img["name"]["fr"]
 
 
+async def test_module_settings_schema(admin: AsyncClient, editor: AsyncClient, p: str) -> None:
+    for c in (admin, editor):
+        r = await c.get(f"{p}/api/v1/registry/modules/notify.mail/settings")
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["config_schema"]["properties"]["notify_admins"]["x-vds-level"] == "simple"
+        assert set(body["i18n"]) == {"fr", "en"}
+    for mid in ("content.image", "inconnu"):
+        r = await admin.get(f"{p}/api/v1/registry/modules/{mid}/settings")
+        assert r.status_code == 404
+
+
 async def test_content_types_requires_auth(app: FastAPI, p: str) -> None:
     async with new_client(app) as anon_client:
         r = await anon_client.get(f"{p}/api/v1/registry/content-types")

@@ -82,3 +82,16 @@ async def test_content_scripts_public_but_not_other_modules(client: AsyncClient,
 async def test_admin_unaffected(client: AsyncClient, base: str) -> None:
     r = await client.get(f"{_p(base)}/")
     assert r.status_code == 200 and "admin" in r.text
+
+
+async def test_admin_csp_strict_on_both_bases(client: AsyncClient, base: str) -> None:
+    p = _p(base)
+    for url in (f"{p}/", f"{p}/screens", f"{p}/power/plans"):
+        r = await client.get(url)
+        assert r.status_code == 200
+        csp = r.headers["content-security-policy"]
+        assert "default-src 'self'" in csp and "frame-ancestors 'none'" in csp
+        assert "connect-src 'self'" in csp and "object-src 'none'" in csp
+        assert "unsafe-inline" not in csp and "unsafe-eval" not in csp
+        assert r.headers["x-content-type-options"] == "nosniff"
+        assert f'<base href="{p}/">' in r.text

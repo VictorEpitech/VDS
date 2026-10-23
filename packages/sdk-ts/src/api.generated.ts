@@ -21,6 +21,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agent/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Agent Plan */
+        get: operations["agent_plan_api_v1_agent_plan_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/config/{level}/{target_id}/{namespace}": {
         parameters: {
             query?: never;
@@ -542,6 +559,23 @@ export interface paths {
         };
         /** List Content Types */
         get: operations["list_content_types_api_v1_registry_content_types_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/registry/modules/{module_id}/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Module Settings */
+        get: operations["module_settings_api_v1_registry_modules__module_id__settings_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1569,6 +1603,31 @@ export interface components {
             /** Width */
             width: number | null;
         };
+        /** ModuleSettingsOut */
+        ModuleSettingsOut: {
+            /** Config Schema */
+            config_schema: {
+                [key: string]: unknown;
+            };
+            /** Description */
+            description: {
+                [key: string]: string;
+            };
+            /** I18N */
+            i18n: {
+                [key: string]: {
+                    [key: string]: unknown;
+                };
+            };
+            /** Id */
+            id: string;
+            /** Name */
+            name: {
+                [key: string]: string;
+            };
+            /** Version */
+            version: string;
+        };
         /** OffSlot */
         OffSlot: {
             /** End */
@@ -2153,6 +2212,33 @@ export interface operations {
                 content: {
                     "application/json": unknown;
                 };
+            };
+        };
+    };
+    agent_plan_api_v1_agent_plan_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Plan inchangé */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -3687,6 +3773,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ContentTypeOut"][];
+                };
+            };
+        };
+    };
+    module_settings_api_v1_registry_modules__module_id__settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                module_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModuleSettingsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

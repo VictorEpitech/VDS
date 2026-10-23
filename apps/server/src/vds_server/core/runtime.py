@@ -16,6 +16,7 @@ from vds_server.agents.auth import TOKEN_PREFIX, AgentAuth
 from vds_server.agents.bridge import EventBridge
 from vds_server.agents.cache import site_media_ids
 from vds_server.agents.hub import AgentHub
+from vds_server.agents.plan import PlanPusher
 from vds_server.agents.queue import CommandQueue
 from vds_server.config.reader import ModuleConfigReader
 from vds_server.config.registry_schemas import RegistrySchemaProvider
@@ -73,6 +74,8 @@ class Runtime:
             ModuleConfigReader(self.maker, self.schemas, CORE_NAMESPACE).resolve,
         )
         self.supervisor.register(self.bus.subscribe)
+        self.plan_pusher = PlanPusher(self.maker, self.schemas, self.command_queue)
+        self.plan_pusher.register(self.bus.subscribe)
 
     async def _device_reader(self, request: Request) -> bool:
         """Jeton d'appareil valide => lecture des médias ; absent, inconnu ou révoqué => non."""

@@ -53,6 +53,17 @@ PLAYER_CSP = (
 )
 
 
+# CSP de l'admin (backlog sécurité n°10) : aucun script ni style en ligne (config.js, JS et CSS sont
+# des fichiers `self`), aucune origine tierce, jamais encadrée. Identique aux deux VDS_BASE_PATH.
+ADMIN_CSP = (
+    "default-src 'self'; script-src 'self'; style-src 'self'; "
+    "img-src 'self' data: blob:; media-src 'self'; font-src 'self'; "
+    "connect-src 'self'; frame-src 'none'; worker-src 'none'; object-src 'none'; "
+    "base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+)
+ADMIN_HEADERS = {"Content-Security-Policy": ADMIN_CSP, "X-Content-Type-Options": "nosniff"}
+
+
 def inject_base_href(html: str, settings: Settings, sub: str = "") -> str:
     tag = f'<base href="{settings.prefix}/{sub}">'
     lower = html.lower()
@@ -139,7 +150,7 @@ def build_router(settings: Settings, auth_info: AuthInfo = no_auth) -> APIRouter
             raise HTTPException(status_code=404, detail="errors.not_found")
         f = _static(path)
         if f is not None:
-            return FileResponse(f)
-        return HTMLResponse(index_html)
+            return FileResponse(f, headers=ADMIN_HEADERS)
+        return HTMLResponse(index_html, headers=ADMIN_HEADERS)
 
     return router
