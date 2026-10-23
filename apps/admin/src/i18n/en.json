@@ -13,7 +13,10 @@
     "logout": "Sign out",
     "links": {
       "back_to_studio": "Back to the Studio"
-    }
+    },
+    "media": "Media library",
+    "playlists": "Playlists",
+    "schedules": "Schedule"
   },
   "language": {
     "label": "Language",
@@ -46,7 +49,33 @@
   },
   "screens": {
     "title": "Screens",
-    "empty": "No screens yet. Paired screens will show up here."
+    "empty": "No screens yet. Paired screens will show up here.",
+    "intro": "The screens of your sites. Pair a new screen with the code shown on the TV.",
+    "pair": "Pair a screen",
+    "pair_this": "Pair a device",
+    "revoked": "The device of screen {name} is revoked. It can no longer play content.",
+    "revoke": {
+      "action": "Revoke device",
+      "confirm": "Revoke the device of {name}"
+    },
+    "orientation": {
+      "landscape": "Landscape",
+      "portrait": "Portrait"
+    },
+    "device": {
+      "presence": {
+        "online": "Device online",
+        "offline": "Device offline",
+        "unseen": "Paired, never connected",
+        "revoked": "Device revoked"
+      },
+      "platform": "Platform",
+      "version": "Version",
+      "last_seen": "Last seen",
+      "never_seen": "Never",
+      "revoked_at": "Revoked on",
+      "none": "No device paired."
+    }
   },
   "errors": {
     "not_found": {
@@ -75,6 +104,44 @@
       "bootstrap_token_invalid": "Invalid bootstrap token.",
       "password_change_required": "You must change your password before continuing.",
       "email_taken": "This email address is already in use."
+    },
+    "device_not_found": "No device is paired with this screen.",
+    "device_revoked": "This device has been revoked.",
+    "pairing_code_expired": "This code has expired. Restart pairing on the screen to get a new one.",
+    "pairing_code_invalid": "Unknown code. Check the code shown on the screen.",
+    "pairing_code_unavailable": "Pairing is temporarily unavailable. Try again.",
+    "rate_limited": "Too many attempts. Try again in a moment.",
+    "screen_not_found": "This screen no longer exists.",
+    "media": {
+      "empty": "This file is empty.",
+      "in_use": "This media is in use and cannot be deleted.",
+      "not_found": "This media no longer exists.",
+      "storage_unavailable": "Storage is unavailable. Try again.",
+      "too_large": "This file is too large.",
+      "type_invalid": "This file type is not accepted.",
+      "type_mismatch": "The file content does not match its type."
+    },
+    "playlist": {
+      "content_type_unknown": "This content type is not installed.",
+      "in_use": "This playlist is scheduled and cannot be deleted.",
+      "item_not_found": "This item no longer exists.",
+      "item_props_invalid": "The settings of this item are not valid.",
+      "media_kind_mismatch": "This media does not fit this content type.",
+      "media_not_found": "This media no longer exists.",
+      "media_ref_invalid": "The media reference is not valid.",
+      "not_found": "This playlist no longer exists.",
+      "order_mismatch": "The proposed order does not match the items. Reload the page."
+    },
+    "schedule": {
+      "not_found": "This schedule no longer exists.",
+      "period_invalid": "The end date must be after the start date.",
+      "playlist_not_found": "This playlist no longer exists.",
+      "target_incomplete": "Choose a target.",
+      "target_not_found": "This target no longer exists.",
+      "rule_range_invalid": "The end time must be after the start time."
+    },
+    "screen": {
+      "group_other_site": "This group belongs to another site."
     }
   },
   "auth": {
@@ -117,6 +184,158 @@
         "new": "New password"
       },
       "submit": "Change password"
+    }
+  },
+  "common": {
+    "loading": "Loading",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "save": "Save",
+    "dismiss": "Dismiss"
+  },
+  "form": {
+    "choose": "Choose…",
+    "advanced": "Advanced",
+    "errors": {
+      "required": "This field is required.",
+      "range": "Enter a value between {min} and {max}.",
+      "pattern": "This value has an invalid format.",
+      "too_long": "At most {max} characters."
+    }
+  },
+  "pairing": {
+    "title": "Pair a screen",
+    "intro": "Enter the code shown on the screen, then choose the matching screen.",
+    "code": {
+      "label": "Code shown on the screen",
+      "help": "6 characters. Upper and lower case are accepted. The code expires after 15 minutes."
+    },
+    "screen": {
+      "label": "Screen to link"
+    },
+    "submit": "Pair",
+    "done": "Pairing confirmed for screen {name}. The device starts in a few seconds.",
+    "back": "Back to screens"
+  },
+  "media": {
+    "title": "Media library",
+    "intro": "Images, videos and PDF documents you can use in your playlists.",
+    "upload": {
+      "title": "Add files",
+      "drop": "Drop your files here or pick them from your device.",
+      "choose": "Choose files",
+      "input": "Files to upload",
+      "accepts": "Accepted types: {types}.",
+      "list": "Uploads",
+      "progress": "Uploading {name}",
+      "percent": "{percent}%",
+      "done": "Uploaded"
+    },
+    "library": "Your media",
+    "empty": "No media yet. Upload your first file.",
+    "status": {
+      "ready": "Ready",
+      "processing": "Processing",
+      "failed": "Failed"
+    },
+    "kind": {
+      "image": "Image",
+      "video": "Video",
+      "document": "Document"
+    },
+    "delete": {
+      "action": "Delete",
+      "confirm": "Delete {title}"
+    },
+    "in_use": {
+      "detail": "{count, plural, =0 {{title} is still in use.} one {{title} is used in this playlist. Remove it before deleting:} other {{title} is used in these playlists. Remove it before deleting:}}"
+    }
+  },
+  "playlists": {
+    "title": "Playlists",
+    "intro": "A playlist is a sequence of items played in order, on a loop.",
+    "name": "Playlist name",
+    "create": "Create playlist",
+    "list": "Your playlists",
+    "empty": "No playlists yet.",
+    "items": "{count, plural, =0 {No items} one {# item} other {# items}}",
+    "delete": {
+      "action": "Delete",
+      "confirm": "Delete {name}"
+    }
+  },
+  "playlist": {
+    "title": "Playlist",
+    "back": "Back to playlists",
+    "items": "Items",
+    "empty": "This playlist is empty. Add a first item.",
+    "moved": "{name}: position {position} of {total}.",
+    "move_up": "Move {name} up",
+    "move_down": "Move {name} down",
+    "item": {
+      "add": "Add an item",
+      "edit": "Edit",
+      "type": "Content type",
+      "add_submit": "Add",
+      "duration": "Display duration (seconds)",
+      "duration_default": "Default duration",
+      "duration_help": "Leave empty for the usual duration of the content.",
+      "enabled": "Item enabled",
+      "disabled": "Disabled",
+      "seconds": "{count, plural, one {# second} other {# seconds}}",
+      "delete": {
+        "action": "Remove",
+        "confirm": "Confirm removal"
+      }
+    }
+  },
+  "schedules": {
+    "title": "Schedule",
+    "intro": "Choose which playlist plays, on which target and at what times.",
+    "create": "New schedule",
+    "edit": "Edit",
+    "name": "Name",
+    "target": {
+      "label": "Target",
+      "type": "Target type",
+      "screen": "Screen",
+      "group": "Group",
+      "site": "Site",
+      "touches": "{count, plural, =0 {No screens affected} one {# screen affected} other {# screens affected}}"
+    },
+    "playlist": "Playlist",
+    "rules": {
+      "title": "Weekly time slots",
+      "all_day": "With no time slot, the playlist plays all day, every day.",
+      "all_day_short": "All day",
+      "help": "The playlist plays during these slots, in site time.",
+      "n": "Slot {n}",
+      "days": "Days",
+      "start": "From",
+      "end": "To",
+      "remove": "Remove slot",
+      "add": "Add a slot",
+      "clear": "Remove all",
+      "problem": {
+        "days": "Choose at least one day.",
+        "range": "The end time must be after the start time."
+      }
+    },
+    "priority": {
+      "label": "Priority",
+      "help": "When several schedules overlap on a target, the highest priority wins.",
+      "short": "Priority {priority}"
+    },
+    "period": {
+      "from": "Valid from",
+      "to": "Valid until"
+    },
+    "enabled": "Schedule enabled",
+    "disabled": "Disabled",
+    "empty": "No schedule yet. Screens stay black until a playlist is scheduled.",
+    "delete": {
+      "action": "Delete",
+      "confirm": "Delete {name}"
     }
   }
 }

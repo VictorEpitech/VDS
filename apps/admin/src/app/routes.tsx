@@ -6,7 +6,12 @@ import { Bootstrap } from "../routes/Bootstrap";
 import { ChangePassword } from "../routes/ChangePassword";
 import { Home } from "../routes/Home";
 import { Login } from "../routes/Login";
+import { MediaLibrary } from "../routes/MediaLibrary";
 import { NotFound } from "../routes/NotFound";
+import { Pairing } from "../routes/Pairing";
+import { PlaylistEditor } from "../routes/PlaylistEditor";
+import { Playlists } from "../routes/Playlists";
+import { Schedules } from "../routes/Schedules";
 import { Screens } from "../routes/Screens";
 
 export const routes: RouteObject[] = [
@@ -26,6 +31,11 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <Home /> },
           { path: "screens", element: <Screens /> },
+          { path: "pairing", element: <Pairing /> },
+          { path: "media", element: <MediaLibrary /> },
+          { path: "playlists", element: <Playlists /> },
+          { path: "playlists/:id", element: <PlaylistEditor /> },
+          { path: "schedules", element: <Schedules /> },
           { path: "*", element: <NotFound /> },
         ],
       },

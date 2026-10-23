@@ -13,7 +13,10 @@
     "logout": "Se déconnecter",
     "links": {
       "back_to_studio": "Retour au Studio"
-    }
+    },
+    "media": "Médiathèque",
+    "playlists": "Playlists",
+    "schedules": "Programmation"
   },
   "language": {
     "label": "Langue",
@@ -46,7 +49,33 @@
   },
   "screens": {
     "title": "Écrans",
-    "empty": "Aucun écran pour le moment. Les écrans appairés apparaîtront ici."
+    "empty": "Aucun écran pour le moment. Les écrans appairés apparaîtront ici.",
+    "intro": "Les écrans de vos sites. Appairez un nouvel écran avec le code affiché sur le téléviseur.",
+    "pair": "Appairer un écran",
+    "pair_this": "Appairer un appareil",
+    "revoked": "L'appareil de l'écran {name} est révoqué. Il ne peut plus lire de contenu.",
+    "revoke": {
+      "action": "Révoquer l'appareil",
+      "confirm": "Révoquer l'appareil de {name}"
+    },
+    "orientation": {
+      "landscape": "Paysage",
+      "portrait": "Portrait"
+    },
+    "device": {
+      "presence": {
+        "online": "Appareil en ligne",
+        "offline": "Appareil hors ligne",
+        "unseen": "Appairé, jamais connecté",
+        "revoked": "Appareil révoqué"
+      },
+      "platform": "Plateforme",
+      "version": "Version",
+      "last_seen": "Dernière activité",
+      "never_seen": "Jamais",
+      "revoked_at": "Révoqué le",
+      "none": "Aucun appareil appairé."
+    }
   },
   "errors": {
     "not_found": {
@@ -75,6 +104,44 @@
       "bootstrap_token_invalid": "Jeton d'amorçage invalide.",
       "password_change_required": "Vous devez changer votre mot de passe avant de continuer.",
       "email_taken": "Cette adresse e-mail est déjà utilisée."
+    },
+    "device_not_found": "Aucun appareil n'est appairé à cet écran.",
+    "device_revoked": "Cet appareil a été révoqué.",
+    "pairing_code_expired": "Ce code a expiré. Relancez l'appairage sur l'écran pour en obtenir un nouveau.",
+    "pairing_code_invalid": "Code inconnu. Vérifiez le code affiché sur l'écran.",
+    "pairing_code_unavailable": "L'appairage est momentanément indisponible. Réessayez.",
+    "rate_limited": "Trop de tentatives. Réessayez dans un instant.",
+    "screen_not_found": "Cet écran n'existe plus.",
+    "media": {
+      "empty": "Ce fichier est vide.",
+      "in_use": "Ce média est utilisé et ne peut pas être supprimé.",
+      "not_found": "Ce média n'existe plus.",
+      "storage_unavailable": "Le stockage est indisponible. Réessayez.",
+      "too_large": "Ce fichier est trop volumineux.",
+      "type_invalid": "Ce type de fichier n'est pas accepté.",
+      "type_mismatch": "Le contenu du fichier ne correspond pas à son type."
+    },
+    "playlist": {
+      "content_type_unknown": "Ce type de contenu n'est pas installé.",
+      "in_use": "Cette playlist est programmée et ne peut pas être supprimée.",
+      "item_not_found": "Cet élément n'existe plus.",
+      "item_props_invalid": "Les réglages de cet élément ne sont pas valides.",
+      "media_kind_mismatch": "Ce média ne convient pas à ce type de contenu.",
+      "media_not_found": "Ce média n'existe plus.",
+      "media_ref_invalid": "La référence du média n'est pas valide.",
+      "not_found": "Cette playlist n'existe plus.",
+      "order_mismatch": "L'ordre proposé ne correspond pas aux éléments. Rechargez la page."
+    },
+    "schedule": {
+      "not_found": "Cette programmation n'existe plus.",
+      "period_invalid": "La date de fin doit être après la date de début.",
+      "playlist_not_found": "Cette playlist n'existe plus.",
+      "target_incomplete": "Choisissez une cible.",
+      "target_not_found": "Cette cible n'existe plus.",
+      "rule_range_invalid": "L'heure de fin doit être après l'heure de début."
+    },
+    "screen": {
+      "group_other_site": "Ce groupe appartient à un autre site."
     }
   },
   "auth": {
@@ -117,6 +184,158 @@
         "new": "Nouveau mot de passe"
       },
       "submit": "Changer le mot de passe"
+    }
+  },
+  "common": {
+    "loading": "Chargement en cours",
+    "retry": "Réessayer",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "dismiss": "Fermer"
+  },
+  "form": {
+    "choose": "Choisir…",
+    "advanced": "Avancé",
+    "errors": {
+      "required": "Ce champ est obligatoire.",
+      "range": "Saisissez une valeur entre {min} et {max}.",
+      "pattern": "Le format de cette valeur n'est pas valide.",
+      "too_long": "Au maximum {max} caractères."
+    }
+  },
+  "pairing": {
+    "title": "Appairer un écran",
+    "intro": "Saisissez le code affiché sur l'écran, puis choisissez l'écran qui lui correspond.",
+    "code": {
+      "label": "Code affiché sur l'écran",
+      "help": "6 caractères. Majuscules et minuscules sont acceptées. Le code expire au bout de 15 minutes."
+    },
+    "screen": {
+      "label": "Écran à associer"
+    },
+    "submit": "Appairer",
+    "done": "Appairage validé pour l'écran {name}. L'appareil démarre dans quelques secondes.",
+    "back": "Retour aux écrans"
+  },
+  "media": {
+    "title": "Médiathèque",
+    "intro": "Images, vidéos et documents PDF utilisables dans vos playlists.",
+    "upload": {
+      "title": "Ajouter des fichiers",
+      "drop": "Déposez vos fichiers ici ou choisissez-les sur votre appareil.",
+      "choose": "Choisir des fichiers",
+      "input": "Fichiers à envoyer",
+      "accepts": "Types acceptés : {types}.",
+      "list": "Envois en cours",
+      "progress": "Envoi de {name}",
+      "percent": "{percent} %",
+      "done": "Envoyé"
+    },
+    "library": "Vos médias",
+    "empty": "Aucun média pour le moment. Envoyez un premier fichier.",
+    "status": {
+      "ready": "Prêt",
+      "processing": "Traitement en cours",
+      "failed": "Échec"
+    },
+    "kind": {
+      "image": "Image",
+      "video": "Vidéo",
+      "document": "Document"
+    },
+    "delete": {
+      "action": "Supprimer",
+      "confirm": "Supprimer {title}"
+    },
+    "in_use": {
+      "detail": "{count, plural, =0 {{title} est encore utilisé.} one {{title} est utilisé dans cette playlist. Retirez-le avant de le supprimer :} other {{title} est utilisé dans ces playlists. Retirez-le avant de le supprimer :}}"
+    }
+  },
+  "playlists": {
+    "title": "Playlists",
+    "intro": "Une playlist est une suite d'éléments joués dans l'ordre, en boucle.",
+    "name": "Nom de la playlist",
+    "create": "Créer la playlist",
+    "list": "Vos playlists",
+    "empty": "Aucune playlist pour le moment.",
+    "items": "{count, plural, =0 {Aucun élément} one {# élément} other {# éléments}}",
+    "delete": {
+      "action": "Supprimer",
+      "confirm": "Supprimer {name}"
+    }
+  },
+  "playlist": {
+    "title": "Playlist",
+    "back": "Retour aux playlists",
+    "items": "Éléments",
+    "empty": "Cette playlist est vide. Ajoutez un premier élément.",
+    "moved": "{name} : position {position} sur {total}.",
+    "move_up": "Monter {name}",
+    "move_down": "Descendre {name}",
+    "item": {
+      "add": "Ajouter un élément",
+      "edit": "Modifier",
+      "type": "Type de contenu",
+      "add_submit": "Ajouter",
+      "duration": "Durée d'affichage (secondes)",
+      "duration_default": "Durée par défaut",
+      "duration_help": "Laissez vide pour la durée habituelle du contenu.",
+      "enabled": "Élément actif",
+      "disabled": "Désactivé",
+      "seconds": "{count, plural, one {# seconde} other {# secondes}}",
+      "delete": {
+        "action": "Retirer",
+        "confirm": "Confirmer le retrait"
+      }
+    }
+  },
+  "schedules": {
+    "title": "Programmation",
+    "intro": "Choisissez quelle playlist joue, sur quelle cible et à quelles heures.",
+    "create": "Nouvelle programmation",
+    "edit": "Modifier",
+    "name": "Nom",
+    "target": {
+      "label": "Cible",
+      "type": "Type de cible",
+      "screen": "Écran",
+      "group": "Groupe",
+      "site": "Site",
+      "touches": "{count, plural, =0 {Aucun écran touché} one {# écran touché} other {# écrans touchés}}"
+    },
+    "playlist": "Playlist",
+    "rules": {
+      "title": "Créneaux de la semaine",
+      "all_day": "Sans créneau, la playlist joue toute la journée, tous les jours.",
+      "all_day_short": "Toute la journée",
+      "help": "La playlist joue pendant ces créneaux, heure du site.",
+      "n": "Créneau {n}",
+      "days": "Jours",
+      "start": "De",
+      "end": "À",
+      "remove": "Retirer le créneau",
+      "add": "Ajouter un créneau",
+      "clear": "Tout retirer",
+      "problem": {
+        "days": "Choisissez au moins un jour.",
+        "range": "L'heure de fin doit être après l'heure de début."
+      }
+    },
+    "priority": {
+      "label": "Priorité",
+      "help": "En cas de conflit sur une même cible, la priorité la plus haute l'emporte.",
+      "short": "Priorité {priority}"
+    },
+    "period": {
+      "from": "Valable à partir du",
+      "to": "Valable jusqu'au"
+    },
+    "enabled": "Programmation active",
+    "disabled": "Désactivée",
+    "empty": "Aucune programmation. Les écrans restent noirs tant qu'aucune playlist n'est programmée.",
+    "delete": {
+      "action": "Supprimer",
+      "confirm": "Supprimer {name}"
     }
   }
 }

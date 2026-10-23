@@ -49,6 +49,18 @@ export function AppLayout() {
             <Icon name="screen" />
             {t("nav.screens")}
           </NavLink>
+          <NavLink to="/media">
+            <Icon name="media" />
+            {t("nav.media")}
+          </NavLink>
+          <NavLink to="/playlists">
+            <Icon name="playlist" />
+            {t("nav.playlists")}
+          </NavLink>
+          <NavLink to="/schedules">
+            <Icon name="schedule" />
+            {t("nav.schedules")}
+          </NavLink>
         </nav>
         <div className="app-tools">
           {auth.links.map((l) => (

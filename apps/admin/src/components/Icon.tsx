@@ -12,6 +12,17 @@ export const ICON_NAMES = [
   "language",
   "screen",
   "warning",
+  "add",
+  "delete",
+  "upload",
+  "move_up",
+  "move_down",
+  "media",
+  "playlist",
+  "schedule",
+  "revoke",
+  "processing",
+  "failed",
 ] as const;
 export type IconName = (typeof ICON_NAMES)[number];
 

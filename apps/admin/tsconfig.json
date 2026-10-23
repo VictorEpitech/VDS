@@ -1,5 +1,5 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": { "types": ["vite/client", "node"] },
-  "include": ["src", "test", "e2e", "vite.config.ts", "vite.mock-server.ts", "playwright.config.ts"]
+  "include": ["src", "test", "e2e", "vite.config.ts", "vite.mock-server.ts", "vite.mock-diffusion.ts", "playwright.config.ts"]
 }

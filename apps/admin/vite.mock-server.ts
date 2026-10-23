@@ -8,6 +8,7 @@ import fs from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import path from "node:path";
 import type { Connect, Plugin } from "vite";
+import { createDiffusionMock } from "./vite.mock-diffusion";
 
 const BASE_RE = /^(\/[a-z0-9_-]+)+$/;
 const TYPES: Record<string, string> = {
@@ -92,16 +93,24 @@ export function vdsMockServer(): Plugin {
     return token && found ? [token, found] : null;
   }
 
-  async function api(req: IncomingMessage, res: ServerResponse, route: string): Promise<void> {
+  const diffusion = createDiffusionMock();
+
+  async function api(req: IncomingMessage, res: ServerResponse, route: string, query: URLSearchParams): Promise<void> {
     const method = req.method ?? "GET";
     if (!local) {
       // Provider hébergé : l'utilisateur est déjà connecté par le Studio.
       if (route === "/me" && method === "GET") {
         return send(res, 200, TYPES[".json"]!, JSON.stringify({ id: "studio-1", display_name: "Camille", email: null, role: "admin", provider: authProvider, locale: null }));
       }
+      if (await diffusion(req, res, route, query)) return;
       return error(res, 404, "errors.not_found");
     }
     const sess = sessionOf(req);
+    if (!route.startsWith("/m/") && route !== "/me") {
+      if (!sess || sess[1].mustChange) return error(res, 401, "auth.unauthenticated");
+      if (await diffusion(req, res, route, query)) return;
+      return error(res, 404, "errors.not_found");
+    }
     const body = method === "POST" ? await readBody(req) : {};
     const ok = (status: number, payload: unknown) => send(res, status, TYPES[".json"]!, JSON.stringify(payload));
     const open = (email: string, name: string, mustChange: boolean) => {
@@ -174,7 +183,7 @@ export function vdsMockServer(): Plugin {
       const rel = p.slice(base.length) || "/";
       if (rel === "/config.js") return send(res, 200, TYPES[".js"]!, configJs);
       if (rel === "/health") return send(res, 200, TYPES[".json"]!, '{"status":"ok"}');
-      if (rel.startsWith("/api/v1/")) return void api(req, res, rel.slice("/api/v1".length));
+      if (rel.startsWith("/api/v1/")) return void api(req, res, rel.slice("/api/v1".length), url.searchParams);
       if (rel.startsWith(assetsPrefix)) {
         const f = inside(path.join(modulesDir, themeId, manifest.assets), rel.slice(assetsPrefix.length));
         if (!f) return send(res, 404, "text/plain", "errors.not_found");

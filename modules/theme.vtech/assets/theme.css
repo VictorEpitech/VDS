@@ -221,6 +221,50 @@ code, kbd, samp, .vds-mono { font-family: var(--vds-font-mono); }
   -webkit-mask-image: url("icons/warning.svg");
   mask-image: url("icons/warning.svg");
 }
+.vds-icon[data-icon="add"] {
+  -webkit-mask-image: url("icons/add.svg");
+  mask-image: url("icons/add.svg");
+}
+.vds-icon[data-icon="delete"] {
+  -webkit-mask-image: url("icons/delete.svg");
+  mask-image: url("icons/delete.svg");
+}
+.vds-icon[data-icon="upload"] {
+  -webkit-mask-image: url("icons/upload.svg");
+  mask-image: url("icons/upload.svg");
+}
+.vds-icon[data-icon="move_up"] {
+  -webkit-mask-image: url("icons/move_up.svg");
+  mask-image: url("icons/move_up.svg");
+}
+.vds-icon[data-icon="move_down"] {
+  -webkit-mask-image: url("icons/move_down.svg");
+  mask-image: url("icons/move_down.svg");
+}
+.vds-icon[data-icon="media"] {
+  -webkit-mask-image: url("icons/media.svg");
+  mask-image: url("icons/media.svg");
+}
+.vds-icon[data-icon="playlist"] {
+  -webkit-mask-image: url("icons/playlist.svg");
+  mask-image: url("icons/playlist.svg");
+}
+.vds-icon[data-icon="schedule"] {
+  -webkit-mask-image: url("icons/schedule.svg");
+  mask-image: url("icons/schedule.svg");
+}
+.vds-icon[data-icon="revoke"] {
+  -webkit-mask-image: url("icons/revoke.svg");
+  mask-image: url("icons/revoke.svg");
+}
+.vds-icon[data-icon="processing"] {
+  -webkit-mask-image: url("icons/processing.svg");
+  mask-image: url("icons/processing.svg");
+}
+.vds-icon[data-icon="failed"] {
+  -webkit-mask-image: url("icons/failed.svg");
+  mask-image: url("icons/failed.svg");
+}
 
 .vds-logo {
   background-image: url("logo-light.svg");
