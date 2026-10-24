@@ -256,3 +256,21 @@ test("liens et appels sous la base : aucune requête hors préfixe", async ({ pa
   for (const p of PAGES) await page.goto(url(info, p));
   expect(outside).toEqual([]);
 });
+
+test("créer un groupe puis un écran, et l'appairer (présélectionné)", async ({ page }, info) => {
+  await page.goto(url(info, "/sites"));
+  await page.getByRole("link", { name: "Gérer le site Moulins" }).click();
+  await page.getByLabel("Nom du groupe").fill("Couloir");
+  await page.getByRole("button", { name: "Ajouter le groupe" }).click();
+  await expect(page.getByRole("listitem").filter({ hasText: "Couloir" })).toBeVisible();
+
+  await page.goto(url(info, "/screens"));
+  await page.getByRole("button", { name: "Ajouter un écran" }).click();
+  await page.getByLabel("Nom de l'écran").fill("Entrée");
+  await page.getByLabel("Site", { exact: true }).selectOption({ label: "Moulins" });
+  await page.getByLabel("Groupe (facultatif)").selectOption({ label: "Couloir" });
+  await page.getByRole("button", { name: "Créer l'écran" }).click();
+  await page.getByRole("link", { name: "Appairer cet écran" }).click();
+  await expect(page.getByLabel("Écran à associer")).toHaveValue(/.+/);
+  await expect(page.getByRole("option", { name: "Entrée", selected: true })).toBeAttached();
+});

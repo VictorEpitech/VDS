@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ConfirmAction, ErrorAlert, QueryStatus } from "../components/feedback";
 import { Icon } from "../components/Icon";
+import { GroupsPanel } from "../features/sites/GroupsPanel";
 import { AgentsPanel } from "../features/sites/AgentsPanel";
 import { AttachmentPanel } from "../features/power/AttachmentSection";
 import { useApi } from "../lib/api";
@@ -47,6 +48,7 @@ export function SiteDetail() {
           <p className="meta">
             <code>{site.slug}</code>
           </p>
+          <GroupsPanel siteId={site.id} />
           <AgentsPanel siteId={site.id} />
           <section className="section" aria-labelledby="site-power-h">
             <h2 id="site-power-h">

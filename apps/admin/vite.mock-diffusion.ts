@@ -134,6 +134,7 @@ export function createDiffusionMock() {
   const site = { id: randomUUID(), name: "Moulins", slug: "moulins", archived_at: null as string | null };
   const sites = [site];
   const group = { id: randomUUID(), site_id: site.id, name: "Accueil" };
+  const groups = [group];
   const screens = [
     { id: randomUUID(), site_id: site.id, group_id: group.id, name: "Hall d'accueil", orientation: "landscape", archived_at: null },
     { id: randomUUID(), site_id: site.id, group_id: null, name: "Totem", orientation: "portrait", archived_at: null },
@@ -209,8 +210,25 @@ export function createDiffusionMock() {
     };
 
     if (route === "/sites" && method === "GET") return send(200, sites), true;
-    if (m(/^\/sites\/[^/]+\/groups$/) && method === "GET") return send(200, [group]), true;
+    const grp = m(/^\/sites\/([^/]+)\/groups$/);
+    if (grp && method === "GET") return send(200, groups.filter((g) => g.site_id === grp[1])), true;
+    if (grp && method === "POST") {
+      const body = await json();
+      const name = String(body.name ?? "").trim();
+      if (!name || !sites.some((s) => s.id === grp[1])) return fail(422, "errors.validation"), true;
+      const row = { id: randomUUID(), site_id: grp[1]!, name };
+      groups.push(row);
+      return send(201, row), true;
+    }
     if (route === "/screens" && method === "GET") return send(200, screens.map(screenOut)), true;
+    if (route === "/screens" && method === "POST") {
+      const body = await json();
+      const name = String(body.name ?? "").trim();
+      if (!name || !sites.some((s) => s.id === body.site_id)) return fail(422, "errors.validation"), true;
+      const row = { id: randomUUID(), site_id: String(body.site_id), group_id: (body.group_id as string | null) ?? null, name, orientation: body.orientation === "portrait" ? "portrait" : "landscape", archived_at: null };
+      screens.push(row);
+      return send(201, screenOut(row)), true;
+    }
     if (route === "/registry/content-types" && method === "GET") return send(200, contentTypes), true;
 
     // --- appairage -------------------------------------------------------

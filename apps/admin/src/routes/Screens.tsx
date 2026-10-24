@@ -2,6 +2,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
+import { useSession } from "../auth/session";
+import { ScreenCreateForm } from "../features/screens/ScreenCreateForm";
 import { ConfirmAction, Empty, ErrorAlert, QueryStatus, SuccessAlert } from "../components/feedback";
 import { Icon } from "../components/Icon";
 import { PresenceBadge } from "../components/StatusBadge";
@@ -15,6 +17,9 @@ export function Screens() {
   const groups = useAllGroups();
   const api = useApi();
   const qc = useQueryClient();
+  const session = useSession();
+  const isAdmin = session.data?.role === "admin";
+  const [creating, setCreating] = useState(false);
   const [revoked, setRevoked] = useState<string | null>(null);
   const revoke = useMutation({
     mutationFn: (s: Screen) => api.delete(`/screens/${s.id}/device`),
@@ -34,18 +39,40 @@ export function Screens() {
     <>
       <div className="page-head">
         <h1>{t("screens.title")}</h1>
-        <Link className="btn btn-filled" to="/pairing">
-          <Icon name="pairing" />
-          {t("screens.pair")}
-        </Link>
+        <div className="actions">
+          {isAdmin ? (
+            <button type="button" className="btn btn-filled" onClick={() => setCreating(true)} disabled={creating}>
+              <Icon name="add" />
+              {t("screens.create.action")}
+            </button>
+          ) : null}
+          <Link className="btn btn-text" to="/pairing">
+            <Icon name="pairing" />
+            {t("screens.pair")}
+          </Link>
+        </div>
       </div>
       <p className="lead">{t("screens.intro")}</p>
+      {creating ? <ScreenCreateForm onClose={() => setCreating(false)} /> : null}
       <QueryStatus query={screens} />
       {revoked ? <SuccessAlert>{t("screens.revoked", { name: revoked })}</SuccessAlert> : null}
       {revoke.isError ? (
         <ErrorAlert error={revoke.error} />
       ) : null}
-      {screens.isSuccess && active.length === 0 ? <Empty icon="screen">{t("screens.empty")}</Empty> : null}
+      {screens.isSuccess && active.length === 0 ? (
+        <Empty icon="screen">
+          {t("screens.empty")}
+          {isAdmin && !creating ? (
+            <>
+              {" "}
+              <button type="button" className="btn btn-filled" onClick={() => setCreating(true)}>
+                <Icon name="add" />
+                {t("screens.create.action")}
+              </button>
+            </>
+          ) : null}
+        </Empty>
+      ) : null}
       <ul className="cards list-reset">
         {active.map((s) => (
           <li key={s.id} className="card" aria-labelledby={`screen-${s.id}`}>

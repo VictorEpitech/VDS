@@ -310,3 +310,37 @@ describe.each(["", "/espace/affichage"])("écrans sous la base « %s »", (b) =>
     expect(calls.some((c) => c.method === "POST")).toBe(false);
   });
 });
+
+describe.each(["", "/espace/affichage"])("création d'écran et de groupe, base « %s »", (b) => {
+  const SITE = { id: "10000000-0000-4000-8000-000000000009", name: "Moulins", slug: "moulins", archived_at: null };
+  const NEW = { id: "30000000-0000-4000-8000-000000000009", site_id: SITE.id, group_id: null, name: "Entrée", orientation: "landscape", archived_at: null, device: null };
+
+  it("état vide : appel à l'action, création, lien Appairer présélectionné", async () => {
+    const calls = mockApi(
+      { "GET /sites": [SITE], "GET /screens": [], [`GET /sites/${SITE.id}/groups`]: [], "POST /screens": () => new Response(JSON.stringify(NEW), { status: 201 }) },
+      b,
+    );
+    const user = userEvent.setup();
+    await renderRoutes(routes, "/screens", b);
+    await screen.findByText(/Aucun écran pour le moment/);
+    await user.click((await screen.findAllByRole("button", { name: "Ajouter un écran" }))[0]!);
+    await user.type(await screen.findByLabelText("Nom de l'écran"), "Entrée");
+    await user.selectOptions(screen.getByLabelText("Site"), SITE.id);
+    await user.click(screen.getByRole("button", { name: "Créer l'écran" }));
+    const link = await screen.findByRole("link", { name: "Appairer cet écran" });
+    expect(link).toHaveAttribute("href", `${b}/pairing?screen=${NEW.id}`);
+    expect(calls.find((c) => c.method === "POST")?.body).toEqual({ name: "Entrée", site_id: SITE.id, group_id: null, orientation: "landscape" });
+  });
+
+  it("crée un groupe dans le détail du site", async () => {
+    const calls = mockApi(
+      { "GET /sites": [SITE], "GET /screens": [], [`GET /sites/${SITE.id}/groups`]: [], [`POST /sites/${SITE.id}/groups`]: () => new Response(JSON.stringify({ id: "g", site_id: SITE.id, name: "Couloir" }), { status: 201 }), [`GET /sites/${SITE.id}/agents`]: [], [`GET /config/site/${SITE.id}/core`]: { values: {}, warnings: [] } },
+      b,
+    );
+    const user = userEvent.setup();
+    await renderRoutes(routes, `/sites/${SITE.id}`, b);
+    await user.type(await screen.findByLabelText("Nom du groupe"), "Couloir");
+    await user.click(screen.getByRole("button", { name: "Ajouter le groupe" }));
+    await waitFor(() => expect(calls.find((c) => c.method === "POST")?.body).toEqual({ name: "Couloir" }));
+  });
+});

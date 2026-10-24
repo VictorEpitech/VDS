@@ -53,7 +53,7 @@
   },
   "screens": {
     "title": "Écrans",
-    "empty": "Aucun écran pour le moment. Les écrans appairés apparaîtront ici.",
+    "empty": "Aucun écran pour le moment. Ajoutez votre premier écran, puis appairez-le avec l'appareil.",
     "intro": "Les écrans de vos sites. Appairez un nouvel écran avec le code affiché sur le téléviseur.",
     "pair": "Appairer un écran",
     "pair_this": "Appairer un appareil",
@@ -79,6 +79,20 @@
       "never_seen": "Jamais",
       "revoked_at": "Révoqué le",
       "none": "Aucun appareil appairé."
+    },
+    "create": {
+      "action": "Ajouter un écran",
+      "title": "Nouvel écran",
+      "name": "Nom de l'écran",
+      "site": "Site",
+      "group": "Groupe (facultatif)",
+      "no_group": "Aucun groupe",
+      "orientation": "Orientation",
+      "submit": "Créer l'écran",
+      "done": "L'écran {name} est créé. Il reste à l'appairer avec un appareil.",
+      "pair_now": "Appairer cet écran",
+      "no_site": "Aucun site disponible : créez d'abord un site.",
+      "go_sites": "Aller aux sites"
     }
   },
   "errors": {
@@ -607,5 +621,15 @@
     "form_label": "Réglages du module",
     "saved": "Réglages enregistrés.",
     "env_var": "Variable {name}"
+  },
+  "groups": {
+    "title": "Groupes",
+    "intro": "Regroupez les écrans d'un site pour leur appliquer les mêmes réglages.",
+    "empty": "Aucun groupe pour ce site.",
+    "create": {
+      "title": "Nouveau groupe",
+      "name": "Nom du groupe",
+      "submit": "Ajouter le groupe"
+    }
   }
 }

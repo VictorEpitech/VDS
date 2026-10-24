@@ -53,7 +53,7 @@
   },
   "screens": {
     "title": "Screens",
-    "empty": "No screens yet. Paired screens will show up here.",
+    "empty": "No screens yet. Add your first screen, then pair it with the device.",
     "intro": "The screens of your sites. Pair a new screen with the code shown on the TV.",
     "pair": "Pair a screen",
     "pair_this": "Pair a device",
@@ -79,6 +79,20 @@
       "never_seen": "Never",
       "revoked_at": "Revoked on",
       "none": "No device paired."
+    },
+    "create": {
+      "action": "Add a screen",
+      "title": "New screen",
+      "name": "Screen name",
+      "site": "Site",
+      "group": "Group (optional)",
+      "no_group": "No group",
+      "orientation": "Orientation",
+      "submit": "Create screen",
+      "done": "Screen {name} is created. It still needs to be paired with a device.",
+      "pair_now": "Pair this screen",
+      "no_site": "No site available: create a site first.",
+      "go_sites": "Go to sites"
     }
   },
   "errors": {
@@ -607,5 +621,15 @@
     "form_label": "Module settings",
     "saved": "Settings saved.",
     "env_var": "Variable {name}"
+  },
+  "groups": {
+    "title": "Groups",
+    "intro": "Group a site's screens to give them the same settings.",
+    "empty": "No group for this site yet.",
+    "create": {
+      "title": "New group",
+      "name": "Group name",
+      "submit": "Add group"
+    }
   }
 }
