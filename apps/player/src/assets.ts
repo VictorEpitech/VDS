@@ -22,8 +22,10 @@ export class AssetCache {
   constructor(private readonly server: string) {}
 
   async init(): Promise<void> {
-    this.cache = await caches.open(CACHE_MEDIA);
     this.present.clear();
+    // Cache API absente (contexte non sécurisé) : aucun média local, le player reste neutre.
+    if (typeof caches === "undefined") return;
+    this.cache = await caches.open(CACHE_MEDIA);
     for (const req of await this.cache.keys()) {
       if (req.url.startsWith(this.server)) this.present.add(req.url.slice(this.server.length));
     }
@@ -53,7 +55,11 @@ export class AssetCache {
     let res: Response;
     try {
       // Le SW ajoute le jeton d'appareil et laisse passer la requête réseau (en-tête NET_HEADER).
-      res = await fetch(url, { headers: { [NET_HEADER]: "1" }, cache: "no-store", signal });
+      // Le jeton est aussi transmis explicitement : le SW ne peut pas le lire si IndexedDB est indisponible (repli mémoire).
+      const headers: Record<string, string> = { [NET_HEADER]: "1" };
+      const token = await kvGet<string>(KV.token);
+      if (token) headers.Authorization = `Bearer ${token}`;
+      res = await fetch(url, { headers, cache: "no-store", signal });
     } catch (e) {
       throw new NetworkError(e instanceof Error ? e.message : "fetch");
     }
@@ -88,8 +94,9 @@ export class AssetCache {
   }
 
   async clear(): Promise<void> {
-    await caches.delete(CACHE_MEDIA);
     this.present.clear();
+    if (typeof caches === "undefined") return;
+    await caches.delete(CACHE_MEDIA);
     this.cache = await caches.open(CACHE_MEDIA);
   }
 }

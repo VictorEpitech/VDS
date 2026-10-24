@@ -243,3 +243,17 @@ test("plan d'alimentation : écran noir à l'heure et rallumage, sans serveur", 
   await expect(img(page)).toBeVisible({ timeout: 15_000 });
   await ctl(info, "set", { down: false });
 });
+
+test("IndexedDB absent : appairage et lecture quand même (repli mémoire)", async ({ page }, info) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "indexedDB", { value: undefined, configurable: true });
+  });
+  await pairAndPlay(page, info);
+});
+
+test("IndexedDB muet : pas de spinner infini", async ({ page }, info) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "indexedDB", { value: { open: () => ({}) }, configurable: true });
+  });
+  await pairAndPlay(page, info);
+});

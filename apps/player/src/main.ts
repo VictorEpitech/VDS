@@ -56,18 +56,57 @@ async function main(): Promise<void> {
   let runtime: Runtime | null = null;
   startWatchdog({ engine: () => runtime?.engine ?? null });
   await registerServiceWorker();
-  const drift = await kvGet<number>(KV.drift);
+  const drift = await safe(() => kvGet<number>(KV.drift));
   if (typeof drift === "number") setDrift(drift);
-  void navigator.storage?.persist?.().catch(() => {});
+  try {
+    void Promise.resolve(navigator.storage?.persist?.()).catch(() => {});
+  } catch {
+    // API absente ou refusée : sans effet.
+  }
 
+  let failures = 0;
   for (;;) {
-    let token = await kvGet<string>(KV.token);
-    if (!token) token = (await pair(screens)).token;
-    runtime = await startRuntime({ screens, server, locale, token });
-    await runtime.revoked; // révocation : état effacé, retour à l'appairage
-    runtime = null;
+    try {
+      let token = await safe(() => kvGet<string>(KV.token));
+      if (!token) token = (await pair(screens)).token;
+      runtime = await startRuntime({ screens, server, locale, token });
+      failures = 0;
+      await runtime.revoked; // révocation : état effacé, retour à l'appairage
+      runtime = null;
+    } catch (e) {
+      // Jamais de spinner infini : journal interne, retour à l'écran neutre puis nouvelle tentative.
+      runtime = null;
+      failures++;
+      internalLog("player.start_failed", e);
+      screens.show("loading");
+      await sleep(Math.min(30_000, 1_000 * 2 ** Math.min(failures, 5)));
+    }
   }
 }
 
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
+/** Lecture tolérante : une base illisible équivaut à « rien en cache ». */
+async function safe<T>(fn: () => Promise<T>): Promise<T | undefined> {
+  try {
+    return await fn();
+  } catch (e) {
+    internalLog("player.storage_failed", e);
+    return undefined;
+  }
+}
+
+/** Journal interne (console, jamais à l'écran public). */
+function internalLog(code: string, e: unknown): void {
+  try {
+    console.warn(code, e instanceof Error ? e.message : String(e));
+  } catch {
+    // console absente : ignorer.
+  }
+}
+
+window.addEventListener("unhandledrejection", (ev) => internalLog("player.unhandled", ev.reason));
+window.addEventListener("error", (ev) => internalLog("player.error", ev.error ?? ev.message));
+
 getPlatformBridge().ping();
-void main();
+main().catch((e) => internalLog("player.fatal", e));

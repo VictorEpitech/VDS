@@ -15,6 +15,7 @@ const SCOPE = self.registration.scope;
 // --- jeton d'appareil (IndexedDB partagée avec la page) ----------------------
 function readToken(): Promise<string | null> {
   return new Promise((resolve) => {
+    if (typeof indexedDB === "undefined") return resolve(null);
     const open = indexedDB.open(DB_NAME, DB_VERSION);
     open.onupgradeneeded = () => {
       const db = open.result;
@@ -144,9 +145,11 @@ function slice(res: Response, header: string | null): Promise<Response> | Respon
 /** Médias : cache uniquement (jamais de lecture en flux) ; absent = 404, l'élément est sauté. */
 async function media(req: Request): Promise<Response> {
   if (req.headers.has(NET_HEADER)) {
-    const token = await readToken();
     const headers = new Headers({ Accept: "*/*" });
-    if (token) headers.set("Authorization", `Bearer ${token}`);
+    const given = req.headers.get("Authorization");
+    const token = given ? null : await readToken();
+    if (given) headers.set("Authorization", given);
+    else if (token) headers.set("Authorization", `Bearer ${token}`);
     return fetch(req.url, { headers, cache: "no-store", credentials: "omit" });
   }
   const cache = await caches.open(CACHE_MEDIA);
