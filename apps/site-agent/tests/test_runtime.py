@@ -291,3 +291,26 @@ def test_insecure_dev_opt_in_private_only() -> None:
         ws_url("http://example.com", True)  # nom public refusé même en dev
     with pytest.raises(SettingsError):
         ws_url("http://8.8.8.8", True)
+
+
+def test_extra_formatter_masks_secrets_and_renders_fields() -> None:
+    import logging
+
+    from vds_agent.logsetup import ExtraFormatter
+
+    rec = logging.LogRecord("x", logging.WARNING, "f", 1, "agent.link_error", None, None)
+    rec.__dict__.update({"err": "InvalidStatus", "token": "abc", "close_code": 1008})
+    out = ExtraFormatter("%(message)s").format(rec)
+    assert "err='InvalidStatus'" in out and "close_code=1008" in out
+    assert "abc" not in out and "token=***" in out
+
+
+def test_describe_link_error_reports_close_code() -> None:
+    from vds_agent.link import describe_link_error
+    from websockets.exceptions import ConnectionClosedError
+    from websockets.frames import Close
+
+    e = ConnectionClosedError(Close(1008, "policy"), None)
+    info = describe_link_error(e)
+    assert info["err"] == "ConnectionClosedError"
+    assert info["close_code"] == 1008 and info["close_reason"] == "policy"

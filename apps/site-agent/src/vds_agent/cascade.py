@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -34,6 +35,10 @@ class CascadeOutcome:
     code: str | None
 
 
+def _ms(t0: float) -> int:
+    return int((time.monotonic() - t0) * 1000)
+
+
 def matches(wanted: Literal["on", "off"], observed: PowerState) -> bool:
     return observed == "on" if wanted == "on" else observed in ("off", "standby")
 
@@ -58,7 +63,7 @@ class Cascade:
         try:
             return await asyncio.wait_for(driver.get_state(target), self.read_timeout_s)
         except Exception as e:  # noqa: BLE001 - un pilote ne doit jamais casser la cascade
-            log.warning("power.read_failed", extra={"err": type(e).__name__})
+            log.warning("power.read_failed", extra={"err": type(e).__name__, "detail": str(e)})
             return "unknown"
 
     async def _verify(
@@ -88,17 +93,36 @@ class Cascade:
                 continue
             attempted.append(drv_id)
             for attempt in range(self.retries):
+                t0 = time.monotonic()
+                base = {"driver": drv_id, "wanted": wanted, "attempt": attempt + 1}
+                log.info("power.attempt_start", extra=base)
                 try:
                     res = await asyncio.wait_for(drv.set_power(target, wanted), self.call_timeout_s)
                 except TimeoutError:
                     last_code = f"{drv_id}.timeout"
+                    log.warning(
+                        "power.attempt_end",
+                        extra={**base, "ok": False, "code": last_code, "ms": _ms(t0)},
+                    )
                     continue
                 except Exception as e:  # noqa: BLE001
-                    log.warning(
-                        "power.driver_error", extra={"driver": drv_id, "err": type(e).__name__}
-                    )
                     last_code = f"{drv_id}.error"
+                    log.warning(
+                        "power.attempt_end",
+                        extra={
+                            **base,
+                            "ok": False,
+                            "code": last_code,
+                            "err": type(e).__name__,
+                            "detail": str(e),
+                            "ms": _ms(t0),
+                        },
+                    )
                     continue
+                log.info(
+                    "power.attempt_end",
+                    extra={**base, "ok": res.ok, "code": res.code, "ms": _ms(t0)},
+                )
                 if not res.ok:
                     last_code = res.code or f"{drv_id}.failed"
                     if res.code and res.code.endswith(("unsupported", "not_paired")):

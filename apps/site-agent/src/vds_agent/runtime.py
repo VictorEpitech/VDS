@@ -247,6 +247,10 @@ class Agent:
         for drv_id in entry.get("cascade", []):
             ld = self.drivers.get(drv_id)
             if ld is None or drv_id not in configs:
+                log.warning(
+                    "power.driver_skipped",
+                    extra={"driver": drv_id, "loaded": ld is not None, "configured": drv_id in configs},
+                )
                 continue  # inactif ou non configuré pour cet écran
             try:
                 cfg = apply_defaults(ld.ctx.schema, configs[drv_id])
@@ -294,7 +298,23 @@ class Agent:
             return False, "power.unknown_screen", {}
         lock = self._locks.setdefault(screen_id, asyncio.Lock())
         async with lock:
-            outcome = await self._cascade_for(entry).run(self.build_screen(entry), state)
+            sd = self.build_screen(entry)
+            log.info(
+                "power.cascade_start",
+                extra={
+                    "screen_id": screen_id,
+                    "wanted": state,
+                    "plan_cascade": entry.get("cascade", []),
+                    "active": [d[0] for d in sd.drivers],
+                    "loaded": sorted(self.drivers),
+                },
+            )
+            outcome = await self._cascade_for(entry).run(sd, state)
+            log.info(
+                "power.cascade_end",
+                extra={"screen_id": screen_id, "ok": outcome.ok, "code": outcome.code,
+                       "driver": outcome.driver, "attempted": outcome.attempted},
+            )
         name, payload = event_for(outcome, UUID(screen_id), request_id)
         await self.link.emit(name, payload)
         self.observed[screen_id] = {
@@ -366,8 +386,19 @@ class Agent:
             reject = "unknown_command" if str(e) == "unknown_command" else "invalid_args"
             await self._result(cmd.cmd_id, "rejected", reject, {})
             return
+        t0 = time.monotonic()
+        log.info("agent.cmd_start", extra={"cmd": cmd.name, "screen_id": cmd.screen_id})
         try:
             status, code, data = await self.dispatch(cmd, args.model_dump())
+            log.info(
+                "agent.cmd_end",
+                extra={
+                    "cmd": cmd.name,
+                    "status": status,
+                    "code": code,
+                    "ms": int((time.monotonic() - t0) * 1000),
+                },
+            )
         except Exception:
             log.exception("agent.cmd_failed", extra={"cmd": cmd.name})
             status, code, data = "failed", "agent.internal", {}
@@ -444,7 +475,9 @@ class Agent:
         entry = self.screen_entry(screen_id)
         if entry is None:
             return None, "unknown"
-        for drv_id, drv, tgt in self.build_screen(entry).drivers:
+        sd = self.build_screen(entry)
+        log.info("power.probe", extra={"screen_id": screen_id, "drivers": [d[0] for d in sd.drivers]})
+        for drv_id, drv, tgt in sd.drivers:
             if "power.state" in drv.capabilities:
                 st = await self.cascade.read_state(drv, tgt)
                 self.observed[screen_id] = {
@@ -461,10 +494,30 @@ class Agent:
         hint = DetectHint(address=address, mac=mac)  # type: ignore[arg-type]
 
         async def one(ld: LoadedDriver) -> DetectResult | None:
+            t0 = time.monotonic()
+            driver = ld.manifest.id
             try:
-                return await asyncio.wait_for(ld.driver.detect(hint), DETECT_TIMEOUT_S)
-            except Exception:  # noqa: BLE001
+                res = await asyncio.wait_for(ld.driver.detect(hint), DETECT_TIMEOUT_S)
+            except TimeoutError:
+                log.warning("power.detect_timeout", extra={"driver": driver, "address": address})
                 return None
+            except Exception as e:  # noqa: BLE001
+                log.warning(
+                    "power.detect_error",
+                    extra={"driver": driver, "err": type(e).__name__, "detail": str(e)},
+                )
+                return None
+            log.info(
+                "power.detect_result",
+                extra={
+                    "driver": driver,
+                    "address": address,
+                    "found": res is not None,
+                    "action": res.requires_user_action if res else None,
+                    "ms": int((time.monotonic() - t0) * 1000),
+                },
+            )
+            return res
 
         found = await asyncio.gather(*(one(d) for d in self.drivers.values()))
         return sorted((r for r in found if r), key=lambda r: -r.confidence)

@@ -22,7 +22,7 @@ from vds_sdk.wire import (
     encode_frame,
 )
 from websockets.asyncio.client import ClientConnection, connect
-from websockets.exceptions import ConnectionClosed
+from websockets.exceptions import ConnectionClosed, InvalidHandshake
 
 from .settings import AgentSettings
 from .store import Store
@@ -38,6 +38,23 @@ def next_backoff(current: float, rng: random.Random | None = None) -> float:
     r = rng or random
     base = min(BACKOFF_MAX, max(BACKOFF_MIN, current))
     return float(base * r.uniform(0.8, 1.2))
+
+
+def describe_link_error(e: BaseException) -> dict[str, Any]:
+    """Cause lisible d'une erreur de liaison : type, code/raison de fermeture, message (sans secret)."""
+    info: dict[str, Any] = {"err": type(e).__name__, "detail": str(e) or repr(e)}
+    rcvd = getattr(e, "rcvd", None)
+    sent = getattr(e, "sent", None)
+    if rcvd is not None:
+        info["close_code"], info["close_reason"] = rcvd.code, rcvd.reason
+    elif sent is not None:
+        info["close_code_sent"] = sent.code
+    resp = getattr(e, "response", None)  # InvalidStatus : refus HTTP à la poignée de main
+    if resp is not None:
+        info["http_status"] = getattr(resp, "status_code", None)
+    if e.__cause__ is not None:
+        info["cause"] = f"{type(e.__cause__).__name__}: {e.__cause__}"
+    return info
 
 
 class Revoked(Exception):  # noqa: N818
@@ -119,8 +136,8 @@ class ServerLink:
                 log.error("agent.token_rotated")
                 self._stop.set()
                 return
-            except (OSError, ConnectionClosed, WireError, TimeoutError) as e:
-                log.warning("agent.link_error", extra={"err": type(e).__name__})
+            except (OSError, ConnectionClosed, WireError, TimeoutError, InvalidHandshake) as e:
+                log.warning("agent.link_error", extra=describe_link_error(e))
             except Exception:
                 log.exception("agent.link_unexpected")
             self.connected.clear()

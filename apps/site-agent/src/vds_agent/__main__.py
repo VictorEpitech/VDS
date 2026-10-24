@@ -1,9 +1,9 @@
 """Point d'entrée : `python -m vds_agent` (aucun port entrant)."""
 
 import asyncio
-import logging
 import sys
 
+from .logsetup import setup_logging
 from .runtime import Agent
 from .settings import AgentSettings, SettingsError
 from .store import Store
@@ -11,7 +11,7 @@ from .store import Store
 
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+    setup_logging()
     try:
         settings = AgentSettings.from_env()
     except SettingsError as e:

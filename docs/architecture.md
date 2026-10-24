@@ -649,3 +649,10 @@ Implémentation : `apps/site-agent/src/vds_agent/cache.py` (stockage, intégrit�
 - Limites : (1) `player/schedule` n'expose pas encore `media[].mirrors` (le serveur sait dériver la clé mais pas encore émettre les URL signées : suite de T9 côté player/schedule) ; (2) l'option `agent.cache.lan_listen` est lue dans l'environnement de l'agent, pas encore dans la config de site ; (3) `agent/plan` n'a pas de route HTTP serveur à ce jour (hors périmètre T9).
 
 Test manuel (vraie machine, sans TV) : démarrer l'agent avec `VDS_AGENT_CACHE_LAN_LISTEN=0.0.0.0:47900`, programmer un média sur un écran du site, envoyer `cache.sync` depuis l'admin, vérifier `ls $VDS_AGENT_DATA_DIR/media`, puis depuis un poste du LAN `curl -I "http://<ip-agent>:47900/m/<sha256>?exp=…&kid=…&sig=…"` (200), même URL modifiée d'un caractère (403), et depuis un hôte hors LAN (refus). Sans la variable : `ss -ltn` ne montre aucun port en écoute pour l'agent.
+
+### Limites constatées sur TV Samsung réelle (QLED 2024, `24_NKL_QTV_T09`)
+
+- L'API REST `:8001/api/v2/` répond (parfois > 3 s, surtout pendant une invite d'appairage) ; le WebSocket `wss://IP:8002/api/v2/channels/samsung.remote.control` émet `ms.remote.touchDisable` puis, sans acceptation sur la TV, `ms.channel.timeOut` (~30 s) ; sur 8001 en clair : `ms.channel.unauthorized`. Sans jeton (invite acceptée), aucune commande ne passe : le pilote répond `power.samsung.not_paired`.
+- Prérequis TV : Paramètres > Général > Gestionnaire de périphériques externes > Notification d'accès : activée, et l'appareil « VDS » non refusé dans la liste.
+- `detect` doit rester sous `DETECT_TIMEOUT_S` (10 s) : lecture REST 5 s max + attente d'appairage 3 s ; l'appairage continue en arrière-plan (45 s).
+- Journaux de l'agent : les champs `extra` sont rendus en `clé=valeur` (`vds_agent/logsetup.py`, secrets masqués) ; `agent.link_error` porte type, code de fermeture, détail ; les commandes et tentatives de pilote journalisent début/résultat/code/durée.

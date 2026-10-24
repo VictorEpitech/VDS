@@ -20,6 +20,8 @@ from .wol import SocketUdpSender, UdpSender, magic_packet
 
 CAPS: frozenset[Capability] = frozenset({"power.on", "power.off", "power.state"})
 PAIR_WAIT_S = 45.0
+DETECT_INFO_TIMEOUT_S = 5.0
+PAIR_DETECT_WAIT_S = 3.0  # sous DETECT_TIMEOUT_S de l'agent (10 s)
 
 
 class SamsungWsDriver(PowerDriver):
@@ -141,7 +143,7 @@ class SamsungWsDriver(PowerDriver):
         if hint.address is None:
             return None
         host = str(hint.address)
-        info = await self._t.device_info(host, 3.0)
+        info = await self._t.device_info(host, DETECT_INFO_TIMEOUT_S)  # la TV répond parfois > 3 s
         if info is None or "samsung" not in json.dumps(info).lower():
             return None
         dev = info.get("device") or {}
@@ -154,7 +156,7 @@ class SamsungWsDriver(PowerDriver):
             action = "power.samsung.accept_on_tv"
             if host not in self._pairing:  # affiche la demande sur la TV et attend l'acceptation
                 self._pairing[host] = asyncio.create_task(self._pair(host, {"port": self._ws_port}))
-            await asyncio.wait({self._pairing[host]}, timeout=8)
+            await asyncio.wait({self._pairing[host]}, timeout=PAIR_DETECT_WAIT_S)
             if await self._state.get(f"token:{host}") is not None:
                 action = None
         return DetectResult(
