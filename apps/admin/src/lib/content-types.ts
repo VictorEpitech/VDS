@@ -28,6 +28,8 @@ export interface JsonSchema {
   /** Variable d'environnement qui fixe la valeur (champ non modifiable ici). */
   "x-vds-env"?: string;
   "x-vds-secret"?: boolean;
+  /** Niveaux de la hiérarchie où la clé peut être surchargée (absent : tous). */
+  "x-vds-scopes"?: ("organization" | "site" | "group" | "screen")[];
   "x-vds-level"?: "simple" | "advanced";
   /** Le champ référence un média de ce genre (image, video, document). */
   "x-vds-media"?: "image" | "video" | "document";

@@ -390,7 +390,7 @@
       "to": "Valable jusqu'au"
     },
     "enabled": "Programmation active",
-    "disabled": "Désactivée",
+      "disabled": "Désactivée",
     "empty": "Aucune programmation. Les écrans restent noirs tant qu'aucune playlist n'est programmée.",
     "delete": {
       "action": "Supprimer",
@@ -537,6 +537,30 @@
       "saved": "Rattachement enregistré.",
       "resolved": "Prochains créneaux",
       "no_slots": "Aucun créneau à venir."
+    },
+    "drivers": {
+      "disabled": "Ce pilote est désactivé.",
+      "no_settings": "Ce pilote n'a aucun réglage.",
+      "title": "Pilotes de l'écran",
+      "intro": "Réglez comment chaque pilote joint l'écran (adresse, MAC, port…) et dans quel ordre ils sont essayés. Les valeurs non modifiées restent héritées.",
+      "screen": "Écran",
+      "pick": "Choisissez un écran.",
+      "card": "Réglages du pilote {name}",
+      "cascade": {
+        "title": "Ordre d'essai des pilotes",
+        "help": "Le premier pilote qui répond est utilisé ; en cas d'échec, le suivant est essayé.",
+        "empty": "Aucun pilote : l'écran ne sera pas piloté.",
+        "up": "Monter {driver}",
+        "down": "Descendre {driver}",
+        "remove": "Retirer {driver}",
+        "up_short": "Monter",
+        "down_short": "Descendre",
+        "remove_short": "Retirer",
+        "add": "Ajouter un pilote",
+        "saved": "Ordre enregistré.",
+        "add_short": "Ajouter à la cascade",
+        "add_driver": "Ajouter {driver} à la cascade"
+      }
     }
   },
   "supervision": {
@@ -574,9 +598,8 @@
       "title": "Détection pour {name}",
       "none": "Aucun mode de pilotage détecté. Vérifiez que l'écran est allumé et sur le même réseau.",
       "confidence": "fiabilité {value}",
-      "use": "Utiliser",
-      "use_for": "Utiliser le pilote {driver}",
-      "applied": "Pilote {driver} enregistré pour cet écran.",
+      "use": "Appliquer la proposition",
+      "use_for": "Appliquer la proposition du pilote {driver}",
       "user_action": "action requise sur l'écran"
     },
     "incidents": {
@@ -620,7 +643,8 @@
   "settings": {
     "form_label": "Réglages du module",
     "saved": "Réglages enregistrés.",
-    "env_var": "Variable {name}"
+    "env_var": "Variable {name}",
+    "proposal": "Proposition de la détection : vérifiez les valeurs puis enregistrez."
   },
   "groups": {
     "title": "Groupes",

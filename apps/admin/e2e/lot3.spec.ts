@@ -116,6 +116,43 @@ test("supervision : acquittement d'un incident et ordre d'allumage", async ({ pa
   await expect(card.getByText("power.wol")).toBeVisible();
 });
 
+test("pilotes : détection, proposition préremplie, enregistrement, cascade au clavier, 375 px", async ({ page }, info) => {
+  const { base } = meta(info);
+  await page.goto(`${base}/supervision`);
+  const card = page.getByRole("listitem").filter({ has: page.getByRole("heading", { level: 3, name: "Hall d'accueil" }) });
+  await card.getByRole("button", { name: /Détecter le mode de pilotage/ }).click();
+  await card.getByRole("button", { name: "Appliquer la proposition du pilote power.wol" }).click();
+
+  await expect(page.getByRole("heading", { level: 2, name: "Pilotes de l'écran" })).toBeFocused();
+  const drivers = page.getByRole("region", { name: "Pilotes de l'écran" });
+  const wol = drivers.getByRole("region", { name: /Wake-on-LAN/ });
+  await expect(wol.getByLabel("Adresse MAC", { exact: true })).toHaveValue("aa:bb:cc:dd:ee:ff");
+  await expect(drivers.getByText(/Proposition de la détection/)).toBeVisible();
+  const res = await new AxeBuilder({ page }).withTags(AA).analyze();
+  expect(res.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
+  await page.setViewportSize({ width: 375, height: 800 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+  await page.setViewportSize({ width: 1280, height: 800 });
+
+  await wol.getByRole("button", { name: "Enregistrer" }).click();
+  await expect(wol.getByText("Réglages enregistrés.")).toBeVisible();
+  await expect(wol.getByText("Défini ici").first()).toBeVisible();
+
+  const down = drivers.getByRole("button", { name: "Descendre power.wol" });
+  await down.focus();
+  await page.keyboard.press("Enter");
+  await drivers.getByRole("button", { name: "Enregistrer" }).last().click();
+  await expect(drivers.getByText("Ordre enregistré.")).toBeVisible();
+  await expect(drivers.getByRole("region", { name: /ADB/i })).toBeVisible();
+  await drivers.getByRole("button", { name: /^Ajouter power\.\S+ à la cascade$/ }).first().click();
+  await drivers.getByRole("button", { name: "Revenir à l'héritage : Ordre d'essai des pilotes" }).click();
+  await expect(drivers.getByRole("button", { name: "Revenir à l'héritage : Ordre d'essai des pilotes" })).toHaveCount(0);
+
+  await page.reload();
+  await drivers.getByLabel("Écran", { exact: true }).selectOption({ label: "Hall d'accueil" });
+  await expect(wol.getByLabel("Adresse MAC", { exact: true })).toHaveValue("aa:bb:cc:dd:ee:ff");
+});
+
 test("notifications : formulaire généré, connexion SMTP verrouillée, enregistrement", async ({ page }, info) => {
   await page.goto(`${meta(info).base}/notifications`);
   const admins = page.getByRole("checkbox", { name: "Prévenir les administrateurs" });

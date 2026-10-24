@@ -53,6 +53,15 @@ const DEFAULTS: Record<string, Record<string, unknown>> = {
     send_resolved: true,
   },
 };
+/** Pilotes d'alimentation simulés : schémas lus dans modules/ (les mêmes que ceux servis par le registre). */
+const DRIVERS = ["power.wol", "power.samsung-ws", "power.adb"];
+const SCOPES: Record<string, Record<string, string[] | undefined>> = {};
+for (const id of DRIVERS) {
+  const schema = JSON.parse(fs.readFileSync(path.join(MODULES, id, "config.schema.json"), "utf8")) as { properties: Record<string, { default?: unknown; "x-vds-scopes"?: string[] }> };
+  DEFAULTS[id] = Object.fromEntries(Object.entries(schema.properties).map(([k, v]) => [k, v.default]));
+  SCOPES[id] = Object.fromEntries(Object.entries(schema.properties).map(([k, v]) => [k, v["x-vds-scopes"]]));
+}
+DEFAULTS.core!["power.cascade"] = DRIVERS;
 const ENV_KEYS = new Set(["smtp_host", "smtp_port", "smtp_security", "smtp_username", "smtp_password", "from"]);
 const SECRET_KEYS = new Set(["smtp_password"]);
 
@@ -123,7 +132,7 @@ export function createPowerMock(world: World) {
       origin: cur.origin,
       inherited: SECRET_KEYS.has(key) ? "" : inh.value,
       inherited_origin: inh.origin,
-      overridable: !ENV_KEYS.has(key),
+      overridable: !ENV_KEYS.has(key) && (SCOPES[ns]?.[key]?.includes(level) ?? true),
       secret: SECRET_KEYS.has(key),
       is_set: SECRET_KEYS.has(key) ? false : null,
     };
@@ -343,6 +352,7 @@ export function createPowerMock(world: World) {
       }
       if (key && !(key in DEFAULTS[ns]!)) return fail(404, "config.key_unknown"), true;
       if (key && ns === "notify.mail" && ENV_KEYS.has(key)) return fail(409, "config.key_from_env"), true;
+      if (key && method === "PUT" && SCOPES[ns]?.[key] && !SCOPES[ns]![key]!.includes(level)) return fail(422, "config.scope_not_allowed"), true;
       if (key && method === "PUT") {
         overrides.set(`${level}:${id}:${ns}:${key}`, (await json()).value);
         return empty(), true;
@@ -351,6 +361,13 @@ export function createPowerMock(world: World) {
         overrides.delete(`${level}:${id}:${ns}:${key}`);
         return empty(), true;
       }
+    }
+
+    if (route === "/registry/modules" && method === "GET" && _query.get("kind") === "power-driver") {
+      const ids = fs.readdirSync(MODULES).filter((d) => read(path.join(MODULES, d, "module.json"))?.kind === "power-driver").sort();
+      return send(200, ids.map((id) => ({
+        id, name: read(path.join(MODULES, id, "module.json"))?.name, enabled: true, has_settings: !!read(path.join(MODULES, id, "config.schema.json")),
+      }))), true;
     }
 
     // --- réglages de module (formulaire généré) --------------------------

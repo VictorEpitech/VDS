@@ -1,10 +1,8 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ErrorAlert, SuccessAlert } from "../../components/feedback";
+import { useNavigate } from "react-router-dom";
 import { Icon } from "../../components/Icon";
-import { useApi } from "../../lib/api";
-import { configKey, type Command } from "../../lib/queries";
+import type { Command } from "../../lib/queries";
+import type { DriverProposal } from "../power/DriversSection";
 
 interface Candidate {
   driver: string;
@@ -30,20 +28,10 @@ export function candidatesOf(cmd: Command): Candidate[] {
 /** Assistant de détection : propose un pilote par écran ; la configuration n'est enregistrée qu'après confirmation. */
 export function DetectPanel({ screenId, screenName, command, onClose }: { screenId: string; screenName: string; command: Command; onClose: () => void }) {
   const { t, i18n } = useTranslation();
-  const api = useApi();
-  const qc = useQueryClient();
-  const [applied, setApplied] = useState<string | null>(null);
   const found = candidatesOf(command);
-  const apply = useMutation({
-    mutationFn: async (c: Candidate) => {
-      for (const [key, value] of Object.entries(c.proposed_config)) await api.put(`/config/screen/${screenId}/${c.driver}/${key}`, { value });
-      return c.driver;
-    },
-    onSuccess: async (driver) => {
-      setApplied(driver);
-      await qc.invalidateQueries({ queryKey: configKey("screen", screenId, driver) });
-    },
-  });
+  const navigate = useNavigate();
+  // La proposition n'est jamais enregistrée ici : elle préremplit le formulaire du pilote, à valider.
+  const apply = (c: Candidate) => navigate("/power", { state: { proposal: { screenId, driver: c.driver, config: c.proposed_config } satisfies DriverProposal } });
   const pct = new Intl.NumberFormat(i18n.language, { style: "percent", maximumFractionDigits: 0 });
   return (
     <section className="card-inner" aria-label={t("supervision.detect.title", { name: screenName })}>
@@ -65,7 +53,7 @@ export function DetectPanel({ screenId, screenName, command, onClose }: { screen
                 <code>{c.driver}</code> · {t("supervision.detect.confidence", { value: pct.format(c.confidence) })}
                 {c.requires_user_action ? <span className="meta"> · {t(c.requires_user_action, { defaultValue: t("supervision.detect.user_action") })}</span> : null}
               </span>
-              <button type="button" className="btn btn-text" disabled={apply.isPending || applied !== null} onClick={() => apply.mutate(c)} aria-label={t("supervision.detect.use_for", { driver: c.driver })}>
+              <button type="button" className="btn btn-text" onClick={() => apply(c)} aria-label={t("supervision.detect.use_for", { driver: c.driver })}>
                 <Icon name="check" />
                 {t("supervision.detect.use")}
               </button>
@@ -73,8 +61,6 @@ export function DetectPanel({ screenId, screenName, command, onClose }: { screen
           ))}
         </ul>
       )}
-      {apply.isError ? <ErrorAlert error={apply.error} /> : null}
-      {applied ? <SuccessAlert>{t("supervision.detect.applied", { driver: applied })}</SuccessAlert> : null}
       <div className="actions">
         <button type="button" className="btn btn-text" onClick={onClose}>
           {t("common.dismiss")}

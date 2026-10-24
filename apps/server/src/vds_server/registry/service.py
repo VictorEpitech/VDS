@@ -176,6 +176,25 @@ class ModuleRegistry:
             "i18n": i18n,
         }
 
+    async def list_by_kind(self, kind: str) -> list[dict[str, Any]]:
+        """Modules sains d'un kind : id, noms, état activé, présence d'un schéma de réglages."""
+        async with self.maker() as s:
+            rows = {r.id: r for r in (await s.execute(select(ModuleRow))).scalars()}
+        out: list[dict[str, Any]] = []
+        for mid, d in sorted(self._known.items()):
+            if d.error is not None or d.manifest.kind != kind:
+                continue
+            row = rows.get(mid)
+            out.append(
+                {
+                    "id": mid,
+                    "name": d.manifest.name.model_dump(),
+                    "enabled": row is not None and row.state == "enabled",
+                    "has_settings": d.config_schema is not None and d.manifest.content is None,
+                }
+            )
+        return out
+
     def content_item_schema(self, module_id: str) -> dict[str, Any] | None:
         """Schéma des éléments d'un content-type actif ; None si inconnu, inactif ou autre kind."""
         run = self._running.get(module_id)

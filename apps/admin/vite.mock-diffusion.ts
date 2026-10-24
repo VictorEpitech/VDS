@@ -134,8 +134,8 @@ export function createDiffusionMock() {
   const site = { id: randomUUID(), name: "Moulins", slug: "moulins", archived_at: null as string | null };
   const sites = [site];
   const group = { id: randomUUID(), site_id: site.id, name: "Accueil" };
-  const groups = [group];
-  const screens = [
+  const groups: { id: string; site_id: string; name: string }[] = [group];
+  const screens: { id: string; site_id: string; group_id: string | null; name: string; orientation: string; archived_at: null }[] = [
     { id: randomUUID(), site_id: site.id, group_id: group.id, name: "Hall d'accueil", orientation: "landscape", archived_at: null },
     { id: randomUUID(), site_id: site.id, group_id: null, name: "Totem", orientation: "portrait", archived_at: null },
   ];

@@ -18,6 +18,8 @@ interface Props {
   readOnly?: (name: string) => boolean;
   /** Contenu ajouté sous un champ (ex. badge de provenance et « revenir à l'héritage »). */
   extra?: (name: string) => ReactNode;
+  /** Pour un champ `x-vds-secret` : une valeur existe (jamais relue, seulement signalée par des puces). */
+  secretSet?: (name: string) => boolean;
 }
 
 /** Liste de chaînes : une valeur par ligne (le texte brut est conservé pendant la saisie). */
@@ -39,7 +41,7 @@ function ListField({ common, value, onChange }: { common: Record<string, unknown
 }
 
 /** Formulaire généré depuis un JSON Schema de module : champs `simple` visibles, volet « Avancé » pour les autres. */
-export function SchemaForm({ schema, ns, value, onChange, errors = {}, mediaOf, readOnly, extra }: Props) {
+export function SchemaForm({ schema, ns, value, onChange, errors = {}, mediaOf, readOnly, extra, secretSet }: Props) {
   const { t } = useTranslation();
   const uid = useId();
   const fields = fieldsOf(schema);
@@ -125,6 +127,18 @@ export function SchemaForm({ schema, ns, value, onChange, errors = {}, mediaOf, 
           max={field.maximum}
           value={typeof v === "number" ? v : ""}
           onChange={(e) => set(name, e.target.value === "" ? undefined : Number(e.target.value))}
+        />
+      );
+    } else if (field["x-vds-secret"]) {
+      control = (
+        <input
+          {...common}
+          type="password"
+          autoComplete="new-password"
+          value=""
+          placeholder={secretSet?.(name) ? "••••••••" : undefined}
+          readOnly
+          onChange={() => undefined}
         />
       );
     } else {

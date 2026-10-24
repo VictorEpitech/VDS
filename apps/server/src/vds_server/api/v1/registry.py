@@ -34,6 +34,13 @@ class ModuleSettingsOut(BaseModel):
     i18n: dict[str, dict[str, Any]]
 
 
+class ModuleSummaryOut(BaseModel):
+    id: str
+    name: dict[str, str]
+    enabled: bool
+    has_settings: bool
+
+
 class ModuleStateIn(BaseModel):
     state: Literal["enabled", "disabled"]
 
@@ -52,6 +59,10 @@ def build_router(rt: Runtime) -> APIRouter:
     @router.get("/content-types", response_model=list[ContentTypeOut])
     async def list_content_types(_: Reader) -> list[ContentTypeOut]:
         return [ContentTypeOut.model_validate(c) for c in rt.registry.content_types()]
+
+    @router.get("/modules", response_model=list[ModuleSummaryOut])
+    async def list_modules(_: Reader, kind: Literal["power-driver"]) -> list[ModuleSummaryOut]:
+        return [ModuleSummaryOut.model_validate(m) for m in await rt.registry.list_by_kind(kind)]
 
     @router.get("/modules/{module_id}/settings", response_model=ModuleSettingsOut)
     async def module_settings(module_id: str, _: Reader) -> ModuleSettingsOut:

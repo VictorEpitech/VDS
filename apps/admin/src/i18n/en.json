@@ -390,7 +390,7 @@
       "to": "Valid until"
     },
     "enabled": "Schedule enabled",
-    "disabled": "Disabled",
+      "disabled": "Disabled",
     "empty": "No schedule yet. Screens stay black until a playlist is scheduled.",
     "delete": {
       "action": "Delete",
@@ -537,6 +537,30 @@
       "saved": "Attachment saved.",
       "resolved": "Upcoming slots",
       "no_slots": "No upcoming slots."
+    },
+    "drivers": {
+      "disabled": "This driver is disabled.",
+      "no_settings": "This driver has no settings.",
+      "title": "Screen drivers",
+      "intro": "Set how each driver reaches the screen (address, MAC, port…) and the order they are tried in. Values you leave alone stay inherited.",
+      "screen": "Screen",
+      "pick": "Choose a screen.",
+      "card": "Settings of driver {name}",
+      "cascade": {
+        "title": "Driver order",
+        "help": "The first driver that answers is used; if it fails, the next one is tried.",
+        "empty": "No driver: the screen will not be controlled.",
+        "up": "Move {driver} up",
+        "down": "Move {driver} down",
+        "remove": "Remove {driver}",
+        "up_short": "Up",
+        "down_short": "Down",
+        "remove_short": "Remove",
+        "add": "Add a driver",
+        "saved": "Order saved.",
+        "add_short": "Add to cascade",
+        "add_driver": "Add {driver} to the cascade"
+      }
     }
   },
   "supervision": {
@@ -574,9 +598,8 @@
       "title": "Detection for {name}",
       "none": "No control method detected. Check that the screen is on and on the same network.",
       "confidence": "confidence {value}",
-      "use": "Use",
-      "use_for": "Use driver {driver}",
-      "applied": "Driver {driver} saved for this screen.",
+      "use": "Apply the proposal",
+      "use_for": "Apply the proposal for driver {driver}",
       "user_action": "action required on the screen"
     },
     "incidents": {
@@ -620,7 +643,8 @@
   "settings": {
     "form_label": "Module settings",
     "saved": "Settings saved.",
-    "env_var": "Variable {name}"
+    "env_var": "Variable {name}",
+    "proposal": "Detection proposal: check the values, then save."
   },
   "groups": {
     "title": "Groups",

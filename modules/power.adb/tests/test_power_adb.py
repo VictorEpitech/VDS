@@ -97,3 +97,16 @@ def test_host_format_validated() -> None:
         for bad in ("evil.tld/#", "a b", "http://x", "x@y", "x:8002", "x?y", "-x", "x\n"):
             with pytest.raises(jsonschema.ValidationError):
                 jsonschema.validate({"host": bad}, schema)
+
+
+def test_mac_format_validated() -> None:
+    """MAC : six octets hexa séparés par « : » ou « - », ou vide ; pas de saut de ligne final."""
+    import jsonschema
+
+    for name in ("power.wol", "power.samsung-ws"):
+        schema = json.loads((Path(__file__).parents[2] / name / "config.schema.json").read_text())
+        for ok in ("", "AA:BB:CC:DD:EE:FF", "aa-bb-cc-dd-ee-ff"):
+            jsonschema.validate({"mac": ok}, schema)
+        for bad in ("aabbccddeeff", "aa:bb:cc:dd:ee", "aa:bb:cc:dd:ee:gg", "aa:bb:cc:dd:ee:ff\n"):
+            with pytest.raises(jsonschema.ValidationError):
+                jsonschema.validate({"mac": bad}, schema)

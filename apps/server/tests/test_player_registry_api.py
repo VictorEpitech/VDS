@@ -34,6 +34,26 @@ async def test_module_settings_schema(admin: AsyncClient, editor: AsyncClient, p
         assert r.status_code == 404
 
 
+async def test_power_driver_list(admin: AsyncClient, editor: AsyncClient, p: str) -> None:
+    for c in (admin, editor):
+        r = await c.get(f"{p}/api/v1/registry/modules", params={"kind": "power-driver"})
+        assert r.status_code == 200, r.text
+        by_id = {m["id"]: m for m in r.json()}
+        assert {"power.wol", "power.samsung-ws", "power.adb", "power.blank"} <= by_id.keys()
+        assert all(i.startswith("power.") for i in by_id)
+        wol = by_id["power.wol"]
+        assert wol["has_settings"] is True and wol["enabled"] is True and wol["name"]["fr"]
+        assert by_id["power.blank"]["has_settings"] is False
+    r = await admin.get(f"{p}/api/v1/registry/modules", params={"kind": "bogus"})
+    assert r.status_code == 422
+
+
+async def test_power_driver_list_requires_auth(app: FastAPI, p: str) -> None:
+    async with new_client(app) as anon_client:
+        r = await anon_client.get(f"{p}/api/v1/registry/modules", params={"kind": "power-driver"})
+        assert r.status_code == 401
+
+
 async def test_content_types_requires_auth(app: FastAPI, p: str) -> None:
     async with new_client(app) as anon_client:
         r = await anon_client.get(f"{p}/api/v1/registry/content-types")
