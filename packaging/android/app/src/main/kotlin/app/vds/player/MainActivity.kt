@@ -25,6 +25,7 @@ import android.content.RestrictionsManager
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import app.vds.relay.CecDispatcher
+import app.vds.relay.KioskDispatcher
 import app.vds.relay.Relay
 import app.vds.relay.RelayConfig
 import kotlin.concurrent.thread
@@ -45,10 +46,15 @@ class MainActivity : Activity() {
     @Volatile
     private var currentUrl: String = ""
 
+    // Verrouillé par défaut ; seul le player (frame principale, origine du relais) peut relâcher, pour une durée bornée.
+    private val kiosk = AndroidKiosk(this) { if (!hasWindowFocus()) ui.post(relaunch) }
+    private val kioskDispatcher = KioskDispatcher(kiosk, HandlerKioskTimer(ui))
+
     private val bridge = VdsBridge(
         trusted = { cfg?.let { currentUrl.startsWith("${it.localOrigin(Relay.DEFAULT_PORT)}${it.basePath}/player/") } == true },
         onReload = { runOnUiThread { reloadPlayer() } },
         cec = CecDispatcher(AndroidCec(this)),
+        kiosk = kioskDispatcher,
     )
 
     private val watchdog = object : Runnable {
@@ -63,7 +69,7 @@ class MainActivity : Activity() {
         }
     }
 
-    private val relaunch = Runnable {
+    private val relaunch: Runnable = Runnable {
         startActivity(
             Intent(this, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT),
@@ -221,23 +227,7 @@ class MainActivity : Activity() {
     }
 
     private fun enterKiosk() {
-        val dpm = getSystemService(DevicePolicyManager::class.java) ?: return
-        if (!dpm.isDeviceOwnerApp(packageName)) return // kiosque doux : voir manifeste (HOME) et onStop
-        try {
-            val admin = ComponentName(this, AdminReceiver::class.java)
-            dpm.setLockTaskPackages(admin, arrayOf(packageName))
-            dpm.setLockTaskFeatures(admin, DevicePolicyManager.LOCK_TASK_FEATURE_NONE)
-            dpm.addPersistentPreferredActivity(
-                admin,
-                IntentFilter(Intent.ACTION_MAIN).apply {
-                    addCategory(Intent.CATEGORY_HOME)
-                    addCategory(Intent.CATEGORY_DEFAULT)
-                },
-                ComponentName(this, MainActivity::class.java),
-            )
-            startLockTask()
-        } catch (_: SecurityException) {
-        }
+        kiosk.enforce() // état courant : verrouillé au démarrage, relâché seulement tant que le player le demande
     }
 
     @Suppress("DEPRECATION")
@@ -251,8 +241,9 @@ class MainActivity : Activity() {
         }
     }
 
-    @Deprecated("Retour neutralisé : aucune sortie du kiosque")
+    @Deprecated("Retour neutralisé tant que le kiosque est verrouillé")
     override fun onBackPressed() {
+        if (!kiosk.locked) @Suppress("DEPRECATION") super.onBackPressed()
     }
 
     override fun onStart() {
@@ -263,7 +254,7 @@ class MainActivity : Activity() {
     /** Kiosque doux : si l'app quitte le premier plan (sans que ce soit l'écran de saisie), on la ramène. */
     override fun onStop() {
         super.onStop()
-        if (!isFinishing && prefs.config() != null) ui.postDelayed(relaunch, RELAUNCH_MS)
+        if (!isFinishing && kiosk.locked && prefs.config() != null) ui.postDelayed(relaunch, RELAUNCH_MS)
     }
 
     override fun onDestroy() {

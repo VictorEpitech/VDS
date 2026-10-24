@@ -1,5 +1,6 @@
 package app.vds.player
 
+import android.annotation.SuppressLint
 import android.content.Context
 import app.vds.relay.CecController
 import app.vds.relay.CecResult
@@ -17,6 +18,7 @@ import java.util.concurrent.TimeUnit
  * effectif que sur un boîtier où l'app est privilégiée (image système / priv-app). Non vérifié sur matériel
  * à ce stade ; tout échec est un code d'erreur, jamais une exception remontée au WebView.
  */
+@SuppressLint("WrongConstant") // service système masqué (@SystemApi), absent de la liste publique
 class AndroidCec(private val context: Context) : CecController {
     private val manager: Any? by lazy { context.applicationContext.getSystemService("hdmi_control") }
 

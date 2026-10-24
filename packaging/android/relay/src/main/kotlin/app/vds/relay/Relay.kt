@@ -42,7 +42,7 @@ class RelayPortException(val port: Int, cause: Throwable? = null) : IOException(
  * « Lecture hors ligne par plateforme ». Fidèle et sans état : méthodes, corps, `Range`/`206`,
  * `ETag`/`304` intacts, flux sans mise en mémoire. Ne transmet ni cookie, ni `Origin`/`Referer`/`Sec-Fetch-*` ;
  * n'ajoute aucun jeton. Ne relaie que `<base>` et ses sous-chemins. Erreur amont : 502 sans détail.
- * (WebSocket `<base>/ws/player` : lot 3, la bibliothèque Ktor CIO le permet.)
+ * WebSocket `<base>/ws/player` : pont bidirectionnel dans [WsBridge] (Authorization conservé, Origin retiré).
  */
 class Relay(
     private val config: RelayConfig,
@@ -51,8 +51,13 @@ class Relay(
     private val bindAttempts: Int = 3,
     private val bindDelayMs: Long = 500,
     private val log: (String) -> Unit = {},
+    maxWsMessage: Int = WsBridge.MAX_MESSAGE,
 ) {
     private var server: ApplicationEngine? = null
+    private val ws = WsBridge(
+        client.newBuilder().readTimeout(0, TimeUnit.MILLISECONDS).pingInterval(30, TimeUnit.SECONDS).build(),
+        maxWsMessage, WsBridge.MAX_CONNECTIONS, log,
+    )
 
     val running: Boolean get() = server != null
 
@@ -85,6 +90,7 @@ class Relay(
 
     @Synchronized
     fun stop() {
+        ws.close()
         server?.stop(200, 1000)
         server = null
     }
@@ -107,12 +113,28 @@ class Relay(
         }
         val method = call.request.httpMethod.value
         val headers = call.request.headers
+        val isWs = headers["Upgrade"]?.equals("websocket", ignoreCase = true) == true
+        if (isWs) {
+            // Seul <base>/ws/player est relayé ; un Origin présent doit être celui de la boucle (aucun élargi).
+            val origin = headers["Origin"]
+            if (path != "${config.basePath}/ws/player" || method != "GET" ||
+                (origin != null && origin != config.localOrigin(port))
+            ) {
+                call.respond(HttpStatusCode.Forbidden)
+                return
+            }
+        }
         val builder = Request.Builder().url(url)
         for (name in headers.names()) {
             if (name.lowercase() in DROP_REQUEST || name.lowercase().startsWith("sec-fetch-") ||
                 name.lowercase().startsWith("proxy-")
             ) continue
             for (v in headers.getAll(name).orEmpty()) builder.addHeader(name, v)
+        }
+        if (isWs) {
+            for (n in listOf("Sec-WebSocket-Key", "Sec-WebSocket-Version", "Sec-WebSocket-Extensions", "Sec-WebSocket-Protocol", "Accept-Encoding")) builder.removeHeader(n)
+            ws.handle(call, builder, headers["Sec-WebSocket-Protocol"])
+            return
         }
         // Sans cet en-tête OkHttp décompresserait à la volée et fausserait Content-Length / Range.
         if (headers["Accept-Encoding"] == null) builder.header("Accept-Encoding", "identity")
