@@ -64,7 +64,7 @@ class VdsBridge(
             .toString()
 
         /** Script exécuté au début de chaque document des origines autorisées. */
-        fun script(infoJson: String): String = """
+        fun script(infoJson: String, kioskToken: String = ""): String = """
             (function(){
               var t=window.$LISTENER_NAME;
               if(!t)return;
@@ -77,6 +77,7 @@ class VdsBridge(
                   t.postMessage(k+":"+body);
                 });
               }
+              var kioskToken=${JSONObject.quote(kioskToken)},claimed=false;
               window.VdsNative={
                 ping:function(){t.postMessage("$MSG_PING")},
                 reload:function(){t.postMessage("$MSG_RELOAD")},
@@ -84,8 +85,16 @@ class VdsBridge(
                 cec:function(a){
                   return req("cec",a,'{"ok":false,"state":"unknown","verified":false,"code":"power.cec.timeout"}');
                 },
-                kiosk:function(m,r){
-                  return req("kiosk",m+":"+Math.max(0,Math.floor(r)),'{"ok":false,"enforcement":"soft"}');
+                // Remise UNIQUE du pont kiosque : le contrôleur du player l'appelle au démarrage, avant tout
+                // content-type ; ensuite plus rien n'expose le jeton à un autre script de la page.
+                claimKiosk:function(){
+                  if(claimed||!kioskToken)return null;
+                  claimed=true;
+                  var tk=kioskToken;kioskToken="";
+                  return function(m,r,u){
+                    return req("kiosk",m+":"+Math.max(0,Math.floor(r))+":"+Math.max(0,Math.floor(u||0))+":"+tk,
+                      '{"ok":false,"enforcement":"soft","mode":"unknown"}');
+                  };
                 }
               };
               t.onmessage=function(e){

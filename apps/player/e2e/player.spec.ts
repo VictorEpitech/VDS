@@ -339,3 +339,49 @@ test("l'ancienne commande maintenance {code} est ignorée : aucun écran de diag
   await expect(page.getByText("123456")).toHaveCount(0);
   await expect(img(page)).toBeVisible();
 });
+
+/** Faux pont Android : `claimKiosk` remis une seule fois, réponses pilotées par le test. */
+async function installFakeNative(page: Page, reply: "echo" | "stuck-maintenance"): Promise<void> {
+  await page.addInitScript((mode) => {
+    const w = window as unknown as { __kioskCalls: unknown[][]; VdsNative: unknown };
+    w.__kioskCalls = [];
+    let claimed = false;
+    w.VdsNative = {
+      ping() {},
+      reload() {},
+      info: () => ({ platform: "android", model: "t", app_version: "0", os_version: "0" }),
+      claimKiosk() {
+        if (claimed) return null;
+        claimed = true;
+        return (m: string, r: number, u: number) => {
+          w.__kioskCalls.push([m, r, u]);
+          return Promise.resolve(
+            mode === "echo"
+              ? JSON.stringify({ ok: true, enforcement: "lock_task", mode: m })
+              : JSON.stringify({ ok: false, enforcement: "soft", mode: "maintenance" }),
+          );
+        };
+      },
+    };
+  }, reply);
+}
+
+test("pont natif : claimKiosk retiré de la page, heartbeat = mode appliqué par le natif", async ({ page }, info) => {
+  await ctl(info, "set", { kiosk: { mode: "unlocked" } });
+  await installFakeNative(page, "echo");
+  await pairAndPlay(page, info);
+  await expect.poll(() => lastKiosk(info), { timeout: 15_000 }).toEqual({ mode: "unlocked", enforcement: "lock_task" });
+  expect(await page.evaluate(() => typeof (window as unknown as { VdsNative: { claimKiosk?: unknown } }).VdsNative.claimKiosk)).toBe(
+    "undefined",
+  );
+  await ctl(info, "set", { kiosk: { mode: "locked" } });
+});
+
+test("pont natif : verrouillage non confirmé (ok:false) = rapporté tel quel et renvoyé", async ({ page }, info) => {
+  await installFakeNative(page, "stuck-maintenance");
+  await pairAndPlay(page, info); // le serveur sert locked ; le natif reste en maintenance
+  await expect.poll(() => lastKiosk(info), { timeout: 15_000 }).toEqual({ mode: "maintenance", enforcement: "soft" });
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { __kioskCalls: unknown[] }).__kioskCalls.length), { timeout: 15_000 })
+    .toBeGreaterThanOrEqual(2);
+});

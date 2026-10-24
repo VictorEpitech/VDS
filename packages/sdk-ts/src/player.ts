@@ -105,10 +105,13 @@ export interface PlatformBridge {
    */
   cec?(action: "probe" | "on" | "off" | "state"): Promise<string>;
   /**
-   * Kiosque natif (Android) : `remainingMs` = durée restante de la maintenance (horloge du player),
-   * 0 sinon. Résout un JSON `{ok, enforcement}` (`lock_task` | `soft`).
+   * Kiosque natif (Android) : accès remis UNE seule fois (puis `null`) au contrôleur kiosque du player,
+   * avant tout content-type ; réservé à lui (le jeton est dans la fermeture). La fonction reçoit
+   * `remainingMs` (durée restante de la maintenance, horloge du player, 0 sinon) et `windowSec` (échéance
+   * `until` en secondes, 0 sinon : identifie la fenêtre, le natif ne la réarme jamais) et résout un JSON
+   * `{ok, enforcement, mode}` : `mode` = mode APPLIQUÉ, `ok:false` = état demandé non confirmé.
    */
-  kiosk?(mode: KioskMode, remainingMs: number): Promise<string>;
+  claimKiosk?(): ((mode: KioskMode, remainingMs: number, windowSec: number) => Promise<string>) | null;
 }
 
 declare global {

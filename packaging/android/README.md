@@ -80,7 +80,7 @@ APK hors Play Store : clé de signature stable.
 
 Installé par `WebViewCompat.addWebMessageListener` limité à l'origine du relais (`http://127.0.0.1:47800`), jamais par
 `addJavascriptInterface` : les iframes `content.url` n'ont pas le pont, et le natif refuse tout message qui ne vient pas
-de la frame principale du player. Messages : `ping`, `reload`, `cec:<id>:<action>`, `kiosk:<id>:<mode>:<restant_ms>`
+de la frame principale du player. Messages : `ping`, `reload`, `cec:<id>:<action>`, `kiosk:<id>:<mode>:<restant_ms>:<fenêtre>:<jeton>` (jeton remis une fois par `claimKiosk`, voir `docs/architecture.md`)
 (tests JVM : `BridgeRouterTest`, `KioskDispatcherTest`, `CecDispatcherTest`).
 
 ## Recette sur matériel (à faire, non exécutée en développement)
@@ -97,3 +97,6 @@ de la frame principale du player. Messages : `ping`, `reload`, `cec:<id>:<action
 ## Contraintes
 
 Voir `docs/architecture.md` › « Contraintes découvertes (L2-T9) » (cleartext, port ouvert aux autres apps, WebSocket lot 3, limites du lancement en arrière-plan).
+
+
+Build de recette : `-Pvds.kioskRelaxed=true` ne pose pas `DISALLOW_DEBUGGING_FEATURES` / `DISALLOW_CONFIG_DATE_TIME` (jamais en production ; en production elles ne sont levées que pendant une maintenance bornée).

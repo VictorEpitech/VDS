@@ -47,8 +47,11 @@ class MainActivity : Activity() {
     private var currentUrl: String = ""
 
     // Verrouillé par défaut ; seul le player (frame principale, origine du relais) peut relâcher, pour une durée bornée.
-    private val kiosk = AndroidKiosk(this) { if (!hasWindowFocus()) ui.post(relaunch) }
-    private val kioskDispatcher = KioskDispatcher(kiosk, HandlerKioskTimer(ui))
+    // Jeton remis une seule fois au contrôleur kiosque du player (claimKiosk) : aucun autre script ne peut demander.
+    private val kioskToken = ByteArray(24).also { java.security.SecureRandom().nextBytes(it) }
+        .joinToString("") { "%02x".format(it) }
+    private val kiosk = AndroidKiosk(this, BuildConfig.KIOSK_RELAXED) { if (!hasWindowFocus()) ui.post(relaunch) }
+    private val kioskDispatcher = KioskDispatcher(kiosk, HandlerKioskTimer(ui), kioskToken, SystemClock::elapsedRealtime)
 
     private val bridge = VdsBridge(
         trusted = { cfg?.let { currentUrl.startsWith("${it.localOrigin(Relay.DEFAULT_PORT)}${it.basePath}/player/") } == true },
@@ -182,7 +185,7 @@ class MainActivity : Activity() {
         WebViewCompat.addWebMessageListener(view, VdsBridge.LISTENER_NAME, rules) { _, message, _, isMainFrame, replyProxy ->
             bridge.onMessage(isMainFrame, message.data) { replyProxy.postMessage(it) }
         }
-        WebViewCompat.addDocumentStartJavaScript(view, VdsBridge.script(VdsBridge.infoJson(c.insecureUpstream)), rules)
+        WebViewCompat.addDocumentStartJavaScript(view, VdsBridge.script(VdsBridge.infoJson(c.insecureUpstream), kioskToken), rules)
         bridgeInstalled = true
     }
 
@@ -227,7 +230,7 @@ class MainActivity : Activity() {
     }
 
     private fun enterKiosk() {
-        kiosk.enforce() // état courant : verrouillé au démarrage, relâché seulement tant que le player le demande
+        kiosk.enforceQuietly() // état courant : verrouillé au démarrage, relâché seulement tant que le player le demande
     }
 
     @Suppress("DEPRECATION")
@@ -249,6 +252,13 @@ class MainActivity : Activity() {
     override fun onStart() {
         super.onStart()
         ui.removeCallbacks(relaunch)
+    }
+
+    /** Retour au premier plan : un verrouillage non confirmé (lock task refusé en arrière-plan) est retenté. */
+    override fun onResume() {
+        super.onResume()
+        kioskDispatcher.resume()
+        kiosk.enforceQuietly()
     }
 
     /** Kiosque doux : si l'app quitte le premier plan (sans que ce soit l'écran de saisie), on la ramène. */

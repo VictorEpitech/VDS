@@ -1079,6 +1079,8 @@ export interface components {
         };
         /** ConfigValueIn */
         ConfigValueIn: {
+            /** Reason */
+            reason?: string | null;
             /** Value */
             value: unknown;
         };
@@ -1515,8 +1517,15 @@ export interface components {
         KioskOut: {
             /** Applied */
             applied?: ("locked" | "unlocked" | "maintenance") | null;
+            /** Confirmed */
+            confirmed?: boolean | null;
             /** Enforcement */
             enforcement?: ("lock_task" | "soft" | "web") | null;
+            /**
+             * Mismatch
+             * @default false
+             */
+            mismatch: boolean;
             /**
              * Requested
              * @enum {string}
@@ -1530,6 +1539,8 @@ export interface components {
          * @description État appliqué rapporté par le player (jamais affiché au public).
          */
         KioskReport: {
+            /** Confirmed */
+            confirmed?: boolean | null;
             /**
              * Enforcement
              * @enum {string}
@@ -2456,7 +2467,9 @@ export interface operations {
     };
     delete_api_v1_config__level___target_id___namespace___key__delete: {
         parameters: {
-            query?: never;
+            query?: {
+                reason?: string | null;
+            };
             header?: never;
             path: {
                 level: "organization" | "site" | "group" | "screen";

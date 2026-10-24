@@ -3,7 +3,7 @@ import { serverUrl } from "./api";
 import { setDrift } from "./clock";
 import { kvGet } from "./db";
 import { setLocale } from "./i18n";
-import { lockDown } from "./kiosk";
+import { claimKioskBridge, lockDown } from "./kiosk";
 import { pair } from "./pairing";
 import { startRuntime } from "./runtime";
 import type { Runtime } from "./runtime";
@@ -45,6 +45,7 @@ function loadTheme(cssUrl: string | undefined): void {
 }
 
 async function main(): Promise<void> {
+  claimKioskBridge(); // avant tout content-type : seul ce contrôleur parle au kiosque natif
   const cfg = window.__VDS__;
   const locale = setLocale(cfg?.defaultLocale ?? navigator.language.slice(0, 2));
   loadTheme(cfg?.theme?.cssUrl);
