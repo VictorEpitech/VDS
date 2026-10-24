@@ -419,7 +419,13 @@ class Agent:
             drv, state = await self.probe(sid)
             return "ok", None, {"state": state, "driver": drv}
         if cmd.name == "power.detect":
-            res = await self.detect(args.get("address"), args.get("mac"))
+            address, mac = args.get("address"), args.get("mac")
+            if not address and sid:  # l'admin n'envoie pas d'adresse : celle de l'écran (plan)
+                address, mac = self.screen_hint(sid, mac)
+            if not address:
+                log.warning("power.detect_no_address", extra={"screen_id": sid})
+                return "failed", "power.detect.no_address", {"results": []}
+            res = await self.detect(address, mac)
             return "ok", None, {"results": [r.model_dump(mode="json") for r in res]}
         if cmd.name == "plan.updated":
             ok = await self.refresh_plan()
@@ -487,6 +493,15 @@ class Agent:
                 }
                 return drv_id, st
         return None, "unknown"
+
+    def screen_hint(self, screen_id: str, mac: str | None) -> tuple[str | None, str | None]:
+        """Adresse/MAC d'un écran d'après la config de ses pilotes dans le plan."""
+        entry = self.screen_entry(screen_id) or {}
+        address = None
+        for cfg in entry.get("drivers", {}).values():
+            address = address or cfg.get("host") or cfg.get("address") or None
+            mac = mac or cfg.get("mac") or None
+        return address, mac
 
     async def detect(self, address: str | None, mac: str | None) -> list[DetectResult]:
         if address and not mac:

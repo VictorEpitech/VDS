@@ -314,3 +314,11 @@ def test_describe_link_error_reports_close_code() -> None:
     info = describe_link_error(e)
     assert info["err"] == "ConnectionClosedError"
     assert info["close_code"] == 1008 and info["close_reason"] == "policy"
+
+
+def test_screen_hint_uses_plan_driver_config() -> None:
+    ag = Agent.__new__(Agent)
+    ag.plan = {"screens": [{"screen_id": "s1", "drivers": {
+        "power.wol": {"mac": "aa:bb"}, "power.samsung-ws": {"host": "10.0.0.5"}}}]}
+    assert ag.screen_hint("s1", None) == ("10.0.0.5", "aa:bb")
+    assert ag.screen_hint("zz", None) == (None, None)
