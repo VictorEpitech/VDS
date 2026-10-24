@@ -87,6 +87,19 @@
           },
           "title": "Modules",
           "type": "array"
+        },
+        "out_seq": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Out Seq"
         }
       },
       "required": [

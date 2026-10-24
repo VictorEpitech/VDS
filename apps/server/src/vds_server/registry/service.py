@@ -32,7 +32,7 @@ from .runtime import load_server_module, make_context
 log = logging.getLogger("vds.registry")
 
 ACTIVATABLE = {"discovered", "disabled", "quarantined"}
-DEFAULT_ENABLED_KINDS = {"content-type"}
+DEFAULT_ENABLED_KINDS = {"content-type", "power-driver"}
 
 
 @dataclass
@@ -93,7 +93,7 @@ class ModuleRegistry:
         async with self.maker() as s:
             rows = list((await s.execute(select(ModuleRow))).scalars())
         wanted = {r.id for r in rows if r.state == "enabled"}
-        # Types de contenu intégrés : actifs par défaut (sinon un média envoyé n'est pas traité).
+        # Types de contenu et pilotes d'alimentation intégrés : actifs par défaut.
         # Un module désactivé ou en quarantaine par l'admin n'est jamais réactivé ici.
         wanted |= {
             r.id
@@ -318,20 +318,20 @@ class ModuleRegistry:
                 row.failure_count = failure_count
 
     def agent_events(self) -> dict[str, str]:
-        """Événements déclarés par les modules à cible site-agent : nom -> id du module."""
+        """Événements des modules actifs à cible site-agent : nom -> id du module."""
         out: dict[str, str] = {}
         for mid, d in self._known.items():
-            if d.error is None and "site-agent" in d.manifest.targets:
+            if d.error is None and mid in self._running and "site-agent" in d.manifest.targets:
                 for e in d.manifest.events.emits:
                     out[parse_event(e).name] = mid
         return out
 
     def agent_modules(self) -> list[tuple[str, str]]:
-        """(id, version) des modules à cible site-agent, compatibles."""
+        """(id, version) des modules à cible site-agent, compatibles et actifs (état enabled)."""
         return [
             (mid, d.manifest.version)
             for mid, d in self._known.items()
-            if d.error is None and "site-agent" in d.manifest.targets
+            if d.error is None and mid in self._running and "site-agent" in d.manifest.targets
         ]
 
     def info(self) -> list[dict[str, Any]]:

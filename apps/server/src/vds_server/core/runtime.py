@@ -9,7 +9,7 @@ from uuid import UUID
 from fastapi import FastAPI, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
-from vds_sdk import Module, ModuleManifest
+from vds_sdk import Event, Module, ModuleManifest
 from vds_sdk.server import AuthProvider, StorageBackend
 
 from vds_server.agents.auth import TOKEN_PREFIX, AgentAuth
@@ -79,6 +79,11 @@ class Runtime:
         self.power_state.register(self.bus.subscribe)
         self.plan_pusher = PlanPusher(self.maker, self.schemas, self.command_queue)
         self.plan_pusher.register(self.bus.subscribe)
+        for name in ("module.enabled", "module.disabled", "module.quarantined"):
+            self.bus.subscribe(name, self._modules_changed)
+
+    async def _modules_changed(self, _event: Event) -> None:
+        await self.agent_hub.refresh_all()
 
     async def _device_reader(self, request: Request) -> bool:
         """Jeton d'appareil valide => lecture des médias ; absent, inconnu ou révoqué => non."""

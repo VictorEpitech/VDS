@@ -17,6 +17,7 @@ from vds_sdk.wire import (
     CLOSE_RATE_LIMITED,
     CLOSE_REPLACED,
     CLOSE_REVOKED,
+    CLOSE_TOKEN_ROTATED,
     MAX_UNACKED,
     AgentHeartbeat,
     AgentHello,
@@ -102,6 +103,10 @@ class AgentSession:
         self._reason = "replaced"
         await self._close(CLOSE_REPLACED)
 
+    async def refresh(self) -> None:
+        self._reason = "modules_changed"
+        await self._close(1012)  # service restart : l'agent se reconnecte (backoff court)
+
     # --- bas niveau ---------------------------------------------------------
     async def _close(self, code: int) -> None:
         if not self._closed:
@@ -158,8 +163,10 @@ class AgentSession:
     async def _still_valid(self) -> int | None:
         """Code de fermeture si le jeton a été révoqué ou changé, sinon None."""
         row = await self._row()
-        if row is None or row.revoked_at is not None or row.token_hash != self._token_hash:
+        if row is None or row.revoked_at is not None:
             return CLOSE_REVOKED
+        if row.token_hash != self._token_hash:
+            return CLOSE_TOKEN_ROTATED  # rotation : l'agent garde son état
         return None
 
     # --- cycle ---------------------------------------------------------------
@@ -201,9 +208,13 @@ class AgentSession:
             raise _Closed(CLOSE_BAD_MESSAGE, "hello_expected")
         hello: AgentHello = self._parse(frame)
         row = await self._row()
-        if row is None or row.revoked_at is not None or row.token_hash != self._token_hash:
+        if row is None or row.revoked_at is not None:
             raise _Closed(CLOSE_REVOKED, "revoked")
+        if row.token_hash != self._token_hash:
+            raise _Closed(CLOSE_TOKEN_ROTATED, "token_rotated")
         agent_seq = int((row.last_hello or {}).get(SEQ_KEY, 0))
+        if hello.out_seq is not None and hello.out_seq < agent_seq:
+            agent_seq = hello.out_seq  # état de l'agent réinitialisé : on réaligne, rien n'est jeté
         self._recv = SeqReceiver(agent_seq)
         self._last_sent = self._acked = hello.last_server_seq
         self._version = hello.agent_version

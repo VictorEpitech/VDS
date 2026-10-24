@@ -108,3 +108,71 @@ async def test_revoked_closes_4410(
     ws2 = await open_ws(app, p)
     await ws2.send("auth", {"token": token})
     assert await ws2.recv() is None and ws2.close_code == 4410
+
+
+async def _open_authed(app: FastAPI, p: str, token: str) -> "FakeWS":  # noqa: F811
+    ws = await open_ws(app, p)
+    await ws.send("auth", {"token": token})
+    w = await ws.recv()
+    assert w is not None and w["type"] == "welcome"
+    return ws
+
+
+async def test_heartbeat_validated_and_throttled(
+    admin: AsyncClient,  # noqa: F811
+    anon: AsyncClient,  # noqa: F811
+    app: FastAPI,  # noqa: F811
+    p: str,  # noqa: F811
+    migrated_db_url: str,
+) -> None:
+    """I2 : trame invalide -> 4400 sans écriture ; au plus un heartbeat par fenêtre."""
+    from test_agents import sql
+
+    _, token = await paired(admin, anon, p)
+    bads: list[dict[str, object]] = [
+        {"uptime_s": "x"},
+        {"revision": {}},
+        {"app_version": "v" * 500},
+        {"errors": [1]},
+    ]
+    for bad in bads:
+        ws = await _open_authed(app, p, token)
+        await ws.send("heartbeat", bad)
+        assert await ws.recv() is None and ws.close_code == 4400
+    assert (
+        await sql(
+            migrated_db_url, "SELECT count(*) FROM screen_device WHERE last_heartbeat IS NOT NULL"
+        )
+    )[0][0] == 0
+    ws = await _open_authed(app, p, token)
+    await ws.send("heartbeat", {"uptime_s": 1, "app_version": "1.0"})
+    await ws.send("heartbeat", {"uptime_s": 2, "app_version": "2.0"})  # dans la fenêtre : ignoré
+    await asyncio.sleep(0.3)
+    rows = await sql(
+        migrated_db_url, "SELECT last_heartbeat->>'uptime_s', app_version FROM screen_device"
+    )
+    assert [tuple(r) for r in rows] == [("1", "1.0")]
+    await ws.close()
+
+
+def test_device_state_tolerates_corrupt_heartbeat() -> None:
+    from datetime import UTC, datetime
+    from types import SimpleNamespace
+    from uuid import uuid4
+
+    from vds_server.inventory.devices import device_state
+
+    dev = SimpleNamespace(
+        id=uuid4(),
+        platform="web",
+        model=None,
+        app_version=None,
+        paired_at=datetime.now(UTC),
+        last_seen_at=None,
+        revoked_at=None,
+        last_heartbeat={"uptime_s": "x", "revision": {}, "stale": "no", "cache": {"missing": 3}},
+    )
+    out = device_state(dev)  # type: ignore[arg-type]
+    assert out is not None and out.heartbeat is not None
+    assert out.heartbeat.uptime_s is None and out.heartbeat.revision is None
+    assert out.heartbeat.stale is False

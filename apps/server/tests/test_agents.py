@@ -154,13 +154,13 @@ async def test_admin_lifecycle(
     # un seul agent actif par site
     r = await admin.post(url, json={"name": "bis"}, headers=SAME)
     assert (r.status_code, r.json()["code"]) == (409, "agents.already_active")
-    # rotation : l'ancien jeton est refusé, la connexion ouverte est fermée en 4410
+    # rotation : l'ancien jeton est refusé, connexion ouverte fermée en 4411 (jeton remplacé)
     ws = await connect(app, p, s["token"])
     await ws.hello()
     r = await admin.post(f"{url}/{s['agent']}/rotate", headers=SAME)
     new = r.json()["token"]
     assert new != s["token"]
-    assert await ws.recv() is None and ws.close_code == 4410
+    assert await ws.recv() is None and ws.close_code == 4411
     assert await refused(app, p, s["token"]) == 4401
     ws2 = await connect(app, p, new)
     await ws2.hello()
@@ -371,3 +371,40 @@ async def test_wrong_first_frame(app: FastAPI, p: str, setup: dict[str, Any]) ->
     ws = await connect(app, p, setup["token"])
     await ws.send("welcome", {})
     assert await ws.recv() is None and ws.close_code == 4400
+
+
+async def test_seq_realigned_after_rotation_or_state_loss(
+    admin: AsyncClient,  # noqa: F811
+    p: str,  # noqa: F811
+    setup: dict[str, Any],
+    app: FastAPI,  # noqa: F811
+    migrated_db_url: str,
+) -> None:
+    """I4 : out_seq annoncé ; un agent repartant de zéro ne voit pas ses trames jetées."""
+    s = setup
+    ws = await connect(app, p, s["token"])
+    await ws.hello()
+    await ws.close()
+    await sql(
+        migrated_db_url,
+        "UPDATE site_agent SET last_hello = jsonb_set(last_hello::jsonb, '{agent_seq}', '5')",
+    )
+    ws = await connect(app, p, s["token"])
+    assert (await ws.hello(out_seq=9))["resume_from"] == 5  # état conservé (rotation)
+    await ws.close()
+    ws = await connect(app, p, s["token"])
+    assert (await ws.hello(out_seq=0))["resume_from"] == 0  # état perdu : réaligné
+    ev = {
+        "name": "power.changed",
+        "version": 1,
+        "occurred_at": datetime.now(UTC).isoformat(),
+        "payload": {
+            "screen_id": s["screen"],
+            "state": "off",
+            "driver": "power.adb",
+            "verified": True,
+        },
+    }
+    await ws.send("event", ev, seq=1)
+    ack = await ws.recv()
+    assert ack is not None and ack["type"] == "ack" and ack["ack"] == 1

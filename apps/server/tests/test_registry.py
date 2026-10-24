@@ -164,3 +164,16 @@ async def test_incompatible_core_recorded(
     assert row.last_error == "module.core_incompatible"
     with pytest.raises(ContractError):
         await reg.enable("notify.old")
+
+
+async def test_agent_modules_only_enabled(maker: async_sessionmaker[AsyncSession]) -> None:
+    """I1 : un module d'agent désactivé n'est ni annoncé (welcome) ni accepté comme émetteur."""
+    reg = ModuleRegistry(maker, CoreBus(maker), REPO_MODULES, required=("theme.vtech",))
+    await reg.start()
+    try:
+        await reg.enable("power.adb")
+        assert "power.adb" in {m for m, _ in reg.agent_modules()}
+        await reg.disable("power.adb")
+        assert "power.adb" not in {m for m, _ in reg.agent_modules()}
+    finally:
+        await reg.stop()

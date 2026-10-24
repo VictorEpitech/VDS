@@ -1,0 +1,70 @@
+# Revue de sécurité — lot 3
+
+Périmètre : commits `53bd024..2ee1195` (15 commits). Il s'agit d'une revue de code statique : aucune modification de code, aucun test d'intrusion lancé.
+Audits de dépendances : `pnpm audit --prod` et `pip-audit` (lancé sur `uv export --frozen`) ne remontent aucune vulnérabilité connue. Les versions sont épinglées par `uv.lock` et `pnpm-lock.yaml`, et les images Docker sont construites avec `--frozen`.
+
+**Verdict : non bloquant.** Statut au 24 octobre 2026 : I1 à I4, M2 et M5 corrigés ; les autres mineurs sont reportés. Aucun constat ne permet de contourner l'authentification, de sortir du site d'un agent ou de faire exécuter une commande arbitraire. Les 4 constats « important » sont à corriger avant le premier déploiement réel d'un agent.
+
+## Points vérifiés et conformes
+
+- `/ws/agent` : tout en-tête `Origin` est refusé avant l'upgrade (`ws/agent.py:28`). L'agent s'authentifie par Bearer sur l'upgrade. Le serveur ne stocke que le sha256 du jeton (256 bits d'entropie). Révocation et rotation sont revérifiées à chaque tour d'écriture (`agents/session.py:158`). Une seule session est admise par agent (4409). Le débit est limité à 50 trames/s, chaque trame à 256 Kio, et 500 trames au plus restent non acquittées.
+- Seq/ack : les trous de séquence sont refusés, les doublons ignorés, et un `ack` en avance ferme la session. `cmd.result` est borné à la cible : `queue.complete` filtre sur `target_kind` et `target_id`, donc un agent ne peut pas clore la commande d'un autre agent.
+- Forge d'événements (`agents/bridge.py`) : les noms d'événements du cœur `agent.*` et `incident.*` sont interdits aux agents. Une liste blanche `power.changed|power.failed|cache.synced` s'applique. Le contrôle `site_id` est en place, ainsi que celui d'appartenance des `screen_id(s)` au site (4403). L'événement est republié avec `origin=agent:<site>`.
+- Commandes : la liste est fermée et les arguments typés, des deux côtés. L'agent revalide avec `validate_for`, déduplique par `cmd_id` et respecte l'expiration. Le pilote ADB n'envoie que des chaînes constantes (`input keyevent`, `dumpsys power`, `getprop`) : il n'y a pas d'injection possible.
+- `/ws/player` : le jeton est envoyé dans le premier message (délai de 5 s), il est haché, et l'expiration comme la révocation sont revérifiées toutes les 10 s. Côté serveur, le canal ne pousse que `schedule.changed`. Pas de cookie, donc pas de CSWSH.
+- Agent : aucun port entrant par défaut. TLS est vérifié avec `create_default_context` ; seule une AC privée peut être ajoutée, la vérification ne se désactive pas. Le jeton peut se lire dans un fichier (`*_FILE`) et n'apparaît dans aucun log. L'état des modules est chiffré (Fernet, fichiers en 0600), et les secrets sont effacés sur 4410.
+- Cache média : le nom de fichier est l'empreinte sha256 (regex stricte). Le chemin du manifeste est validé par regex. Le serveur vérifie la taille et le sha256 avant le `rename` atomique, et ne suit pas les redirections. Le service LAN est désactivé par défaut. Il ne répond qu'à `GET`/`HEAD` `/m/<sha>`, avec un HMAC comparé en temps constant, une expiration bornée, un en-tête plafonné à 8 Kio et un délai de lecture de 10 s.
+- `notify.mail` : TLS vérifié et STARTTLS imposé (pas de clair). Les champs SMTP proviennent uniquement de l'environnement : `config.key_from_env` empêche un admin de rediriger le mot de passe vers un autre serveur. Le mot de passe est un `SecretStr`, absent des logs. Les en-têtes sont nettoyés des caractères de contrôle et le lien est en liste blanche.
+- Routes admin : agents, commandes, calendriers, acquittement d'incident, état des modules et écriture de config sont réservés à `admin`. Le contrôle de même origine n'exempte plus le Bearer que sur `player/heartbeat` et `agent/*` (`middleware/same_origin.py`). La CSP admin est stricte (pas d'`unsafe-inline`, `frame-ancestors 'none'`) et aucun `innerHTML` n'est utilisé dans l'admin ou le player.
+- Le pont Android `VdsNative` passe désormais par `addWebMessageListener` : il est réservé à l'origine locale et à la frame principale. Une iframe `content.url` n'a donc pas accès au CEC.
+- Le plan d'agent exclut les clés `x-vds-secret` (`power/plan.py:165`).
+
+## Constats
+
+### Bloquant
+
+Aucun.
+
+### Important
+
+**I1. Désactiver un module à chaud n'arrête pas son pilote sur l'agent.**
+*Statut : corrigé (24 oct. 2026) : filtre sur les modules actifs, fermeture des sessions sur changement d'état, teardown côté agent.*
+`apps/server/src/vds_server/registry/service.py:329-335` : `agent_modules()` renvoie tous les modules `site-agent` découverts et compatibles, quel que soit leur état (`enabled`, `disabled` ou `quarantined`). `welcome.modules_enabled` les active donc tous. `agent_events()` (l.320-327) accepte de même les événements de modules désactivés.
+*Scénario :* l'admin désactive `power.adb`, par exemple après un incident sur le pilote ou parce que les TV n'en ont pas besoin. Les agents continuent pourtant de le charger et d'ouvrir des connexions ADB vers le LAN ; l'interface affiche un état faux.
+*Correctif :* filtrer sur `mid in self._running`, ou sur l'état `enabled` en base, dans les deux méthodes. Publier `config.updated` ou forcer une reconnexion aux agents sur `module.enabled|disabled|quarantined`. Côté agent, désactiver (`teardown`) les pilotes qui ne figurent plus dans `modules_enabled`.
+
+**I2. Le heartbeat `/ws/player` n'est pas validé : un seul appareil peut faire tomber la liste des écrans.**
+*Statut : corrigé : `Heartbeat` strict, 4400, 1 écriture / 10 s, `device_state` tolérant.*
+`apps/server/src/vds_server/ws/player.py:161-163` stocke le `dict` brut (jusqu'à 256 Kio) et passe `data.get("app_version")` sans le typer. `PLAYER_FRAME_DATA["heartbeat"] = BaseModel` (`vds_sdk/wire/messages.py`) court-circuite toute validation, alors que la route HTTP `player/heartbeat` valide ce même payload avec un schéma.
+*Scénario :* un appareil appairé, ou n'importe qui détenant un jeton `vds_dev_`, envoie `{"uptime_s":"x"}` ou `{"revision":{}}`. `inventory/devices.py:50-59` construit alors `DeviceHeartbeatOut`, la validation échoue, et `GET /api/v1/screens` ainsi que la supervision répondent 500 pour tous les admins. Variante : un `app_version` objet ou très long provoque une erreur SQL. Autre effet : jusqu'à 20 écritures de 256 Kio par seconde et par connexion.
+*Correctif :* valider la trame avec le même modèle Pydantic que la route HTTP (`sc.HeartbeatIn`), refermer en 4400 si c'est invalide, et limiter la fréquence des heartbeats (au plus 1 toutes les 10 s par exemple). Rendre aussi `device_state` tolérant aux types inattendus.
+
+**I3. Épinglage TLS Samsung contournable (TOCTOU) : vol du jeton de la TV sur le LAN.**
+*Statut : corrigé : empreinte vérifiée dans `connection_made` de la connexion qui porte le jeton, plus de seconde connexion.*
+`modules/power.samsung-ws/agent/samsung.py:104-111` : l'empreinte est vérifiée sur une première connexion TLS (`tls_fingerprint`), puis le WebSocket ouvre une seconde connexion avec `CERT_NONE` sans revérifier le certificat. Le jeton part dans l'URL de cette seconde connexion.
+*Scénario :* un attaquant présent sur le LAN (usurpation ARP sur un réseau d'accueil) laisse passer la première connexion vers la vraie TV et intercepte la seconde. Il récupère le jeton d'appairage, puis pilote la TV.
+*Correctif :* ouvrir une seule connexion TLS, vérifier l'empreinte sur son `ssl_object`, puis faire la poignée de main WebSocket sur ce même socket (`connect(..., sock=...)`, ou `ssl` avec un callback de vérification). Ne jamais envoyer `token=` avant d'avoir vérifié le certificat.
+
+**I4. La rotation du jeton d'agent efface l'état des modules et désynchronise la séquence (événements perdus en silence).**
+*Statut : corrigé : 4411 sans effacement, `hello.out_seq` pour réaligner `agent_seq`.*
+Le serveur ferme en 4410 dès que le jeton change (`agents/session.py:158-163`). L'agent appelle alors `wipe_secrets()` puis s'arrête (`apps/site-agent/src/vds_agent/link.py:106-110`). Cet appel efface `kv`, `out_seq` compris, et `module_state`, c'est-à-dire les clés ADB, les jetons et les empreintes Samsung (`store.py:109-112`). Au redémarrage avec le nouveau jeton, l'agent repart à `seq=1`. Le serveur, lui, restaure `agent_seq` pour le même `agent_id` (`session.py:206-207`), et `SeqReceiver.accept` traite toute trame de `seq <= agent_seq` comme un doublon : la trame est acquittée puis jetée (`wire/frame.py:106-107`).
+*Scénario :* une rotation de routine du jeton oblige à réappairer toutes les TV (acceptation ADB ou Samsung sur chaque écran). Ensuite, les N premiers `power.changed`, `power.failed` et `cmd.result` sont perdus sans bruit : pas d'incident ouvert, supervision fausse.
+*Correctif :* distinguer rotation et révocation, par exemple avec un code 4401 « jeton remplacé » qui n'efface pas `module_state`. À la rotation, remettre `agent_seq` à 0 côté serveur ; à défaut, faire annoncer son `out_seq` par l'agent dans `hello` et réaligner. Documenter le choix dans `architecture-lot3.md`.
+
+### Mineur
+
+- **M1. Aucun plafond de connexions `/ws/player` par appareil** (`ws/player.py:123-142`). Chaque connexion reconstruit la programmation toutes les 10 s : N connexions avec un même jeton multiplient la charge DB par N. *Correctif :* limiter à une connexion par appareil, avec remplacement en 4409 comme pour les agents. *(Statut : reporté (backlog).)*
+- **M2. Pas de `--ws-max-size` sur uvicorn** (`docker/server.Dockerfile:45`). Le défaut est de 16 Mio : un client non authentifié peut envoyer 16 Mio avant le contrôle des 256 Kio dans `decode_frame`. *Correctif :* `--ws-max-size 262144`. Envisager aussi une limite de débit par IP sur les échecs d'authentification WS. *(Statut : corrigé : `--ws-max-size 262144` (Dockerfile, compose dev).)*
+- **M3. La clé Fernet est stockée à côté de la base** (`apps/site-agent/src/vds_agent/store.py:22-32`, `state.key` dans `data_dir`). Une copie du volume suffit pour tout déchiffrer. *Correctif :* recommander `VDS_AGENT_STATE_KEY_FILE` sur un autre support (secret Docker) dans la doc d'installation, et le signaler au démarrage quand la clé est locale. *(Statut : reporté (backlog).)*
+- **M4. Les modules d'agent sont chargés en processus, sans signature ni empreinte** (`vds_agent/modules.py:45,119`). L'image `site-agent` n'embarque aucun module (`docker/site-agent.Dockerfile`, pas de `COPY modules`) : en production, l'opérateur monte donc un dossier arbitraire. *Correctif :* copier `modules/power.*` dans l'image, comparer l'empreinte au `checksum` du registre serveur (envoyée dans `welcome`), refuser les ids `agent.*` (l'espace d'état `agent.cache` est partagé). *(Statut : reporté (backlog).)*
+- **M5. `host` des pilotes sans contrainte de format** (`modules/power.adb/config.schema.json:6`, idem pour `power.samsung-ws`). Le paramètre est interpolé dans `wss://{host}:{port}/…?token=` : un `host` comme `evil.tld/#` enverrait le jeton ailleurs. Seul un admin peut écrire ce paramètre. *Correctif :* ajouter un `pattern` (IPv4/IPv6 ou nom d'hôte) ou un `format`. *(Statut : corrigé : `pattern` IP/nom d'hôte sur `host` (adb, samsung-ws).)*
+- **M6. `power.detect` accepte n'importe quelle adresse** (le serveur ne valide pas le `str`, `agents/service.py` via `PowerDetectArgs`). L'agent sonde alors des IP publiques, la boucle locale ou `169.254.169.254` (`vds_agent/runtime.py:447-459`). Seul un admin peut l'utiliser. *Correctif :* typer `IPvAnyAddress` côté serveur et restreindre aux plages privées du LAN. *(Statut : reporté (backlog).)*
+- **M7. Le service LAN n'a pas de plafond de connexions simultanées** (`vds_agent/lan.py:81,104`), et son filtre « pair LAN » ne normalise pas les adresses IPv4 mappées en IPv6 (l.41). *Correctif :* utiliser un sémaphore et `ip.ipv4_mapped`. Remarque : aucun code serveur ne signe encore d'URL `mirrors` (prévues dans `player/schedule`) ; la clé est distribuée mais ne sert pas. Garder le service désactivé tant que ce n'est pas livré. *(Statut : reporté (backlog).)*
+- **M8. Le pont d'événements ne contrôle que `screen_id`/`screen_ids` à la racine du payload** (`agents/bridge.py:24-37`). Un module d'agent qui émet un `group_id`, un `device_id` ou un payload imbriqué échappe au contrôle d'appartenance au site. *Correctif :* imposer dans le contrat que les identifiants de cible soient à la racine, ou valider le payload contre le schéma déclaré du module. *(Statut : reporté (backlog).)*
+- **M9. `VDS_SECRET_KEY` sans longueur minimale** (`settings.py:29`). *Correctif :* refuser moins de 32 octets au démarrage. *(Statut : reporté (backlog).)*
+- **M10. `UploadLimitMiddleware` interroge la base avant toute authentification**, sur chaque `POST /api/v1/media` (`middleware/upload_limit.py:50`). *Correctif :* mettre la limite en cache (quelques secondes). *(Statut : reporté (backlog).)*
+- **M11. Défense en profondeur dans le résolveur de config.** Une surcharge en base sur une clé `x-vds-env` reste appliquée quand la variable n'est pas définie (`config/resolver.py:141-152`). L'écriture est bien refusée, mais une ligne laissée par une version antérieure du schéma serait prise en compte. *Correctif :* ignorer les surcharges des clés `x-vds-env`. *(Statut : reporté (backlog).)*
+
+### Hors périmètre (rappel)
+
+Il n'existe aucun périmètre par groupe pour les éditeurs : `Principal` ne porte que le rôle. Un éditeur voit tous les incidents et peut créer des exceptions d'alimentation sur n'importe quel site. C'est conforme à la roadmap (groupes d'utilisateurs au lot 4), mais les nouvelles routes `power/*` et `incidents` devront être couvertes à ce moment-là.

@@ -26,14 +26,14 @@ class Frame(BaseModel):
     data: dict[str, Any] = {}
 ```
 
-- Codes de fermeture : `4400 bad_message` · `4401 unauthorized` (jeton inconnu) · `4403 forbidden` (cible hors périmètre) · `4408 hello_timeout` (5 s) · `4409 replaced` (nouvelle connexion du même agent/appareil) · `4410 revoked` (`agent_revoked` / `device_revoked`, le client efface ses secrets) · `4426 version_unsupported` · `4429 rate_limited`.
+- Codes de fermeture : `4400 bad_message` · `4401 unauthorized` (jeton inconnu) · `4403 forbidden` (cible hors périmètre) · `4408 hello_timeout` (5 s) · `4409 replaced` (nouvelle connexion du même agent/appareil) · `4410 revoked` (`agent_revoked` / `device_revoked`, le client efface ses secrets) · `4411 token_rotated` (jeton d'agent remplacé : l'agent conserve états et seq, s'arrête, redémarre avec le nouveau jeton ; `hello.out_seq` réaligne `agent_seq` si l'état local a été perdu) · `4426 version_unsupported` · `4429 rate_limited`.
 - Limites : 1 connexion active par agent / appareil, 50 trames/s, fenêtre de 500 trames fiables non acquittées.
 - Multi-processus serveur : une commande est d'abord écrite dans `remote_command` puis signalée par `NOTIFY vds_command, '<target_kind>:<target_id>'` ; le processus qui tient la connexion la pousse. Aucun état WS partagé en mémoire entre workers.
 - Le proxy (Traefik/Dokploy ou Caddy autonome) doit transmettre l'upgrade ; ping protocolaire toutes les 30 s pour rester sous les délais d'inactivité usuels.
 
 ### 1.2 `/ws/agent` (agent de site ↔ serveur)
 
-**Jeton d'agent.** L'admin crée un agent pour un site (`POST /api/v1/sites/{site_id}/agents`) : le serveur génère `vds_agt_<32 octets base64url>` (256 bits), le renvoie **une seule fois**, stocke `sha256(jeton)` (`site_agent.token_hash`, unique ; pas de hachage lent : entropie pleine, comme `vds_dev_`). Rotation `POST …/agents/{id}/rotate` (ancien jeton invalide immédiatement, connexion fermée `4410`), révocation `POST …/revoke`. Audit + événements `agent.enrolled|rotated|revoked`. Un seul agent actif par site en V1 (index unique partiel), extensible plus tard.
+**Jeton d'agent.** L'admin crée un agent pour un site (`POST /api/v1/sites/{site_id}/agents`) : le serveur génère `vds_agt_<32 octets base64url>` (256 bits), le renvoie **une seule fois**, stocke `sha256(jeton)` (`site_agent.token_hash`, unique ; pas de hachage lent : entropie pleine, comme `vds_dev_`). Rotation `POST …/agents/{id}/rotate` (ancien jeton invalide immédiatement, connexion fermée `4411`), révocation `POST …/revoke`. Audit + événements `agent.enrolled|rotated|revoked`. Un seul agent actif par site en V1 (index unique partiel), extensible plus tard.
 
 **Authentification.** En-tête `Authorization: Bearer vds_agt_…` sur la requête d'upgrade (jamais en query string, jamais journalisé). Toute requête portant un en-tête `Origin` est refusée (`403` avant upgrade) : l'agent n'est pas un navigateur, cela ferme le détournement de WebSocket inter-sites. Côté agent : TLS vérifié obligatoire, `VDS_AGENT_CA_FILE` optionnel pour une AC privée, aucune option « insecure ». Le jeton est lu depuis `VDS_AGENT_TOKEN_FILE` (fichier 0600, secret Docker) ou `VDS_AGENT_TOKEN` ; jamais dans le dépôt ni dans la config serveur.
 

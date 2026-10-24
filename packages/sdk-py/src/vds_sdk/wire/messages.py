@@ -51,6 +51,7 @@ class AgentHello(_M):
     core: str
     modules: list[ModuleRef] = []
     last_server_seq: int = Field(0, ge=0)
+    out_seq: int | None = Field(default=None, ge=0)  # resynchronisation seq
     host: HostInfo
     lan: LanInfo = LanInfo()
 
@@ -58,9 +59,7 @@ class AgentHello(_M):
 class CacheInfo(_M):
     enabled: bool = False
     key_id: str | None = None
-    key: str | None = Field(
-        default=None, repr=False
-    )
+    key: str | None = Field(default=None, repr=False)
 
 
 class AgentWelcome(_M):

@@ -16,6 +16,7 @@ log = logging.getLogger("vds.agents")
 class Wakeable(Protocol):
     def wake(self) -> None: ...
     async def replaced(self) -> None: ...
+    async def refresh(self) -> None: ...
 
 
 class AgentHub:
@@ -36,6 +37,11 @@ class AgentHub:
     def unregister(self, agent_id: UUID, session: Wakeable) -> None:
         if self._sessions.get(agent_id) is session:
             del self._sessions[agent_id]
+
+    async def refresh_all(self) -> None:
+        """Modules activés/désactivés : les agents se reconnectent et reçoivent la liste à jour."""
+        for session in list(self._sessions.values()):
+            await session.refresh()
 
     def dispatch(self, payload: str) -> None:
         kind, _, raw = payload.partition(":")

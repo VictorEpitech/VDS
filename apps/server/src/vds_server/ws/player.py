@@ -35,6 +35,7 @@ from vds_server.core.runtime import Runtime
 from vds_server.db.models import ScreenDevice
 from vds_server.player.device_auth import TOKEN_PREFIX, hash_secret
 from vds_server.player.factory import schedule_builder
+from vds_server.player.schemas import Heartbeat
 from vds_server.player.service import HEARTBEAT_INTERVAL_S, heartbeat
 
 log = logging.getLogger("vds.ws.player")
@@ -42,6 +43,7 @@ log = logging.getLogger("vds.ws.player")
 AUTH_TIMEOUT_S = 5.0
 CHECK_S = 10.0  # intervalle de recalcul de la révision (et de revérification du jeton)
 MAX_FRAMES_PER_S = 20
+HEARTBEAT_MIN_S = 10.0  # au plus une écriture de heartbeat toutes les 10 s par connexion
 
 
 def build_router(rt: Runtime) -> APIRouter:
@@ -143,6 +145,7 @@ def build_router(rt: Runtime) -> APIRouter:
 
         async def reader() -> None:
             window_start, count = asyncio.get_event_loop().time(), 0
+            last_hb = float("-inf")
             while True:
                 raw = await ws.receive_text()
                 now = asyncio.get_event_loop().time()
@@ -159,8 +162,16 @@ def build_router(rt: Runtime) -> APIRouter:
                     await ws.close(code=CLOSE_BAD_MESSAGE)
                     return
                 if f.type == "heartbeat":
+                    try:
+                        hb = Heartbeat.model_validate(data)
+                    except ValueError:
+                        await ws.close(code=CLOSE_BAD_MESSAGE)
+                        return
+                    if now - last_hb < HEARTBEAT_MIN_S:
+                        continue  # trop fréquent : ignoré, aucune écriture
+                    last_hb = now
                     async with rt.maker() as s:
-                        await heartbeat(s, device_id, dict(data), data.get("app_version"))
+                        await heartbeat(s, device_id, hb.model_dump(mode="json"), hb.app_version)
 
         tasks = [asyncio.create_task(pusher()), asyncio.create_task(reader())]
         try:

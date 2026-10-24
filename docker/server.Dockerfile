@@ -42,4 +42,4 @@ RUN useradd -r -u 10001 vds && mkdir -p /data/media && chown vds /data/media
 USER vds
 VOLUME /data/media
 EXPOSE 8000
-CMD ["sh", "-c", "python -m vds_server.migrate && exec uvicorn vds_server.main:app_factory --factory --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips \"${FORWARDED_ALLOW_IPS:-127.0.0.1}\""]
+CMD ["sh", "-c", "python -m vds_server.migrate && exec uvicorn vds_server.main:app_factory --factory --host 0.0.0.0 --port 8000 --ws-max-size 262144 --proxy-headers --forwarded-allow-ips \"${FORWARDED_ALLOW_IPS:-127.0.0.1}\""]

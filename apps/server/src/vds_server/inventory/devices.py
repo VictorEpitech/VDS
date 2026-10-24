@@ -52,10 +52,11 @@ def device_state(dev: ScreenDevice | None, now: datetime | None = None) -> sc.De
     if hb is not None:
         raw_cache = hb.get("cache")
         missing = raw_cache.get("missing") if isinstance(raw_cache, dict) else None
+        rev, up = hb.get("revision"), hb.get("uptime_s")
         heartbeat = sc.DeviceHeartbeatOut(
-            revision=hb.get("revision"),
-            stale=bool(hb.get("stale", False)),
-            uptime_s=hb.get("uptime_s"),
+            revision=rev if isinstance(rev, str) else None,
+            stale=hb.get("stale") is True,
+            uptime_s=up if isinstance(up, int) and not isinstance(up, bool) else None,
             missing_assets=len(missing) if isinstance(missing, list) else 0,
         )
     return sc.DeviceStateOut(
