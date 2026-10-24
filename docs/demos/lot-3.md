@@ -3,6 +3,15 @@
 Durée : ~90 min. Aucun secret dans ce document : jetons, mots de passe SMTP et codes saisis par vous, jamais copiés ici.
 Matériel : un serveur VDS (`https://vds.client.fr` en autonome, ou `https://allia-innovation.fr/espace/affichage` en hébergé), une TV Samsung Tizen 2023, une TV Android/Google TV (TCL 2023), un hôte d'agent sur le LAN du site (Pi ou mini-PC Linux, Docker), une boîte mail destinataire, un accès au routeur du site.
 
+## Validé par Victor sur la TV Samsung (24 octobre 2026)
+
+- [x] Player en mode dégradé HTTP (serveur LAN sans certificat : `player.insecure_upstream` / `insecure_context` visibles de l'admin seulement, rien côté public).
+- [x] Agent de site connecté, « en ligne » dans l'admin.
+- [x] Détection (« Détecter ») : popup d'autorisation Samsung acceptée, pilote proposé.
+- [x] Appairage de l'écran sur la TV.
+- [x] Éteindre et allumer depuis l'admin.
+- [ ] Reste à constater : TCL Android (ADB, kiosque : `docs/demos/kiosque-android-tv.md`), WoL, CEC, planning (§4), coupure réseau (§5), mail réel (§6).
+
 ## Non couvert par l'automatique (à constater ici)
 
 - Les pilotes réels face aux vraies TV : ADB réseau, API WebSocket Samsung (port 8002), Wake-on-LAN, HDMI-CEC. L'automatique n'utilise que des fakes TCP/WSS/UDP.
