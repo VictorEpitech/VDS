@@ -55,6 +55,14 @@ class CacheState(BaseModel):
     missing: list[str] = Field(default_factory=list, max_length=500)
 
 
+class KioskReport(BaseModel):
+    """État appliqué rapporté par le player (jamais affiché au public)."""
+
+    model_config = ConfigDict(extra="ignore")
+    mode: Literal["locked", "unlocked", "maintenance"]
+    enforcement: Literal["lock_task", "soft", "web"]
+
+
 class Heartbeat(BaseModel):
     model_config = ConfigDict(extra="ignore")
     revision: str | None = Field(default=None, max_length=100)
@@ -63,6 +71,7 @@ class Heartbeat(BaseModel):
     app_version: str | None = Field(default=None, max_length=40)
     uptime_s: int | None = Field(default=None, ge=0)
     stale: bool = False
+    kiosk: KioskReport | None = None
     errors: list[dict[str, Any]] = Field(default_factory=list, max_length=50)
 
 
@@ -137,6 +146,11 @@ class ContentTypeEntry(BaseModel):
     script: str
 
 
+class KioskDoc(BaseModel):
+    mode: Literal["locked", "unlocked", "maintenance"]
+    until: str | None = None  # échéance de la maintenance (UTC), sinon null
+
+
 class ScheduleDocument(BaseModel):
     format: Literal[1] = 1
     revision: str
@@ -149,3 +163,4 @@ class ScheduleDocument(BaseModel):
     playlists: dict[str, PlayerPlaylist]
     assets: dict[str, AssetRef]
     content_types: dict[str, ContentTypeEntry]
+    kiosk: KioskDoc | None = None  # absent (vieux serveur) = locked

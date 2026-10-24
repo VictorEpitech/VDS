@@ -35,6 +35,31 @@ class ConfigError(Exception):
         self.params = params
 
 
+async def upsert_override(
+    session: AsyncSession,
+    level: str,
+    target_id: UUID,
+    namespace: str,
+    key: str,
+    value: Any,
+    actor_id: UUID | None,
+) -> None:
+    stmt = insert(ConfigOverride).values(
+        {
+            _COLUMN[level]: target_id,
+            "namespace": namespace,
+            "key": key,
+            "value": value,
+            "updated_by": actor_id,
+        }
+    )
+    stmt = stmt.on_conflict_do_update(
+        constraint=_UNIQUE,
+        set_={"value": stmt.excluded.value, "updated_by": actor_id, "updated_at": func.now()},
+    )
+    await session.execute(stmt)
+
+
 class ConfigService:
     def __init__(
         self,
@@ -116,6 +141,8 @@ class ConfigService:
             raise ConfigError("config.key_unknown", 404)
         if "x-vds-env" in prop:
             raise ConfigError("config.key_from_env", 409)
+        if prop.get("readOnly") is True:
+            raise ConfigError("config.read_only", 422)
         if level not in resolver.key_scopes(prop):
             raise ConfigError("config.scope_not_allowed", 422, level=level)
 
@@ -134,21 +161,9 @@ class ConfigService:
         errors = resolver.value_errors(schema, key, value)
         if errors:
             raise ConfigError("config.value_invalid", 422, paths=errors)
-        stmt = insert(ConfigOverride).values(
-            {
-                _COLUMN[level]: target_id,
-                "namespace": namespace,
-                "key": key,
-                "value": value,
-                "updated_by": actor_id,
-            }
-        )
-        stmt = stmt.on_conflict_do_update(
-            constraint=_UNIQUE,
-            set_={"value": stmt.excluded.value, "updated_by": actor_id, "updated_at": func.now()},
-        )
-        await self._s.execute(stmt)
+        await upsert_override(self._s, level, target_id, namespace, key, value, actor_id)
         self._audit("config.updated", actor_id, level, target_id, namespace, key)
+        self._audit_kiosk(actor_id, level, target_id, namespace, key, value)
         await self._s.commit()
         await self._publish(namespace, key, level, target_id)
 
@@ -172,6 +187,28 @@ class ConfigService:
             details={"namespace": namespace, "key": key},
         )
 
+    def _audit_kiosk(
+        self,
+        actor_id: UUID | None,
+        level: str,
+        target_id: UUID,
+        namespace: str,
+        key: str,
+        value: Any,
+    ) -> None:
+        """Verrouillage/déverrouillage du kiosque : action d'audit dédiée `screen.kiosk.*`."""
+        if namespace != "core" or key != "player.kiosk":
+            return
+        audit.record(
+            self._s,
+            actor_kind="user" if actor_id else "system",
+            actor_id=str(actor_id) if actor_id else None,
+            action="screen.kiosk.unlocked" if value == "unlocked" else "screen.kiosk.locked",
+            target_type=level,
+            target_id=str(target_id),
+            details={"scope_level": level},
+        )
+
     async def delete_override(
         self,
         level: str,
@@ -183,6 +220,8 @@ class ConfigService:
         """Retour à l'héritage. Retourne False s'il n'y avait pas de surcharge (idempotent)."""
         schema = self._schema(namespace)
         await self.chain(level, target_id)
+        if schema.get("properties", {}).get(key, {}).get("readOnly") is True:
+            raise ConfigError("config.read_only", 422)
         if key not in schema.get("properties", {}) and not await self._stored(
             level, target_id, namespace, key
         ):
@@ -197,6 +236,7 @@ class ConfigService:
         deleted = bool(res.rowcount)  # type: ignore[attr-defined]
         if deleted:
             self._audit("config.reset", actor_id, level, target_id, namespace, key)
+            self._audit_kiosk(actor_id, level, target_id, namespace, key, "locked")
         await self._s.commit()
         if deleted:
             await self._publish(namespace, key, level, target_id)

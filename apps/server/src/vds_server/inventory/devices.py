@@ -11,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from vds_server.db.models import Screen, ScreenDevice
 from vds_server.inventory import schemas as sc
+from vds_server.player import kiosk
+from vds_server.player.schemas import KioskReport
 from vds_server.player.service import HEARTBEAT_INTERVAL_S
 
 ONLINE_WINDOW = timedelta(seconds=HEARTBEAT_INTERVAL_S * 3)
@@ -72,13 +74,34 @@ def device_state(dev: ScreenDevice | None, now: datetime | None = None) -> sc.De
     )
 
 
+def kiosk_state(
+    request: kiosk.KioskRequest, dev: ScreenDevice | None, now: datetime
+) -> sc.KioskOut:
+    doc = kiosk.served(request, now)
+    out = sc.KioskOut(
+        requested=doc["mode"], until=request.until if doc["mode"] == "maintenance" else None
+    )
+    hb = dev.last_heartbeat if dev is not None and dev.revoked_at is None else None
+    raw = hb.get("kiosk") if isinstance(hb, dict) else None
+    if isinstance(raw, dict):
+        try:
+            report = KioskReport.model_validate(raw)
+        except ValueError:
+            return out
+        out.applied, out.enforcement = report.mode, report.enforcement
+    return out
+
+
 async def screens_out(session: AsyncSession, screens: Iterable[Screen]) -> list[sc.ScreenOut]:
     rows = list(screens)
     devices = await latest_devices(session, (r.id for r in rows))
+    requests = await kiosk.load_requests(session, rows)
     now = datetime.now(UTC)
     out = []
     for r in rows:
         item = sc.ScreenOut.model_validate(r)
-        item.device = device_state(devices.get(r.id), now)
+        dev = devices.get(r.id)
+        item.device = device_state(dev, now)
+        item.kiosk = kiosk_state(requests[r.id], dev, now)
         out.append(item)
     return out

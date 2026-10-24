@@ -16,6 +16,7 @@ from vds_server.api.v1 import (
     health,
     incidents,
     inventory,
+    kiosk,
     me,
     media_files,
     player,
@@ -80,6 +81,7 @@ def create_app(
         inner.include_router(media_files.build_router(runtime))
         inner.include_router(power.build_router(runtime))
         inner.include_router(player.build_router(runtime))
+        inner.include_router(kiosk.build_router(runtime))
         inner.include_router(registry.build_router(runtime))
         inner.include_router(agents.build_router(runtime))
         inner.include_router(incidents.build_router(runtime))

@@ -119,6 +119,7 @@ def build_router(rt: Runtime) -> APIRouter:
         await ws.send_text(
             encode_frame(Frame(type="welcome", data=welcome.model_dump(mode="json")))
         )
+
         async def closer() -> None:
             with contextlib.suppress(Exception):
                 await ws.close(code=CLOSE_REPLACED)

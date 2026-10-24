@@ -99,6 +99,18 @@ class DeviceStateOut(BaseModel):
     heartbeat: DeviceHeartbeatOut | None
 
 
+KioskMode = Literal["locked", "unlocked", "maintenance"]
+
+
+class KioskOut(BaseModel):
+    """Kiosque : demandé (servi) et appliqué (dernier heartbeat). Admin seulement."""
+
+    requested: KioskMode
+    until: datetime | None = None
+    applied: KioskMode | None = None
+    enforcement: Literal["lock_task", "soft", "web"] | None = None
+
+
 class ScreenOut(_Out):
     id: UUID
     site_id: UUID
@@ -107,3 +119,4 @@ class ScreenOut(_Out):
     orientation: Orientation
     archived_at: datetime | None
     device: DeviceStateOut | None = None  # None : écran non appairé
+    kiosk: KioskOut | None = None

@@ -126,9 +126,7 @@ async def test_bridge_nested_targets(app: Any, setup: dict[str, Any]) -> None:
     site = UUID(setup["site"])
 
     def ev(payload: dict[str, Any]) -> EventData:
-        return EventData(
-            name="x.evt", version=1, payload=payload, occurred_at=datetime.now(UTC)
-        )
+        return EventData(name="x.evt", version=1, payload=payload, occurred_at=datetime.now(UTC))
 
     with pytest.raises(WireError):
         await bridge.republish(site, ev({"group_id": str(uuid4())}))

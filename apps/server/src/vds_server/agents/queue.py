@@ -21,9 +21,7 @@ def notify_payload(kind: str, target_id: UUID) -> str:
 
 
 async def notify_raw(session: AsyncSession, kind: str, value: str) -> None:
-    await session.execute(
-        text("SELECT pg_notify(:c, :p)"), {"c": CHANNEL, "p": f"{kind}:{value}"}
-    )
+    await session.execute(text("SELECT pg_notify(:c, :p)"), {"c": CHANNEL, "p": f"{kind}:{value}"})
 
 
 async def notify(session: AsyncSession, kind: str, target_id: UUID) -> None:

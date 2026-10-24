@@ -87,6 +87,13 @@ Cascade :
 - [ ] SMTP indisponible : réessais visibles, aucun incident perdu en base.
 - [ ] Acquitter un incident dans l'admin : non résolu mais plus signalé comme nouveau.
 
+## 6 bis. Android : canal WebSocket via le relais (matériel)
+
+- [ ] Sur le boîtier Android (WebView réelle) : le heartbeat passe en canal WS (plus de sondage 60 s seul), un forçage poussé depuis l'admin arrive en quelques secondes ; vérifier sous `/` et `/espace/affichage`.
+- [ ] Couper puis rétablir le réseau/serveur : le player retombe sur le sondage puis se reconnecte au WS (backoff), sans écran visible.
+- [ ] Jeton révoqué : le WS est refusé (401 relayé), pas de boucle de reconnexion rapide.
+- [ ] Plusieurs jours : pas de fuite (sockets/mémoire du processus) ; `adb shell dumpsys meminfo app.vds.player` stable.
+
 ## 7. Aux deux modes
 
 - [ ] Reprendre §1, §3 et §6 sous `VDS_BASE_PATH=/` puis `/espace/affichage` : URL de l'agent, liens des mails et appels API respectent le préfixe.

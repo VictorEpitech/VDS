@@ -34,6 +34,7 @@ SchemaLookup = Callable[[str], dict[str, Any] | None]
 InstanceLookup = Callable[[str], Module | None]
 PowerLookup = Callable[[UUID, datetime], Any]  # async: -> [{from, to, state}]
 TimezoneLookup = Callable[[UUID], Any]  # async: screen_id -> fuseau IANA
+KioskLookup = Callable[[Screen, datetime], Any]  # async: -> {"mode", "until"}
 
 
 async def screen_chain(session: AsyncSession, screen: Screen) -> dict[str, UUID]:
@@ -117,7 +118,9 @@ class ScheduleBuilder:
         timezone_of: TimezoneLookup,
         instance_of: InstanceLookup | None = None,
         power_of: PowerLookup | None = None,
+        kiosk_of: KioskLookup | None = None,
     ) -> None:
+        self._kiosk_of = kiosk_of
         self._power_of = power_of
         self._instance_of = instance_of
         self._s = session
@@ -155,6 +158,8 @@ class ScheduleBuilder:
         }
         if self._power_of is not None:
             body["power"] = await self._power_of(screen_id, now)
+        if self._kiosk_of is not None:
+            body["kiosk"] = await self._kiosk_of(screen, now)
         body["revision"] = revision_of(body)
         return body
 
