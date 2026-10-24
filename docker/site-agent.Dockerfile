@@ -9,7 +9,7 @@ COPY packages/sdk-py packages/sdk-py
 COPY modules /app/modules
 RUN uv sync --frozen --no-dev --package vds-agent
 ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1
-RUN useradd -r -u 10001 vds
+RUN useradd -r -u 10001 vds && mkdir -p /data/agent && chown vds /data/agent
 USER vds
 # Aucun port entrant : connexion sortante WebSocket TLS uniquement.
 CMD ["python", "-m", "vds_agent"]
