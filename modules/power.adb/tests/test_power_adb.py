@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+import pytest
 from vds_agent.testing import MemoryState, load_driver_class, load_fakes, make_ctx
 from vds_sdk import load_manifest
 from vds_sdk.agent import DetectHint, PowerTarget
@@ -83,3 +84,16 @@ async def test_detect_without_address() -> None:
 
 def test_schema_json_loads() -> None:
     json.loads((Path(__file__).parents[1] / "config.schema.json").read_text())
+
+
+def test_host_format_validated() -> None:
+    """M5 : IP ou nom d'hôte uniquement (pas d'URL, de chemin, d'espace ni d'arobase)."""
+    import jsonschema
+
+    for name in ("power.adb", "power.samsung-ws"):
+        schema = json.loads((Path(__file__).parents[2] / name / "config.schema.json").read_text())
+        for ok in ("", "192.168.1.20", "tv-salle1.lan", "fe80::1"):
+            jsonschema.validate({"host": ok}, schema)
+        for bad in ("evil.tld/#", "a b", "http://x", "x@y", "x:8002", "x?y", "-x", "x\n"):
+            with pytest.raises(jsonschema.ValidationError):
+                jsonschema.validate({"host": bad}, schema)

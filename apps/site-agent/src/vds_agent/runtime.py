@@ -159,6 +159,15 @@ class Agent:
             except Exception:
                 log.exception("module.setup_failed", extra={"module": m.id})
 
+    async def _deactivate_absent(self, enabled: list[dict[str, Any]]) -> None:
+        """Pilotes chargés mais plus listés (désactivés côté serveur) : teardown et retrait."""
+        want = {e["id"] for e in enabled}
+        for mid in [m for m in self.drivers if m not in want]:
+            ld = self.drivers.pop(mid)
+            with contextlib.suppress(Exception):
+                await ld.driver.teardown()
+            self.observed = {k: v for k, v in self.observed.items() if v.get("driver") != mid}
+
     # --- handshake ----------------------------------------------------------------
     async def _hello(self, last_server_seq: int) -> AgentHello:
         return AgentHello(
@@ -168,6 +177,7 @@ class Agent:
                 ModuleRef(id=d.manifest.id, version=d.manifest.version) for d in self.discovered
             ],
             last_server_seq=last_server_seq,
+            out_seq=int(await self.store.kv_get("out_seq", 0)),
             host=HostInfo(os=platform.system().lower(), arch=platform.machine()),
             lan=LanInfo(ipv4=lan_ipv4()),
         )
@@ -177,6 +187,7 @@ class Agent:
         enabled = [e.model_dump() for e in w.modules_enabled]
         await self.store.kv_set("modules_enabled", enabled)
         await self._activate(enabled)
+        await self._deactivate_absent(enabled)
         self.site_id = str(w.site_id)
         await self.store.kv_set("site_id", self.site_id)
         await self._store_cache_key(w.cache.key_id, w.cache.key)

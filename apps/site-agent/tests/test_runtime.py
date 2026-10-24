@@ -11,6 +11,7 @@ from vds_agent.cascade import Cascade
 from vds_agent.runtime import Agent
 from vds_agent.settings import AgentSettings, SettingsError, http_base, ws_url
 from vds_agent.store import Store
+from vds_sdk.wire import AgentWelcome
 
 SID = str(uuid4())
 TOKEN = "vds_agt_" + "x" * 43  # jeton factice de test
@@ -246,3 +247,36 @@ def test_state_is_encrypted_at_rest(tmp_path: Path) -> None:
     raw = (tmp_path / "agent.db").read_bytes()
     assert b"SECRET-TOKEN-123" not in raw
     assert oct((tmp_path / "state.key").stat().st_mode & 0o777) == "0o600"
+
+
+async def test_token_rotated_keeps_state_and_announces_out_seq(tmp_path: Path) -> None:
+    """I4 : 4411 arrête l'agent sans effacer états ni seq ; le hello annonce out_seq."""
+    async with FakeServer(tmp_path, []) as srv:
+        srv.close_after_welcome = 4411
+        agent = make_agent(tmp_path, srv, plan())
+        await agent.store.state_set("power.samsung-ws", "token:x", "secret")
+        await agent.store.kv_set("out_seq", 7)
+        await asyncio.wait_for(agent.link.run(), 5)
+        assert srv.connections == 1
+        assert await agent.store.state_get("power.samsung-ws", "token:x") == "secret"
+        assert await agent.store.kv_get("out_seq") == 7
+        assert srv.hellos[0]["out_seq"] == 7
+
+
+async def test_module_removed_from_welcome_is_torn_down(tmp_path: Path) -> None:
+    """I1 : un pilote qui n'est plus listé dans modules_enabled est déchargé à chaud."""
+    async with FakeServer(tmp_path, ["power.fake"]) as srv:
+        agent = make_agent(tmp_path, srv, plan())
+        await agent.start()
+        await agent._welcomed(_welcome(["power.fake"]))
+        assert "power.fake" in agent.drivers
+        await agent._welcomed(_welcome([]))
+        assert agent.drivers == {}
+        await agent.close()
+
+
+def _welcome(modules: list[str]) -> AgentWelcome:
+    from helpers import welcome_data
+    from vds_sdk.wire import AgentWelcome
+
+    return AgentWelcome.model_validate(welcome_data(modules))

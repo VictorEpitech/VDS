@@ -10,6 +10,7 @@ from typing import Any
 
 from vds_sdk.wire import (
     CLOSE_REVOKED,
+    CLOSE_TOKEN_ROTATED,
     MAX_FRAME_BYTES,
     SUBPROTOCOL_AGENT,
     AgentHello,
@@ -40,6 +41,10 @@ def next_backoff(current: float, rng: random.Random | None = None) -> float:
 
 
 class Revoked(Exception):  # noqa: N818
+    pass
+
+
+class TokenRotated(Exception):  # noqa: N818
     pass
 
 
@@ -108,6 +113,12 @@ class ServerLink:
                 await self.store.wipe_secrets()
                 self._stop.set()
                 return
+            except TokenRotated:
+                # rotation : on conserve l'état (modules, appairages, seq) ; le nouveau jeton
+                # s'installe par redémarrage de l'agent
+                log.error("agent.token_rotated")
+                self._stop.set()
+                return
             except (OSError, ConnectionClosed, WireError, TimeoutError) as e:
                 log.warning("agent.link_error", extra={"err": type(e).__name__})
             except Exception:
@@ -166,6 +177,8 @@ class ServerLink:
                 code = e.rcvd.code if e.rcvd else None
                 if code == CLOSE_REVOKED:
                     raise Revoked from e
+                if code == CLOSE_TOKEN_ROTATED:
+                    raise TokenRotated from e
                 raise
             finally:
                 self._ws = None

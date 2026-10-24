@@ -10,7 +10,7 @@ from typing import Any, Protocol
 from urllib.parse import quote
 
 import httpx
-from websockets.asyncio.client import connect
+from websockets.asyncio.client import ClientConnection, connect
 from websockets.exceptions import WebSocketException
 
 
@@ -50,13 +50,25 @@ def _tv_ssl() -> ssl.SSLContext:
     return ctx
 
 
-async def tls_fingerprint(host: str, port: int) -> str:
-    r, w = await asyncio.open_connection(host, port, ssl=_tv_ssl())
-    try:
-        obj = w.get_extra_info("ssl_object")
-        return hashlib.sha256(obj.getpeercert(binary_form=True)).hexdigest()
-    finally:
-        w.close()
+class _Pinned(ClientConnection):
+    """Connexion WebSocket qui vérifie l'empreinte TLS sur SA propre session, avant toute requête.
+
+    `connection_made` s'exécute après la poignée de main TLS et avant l'envoi de la requête
+    d'upgrade (où voyage le jeton) : en cas d'écart, le transport est coupé, rien n'est émis.
+    """
+
+    pin: str | None = None
+    peer_fp: str | None = None
+    pin_failed: bool = False
+
+    def connection_made(self, transport: asyncio.BaseTransport) -> None:
+        super().connection_made(transport)  # type: ignore[arg-type]
+        obj = transport.get_extra_info("ssl_object")
+        der = obj.getpeercert(binary_form=True) if obj is not None else None
+        self.peer_fp = hashlib.sha256(der).hexdigest() if der else None
+        if self.peer_fp is None or (self.pin is not None and self.peer_fp != self.pin):
+            self.pin_failed = True
+            transport.abort()
 
 
 class WsSamsungTransport:
@@ -101,14 +113,33 @@ class WsSamsungTransport:
         key: str | None,
         timeout: float,
     ) -> KeySession:
-        fp = await tls_fingerprint(host, port)
-        if pin is not None and fp != pin:
-            raise SamsungError("power.samsung.cert_changed")
+        conns: list[_Pinned] = []
+
+        class Conn(_Pinned):
+            def __init__(self, *a: Any, **kw: Any) -> None:
+                super().__init__(*a, **kw)
+                self.pin = pin
+                conns.append(self)
+
         b64 = base64.b64encode(name.encode()).decode()
         url = f"wss://{host}:{port}/api/v2/channels/samsung.remote.control?name={quote(b64)}"
         if token:
             url += f"&token={quote(token)}"
-        async with connect(url, ssl=_tv_ssl(), open_timeout=timeout, max_size=1 << 20) as ws:
+        try:
+            ws = await connect(
+                url,
+                ssl=_tv_ssl(),
+                open_timeout=timeout,
+                max_size=1 << 20,
+                proxy=None,  # le jeton ne transite jamais par un proxy
+                create_connection=Conn,
+            )
+        except (OSError, WebSocketException):
+            if conns and conns[0].pin_failed:
+                raise SamsungError("power.samsung.cert_changed") from None
+            raise
+        fp = conns[0].peer_fp or ""
+        async with ws:
             new_token = token
             while True:
                 msg = json.loads(await ws.recv())

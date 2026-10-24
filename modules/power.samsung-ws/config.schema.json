@@ -4,7 +4,7 @@
   "additionalProperties": false,
   "properties": {
     "host": {
-      "type": "string", "default": "", "maxLength": 253,
+      "type": "string", "default": "", "maxLength": 253, "pattern": "^([A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?|[0-9A-Fa-f:]{2,45})?(?![\\s\\S])",
       "title": "config.power_samsung.host.title", "description": "config.power_samsung.host.description",
       "x-vds-level": "simple", "x-vds-scopes": ["screen"]
     },
