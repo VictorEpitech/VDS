@@ -1,12 +1,12 @@
 import { getPlatformBridge, type ScheduleDocument } from "@vds/sdk-ts";
 import { NetworkError, request } from "./api";
-import type { AssetCache } from "./assets";
+import type { AssetStore } from "./assets";
 import { storageEstimate } from "./assets";
-import { driftFrom, setDrift } from "./clock";
+import { driftFrom, now, setDrift } from "./clock";
 import { kvSet } from "./db";
 import type { Engine } from "./engine";
 import { KV } from "./shared";
-import { allAssets } from "./timeline";
+import { allAssets, neededSlots, slotAssets } from "./timeline";
 
 export interface RemoteCommand {
   type?: string;
@@ -16,7 +16,7 @@ export interface RemoteCommand {
 export interface HeartbeatDeps {
   token: () => string;
   engine: Engine;
-  assets: AssetCache;
+  assets: AssetStore;
   getActive: () => ScheduleDocument | null;
   onRevisionMismatch: () => void;
   onCommands: (cmds: RemoteCommand[]) => void;
@@ -45,7 +45,7 @@ export function insecureContext(): boolean {
 /** Un battement : remonte l'état, retourne l'intervalle suivant (s). Le jeton révoqué lève `DeviceRevokedError`. */
 export async function beat(deps: HeartbeatDeps): Promise<number> {
   const doc = deps.getActive();
-  const keys = doc ? allAssets(doc) : [];
+  const keys = doc ? (deps.assets.lazy ? slotAssets(doc, neededSlots(doc, now())) : allAssets(doc)) : [];
   const missing = deps.assets.missing(keys);
   const est = await storageEstimate();
   const errors = deps.engine.takeErrors();

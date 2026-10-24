@@ -1,7 +1,7 @@
 import type { ScheduleDocument } from "@vds/sdk-ts";
 import { SCHEDULE_FORMAT } from "@vds/sdk-ts";
 import { AssetError } from "./assets";
-import type { AssetCache } from "./assets";
+import type { AssetStore } from "./assets";
 import { NetworkError, request, resolveServer } from "./api";
 import { driftFrom, now, setDrift } from "./clock";
 import { kvGet, kvSet, schedulePut } from "./db";
@@ -10,7 +10,7 @@ import { allAssets, neededSlots, slotAssets } from "./timeline";
 
 export interface SyncDeps {
   token: () => string;
-  assets: AssetCache;
+  assets: AssetStore;
   server: string;
   getActive: () => ScheduleDocument | null;
   activate: (doc: ScheduleDocument) => void;
@@ -78,7 +78,9 @@ export class Syncer {
   /** Médias restants puis purge des médias non référencés. */
   private async fill(doc: ScheduleDocument): Promise<void> {
     try {
-      await this.download(doc, allAssets(doc));
+      // Mode dégradé : seulement le créneau en cours et le suivant (le reste vient à la demande, budget borné).
+      const lazy = this.deps.assets.lazy === true;
+      await this.download(doc, lazy ? slotAssets(doc, neededSlots(doc, now())) : allAssets(doc));
     } catch (e) {
       if (e instanceof NetworkError) return;
       throw e;

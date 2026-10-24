@@ -1,6 +1,8 @@
 import { getPlatformBridge, registerPowerDriver } from "@vds/sdk-ts";
 import type { Locale, ScheduleDocument } from "@vds/sdk-ts";
 import { AssetCache } from "./assets";
+import type { AssetStore } from "./assets";
+import { MemoryAssetCache, degradedMode } from "./degraded";
 import { DeviceRevokedError } from "./api";
 import { setDrift } from "./clock";
 import { ContentLoader } from "./content-loader";
@@ -35,7 +37,8 @@ export interface Runtime {
 /** Joue la programmation, la synchronise et remonte l'état. Aucune dépendance à un serveur joignable pour jouer. */
 export async function startRuntime(d: RuntimeDeps): Promise<Runtime> {
   const life = new AbortController();
-  const assets = new AssetCache(d.server);
+  // Hors contexte sécurisé (test LAN en HTTP) : médias en mémoire, sans hors ligne. Sinon chemin SW + Cache API.
+  const assets: AssetStore = degradedMode() ? new MemoryAssetCache(d.server, () => d.token) : new AssetCache(d.server);
   await assets.init();
   const drift = await kvGet<number>(KV.drift);
   if (typeof drift === "number") setDrift(drift);

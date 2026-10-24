@@ -579,6 +579,8 @@ Principe : **un seul player web, un seul cache (SW + IndexedDB)**. On ne dupliqu
 3. Pas de domaine : HTTP sur l'IP locale ; `tls internal` de Caddy seulement pour l'admin (AC à installer sur les postes d'admin), jamais pour les players.
 Lot 2 : ces trois cas sont documentés ; un profil Compose `https` (service Caddy, `VDS_PUBLIC_ORIGIN` aligné) est livré au lot 5 avec l'installation en un clic.
 
+**Mode dégradé (test / LAN en HTTP, `apps/player/src/degraded.ts`)** : actif seulement si `isSecureContext === false` ou `caches` absent ; le chemin SW + Cache API n'est jamais désactivé ailleurs. Les médias du créneau courant et du suivant sont téléchargés par `fetch` avec `Authorization: Bearer <jeton>`, vérifiés (sha256) et gardés en `Blob` mémoire (URL `blob:` passée aux content-types par `resolveUrl`), LRU borné à 128 Mo (éviction d'abord hors programmation courante), item suivant préchargé par le moteur. Pas de hors ligne : réseau coupé = le contenu déjà en mémoire continue, sinon écran neutre ; tout est perdu au rechargement. Le heartbeat signale `player.insecure_context` (admin seulement). Usage test/LAN, pas une cible de production ; un média en cours évincé par un budget trop petit peut échouer (une vidéo plus grosse que le budget est refusée).
+
 **Visibilité** : un player sans contexte sécurisé et sans pont natif ne peut rien jouer ; il le signale dans `errors[]` du heartbeat (`player.insecure_context`) pour que l'admin l'affiche, l'écran public restant sur l'écran d'attente sans information technique.
 
 ### Empaquetage Android minimal (`packaging/android/`)

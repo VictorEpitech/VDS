@@ -7,7 +7,7 @@ import type {
   ScheduleDocument,
   VdsContentElement,
 } from "@vds/sdk-ts";
-import type { AssetCache } from "./assets";
+import type { AssetStore } from "./assets";
 import { resolveServer } from "./api";
 import { now } from "./clock";
 import type { ContentLoader } from "./content-loader";
@@ -59,7 +59,7 @@ function withTimeout<T>(p: Promise<T>, ms: number, code: string): Promise<T> {
 export interface EngineDeps {
   screens: Screens;
   loader: ContentLoader;
-  assets: AssetCache;
+  assets: AssetStore;
   server: string;
   locale: Locale;
   isOnline: () => boolean;
@@ -104,7 +104,7 @@ class ZoneRunner {
       locale: this.deps.locale,
       orientation: this.doc.screen.orientation,
       zone: { width: this.root.clientWidth, height: this.root.clientHeight },
-      resolveUrl: (rel) => resolveServer(rel, this.deps.server),
+      resolveUrl: (rel) => this.deps.assets.urlFor?.(rel) ?? resolveServer(rel, this.deps.server),
     };
   }
 
@@ -115,7 +115,20 @@ class ZoneRunner {
       this.report("offline_skipped", item.id);
       return null;
     }
-    if (!this.deps.assets.hasAll(item.assets)) {
+    const { assets } = this.deps;
+    if (assets.lazy && !assets.hasAll(item.assets)) {
+      // Mode dégradé : téléchargement de l'item (le suivant est préparé pendant que le courant joue).
+      try {
+        for (const k of item.assets) {
+          const ref = this.doc.assets[k];
+          if (ref) await withTimeout(assets.ensure(k, ref, this.ctl.signal), 6 * PREPARE_TIMEOUT_MS, "asset_timeout");
+        }
+      } catch {
+        // réseau coupé ou média refusé : item sauté ci-dessous
+      }
+      if (this.ctl.signal.aborted) return null;
+    }
+    if (!assets.hasAll(item.assets)) {
       this.report("asset_missing", item.id);
       return null;
     }

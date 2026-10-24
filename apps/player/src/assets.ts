@@ -14,8 +14,24 @@ export class AssetError extends Error {
   }
 }
 
+/** Ce que le moteur, la synchronisation et le heartbeat attendent d'un stock de médias. */
+export interface AssetStore {
+  init(): Promise<void>;
+  has(key: string): boolean;
+  hasAll(keys: readonly string[]): boolean;
+  keys(): string[];
+  missing(keys: readonly string[]): string[];
+  ensure(key: string, ref: AssetRef, signal?: AbortSignal): Promise<void>;
+  purge(keep: ReadonlySet<string>): Promise<void>;
+  clear(): Promise<void>;
+  /** Mode dégradé : téléchargement à la demande, borné en mémoire. */
+  readonly lazy?: boolean;
+  /** Mode dégradé : URL `blob:` du média, sinon l'URL serveur (servie par le SW). */
+  urlFor?(key: string): string | null;
+}
+
 /** Cache des médias (`vds-media-v1`), indexé par clé relative à l'URL serveur. */
-export class AssetCache {
+export class AssetCache implements AssetStore {
   private present = new Set<string>();
   private cache: Cache | null = null;
 
