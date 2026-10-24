@@ -249,7 +249,11 @@ class Agent:
             if ld is None or drv_id not in configs:
                 log.warning(
                     "power.driver_skipped",
-                    extra={"driver": drv_id, "loaded": ld is not None, "configured": drv_id in configs},
+                    extra={
+                        "driver": drv_id,
+                        "loaded": ld is not None,
+                        "configured": drv_id in configs,
+                    },
                 )
                 continue  # inactif ou non configuré pour cet écran
             try:
@@ -489,7 +493,8 @@ class Agent:
         if entry is None:
             return None, "unknown"
         sd = self.build_screen(entry)
-        log.info("power.probe", extra={"screen_id": screen_id, "drivers": [d[0] for d in sd.drivers]})
+        drivers = [d[0] for d in sd.drivers]
+        log.info("power.probe", extra={"screen_id": screen_id, "drivers": drivers})
         for drv_id, drv, tgt in sd.drivers:
             if "power.state" in drv.capabilities:
                 st = await self.cascade.read_state(drv, tgt)

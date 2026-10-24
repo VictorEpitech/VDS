@@ -17,6 +17,7 @@ from vds_sdk.wire import (
     CLOSE_BAD_MESSAGE,
     CLOSE_HELLO_TIMEOUT,
     CLOSE_RATE_LIMITED,
+    CLOSE_REPLACED,
     CLOSE_REVOKED,
     CLOSE_UNAUTHORIZED,
     CLOSE_VERSION_UNSUPPORTED,
@@ -31,6 +32,7 @@ from vds_sdk.wire import (
     parse_data,
 )
 
+from vds_server.agents.queue import DEVICE_KIND, notify_raw
 from vds_server.core.runtime import Runtime
 from vds_server.db.models import ScreenDevice
 from vds_server.player.device_auth import TOKEN_PREFIX, hash_secret
@@ -117,7 +119,17 @@ def build_router(rt: Runtime) -> APIRouter:
         await ws.send_text(
             encode_frame(Frame(type="welcome", data=welcome.model_dump(mode="json")))
         )
-        await _serve(ws, auth.token, device_id, screen_id, current)
+        async def closer() -> None:
+            with contextlib.suppress(Exception):
+                await ws.close(code=CLOSE_REPLACED)
+
+        nonce = rt.agent_hub.register_device(device_id, closer)
+        try:
+            async with rt.maker.begin() as s:
+                await notify_raw(s, DEVICE_KIND, f"{device_id}:{nonce}")
+            await _serve(ws, auth.token, device_id, screen_id, current)
+        finally:
+            rt.agent_hub.unregister_device(device_id, nonce)
 
     async def _serve(
         ws: WebSocket, token: str, device_id: UUID, screen_id: UUID, last: str | None

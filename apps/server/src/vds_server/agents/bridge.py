@@ -21,13 +21,33 @@ AGENT_CORE_EVENTS = frozenset({"power.changed", "power.failed", "cache.synced"})
 ModuleEvents = Callable[[], dict[str, str]]
 
 
+# Cibles qu'un agent ne possède pas : refusées à toute profondeur du payload.
+FORBIDDEN_TARGET_KEYS = frozenset({"group_id", "group_ids", "device_id", "device_ids"})
+MAX_DEPTH = 6
+
+
+def _walk(node: Any, raw: list[Any], depth: int = 0) -> None:
+    if depth > MAX_DEPTH:
+        raise WireError("invalid_payload", CLOSE_BAD_MESSAGE)
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key in FORBIDDEN_TARGET_KEYS:
+                raise WireError("target_not_allowed", CLOSE_FORBIDDEN)
+            if key == "screen_id":
+                raw.append(value)
+            elif key == "screen_ids" and isinstance(value, list):
+                raw.extend(value)
+            else:
+                _walk(value, raw, depth + 1)
+    elif isinstance(node, list):
+        for item in node:
+            _walk(item, raw, depth + 1)
+
+
 def _screen_ids(payload: dict[str, Any]) -> set[UUID]:
+    """Écrans visés, à toute profondeur (un module ne peut pas y échapper en imbriquant)."""
     raw: list[Any] = []
-    if "screen_id" in payload:
-        raw.append(payload["screen_id"])
-    ids = payload.get("screen_ids")
-    if isinstance(ids, list):
-        raw.extend(ids)
+    _walk(payload, raw)
     out: set[UUID] = set()
     for item in raw:
         try:

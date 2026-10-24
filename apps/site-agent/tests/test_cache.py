@@ -272,3 +272,26 @@ async def test_cache_sync_failures(tmp_path: Path) -> None:
             1,
         )
     assert Cascade and fast and sys and time  # imports partagés
+
+
+def test_lan_peer_ipv4_mapped_and_public() -> None:
+    from vds_agent.lan import is_lan_peer
+
+    assert is_lan_peer("192.168.1.5")
+    assert is_lan_peer("::ffff:192.168.1.5")
+    assert not is_lan_peer("::ffff:8.8.8.8")
+    assert not is_lan_peer("8.8.8.8")
+
+
+def test_reserved_module_id_refused(tmp_path: Path) -> None:
+    import json
+
+    from vds_agent.modules import discover
+
+    mod = tmp_path / "agent.evil"
+    mod.mkdir()
+    base = json.loads(
+        (Path(__file__).resolve().parents[3] / "modules/power.adb/module.json").read_text()
+    )
+    (mod / "module.json").write_text(json.dumps(base | {"id": "agent.evil"}))
+    assert discover(tmp_path) == []

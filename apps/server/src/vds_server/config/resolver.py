@@ -138,7 +138,8 @@ def resolve(
         value: Any = prop.get("default")
         origin = Origin("default")
         inh_value, inh_origin = value, origin
-        for o in [] if secret else by_key.get(key, []):  # un secret ne vient que de l'env
+        # un secret ou une clé liée à l'env ne vient que de l'env (lignes héritées ignorées)
+        for o in [] if secret or env_name else by_key.get(key, []):
             node = nodes.get(o.level)
             if node is None or node.id != o.scope_id:
                 continue

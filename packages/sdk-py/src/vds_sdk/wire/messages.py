@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import ipaddress
 from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .frame import Frame, WireError
 
@@ -118,9 +119,29 @@ class EmptyArgs(_M):
     pass
 
 
+def _lan_address(value: str | None) -> str | None:
+    """Sonde : IP privée du LAN uniquement (ni boucle locale, ni link-local, ni publique)."""
+    if value is None:
+        return None
+    try:
+        ip = ipaddress.ip_address(value)
+    except ValueError as exc:
+        raise ValueError("power.address_invalid") from exc
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+        ip = ip.ipv4_mapped
+    if not ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_unspecified:
+        raise ValueError("power.address_not_lan")
+    return str(ip)
+
+
 class PowerDetectArgs(_M):
     address: str | None = None
     mac: str | None = None
+
+    @field_validator("address")
+    @classmethod
+    def _address_is_lan(cls, value: str | None) -> str | None:
+        return _lan_address(value)
 
 
 class RevisionArgs(_M):

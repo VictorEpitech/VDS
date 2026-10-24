@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 import os
 import sqlite3
 from pathlib import Path
@@ -9,6 +10,8 @@ from typing import Any
 
 from cryptography.fernet import Fernet
 from vds_sdk.wire import MAX_UNACKED, Frame
+
+log = logging.getLogger("vds.agent")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -23,6 +26,7 @@ def _load_or_create_key(data_dir: Path, configured: str | None) -> bytes:
     if configured:
         return configured.encode()
     path = data_dir / "state.key"
+    log.warning("agent.state_key_local")  # M3 : préférer VDS_AGENT_STATE_KEY(_FILE) hors du volume
     if path.exists():
         return path.read_bytes().strip()
     key = Fernet.generate_key()

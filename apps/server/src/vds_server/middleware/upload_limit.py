@@ -5,6 +5,7 @@ réellement reçus sont aussi comptés. La limite précise (fichier seul) reste 
 """
 
 import json
+import time
 from collections.abc import Awaitable, Callable
 
 from starlette.datastructures import Headers
@@ -12,6 +13,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from vds_server.settings import Settings
 
+CACHE_TTL_S = 5.0
 OVERHEAD = 1024 * 1024  # champs de formulaire + délimiteurs multipart
 
 
@@ -41,7 +43,15 @@ class UploadLimitMiddleware:
     ) -> None:
         self.app = app
         self.path = f"{settings.prefix}/api/v1/media"
-        self.limit = limit
+        self._fetch = limit
+        self._cached: tuple[float, int] | None = None
+
+    async def limit(self) -> int:
+        """Limite lue en base au plus une fois par CACHE_TTL_S (pas de DB à chaque requête)."""
+        now = time.monotonic()
+        if self._cached is None or now - self._cached[0] >= CACHE_TTL_S:
+            self._cached = (now, await self._fetch())
+        return self._cached[1]
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http" or scope["method"] != "POST" or scope["path"] != self.path:

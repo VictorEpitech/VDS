@@ -14,7 +14,7 @@ from vds_server.agents.auth import AgentPrincipal
 from vds_server.agents.queue import CommandQueue
 from vds_server.config.schemas import ConfigSchemaProvider
 from vds_server.db.models import Screen, ScreenGroup, Site
-from vds_server.db.models_power import SiteAgent
+from vds_server.db.models_power import RemoteCommand, SiteAgent
 from vds_server.power.plan import PowerPlanBuilder
 
 if TYPE_CHECKING:
@@ -52,7 +52,6 @@ class PlanPusher:
         self._maker = maker
         self._schemas = schemas
         self._queue = queue
-        self._last: dict[UUID, str] = {}
 
     def register(self, subscribe: Any) -> None:
         for name in TRIGGERS:
@@ -86,6 +85,21 @@ class PlanPusher:
         except Exception:
             log.exception("agent.plan_push_failed")
 
+    async def _last_pushed(self, agent_id: UUID) -> str | None:
+        """Dernière révision poussée, lue en base : cohérent entre workers (pas d'état mémoire)."""
+        async with self._maker() as s:
+            args = await s.scalar(
+                select(RemoteCommand.args)
+                .where(
+                    RemoteCommand.target_kind == "agent",
+                    RemoteCommand.target_id == agent_id,
+                    RemoteCommand.name == "plan.updated",
+                )
+                .order_by(RemoteCommand.seq.desc())
+                .limit(1)
+            )
+        return str(args.get("revision")) if isinstance(args, dict) else None
+
     async def _push(self, payload: dict[str, Any]) -> None:
         async with self._maker() as s:
             sites = await self._sites(s, payload)
@@ -104,9 +118,8 @@ class PlanPusher:
             }
         for agent_id, site_id in agents:
             revision = str(plans[site_id])
-            if self._last.get(agent_id) == revision:
+            if await self._last_pushed(agent_id) == revision:
                 continue
-            self._last[agent_id] = revision
             await self._queue.enqueue(
                 "agent", agent_id, "plan.updated", args={"revision": revision}
             )

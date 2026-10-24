@@ -19,6 +19,7 @@ log = logging.getLogger("vds.agent.lan")
 
 MAX_HEAD = 8192
 READ_TIMEOUT_S = 10.0
+MAX_CONNECTIONS = 32
 MAX_TTL_S = 3 * 86400  # une URL ne peut pas être valable plus de J+1 ; plafond défensif
 CHUNK = 1 << 16
 
@@ -39,7 +40,9 @@ def parse_listen(value: str) -> tuple[str, int]:
 
 
 def is_lan_peer(address: str) -> bool:
-    ip = ipaddress.ip_address(address)
+    ip = ipaddress.ip_address(address.partition("%")[0])
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+        ip = ip.ipv4_mapped  # ::ffff:a.b.c.d évalué comme l'IPv4 sous-jacente
     return ip.is_private or ip.is_loopback or ip.is_link_local
 
 
@@ -76,6 +79,7 @@ class LanServer:
         self._keys = keys  # (kid, clé) courants, ou None tant que le serveur ne l'a pas fournie
         self._clock = clock
         self._srv: asyncio.Server | None = None
+        self._slots = asyncio.Semaphore(MAX_CONNECTIONS)
 
     async def start(self) -> int:
         self._srv = await asyncio.start_server(self._handle, self.host, self.port)
@@ -102,6 +106,13 @@ class LanServer:
         await w.drain()
 
     async def _handle(self, r: asyncio.StreamReader, w: asyncio.StreamWriter) -> None:
+        if self._slots.locked():  # plafond de connexions simultanées atteint
+            w.close()
+            return
+        async with self._slots:
+            await self._handle_one(r, w)
+
+    async def _handle_one(self, r: asyncio.StreamReader, w: asyncio.StreamWriter) -> None:
         try:
             peer = w.get_extra_info("peername")
             if not peer or not is_lan_peer(str(peer[0])):

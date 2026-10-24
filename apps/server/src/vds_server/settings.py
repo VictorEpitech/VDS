@@ -30,6 +30,13 @@ class Settings(BaseSettings):
     quarantine_window_s: int = 600
     secret_key: str | None = None  # VDS_SECRET_KEY : dérive les clés du service LAN de cache
 
+    @field_validator("secret_key")
+    @classmethod
+    def _secret_key_length(cls, value: str | None) -> str | None:
+        if value is not None and len(value.encode()) < 32:
+            raise ValueError("errors.secret_key_too_short")
+        return value
+
     @field_validator("base_path")
     @classmethod
     def _normalize_base_path(cls, value: str) -> str:

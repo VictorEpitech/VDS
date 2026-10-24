@@ -3,12 +3,14 @@
 import asyncio
 import contextlib
 import logging
+import time
+from collections.abc import Awaitable, Callable
 from typing import Any, Protocol
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from vds_server.agents.queue import CHANNEL
+from vds_server.agents.queue import CHANNEL, DEVICE_KIND, MODULES_KIND
 
 log = logging.getLogger("vds.agents")
 
@@ -23,6 +25,8 @@ class AgentHub:
     def __init__(self) -> None:
         self._sessions: dict[UUID, Wakeable] = {}
         self._listener: asyncio.Task[None] | None = None
+        self._tasks: set[asyncio.Future[None]] = set()
+        self._devices: dict[UUID, tuple[str, Callable[[], Awaitable[None]]]] = {}
 
     def is_connected(self, agent_id: UUID) -> bool:
         return agent_id in self._sessions
@@ -41,10 +45,48 @@ class AgentHub:
     async def refresh_all(self) -> None:
         """Modules activés/désactivés : les agents se reconnectent et reçoivent la liste à jour."""
         for session in list(self._sessions.values()):
-            await session.refresh()
+            with contextlib.suppress(Exception):
+                await session.refresh()
+
+    # --- une seule connexion /ws/player par appareil (tous workers) -----------
+    def register_device(self, device_id: UUID, closer: Callable[[], Awaitable[None]]) -> str:
+        """Enregistre la connexion ; l'ancienne du même worker est fermée (4409) par l'appelant."""
+        nonce = f"{time.time_ns():020d}-{uuid4().hex}"
+        previous = self._devices.get(device_id)
+        self._devices[device_id] = (nonce, closer)
+        if previous is not None:
+            self._spawn(previous[1]())
+        return nonce
+
+    def unregister_device(self, device_id: UUID, nonce: str) -> None:
+        current = self._devices.get(device_id)
+        if current is not None and current[0] == nonce:
+            del self._devices[device_id]
+
+    def _device_announced(self, raw: str) -> None:
+        raw_id, _, nonce = raw.partition(":")
+        try:
+            current = self._devices.get(UUID(raw_id))
+        except ValueError:
+            return
+        # la plus récente gagne : on ne ferme que les connexions enregistrées avant l'annonce
+        if current is not None and current[0] < nonce:
+            self._spawn(current[1]())
+
+    def _spawn(self, coro: Awaitable[None]) -> None:
+        task = asyncio.ensure_future(coro)
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
 
     def dispatch(self, payload: str) -> None:
         kind, _, raw = payload.partition(":")
+        if kind == MODULES_KIND:
+            # signal émis par n'importe quel worker : chacun ferme ses propres sessions (1012)
+            self._spawn(self.refresh_all())
+            return
+        if kind == DEVICE_KIND:
+            self._device_announced(raw)
+            return
         if kind != "agent":
             return
         try:

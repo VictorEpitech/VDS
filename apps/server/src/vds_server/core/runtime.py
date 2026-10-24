@@ -2,6 +2,7 @@
 
 import asyncio
 import contextlib
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from uuid import UUID
@@ -17,7 +18,7 @@ from vds_server.agents.bridge import EventBridge
 from vds_server.agents.cache import site_media_ids
 from vds_server.agents.hub import AgentHub
 from vds_server.agents.plan import PlanPusher
-from vds_server.agents.queue import CommandQueue
+from vds_server.agents.queue import MODULES_KIND, CommandQueue, notify
 from vds_server.config.reader import ModuleConfigReader
 from vds_server.config.registry_schemas import RegistrySchemaProvider
 from vds_server.config.schemas import CORE_NAMESPACE
@@ -35,6 +36,8 @@ from vds_server.power.state import PowerStateTracker
 from vds_server.registry import ModuleRegistry
 from vds_server.settings import Settings
 from vds_server.supervision import Supervisor
+
+log = logging.getLogger("vds.runtime")
 
 OUTBOX_POLL_S = 5.0
 
@@ -83,7 +86,13 @@ class Runtime:
             self.bus.subscribe(name, self._modules_changed)
 
     async def _modules_changed(self, _event: Event) -> None:
-        await self.agent_hub.refresh_all()
+        """Propagé à tous les workers par NOTIFY (chacun ferme ses sessions d'agent)."""
+        try:
+            async with self.maker.begin() as s:
+                await notify(s, MODULES_KIND, UUID(int=0))
+        except Exception:
+            log.warning("modules_changed notify failed, local refresh only")
+            await self.agent_hub.refresh_all()
 
     async def _device_reader(self, request: Request) -> bool:
         """Jeton d'appareil valide => lecture des médias ; absent, inconnu ou révoqué => non."""

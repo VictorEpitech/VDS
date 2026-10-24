@@ -12,10 +12,18 @@ from vds_server.db.models_power import RemoteCommand
 
 CHANNEL = "vds_command"
 DEFAULT_TTL_S = 300
+DEVICE_KIND = "device"  # connexion /ws/player d'un appareil (la plus récente gagne)
+MODULES_KIND = "modules"  # signal à tous les workers : l'état des modules a changé
 
 
 def notify_payload(kind: str, target_id: UUID) -> str:
     return f"{kind}:{target_id}"
+
+
+async def notify_raw(session: AsyncSession, kind: str, value: str) -> None:
+    await session.execute(
+        text("SELECT pg_notify(:c, :p)"), {"c": CHANNEL, "p": f"{kind}:{value}"}
+    )
 
 
 async def notify(session: AsyncSession, kind: str, target_id: UUID) -> None:

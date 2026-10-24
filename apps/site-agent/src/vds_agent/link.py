@@ -41,7 +41,7 @@ def next_backoff(current: float, rng: random.Random | None = None) -> float:
 
 
 def describe_link_error(e: BaseException) -> dict[str, Any]:
-    """Cause lisible d'une erreur de liaison : type, code/raison de fermeture, message (sans secret)."""
+    """Cause lisible d'une erreur de liaison : type, code/raison de fermeture, message."""
     info: dict[str, Any] = {"err": type(e).__name__, "detail": str(e) or repr(e)}
     rcvd = getattr(e, "rcvd", None)
     sent = getattr(e, "sent", None)

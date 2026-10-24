@@ -52,6 +52,9 @@ def discover(modules_dir: Path) -> list[Discovered]:
             continue
         if "site-agent" not in manifest.targets:
             continue
+        if manifest.id.startswith("agent."):  # espace d'état réservé au cœur de l'agent
+            log.error("module.id_reserved", extra={"path": str(mp)})
+            continue
         schema = None
         error = None
         try:

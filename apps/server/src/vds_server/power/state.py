@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import NAMESPACE_OID, UUID, uuid5
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from vds_sdk import Event
 
@@ -77,6 +77,13 @@ class PowerStateTracker:
 
     async def _refresh_one(self, screen_id: UUID, now: datetime) -> None:
         async with self._maker.begin() as s:
+            # multi-workers : un seul recalcul à la fois par écran (idempotent, l'autre ignore)
+            got = await s.scalar(
+                text("SELECT pg_try_advisory_xact_lock(hashtextextended(:k, 0))"),
+                {"k": f"power_desired:{screen_id}"},
+            )
+            if not got:
+                return
             sp = await PowerPlanBuilder(s, self._schemas).for_screen(screen_id, now)
             desired, since = _current(sp.slots, now)
             row = await s.get(PowerState, screen_id)
