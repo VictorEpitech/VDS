@@ -372,18 +372,25 @@ class Agent:
     async def _handle_cmd(self, frame: Frame) -> None:
         try:
             cmd = Cmd.model_validate(frame.data)
-        except ValidationError:
+        except ValidationError as e:
+            log.warning("agent.cmd_invalid_frame", extra={"detail": str(e)[:200]})
             return
+        log.info("agent.cmd_received", extra={"cmd": cmd.name, "cmd_id": cmd.cmd_id,
+                                              "screen_id": cmd.screen_id})
         if await self.store.cmd_seen(str(cmd.cmd_id)):
+            log.info("agent.cmd_duplicate", extra={"cmd_id": cmd.cmd_id})
             return
         await self.store.cmd_mark(str(cmd.cmd_id), time.time())
         if cmd.expires_at <= self.clock():
+            log.warning("agent.cmd_expired", extra={"cmd": cmd.name, "cmd_id": cmd.cmd_id})
             await self._result(cmd.cmd_id, "expired", None, {})
             return
         try:
             args = cmd.validate_for("agent")
         except (ValueError, ValidationError) as e:
             reject = "unknown_command" if str(e) == "unknown_command" else "invalid_args"
+            log.warning("agent.cmd_rejected", extra={"cmd": cmd.name, "code": reject,
+                                                     "detail": str(e)[:200]})
             await self._result(cmd.cmd_id, "rejected", reject, {})
             return
         t0 = time.monotonic()
