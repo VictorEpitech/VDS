@@ -134,7 +134,7 @@ class ServerLink:
         last_server_seq = int(await self.store.kv_get("in_seq", 0))
         async with connect(
             self.s.ws_url,
-            ssl=self.s.ssl_context(),
+            ssl=self.s.ssl_context() if self.s.is_tls else None,
             subprotocols=[SUBPROTOCOL_AGENT],  # type: ignore[list-item]
             additional_headers={"Authorization": f"Bearer {self.s.token}"},
             max_size=MAX_FRAME_BYTES,

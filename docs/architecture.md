@@ -631,6 +631,7 @@ Lot 2 : ces trois cas sont documentés ; un profil Compose `https` (service Cadd
 - La trame `event` (`EventData`) n'a pas de champ `source` : le module émetteur n'est pas transmis, seul `driver` figure dans le payload ; l'agent est l'émetteur de `power.*` (cascade côté agent).
 - `retries` = nombre d'essais par pilote (défaut 2 = un retry). Un pilote sans `power.state` (WoL) est vérifié par un autre pilote de l'écran ; sans relecture possible, `power.changed{verified:false}` (écart assumé avec « verified requis », pour ne pas signaler d'échec sur un site WoL seul).
 - Secrets d'appareil (clé ADB, jeton Samsung, empreinte TLS) : table `module_state` de `agent.db`, chiffrée Fernet ; clé dans `VDS_AGENT_STATE_KEY(_FILE)` sinon `state.key` (0600) à côté de la base : protège d'une copie de la base seule, pas d'un hôte compromis (préférer un secret Docker).
+- TLS : `http://`/`ws://` refusés par défaut. Opt-in dev `VDS_AGENT_INSECURE_DEV=1` : clair accepté vers IP privée/loopback seulement, avertissement au démarrage, jeton exposé sur le LAN. Image agent : `modules/` copié dans `/app/modules`.
 - Révocation `4410` : l'agent efface états, outbox et plan, puis s'arrête (le jeton d'environnement n'est pas supprimé).
 - CEC Active Source au rallumage : exécuté par le player (T8b), pas par l'agent.
 - ADB : pas de STLS ; TV en veille profonde souvent injoignable (voir `docs/drivers/power.adb.md`). Samsung : `KEY_POWER` bascule ; empreinte épinglée au premier contact. Aucun pilote testé sur matériel réel dans ce lot.

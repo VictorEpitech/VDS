@@ -280,3 +280,14 @@ def _welcome(modules: list[str]) -> AgentWelcome:
     from vds_sdk.wire import AgentWelcome
 
     return AgentWelcome.model_validate(welcome_data(modules))
+
+
+def test_insecure_dev_opt_in_private_only() -> None:
+    assert ws_url("http://192.168.1.182:8002", True) == "ws://192.168.1.182:8002/ws/agent"
+    assert http_base("http://192.168.1.182:8002/", True) == "http://192.168.1.182:8002"
+    with pytest.raises(SettingsError):
+        ws_url("http://192.168.1.182:8002")  # refusé par défaut
+    with pytest.raises(SettingsError):
+        ws_url("http://example.com", True)  # nom public refusé même en dev
+    with pytest.raises(SettingsError):
+        ws_url("http://8.8.8.8", True)

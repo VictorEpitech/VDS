@@ -25,7 +25,7 @@ Matériel : un serveur VDS (`https://vds.client.fr` en autonome, ou `https://all
 - [ ] Sur l'hôte : lancer l'agent (`docker/site-agent.Dockerfile`), `VDS_SERVER_URL` **avec préfixe** en hébergé, `VDS_AGENT_TOKEN_FILE`, `VDS_AGENT_CA_FILE` si AC privée.
 - [ ] Contrôle côté LAN : aucun port en écoute sur l'hôte (`ss -ltnp` ne montre rien pour l'agent, sauf l'option cache LAN si activée), seul le trafic sortant 443.
 - [ ] Admin : l'agent passe « en ligne » en moins de 2 min, version et modules visibles, aucune info technique affichée sur les écrans publics.
-- [ ] `http://` refusé par l'agent (message `agent.server_url_must_be_https`).
+- [ ] `http://` refusé par l'agent (message `agent.server_url_must_be_https`). Exception dev : `VDS_AGENT_INSECURE_DEV=1` (IP privée uniquement, avertissement), voir `docs/demos/agent-quickstart.md`.
 
 ## 2. Appairage et configuration des TV
 

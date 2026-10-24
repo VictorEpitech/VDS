@@ -6,6 +6,7 @@ COPY pyproject.toml uv.lock .python-version ./
 COPY apps/server/pyproject.toml apps/server/pyproject.toml
 COPY apps/site-agent apps/site-agent
 COPY packages/sdk-py packages/sdk-py
+COPY modules /app/modules
 RUN uv sync --frozen --no-dev --package vds-agent
 ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1
 RUN useradd -r -u 10001 vds

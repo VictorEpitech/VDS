@@ -1,0 +1,22 @@
+# Agent de site VDS. Usage : docker compose -f docker/compose.agent.yaml --env-file docker/agent.env up -d --build
+# Aucun port publié : connexion sortante uniquement.
+# network_mode host : le paquet magique Wake-on-LAN (broadcast UDP) doit atteindre le LAN de la TV
+# (Linux uniquement ; inutile sous Docker Desktop).
+name: vds-agent
+services:
+  agent:
+    image: ${VDS_AGENT_IMAGE:-vds-site-agent:local}
+    build:
+      context: ..
+      dockerfile: docker/site-agent.Dockerfile
+    network_mode: host
+    restart: unless-stopped
+    env_file:
+      - path: agent.env
+        required: true
+    environment:
+      VDS_AGENT_DATA_DIR: /data/agent
+    volumes:
+      - agent-data:/data/agent
+volumes:
+  agent-data:
