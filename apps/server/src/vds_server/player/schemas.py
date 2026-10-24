@@ -61,6 +61,7 @@ class KioskReport(BaseModel):
     model_config = ConfigDict(extra="ignore")
     mode: Literal["locked", "unlocked", "maintenance"]
     enforcement: Literal["lock_task", "soft", "web"]
+    confirmed: bool | None = None  # False : réponse native en échec (état non confirmé)
 
 
 class Heartbeat(BaseModel):

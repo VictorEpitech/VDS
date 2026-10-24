@@ -109,6 +109,10 @@ class KioskOut(BaseModel):
     until: datetime | None = None
     applied: KioskMode | None = None
     enforcement: Literal["lock_task", "soft", "web"] | None = None
+    # False : le player signale que le mode n'a pas pu être confirmé côté natif
+    confirmed: bool | None = None
+    # True : mode APPLIQUÉ rapporté différent du mode demandé (déclaratif, pas une preuve)
+    mismatch: bool = False
 
 
 class ScreenOut(_Out):

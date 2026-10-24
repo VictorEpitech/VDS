@@ -89,6 +89,8 @@ def kiosk_state(
         except ValueError:
             return out
         out.applied, out.enforcement = report.mode, report.enforcement
+        out.confirmed = report.confirmed
+        out.mismatch = report.mode != out.requested
     return out
 
 

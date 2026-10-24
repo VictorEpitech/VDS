@@ -14,6 +14,7 @@ from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
 from vds_server.db.models import Organization, Schedule, Screen, ScreenGroup, Site
 from vds_server.inventory import schemas as sc
+from vds_server.player.kiosk import load_requests
 
 
 class InventoryService:
@@ -221,9 +222,18 @@ class InventoryService:
 
     async def update_screen(self, screen_id: UUID, body: sc.ScreenPatch) -> Screen:
         screen = await self.get_screen(screen_id)
+        moved: tuple[UUID | None, UUID | None, str, str] | None = None
         if "group_id" in body.model_fields_set:
             await self._check_group(body.group_id, screen.site_id)
-            screen.group_id = body.group_id
+            if body.group_id != screen.group_id:
+                before = (await load_requests(self._s, [screen]))[screen.id].mode
+                old = screen.group_id
+                screen.group_id = body.group_id
+                after = (await load_requests(self._s, [screen]))[screen.id].mode
+                if before != after:
+                    moved = (old, body.group_id, before, after)
+            else:
+                screen.group_id = body.group_id
         if body.name is not None:
             screen.name = body.name
         if body.orientation is not None:
@@ -232,6 +242,19 @@ class InventoryService:
             screen.archived_at = datetime.now(UTC) if body.archived else None
         screen.updated_at = datetime.now(UTC)
         self._audit("screen.updated", "screen", screen.id, fields=sorted(body.model_fields_set))
+        if moved is not None:  # le déplacement change le mode kiosque effectif de l'écran
+            g_old, g_new, was, now = moved
+            self._audit(
+                f"screen.kiosk.{now}",
+                "screen",
+                screen.id,
+                scope_level="screen",
+                cause="group_move",
+                effective=now,
+                previous=was,
+                from_group=str(g_old) if g_old else None,
+                to_group=str(g_new) if g_new else None,
+            )
         await self._commit("screen.conflict")
         return screen
 

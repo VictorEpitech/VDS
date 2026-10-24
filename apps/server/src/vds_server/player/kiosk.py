@@ -181,9 +181,13 @@ class KioskService:
         ]
         if only_until is not None:  # ne retire pas une maintenance relancée entre-temps
             cond.append(ConfigOverride.value == literal(format_until(only_until), JSONB))
-        res = await self._s.execute(delete(ConfigOverride).where(*cond))
-        if not res.rowcount:  # type: ignore[attr-defined]
+        res = await self._s.execute(
+            delete(ConfigOverride).where(*cond).returning(ConfigOverride.value)
+        )
+        gone = res.scalars().all()
+        if not gone:
             return False
+        until = parse_until(gone[0])
         audit.record(
             self._s,
             actor_kind=actor_kind,
@@ -191,7 +195,7 @@ class KioskService:
             action="screen.kiosk.maintenance_ended",
             target_type="screen",
             target_id=str(screen_id),
-            details={"reason": why},
+            details={"reason": why, "until": format_until(until) if until else None},
         )
         await self._s.commit()
         return True

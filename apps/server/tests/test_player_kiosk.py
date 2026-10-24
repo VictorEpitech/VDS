@@ -206,3 +206,66 @@ async def test_maintenance_access(
     missing = f"{p}/api/v1/screens/{UUID(int=1)}/kiosk/maintenance"
     r = await admin.post(missing, json=body, headers=SAME)
     assert r.status_code == 404 and r.json()["code"] == "errors.screen_not_found"
+
+
+async def test_kiosk_audit_reason_inherited_and_move(
+    admin: AsyncClient, p: str, migrated_db_url: str
+) -> None:
+    site, screen = await mk_screen(admin, p)
+    group = await mk_group(admin, p, site)
+    cfg = f"{p}/api/v1/config"
+    key = "core/player.kiosk"
+    put = await admin.put(
+        f"{cfg}/group/{group}/{key}",
+        json={"value": "unlocked", "reason": " test TV "},
+        headers=SAME,
+    )
+    assert put.status_code == 204
+    for bad in ("a\nb", "x‮y", "a\tb", "z" * 201):
+        r = await admin.put(
+            f"{cfg}/group/{group}/{key}", json={"value": "locked", "reason": bad}, headers=SAME
+        )
+        assert r.status_code == 422, bad
+    # déplacement vers un groupe unlocked : audité
+    mv = await admin.patch(f"{p}/api/v1/screens/{screen}", json={"group_id": group}, headers=SAME)
+    assert mv.status_code == 200
+    # écran verrouillé explicitement puis remise à l'héritage : valeur héritée réelle (unlocked)
+    await admin.put(f"{cfg}/screen/{screen}/{key}", json={"value": "locked"}, headers=SAME)
+    rs = await admin.delete(f"{cfg}/screen/{screen}/{key}?reason=retour", headers=SAME)
+    assert rs.status_code == 204
+    bad_del = await admin.delete(f"{cfg}/screen/{screen}/{key}?reason=a%0Ab", headers=SAME)
+    assert bad_del.status_code == 422
+    rows = await sql(
+        migrated_db_url,
+        "SELECT action, details->>'effective', details->>'reason', details->>'cause', "
+        "details->>'origin' FROM audit_log WHERE action IN "
+        "('screen.kiosk.locked','screen.kiosk.unlocked') ORDER BY id",
+    )
+    assert [tuple(r) for r in rows] == [
+        ("screen.kiosk.unlocked", "unlocked", "test TV", None, "group"),
+        ("screen.kiosk.unlocked", "unlocked", None, "group_move", None),
+        ("screen.kiosk.locked", "locked", None, None, "screen"),
+        ("screen.kiosk.unlocked", "unlocked", "retour", None, "group"),
+    ]
+
+
+async def test_maintenance_reason_filtered_and_mismatch(
+    admin: AsyncClient, app: FastAPI, p: str
+) -> None:
+    _, screen = await mk_screen(admin, p)
+    mu = f"{p}/api/v1/screens/{screen}/kiosk/maintenance"
+    for bad in ("a\nb", "x‮y", "z" * 201):
+        r = await admin.post(mu, json={"duration_min": 10, "reason": bad}, headers=SAME)
+        assert r.status_code == 422, bad
+    ok = await admin.post(mu, json={"duration_min": 10, "reason": "  RAS  "}, headers=SAME)
+    assert ok.status_code == 200
+    async with new_client(app) as player:
+        token = await pair(admin, player, p, screen)
+        await player.post(
+            f"{p}/api/v1/player/heartbeat",
+            json={"kiosk": {"mode": "locked", "enforcement": "soft", "confirmed": False}},
+            headers=hdr(token),
+        )
+    out = (await admin.get(f"{p}/api/v1/screens/{screen}")).json()["kiosk"]
+    assert out["requested"] == "maintenance" and out["applied"] == "locked"
+    assert out["mismatch"] is True and out["confirmed"] is False

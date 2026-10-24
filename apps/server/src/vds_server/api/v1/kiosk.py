@@ -5,18 +5,24 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Response
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vds_server.core.auth import Principal
 from vds_server.core.runtime import Runtime
+from vds_server.core.text import MAX_REASON, clean_reason
 from vds_server.player.kiosk import MAX_MAINTENANCE_MIN, MIN_MAINTENANCE_MIN, KioskService
 
 
 class MaintenanceIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     duration_min: int = Field(ge=MIN_MAINTENANCE_MIN, le=MAX_MAINTENANCE_MIN)
-    reason: str | None = Field(default=None, max_length=200)
+    reason: str | None = Field(default=None, max_length=MAX_REASON)
+
+    @field_validator("reason")
+    @classmethod
+    def _reason(cls, v: str | None) -> str | None:
+        return clean_reason(v)
 
 
 class MaintenanceOut(BaseModel):

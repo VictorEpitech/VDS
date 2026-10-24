@@ -5,16 +5,17 @@ from dataclasses import dataclass
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from vds_sdk.bus import EventBus
 
 from vds_server.config.resolver import Origin, Resolution
 from vds_server.config.schemas import ConfigSchemaProvider
 from vds_server.config.service import ConfigError, ConfigService
+from vds_server.core.text import MAX_REASON, clean_reason
 
 Level = Literal["organization", "site", "group", "screen"]
 
@@ -49,6 +50,12 @@ class ConfigOut(BaseModel):
 
 class ConfigValueIn(BaseModel):
     value: Any
+    reason: str | None = Field(default=None, max_length=MAX_REASON)  # motif d'audit (player.kiosk)
+
+    @field_validator("reason")
+    @classmethod
+    def _reason(cls, v: str | None) -> str | None:
+        return clean_reason(v)
 
 
 class ErrorOut(BaseModel):
@@ -137,16 +144,26 @@ def build_router(deps: ConfigDeps) -> APIRouter:
         svc: Svc,
         actor: Actor,
     ) -> Response:
-        await svc.set_override(level, target_id, namespace, key, body.value, actor)
+        await svc.set_override(level, target_id, namespace, key, body.value, actor, body.reason)
         return Response(status_code=204)
 
     @router.delete(
         "/{level}/{target_id}/{namespace}/{key}", status_code=204, dependencies=write_deps
     )
     async def delete(
-        level: Level, target_id: UUID, namespace: str, key: str, svc: Svc, actor: Actor
+        level: Level,
+        target_id: UUID,
+        namespace: str,
+        key: str,
+        svc: Svc,
+        actor: Actor,
+        reason: Annotated[str | None, Query(max_length=MAX_REASON)] = None,
     ) -> Response:
-        await svc.delete_override(level, target_id, namespace, key, actor)
+        try:
+            motif = clean_reason(reason)
+        except ValueError as exc:
+            raise ConfigError("config.value_invalid", 422, paths=["reason"]) from exc
+        await svc.delete_override(level, target_id, namespace, key, actor, motif)
         return Response(status_code=204)
 
     return router

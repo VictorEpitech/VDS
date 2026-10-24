@@ -14,6 +14,7 @@ from vds_server.config import resolver
 from vds_server.config.resolver import LEVELS, ChainNode, Resolution, StoredOverride
 from vds_server.config.schemas import ConfigSchemaProvider
 from vds_server.core import audit
+from vds_server.core.text import clean_reason
 from vds_server.db.models import ConfigOverride, Organization, Screen, ScreenGroup, Site
 
 _UNIQUE = "uq_config_override_scope_id_namespace_key"
@@ -154,6 +155,7 @@ class ConfigService:
         key: str,
         value: Any,
         actor_id: UUID | None = None,
+        reason: str | None = None,
     ) -> None:
         schema = self._schema(namespace)
         await self.chain(level, target_id)
@@ -163,7 +165,7 @@ class ConfigService:
             raise ConfigError("config.value_invalid", 422, paths=errors)
         await upsert_override(self._s, level, target_id, namespace, key, value, actor_id)
         self._audit("config.updated", actor_id, level, target_id, namespace, key)
-        self._audit_kiosk(actor_id, level, target_id, namespace, key, value)
+        await self._audit_kiosk(actor_id, level, target_id, namespace, key, reason)
         await self._s.commit()
         await self._publish(namespace, key, level, target_id)
 
@@ -187,26 +189,54 @@ class ConfigService:
             details={"namespace": namespace, "key": key},
         )
 
-    def _audit_kiosk(
+    async def _effective_kiosk(self, level: str, target_id: UUID) -> tuple[str, str]:
+        """Mode effectif (après écriture) et niveau d'origine : écran > groupe > défaut locked."""
+        nodes = await self.chain(level, target_id)
+        rows = (
+            await self._s.execute(
+                select(ConfigOverride.scope_id, ConfigOverride.value).where(
+                    ConfigOverride.namespace == "core",
+                    ConfigOverride.key == "player.kiosk",
+                    ConfigOverride.scope_id.in_([n.id for n in nodes]),
+                )
+            )
+        ).all()
+        stored = {sid: v for sid, v in rows}
+        for node in reversed(nodes):
+            if node.level in ("screen", "group") and stored.get(node.id) in ("locked", "unlocked"):
+                return str(stored[node.id]), node.level
+        return "locked", "default"
+
+    async def _audit_kiosk(
         self,
         actor_id: UUID | None,
         level: str,
         target_id: UUID,
         namespace: str,
         key: str,
-        value: Any,
+        reason: str | None,
+        *,
+        reset: bool = False,
     ) -> None:
-        """Verrouillage/déverrouillage du kiosque : action d'audit dédiée `screen.kiosk.*`."""
+        """Verrouillage/déverrouillage : `screen.kiosk.*` avec la valeur effective résolue."""
         if namespace != "core" or key != "player.kiosk":
             return
+        await self._s.flush()
+        mode, origin = await self._effective_kiosk(level, target_id)
         audit.record(
             self._s,
             actor_kind="user" if actor_id else "system",
             actor_id=str(actor_id) if actor_id else None,
-            action="screen.kiosk.unlocked" if value == "unlocked" else "screen.kiosk.locked",
+            action="screen.kiosk.unlocked" if mode == "unlocked" else "screen.kiosk.locked",
             target_type=level,
             target_id=str(target_id),
-            details={"scope_level": level},
+            details={
+                "scope_level": level,
+                "reset": reset,
+                "effective": mode,
+                "origin": origin,
+                "reason": clean_reason(reason),
+            },
         )
 
     async def delete_override(
@@ -216,6 +246,7 @@ class ConfigService:
         namespace: str,
         key: str,
         actor_id: UUID | None = None,
+        reason: str | None = None,
     ) -> bool:
         """Retour à l'héritage. Retourne False s'il n'y avait pas de surcharge (idempotent)."""
         schema = self._schema(namespace)
@@ -236,7 +267,7 @@ class ConfigService:
         deleted = bool(res.rowcount)  # type: ignore[attr-defined]
         if deleted:
             self._audit("config.reset", actor_id, level, target_id, namespace, key)
-            self._audit_kiosk(actor_id, level, target_id, namespace, key, "locked")
+            await self._audit_kiosk(actor_id, level, target_id, namespace, key, reason, reset=True)
         await self._s.commit()
         if deleted:
             await self._publish(namespace, key, level, target_id)
