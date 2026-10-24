@@ -390,7 +390,7 @@
       "to": "Valid until"
     },
     "enabled": "Schedule enabled",
-      "disabled": "Disabled",
+    "disabled": "Disabled",
     "empty": "No schedule yet. Screens stay black until a playlist is scheduled.",
     "delete": {
       "action": "Delete",
@@ -654,6 +654,60 @@
       "title": "New group",
       "name": "Group name",
       "submit": "Add group"
+    }
+  },
+  "kiosk": {
+    "group_for": "Kiosk of {name}",
+    "state": {
+      "locked": "Locked",
+      "unlocked": "Unlocked",
+      "maintenance": "Maintenance until {time}"
+    },
+    "enforcement": {
+      "applied": "Applied mode: {mode}",
+      "unknown": "Applied mode: not yet reported by the device.",
+      "lock_task": "native lock",
+      "soft": "soft lock",
+      "web": "browser",
+      "alert_soft": "Soft kiosk: the device cannot fully block the Home or Assistant buttons. Switch the device to managed mode (Device Owner) for a full lock.",
+      "alert_web": "Browser kiosk: the device does not block leaving the browser. Use the Android app for a stronger lock."
+    },
+    "maintenance": {
+      "start": "Maintenance mode",
+      "start_for": "Maintenance mode: {name}",
+      "title": "Maintenance of {name}",
+      "duration": "Duration (minutes)",
+      "duration_help": "Between {min} and {max} minutes. The screen locks itself again when time is up.",
+      "reason": "Reason (optional)",
+      "submit": "Unlock temporarily",
+      "end": "End",
+      "end_for": "End maintenance: {name}",
+      "started": "Maintenance started on {name}.",
+      "ended": "Maintenance ended on {name}: the kiosk is locked again."
+    },
+    "setting": {
+      "form_label": "Kiosk setting",
+      "unlock": "Unlock permanently",
+      "unlock_confirm": "Confirm permanent unlock",
+      "unlock_warning": "An unlocked kiosk gives access to the device and its settings, including to the public. Prefer maintenance mode, which locks itself again."
+    }
+  },
+  "config": {
+    "core": {
+      "player": {
+        "kiosk": {
+          "title": "Player kiosk",
+          "description": "Locked by default. Can be set at group or screen level only; prefer maintenance mode for an intervention.",
+          "enum": {
+            "locked": "Locked",
+            "unlocked": "Unlocked"
+          }
+        },
+        "kiosk_maintenance_until": {
+          "title": "Kiosk maintenance end",
+          "description": "Read-only: filled in by the screen's maintenance mode."
+        }
+      }
     }
   }
 }

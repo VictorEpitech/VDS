@@ -153,7 +153,15 @@ export function createDiffusionMock() {
     heartbeat: null,
     presence: d.revoked_at ? "revoked" : live ? "online" : !d.last_seen_at ? "unseen" : "offline",
   });
-  const screenOut = (s: (typeof screens)[number]) => ({ ...s, device: devices.has(s.id) ? deviceOut(devices.get(s.id)!) : null });
+  /** Maintenance du kiosque par écran (fin d'échéance ISO) ; l'écran « Hall d'accueil » tourne en kiosque doux. */
+  const maintenance = new Map<string, string>();
+  const kioskOut = (s: (typeof screens)[number]) => {
+    const until = maintenance.get(s.id);
+    const active = until !== undefined && new Date(until).getTime() > Date.now();
+    const requested = active ? "maintenance" : "locked";
+    return { requested, until: active ? until : null, applied: requested, enforcement: s.id === screens[0]!.id ? "soft" : null };
+  };
+  const screenOut = (s: (typeof screens)[number]) => ({ ...s, device: devices.has(s.id) ? deviceOut(devices.get(s.id)!) : null, kiosk: kioskOut(s) });
   const claimed = new Set<string>();
 
   const mediaOut = (m: MediaRow) => {
@@ -242,6 +250,19 @@ export function createDiffusionMock() {
       claimed.add(code);
       devices.set(screen.id, { id: randomUUID(), platform: "android", model: null, app_version: null, paired_at: now(), last_seen_at: null, revoked_at: null });
       return send(200, { screen_id: screen.id }), true;
+    }
+    const kio = m(/^\/screens\/([^/]+)\/kiosk\/maintenance$/);
+    if (kio) {
+      if (!screens.some((s) => s.id === kio[1])) return fail(404, "errors.screen_not_found"), true;
+      if (method === "POST") {
+        const body = await json();
+        const min = body.duration_min;
+        if (typeof min !== "number" || !Number.isInteger(min) || min < 5 || min > 240 || String(body.reason ?? "").length > 200) return fail(422, "errors.validation"), true;
+        const until = new Date(Date.now() + min * 60_000).toISOString();
+        maintenance.set(kio[1]!, until);
+        return send(200, { until }), true;
+      }
+      if (method === "DELETE") return maintenance.delete(kio[1]!), empty(), true;
     }
     const dev = m(/^\/screens\/([^/]+)\/device$/);
     if (dev && method === "DELETE") {

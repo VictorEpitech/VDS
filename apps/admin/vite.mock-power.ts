@@ -39,7 +39,7 @@ interface CommandRow extends Json {
 
 /** Valeurs par défaut des clés de config simulées (core et notify.mail). */
 const DEFAULTS: Record<string, Record<string, unknown>> = {
-  core: { "power.plan_id": null, "power.calendars": [] },
+  core: { "power.plan_id": null, "power.calendars": [], "player.kiosk": "locked" },
   "notify.mail": {
     smtp_host: "",
     smtp_port: 587,
@@ -55,7 +55,7 @@ const DEFAULTS: Record<string, Record<string, unknown>> = {
 };
 /** Pilotes d'alimentation simulés : schémas lus dans modules/ (les mêmes que ceux servis par le registre). */
 const DRIVERS = ["power.wol", "power.samsung-ws", "power.adb"];
-const SCOPES: Record<string, Record<string, string[] | undefined>> = {};
+const SCOPES: Record<string, Record<string, string[] | undefined>> = { core: { "player.kiosk": ["group", "screen"] } };
 for (const id of DRIVERS) {
   const schema = JSON.parse(fs.readFileSync(path.join(MODULES, id, "config.schema.json"), "utf8")) as { properties: Record<string, { default?: unknown; "x-vds-scopes"?: string[] }> };
   DEFAULTS[id] = Object.fromEntries(Object.entries(schema.properties).map(([k, v]) => [k, v.default]));

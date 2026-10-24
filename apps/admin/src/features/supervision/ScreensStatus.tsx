@@ -6,6 +6,7 @@ import { Icon } from "../../components/Icon";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useApi } from "../../lib/api";
 import { powerKeys, useAllAgents, useIncidents, useScreens, useSites, type Agent, type Command, type Screen, type ScreenPower } from "../../lib/queries";
+import { KioskControls } from "../kiosk/KioskControls";
 import { powerSetArgs, useRemoteCommand } from "./commands";
 import { DetectPanel, reasonOf } from "./DetectPanel";
 import { displayState } from "./status";
@@ -44,6 +45,7 @@ function ScreenCard({ screen, siteName, state, agent }: { screen: Screen; siteNa
         <StatusBadge state={state} />
       </p>
       {screen.device?.last_seen_at ? <p className="meta">{t("supervision.last_seen", { when: when(screen.device.last_seen_at) })}</p> : null}
+      <KioskControls screen={screen} />
       <div className="actions">
         {(["on", "off"] as const).map((s) => (
           <button key={s} type="button" className="btn btn-text" disabled={!ready || cmd.isPending} aria-describedby={ready ? undefined : hintId} onClick={() => run(s)} aria-label={t(`supervision.power.${s}_for`, { name: screen.name })}>

@@ -318,3 +318,15 @@ code, kbd, samp, .vds-mono { font-family: var(--vds-font-mono); }
   -webkit-mask-image: url("icons/copy.svg");
   mask-image: url("icons/copy.svg");
 }
+.vds-icon[data-icon="lock"] {
+  -webkit-mask-image: url("icons/lock.svg");
+  mask-image: url("icons/lock.svg");
+}
+.vds-icon[data-icon="unlock"] {
+  -webkit-mask-image: url("icons/unlock.svg");
+  mask-image: url("icons/unlock.svg");
+}
+.vds-icon[data-icon="maintenance"] {
+  -webkit-mask-image: url("icons/maintenance.svg");
+  mask-image: url("icons/maintenance.svg");
+}

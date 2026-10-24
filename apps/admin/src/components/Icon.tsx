@@ -34,6 +34,9 @@ export const ICON_NAMES = [
   "inherit",
   "detect",
   "copy",
+  "lock",
+  "unlock",
+  "maintenance",
 ] as const;
 export type IconName = (typeof ICON_NAMES)[number];
 

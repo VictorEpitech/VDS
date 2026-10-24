@@ -109,7 +109,7 @@ test("supervision : acquittement d'un incident et ordre d'allumage", async ({ pa
   await expect(page.locator(".status-badge", { hasText: "Acquitté" })).toBeVisible();
 
   const card = page.getByRole("listitem").filter({ has: page.getByRole("heading", { level: 3, name: "Hall d'accueil" }) });
-  await expect(card.locator(".status-badge")).toBeVisible();
+  await expect(card.locator('.status-badge:not([data-state^="kiosk-"])')).toBeVisible();
   await card.getByRole("button", { name: "Allumer Hall d'accueil" }).click();
   await expect(card.getByText("Hall d'accueil est allumé.")).toBeVisible();
   await card.getByRole("button", { name: /Détecter le mode de pilotage/ }).click();

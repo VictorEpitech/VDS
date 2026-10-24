@@ -3,6 +3,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { useSession } from "../auth/session";
+import { KioskControls } from "../features/kiosk/KioskControls";
+import { KioskSetting } from "../features/kiosk/KioskSetting";
 import { ScreenCreateForm } from "../features/screens/ScreenCreateForm";
 import { ConfirmAction, Empty, ErrorAlert, QueryStatus, SuccessAlert } from "../components/feedback";
 import { Icon } from "../components/Icon";
@@ -111,6 +113,8 @@ export function Screens() {
             ) : (
               <p className="meta">{t("screens.device.none")}</p>
             )}
+            <KioskControls screen={s} />
+            {isAdmin ? <KioskSetting level="screen" id={s.id} /> : null}
             <div className="actions">
               <Link className="btn btn-text" to={`/pairing?screen=${s.id}`}>
                 <Icon name="pairing" />

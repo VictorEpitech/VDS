@@ -5,6 +5,7 @@ import { ErrorAlert, QueryStatus } from "../../components/feedback";
 import { Icon } from "../../components/Icon";
 import { useSession } from "../../auth/session";
 import { useApi } from "../../lib/api";
+import { KioskSetting } from "../kiosk/KioskSetting";
 import { keys, type Group } from "../../lib/queries";
 
 /** Groupes d'un site et création d'un groupe (POST /sites/{id}/groups). */
@@ -39,7 +40,10 @@ export function GroupsPanel({ siteId }: { siteId: string }) {
       {groups.isSuccess && groups.data.length === 0 ? <p className="meta">{t("groups.empty")}</p> : null}
       <ul className="list-reset">
         {(groups.data ?? []).map((g) => (
-          <li key={g.id}>{g.name}</li>
+          <li key={g.id}>
+            <span>{g.name}</span>
+            {session.data?.role === "admin" ? <KioskSetting level="group" id={g.id} /> : null}
+          </li>
         ))}
       </ul>
       {session.data?.role === "admin" ? (

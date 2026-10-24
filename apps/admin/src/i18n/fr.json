@@ -390,7 +390,7 @@
       "to": "Valable jusqu'au"
     },
     "enabled": "Programmation active",
-      "disabled": "Désactivée",
+    "disabled": "Désactivée",
     "empty": "Aucune programmation. Les écrans restent noirs tant qu'aucune playlist n'est programmée.",
     "delete": {
       "action": "Supprimer",
@@ -654,6 +654,60 @@
       "title": "Nouveau groupe",
       "name": "Nom du groupe",
       "submit": "Ajouter le groupe"
+    }
+  },
+  "kiosk": {
+    "group_for": "Kiosque de {name}",
+    "state": {
+      "locked": "Verrouillé",
+      "unlocked": "Déverrouillé",
+      "maintenance": "Maintenance jusqu'à {time}"
+    },
+    "enforcement": {
+      "applied": "Mode appliqué : {mode}",
+      "unknown": "Mode appliqué : pas encore rapporté par l'appareil.",
+      "lock_task": "verrouillage natif",
+      "soft": "verrouillage doux",
+      "web": "navigateur",
+      "alert_soft": "Kiosque doux : l'appareil ne peut pas bloquer totalement les boutons Accueil ou Assistant. Passez l'appareil en mode géré (Device Owner) pour un verrouillage complet.",
+      "alert_web": "Kiosque navigateur : la sortie du navigateur n'est pas bloquée par l'appareil. Utilisez l'application Android pour un verrouillage renforcé."
+    },
+    "maintenance": {
+      "start": "Mode maintenance",
+      "start_for": "Mode maintenance : {name}",
+      "title": "Maintenance de {name}",
+      "duration": "Durée (minutes)",
+      "duration_help": "Entre {min} et {max} minutes. L'écran se reverrouille seul à l'échéance.",
+      "reason": "Motif (facultatif)",
+      "submit": "Déverrouiller temporairement",
+      "end": "Terminer",
+      "end_for": "Terminer la maintenance : {name}",
+      "started": "Maintenance démarrée sur {name}.",
+      "ended": "Maintenance terminée sur {name} : le kiosque est reverrouillé."
+    },
+    "setting": {
+      "form_label": "Réglage du kiosque",
+      "unlock": "Déverrouiller en permanence",
+      "unlock_confirm": "Confirmer le déverrouillage permanent",
+      "unlock_warning": "Un kiosque déverrouillé laisse l'accès à l'appareil et à ses réglages, y compris au public. Préférez le mode maintenance, qui se reverrouille seul."
+    }
+  },
+  "config": {
+    "core": {
+      "player": {
+        "kiosk": {
+          "title": "Kiosque du player",
+          "description": "Verrouillé par défaut. Réglable au groupe ou à l'écran seulement ; préférez le mode maintenance pour une intervention.",
+          "enum": {
+            "locked": "Verrouillé",
+            "unlocked": "Déverrouillé"
+          }
+        },
+        "kiosk_maintenance_until": {
+          "title": "Fin de la maintenance du kiosque",
+          "description": "Lecture seule : renseignée par le mode maintenance de l'écran."
+        }
+      }
     }
   }
 }

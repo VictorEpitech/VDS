@@ -860,3 +860,30 @@ fieldset.field > legend {
     animation-duration: 0ms !important;
   }
 }
+
+.status-badge[data-state="kiosk-locked"] {
+  --state-color: var(--vds-success);
+}
+
+.status-badge[data-state="kiosk-maintenance"] {
+  --state-color: var(--vds-tertiary);
+}
+
+.status-badge[data-state="kiosk-unlocked"] {
+  --state-color: var(--vds-warning);
+}
+
+.alert-warning {
+  --alert-color: var(--vds-warning);
+}
+
+.kiosk,
+.kiosk-setting {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-2);
+}
+
+.kiosk > p {
+  margin: 0;
+}
