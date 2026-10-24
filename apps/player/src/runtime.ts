@@ -9,6 +9,7 @@ import { ContentLoader } from "./content-loader";
 import { clearAll, kvGet, scheduleGet } from "./db";
 import { now } from "./clock";
 import { Engine } from "./engine";
+import { KioskController } from "./kiosk";
 import { DEFAULT_INTERVAL_S, beat } from "./heartbeat";
 import type { RemoteCommand } from "./heartbeat";
 import type { Screens } from "./screens";
@@ -46,8 +47,14 @@ export async function startRuntime(d: RuntimeDeps): Promise<Runtime> {
   let active: ScheduleDocument | null = (await scheduleGet()) ?? null;
   // Plan d'alimentation : exécuté par le player seul (règle 5), à chaque tick, serveur ou non.
   let power: PowerController | null = null;
+  // Kiosque : demande servie dans la programmation, reverrouillage autonome à l'échéance (même hors ligne).
+  const kiosk = new KioskController({ now });
+  const applyDoc = (doc: ScheduleDocument | null): void => kiosk.apply(doc?.kiosk, doc?.server_time);
   const engine = new Engine({
-    onTick: () => power?.tick(),
+    onTick: () => {
+      kiosk.tick();
+      power?.tick();
+    },
     screens: d.screens,
     loader: new ContentLoader(d.server),
     assets,
@@ -91,6 +98,7 @@ export async function startRuntime(d: RuntimeDeps): Promise<Runtime> {
     getActive: () => active,
     activate: (doc) => {
       active = doc;
+      applyDoc(doc);
       engine.setDoc(doc);
     },
     report: () => {},
@@ -108,27 +116,13 @@ export async function startRuntime(d: RuntimeDeps): Promise<Runtime> {
   });
   socket.start();
 
-  const maintenance = { on: false };
   const onCommands = (cmds: RemoteCommand[]): void => {
     for (const c of cmds) {
       if (c.type === "reload") reloadPage();
-      else if (c.type === "maintenance" && typeof c.code === "string") {
-        maintenance.on = true;
-        d.screens.showMaintenance({
-          code: c.code,
-          revision: active?.revision ?? "",
-          online: navigator.onLine,
-          uptime_s: Math.floor(performance.now() / 1000),
-          cache_bytes: 0,
-        });
-      } else if (c.type === "maintenance_end" && maintenance.on) {
-        maintenance.on = false;
-        d.screens.show("none");
-        engine.tick();
-      }
     }
   };
 
+  applyDoc(active);
   engine.setDoc(active);
   engine.start();
   if (!active) d.screens.show("loading");
@@ -149,6 +143,7 @@ export async function startRuntime(d: RuntimeDeps): Promise<Runtime> {
           getActive: () => active,
           onRevisionMismatch: () => void sync(),
           onCommands,
+          kiosk: () => kiosk.report(),
         });
       });
       await new Promise<void>((r) => {

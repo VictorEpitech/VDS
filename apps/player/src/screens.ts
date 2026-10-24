@@ -1,14 +1,6 @@
 import { t } from "./i18n";
 
-export type SystemScreen = "loading" | "pairing" | "idle" | "black" | "maintenance" | "none";
-
-export interface MaintenanceInfo {
-  code: string;
-  revision: string;
-  online: boolean;
-  uptime_s: number;
-  cache_bytes: number;
-}
+export type SystemScreen = "loading" | "pairing" | "idle" | "black" | "none";
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -23,7 +15,7 @@ function el<K extends keyof HTMLElementTagNameMap>(
 
 /**
  * Couche des écrans système, au-dessus de la scène de lecture.
- * Public : jamais d'information technique, hormis le code d'appairage et l'écran de maintenance.
+ * Public : jamais d'information technique, hormis le code d'appairage.
  */
 export class Screens {
   readonly stage = el("div", "stage");
@@ -70,22 +62,6 @@ export class Screens {
     value.dataset.testid = "pairing-code";
     const hint = el("p", "hint", t("pairing.instruction"));
     this.layer.replaceChildren(this.logo(), title, label, value, hint);
-  }
-
-  showMaintenance(info: MaintenanceInfo): void {
-    this.current = "maintenance";
-    this.layer.className = "system system-maintenance";
-    this.layer.hidden = false;
-    const rows: [string, string][] = [
-      [t("maintenance.code_label"), info.code],
-      [t("maintenance.revision"), info.revision.slice(0, 19)],
-      [t("maintenance.network"), t(info.online ? "maintenance.network_up" : "maintenance.network_down")],
-      [t("maintenance.uptime"), `${Math.floor(info.uptime_s / 60)} min`],
-      [t("maintenance.cache"), `${Math.round(info.cache_bytes / 1048576)} MB`],
-    ];
-    const list = el("dl", "diag");
-    for (const [k, v] of rows) list.append(el("dt", undefined, k), el("dd", "mono", v));
-    this.layer.replaceChildren(this.logo(), el("h1", "title", t("maintenance.title")), list);
   }
 
   private logo(): HTMLElement {

@@ -333,7 +333,6 @@ export class Engine {
   private apply(): void {
     const { screens } = this.deps;
     const doc = this.doc;
-    if (screens.active === "maintenance") return;
     if (this.suspended) {
       this.clearRunners();
       this.slotKey = "";

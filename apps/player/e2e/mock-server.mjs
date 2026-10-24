@@ -87,6 +87,7 @@ const fresh = () => ({
     { id: "it_red", media: "red", ms: 2000 },
     { id: "it_blue", media: "blue", ms: 2000 },
   ],
+  kiosk: null, // { mode, until? } servi dans la programmation (champ additif) ; null = champ absent (vieux serveur)
   power: null, // [[h0, h1, "on"|"off"]] depuis minuit UTC du jour simulé ; null = pas de plan
   pollS: 2, // poll_interval_s renvoyé au heartbeat
   wsBlocked: false, // refuse l'upgrade WS (proxy qui ne le transmet pas)
@@ -143,6 +144,7 @@ function schedule() {
       "content.video": { version: "0.1.0", element: "vds-content-video", script: "modules/content.video/assets/player.js" },
     },
   };
+  if (S.kiosk) doc.kiosk = S.kiosk;
   if (S.power) {
     doc.power = S.power.map(([a, b, state]) => ({ from: iso(day + a * 3600000), to: iso(day + b * 3600000), state }));
   }
@@ -202,6 +204,7 @@ async function control(req, res, url) {
       if ("revoked" in body) S.revoked = Boolean(body.revoked);
       if ("slots" in body) S.slots = body.slots;
       if ("power" in body) S.power = body.power;
+      if ("kiosk" in body) S.kiosk = body.kiosk;
       if ("pollS" in body) S.pollS = Number(body.pollS);
       if ("wsBlocked" in body) S.wsBlocked = Boolean(body.wsBlocked);
       if ("items" in body) S.items = body.items;

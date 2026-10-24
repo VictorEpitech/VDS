@@ -18,7 +18,20 @@ export interface ScheduleDocument {
   content_types: Record<string, ContentTypeEntry>;
   /** Plan d'alimentation résolu (J et J+1), exécuté par le player même hors ligne. Absent = toujours allumé. */
   power?: PowerSlot[];
+  /** Kiosque demandé (champ additif). Absent = `locked`. Le player applique, ne décide jamais. */
+  kiosk?: KioskRequest;
 }
+
+export type KioskMode = "locked" | "unlocked" | "maintenance";
+
+export interface KioskRequest {
+  mode: KioskMode;
+  /** Échéance ISO de la maintenance ; le player reverrouille seul à cette heure. */
+  until?: string | null;
+}
+
+/** Application effective du kiosque (heartbeat). */
+export type KioskEnforcement = "lock_task" | "soft" | "web";
 
 /** Créneau d'alimentation : ISO 8601 avec décalage, `from` inclus, `to` exclu. */
 export interface PowerSlot {
@@ -91,6 +104,11 @@ export interface PlatformBridge {
    * `{ok, state, verified, code?}`. Absent hors Android ou sans CEC.
    */
   cec?(action: "probe" | "on" | "off" | "state"): Promise<string>;
+  /**
+   * Kiosque natif (Android) : `remainingMs` = durée restante de la maintenance (horloge du player),
+   * 0 sinon. Résout un JSON `{ok, enforcement}` (`lock_task` | `soft`).
+   */
+  kiosk?(mode: KioskMode, remainingMs: number): Promise<string>;
 }
 
 declare global {

@@ -709,6 +709,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/screens/{screen_id}/kiosk/maintenance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start */
+        post: operations["start_api_v1_screens__screen_id__kiosk_maintenance_post"];
+        /** End */
+        delete: operations["end_api_v1_screens__screen_id__kiosk_maintenance_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sites": {
         parameters: {
             query?: never;
@@ -1356,6 +1374,7 @@ export interface components {
             errors?: {
                 [key: string]: unknown;
             }[];
+            kiosk?: components["schemas"]["KioskReport"] | null;
             /** Playing */
             playing?: {
                 [key: string]: unknown;
@@ -1479,6 +1498,49 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
+        /** KioskDoc */
+        KioskDoc: {
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "locked" | "unlocked" | "maintenance";
+            /** Until */
+            until?: string | null;
+        };
+        /**
+         * KioskOut
+         * @description Kiosque : demandé (servi) et appliqué (dernier heartbeat). Admin seulement.
+         */
+        KioskOut: {
+            /** Applied */
+            applied?: ("locked" | "unlocked" | "maintenance") | null;
+            /** Enforcement */
+            enforcement?: ("lock_task" | "soft" | "web") | null;
+            /**
+             * Requested
+             * @enum {string}
+             */
+            requested: "locked" | "unlocked" | "maintenance";
+            /** Until */
+            until?: string | null;
+        };
+        /**
+         * KioskReport
+         * @description État appliqué rapporté par le player (jamais affiché au public).
+         */
+        KioskReport: {
+            /**
+             * Enforcement
+             * @enum {string}
+             */
+            enforcement: "lock_task" | "soft" | "web";
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "locked" | "unlocked" | "maintenance";
+        };
         /** Layout */
         Layout: {
             /** Zones */
@@ -1498,6 +1560,21 @@ export interface components {
             x: number;
             /** Y */
             y: number;
+        };
+        /** MaintenanceIn */
+        MaintenanceIn: {
+            /** Duration Min */
+            duration_min: number;
+            /** Reason */
+            reason?: string | null;
+        };
+        /** MaintenanceOut */
+        MaintenanceOut: {
+            /**
+             * Until
+             * Format: date-time
+             */
+            until: string;
         };
         /** MeOut */
         MeOut: {
@@ -2013,6 +2090,7 @@ export interface components {
              * @constant
              */
             format: 1;
+            kiosk?: components["schemas"]["KioskDoc"] | null;
             /** Playlists */
             playlists: {
                 [key: string]: components["schemas"]["PlayerPlaylist"];
@@ -2130,6 +2208,7 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            kiosk?: components["schemas"]["KioskOut"] | null;
             /** Name */
             name: string;
             /**
@@ -4261,6 +4340,70 @@ export interface operations {
         };
     };
     revoke_device_api_v1_screens__screen_id__device_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                screen_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_api_v1_screens__screen_id__kiosk_maintenance_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                screen_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaintenanceIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaintenanceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    end_api_v1_screens__screen_id__kiosk_maintenance_delete: {
         parameters: {
             query?: never;
             header?: never;

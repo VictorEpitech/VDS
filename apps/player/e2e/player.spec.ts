@@ -257,3 +257,85 @@ test("IndexedDB muet : pas de spinner infini", async ({ page }, info) => {
   });
   await pairAndPlay(page, info);
 });
+
+// --- Kiosque piloté depuis l'admin (K2) : le player applique la valeur servie, jamais d'information au public ---
+
+/** Une touche est-elle neutralisée par la page (kiosque verrouillé) ? */
+const keyBlocked = (page: Page): Promise<boolean | null> =>
+  page
+    .evaluate(() => {
+      const ev = new KeyboardEvent("keydown", { key: "F5", cancelable: true, bubbles: true });
+      window.dispatchEvent(ev);
+      return ev.defaultPrevented;
+    })
+    .catch(() => null); // le watchdog peut recharger la page après un saut d'horloge : on réessaie
+
+const lastKiosk = async (info: TestInfo): Promise<unknown> => {
+  const hb = (await ctl(info, "state")).heartbeats as { kiosk?: unknown }[];
+  return hb.at(-1)?.kiosk;
+};
+
+test("kiosque verrouillé par défaut (champ absent) : rien n'est affiché, le heartbeat le dit", async ({ page }, info) => {
+  await pairAndPlay(page, info);
+  expect(await keyBlocked(page)).toBe(true);
+  await expect.poll(() => lastKiosk(info), { timeout: 15_000 }).toEqual({ mode: "locked", enforcement: "web" });
+  const text = (await page.locator("body").innerText()).toLowerCase();
+  expect(text).not.toMatch(/kiosk|maintenance|d[ée]verrouill|unlock/);
+});
+
+test("maintenance temporaire : déverrouillée, puis reverrouillée seule à l'échéance, serveur coupé", async ({ page }, info) => {
+  const t0 = "2026-10-24T09:00:00Z";
+  await ctl(info, "set", { clock: t0, kiosk: { mode: "maintenance", until: "2026-10-24T09:10:00+00:00" } });
+  await page.clock.install({ time: new Date(t0) });
+  await pairAndPlay(page, info);
+  await expect.poll(() => keyBlocked(page)).toBe(false);
+  await expect.poll(() => lastKiosk(info), { timeout: 15_000 }).toEqual({ mode: "maintenance", enforcement: "web" });
+  expect(await page.locator(".system:visible").count()).toBe(0); // aucun bandeau ni compte à rebours
+  await ctl(info, "set", { down: true });
+  await page.clock.fastForward("11:00"); // 09:11 : maintenance expirée, aucun serveur
+  await expect.poll(() => keyBlocked(page), { timeout: 10_000 }).toBe(true);
+  await expect(img(page)).toBeVisible(); // la lecture continue
+  await ctl(info, "set", { down: false });
+});
+
+test("maintenance expirée pendant que l'écran est hors ligne et éteint : verrouillé au redémarrage", async ({ page, context }, info) => {
+  const t0 = "2026-10-24T09:00:00Z";
+  await ctl(info, "set", { clock: t0, kiosk: { mode: "maintenance", until: "2026-10-24T09:10:00+00:00" } });
+  await page.clock.install({ time: new Date(t0) });
+  await pairAndPlay(page, info);
+  await expect.poll(() => keyBlocked(page)).toBe(false);
+  await ctl(info, "set", { down: true });
+  await context.setOffline(true);
+  await page.clock.fastForward("30:00"); // 09:30 ; le watchdog recharge la page (boucle figée par le saut)
+  await page.reload().catch(() => {});
+  await expect(img(page)).toBeVisible({ timeout: 20_000 });
+  await expect.poll(() => keyBlocked(page)).toBe(true);
+  await context.setOffline(false);
+  await ctl(info, "set", { down: false });
+});
+
+test("unlocked persisté : reste déverrouillé après redémarrage hors ligne ; le serveur reverrouille ensuite", async ({ page, context }, info) => {
+  await ctl(info, "set", { kiosk: { mode: "unlocked" } });
+  await pairAndPlay(page, info);
+  await expect.poll(() => keyBlocked(page)).toBe(false);
+  await ctl(info, "set", { down: true });
+  await context.setOffline(true);
+  await page.reload();
+  await expect(img(page)).toBeVisible({ timeout: 20_000 });
+  await expect.poll(() => keyBlocked(page)).toBe(false);
+  await context.setOffline(false);
+  await ctl(info, "set", { down: false, kiosk: { mode: "locked" } });
+  await expect.poll(() => keyBlocked(page), { timeout: 20_000 }).toBe(true);
+});
+
+test("l'ancienne commande maintenance {code} est ignorée : aucun écran de diagnostic", async ({ page }, info) => {
+  await pairAndPlay(page, info);
+  await page.route("**/api/v1/player/heartbeat", async (route) => {
+    const res = await route.fetch();
+    const body = (await res.json()) as Record<string, unknown>;
+    await route.fulfill({ response: res, json: { ...body, commands: [{ type: "maintenance", code: "123456" }] } });
+  });
+  await page.waitForTimeout(5000);
+  await expect(page.getByText("123456")).toHaveCount(0);
+  await expect(img(page)).toBeVisible();
+});

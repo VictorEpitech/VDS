@@ -5,6 +5,7 @@ import { storageEstimate } from "./assets";
 import { driftFrom, now, setDrift } from "./clock";
 import { kvSet } from "./db";
 import type { Engine } from "./engine";
+import type { KioskReport } from "./kiosk";
 import { KV } from "./shared";
 import { allAssets, neededSlots, slotAssets } from "./timeline";
 
@@ -20,6 +21,7 @@ export interface HeartbeatDeps {
   getActive: () => ScheduleDocument | null;
   onRevisionMismatch: () => void;
   onCommands: (cmds: RemoteCommand[]) => void;
+  kiosk?: () => KioskReport;
 }
 
 export const DEFAULT_INTERVAL_S = 60;
@@ -65,6 +67,7 @@ export async function beat(deps: HeartbeatDeps): Promise<number> {
     uptime_s: Math.floor(performance.now() / 1000),
     stale: deps.engine.stale,
     errors: sentErrors,
+    ...(deps.kiosk ? { kiosk: deps.kiosk() } : {}),
   };
   const sent = Date.now();
   try {
