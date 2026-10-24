@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 from typing import Any, ClassVar, Literal
 
 from vds_sdk import ModuleContext
@@ -17,6 +18,17 @@ from vds_sdk.agent import (
 
 from .samsung import SamsungError, SamsungTransport, WsSamsungTransport
 from .wol import SocketUdpSender, UdpSender, magic_packet
+
+log = logging.getLogger("vds.agent.samsung")
+
+
+def _mac_ok(mac: str) -> bool:
+    try:
+        magic_packet(mac)
+    except ValueError:
+        return False
+    return True
+
 
 CAPS: frozenset[Capability] = frozenset({"power.on", "power.off", "power.state"})
 PAIR_WAIT_S = 45.0
@@ -108,11 +120,14 @@ class SamsungWsDriver(PowerDriver):
         mac = target.mac or str(target.config.get("mac") or "")
         sent = False
         if mac:
-            try:
-                await self._udp.send(magic_packet(mac), "255.255.255.255", 9)
-                sent = True
-            except (OSError, ValueError):
-                pass
+            pkt = magic_packet(mac) if _mac_ok(mac) else None
+            for dest in ("255.255.255.255", host) if pkt else ():
+                try:  # diffusion + unicast vers la TV (multi-interfaces, Wi-Fi)
+                    await self._udp.send(pkt, dest, 9)  # type: ignore[arg-type]
+                    sent = True
+                except OSError as e:
+                    log.warning("power.samsung.wol_failed", extra={"dest": dest, "err": str(e)})
+            log.info("power.samsung.wol", extra={"host": host, "sent": sent, "state": current})
         if current == "standby":
             res = await self._press_power(host, target)
             if res.ok or not sent:

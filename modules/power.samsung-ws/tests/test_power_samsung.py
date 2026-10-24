@@ -83,7 +83,7 @@ async def test_power_on_from_unreachable_uses_wol() -> None:
         d = await driver(tv, udp=udp)
         r = await d.set_power(target(tv), "on")
         assert r.ok and not r.verified and tv.keys == []
-        assert udp.sent and len(udp.sent[0]) == 102
+        assert len(udp.sent) == 2 and all(len(x) == 102 for x in udp.sent)  # diffusion + unicast
         off = await d.set_power(target(tv), "off")
         assert not off.ok and off.code == "power.samsung.unreachable"
         assert await d.get_state(target(tv)) == "unknown"
@@ -118,3 +118,13 @@ async def test_detect_pairs_in_background() -> None:
         await d2.teardown()
         await d.teardown()
     assert await Driver(FakeTransportRest(tv), Udp()).detect(DetectHint()) is None
+
+
+async def test_power_on_invalid_mac_reports_no_mac() -> None:
+    async with fakes.FakeSamsungTv() as tv:
+        tv.rest_enabled = False
+        d = await driver(tv)
+        t = target(tv)
+        t = t.model_copy(update={"mac": "zz"}) if hasattr(t, "model_copy") else t
+        r = await d.set_power(t, "on")
+        assert not r.ok and r.code == "power.samsung.no_mac"
