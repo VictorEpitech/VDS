@@ -2,7 +2,7 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 
 import pytest
-from fastapi import APIRouter, FastAPI, Response
+from fastapi import APIRouter, FastAPI, Request, Response
 from httpx import ASGITransport, AsyncClient
 from vds_server.main import create_app
 from vds_server.security.cookies import cookie_path, set_cookie
@@ -37,9 +37,9 @@ def app(settings: Settings) -> FastAPI:
         return {"ok": True}
 
     @router.get("/_cookie")
-    async def cookie() -> Response:
+    async def cookie(request: Request) -> Response:
         r = Response()
-        set_cookie(r, settings, "sid", "v")
+        set_cookie(r, settings, request, "sid", "v")
         return r
 
     return create_app(settings, [router])
@@ -141,3 +141,48 @@ def test_return_to(settings: Settings, base: str) -> None:
 def test_invalid_base_path(bad: str) -> None:
     with pytest.raises(ValueError):
         Settings(base_path=bad)
+
+
+@pytest.mark.parametrize(
+    ("scheme", "origin", "mode", "secure"),
+    [
+        ("http", None, "auto", False),
+        ("https", None, "auto", True),
+        ("http", "https://vds.test", "auto", True),
+        ("http", "http://192.168.1.182:8002", "auto", False),
+        ("https", None, "false", False),
+        ("http", None, "true", True),
+    ],
+)
+async def test_cookie_secure_matrix(
+    base: str, tmp_path: Path, scheme: str, origin: str | None, mode: str, secure: bool
+) -> None:
+    st = Settings.model_validate(
+        {"base_path": base, "admin_dir": tmp_path, "public_origin": origin, "cookie_secure": mode}
+    )
+    router = APIRouter(prefix="/api/v1")
+
+    @router.get("/_cookie")
+    async def cookie(request: Request) -> Response:
+        r = Response()
+        set_cookie(r, st, request, "vds_session", "v")
+        return r
+
+    transport = ASGITransport(app=create_app(st, [router]))
+    async with AsyncClient(transport=transport, base_url=f"{scheme}://host.test") as c:
+        header = (await c.get(f"{_prefix(base)}/api/v1/_cookie")).headers["set-cookie"]
+    assert ("Secure" in header) is secure
+    assert header.startswith("vds_session=")  # pas de préfixe __Host-/__Secure-
+    assert f"Path={_prefix(base)}/" in header
+
+
+def test_startup_warning_http(caplog: pytest.LogCaptureFixture) -> None:
+    from vds_server.security.cookies import warn_if_insecure_http
+
+    with caplog.at_level("WARNING", logger="vds.security"):
+        warn_if_insecure_http(Settings(public_origin="http://192.168.1.182:8002"))
+    assert "security.http_cookies_not_secure_unless_https_request" in caplog.text
+    caplog.clear()
+    with caplog.at_level("WARNING", logger="vds.security"):
+        warn_if_insecure_http(Settings(public_origin="https://vds.test"))
+    assert not caplog.text

@@ -244,7 +244,9 @@ class AuthLocal(AuthProvider):
         cfg = await self.ctx.config.resolve()
         return int(cfg.get("session_ttl_hours", 12)), int(cfg.get("password_min_length", 12))
 
-    async def _open_session(self, s: Any, user_id: UUID, response: Response) -> None:
+    async def _open_session(
+        self, s: Any, user_id: UUID, request: Request, response: Response
+    ) -> None:
         ttl_hours, _ = await self._settings()
         token = secrets.token_urlsafe(32)
         await s.execute(
@@ -254,7 +256,7 @@ class AuthLocal(AuthProvider):
             ),
             {"u": user_id, "h": _digest(token), "ttl": ttl_hours},
         )
-        self.ctx.core.http.set_cookie(response, COOKIE, token, max_age=ttl_hours * 3600)
+        self.ctx.core.http.set_cookie(response, request, COOKIE, token, max_age=ttl_hours * 3600)
 
     async def _create_user(
         self, s: Any, email: str, display_name: str, password: str, role: Any, must_change: bool
@@ -291,7 +293,7 @@ class AuthLocal(AuthProvider):
             return StatusOut(initialized=bool(n))
 
         @router.post("/bootstrap", status_code=201, response_model=LoginOut)
-        async def bootstrap(body: BootstrapIn, response: Response) -> Any:
+        async def bootstrap(body: BootstrapIn, request: Request, response: Response) -> Any:
             async with core.db.session() as s:
                 if (await s.execute(text("SELECT count(*) FROM m_auth_local_credential"))).scalar():
                     return _err("auth_local.already_initialized", 409)
@@ -315,7 +317,7 @@ class AuthLocal(AuthProvider):
                     target_type="user",
                     target_id=str(user_id),
                 )
-                await self._open_session(s, user_id, response)
+                await self._open_session(s, user_id, request, response)
                 await s.commit()
             self._bootstrap_token = None  # usage unique
             return LoginOut(redirect_to=core.http.safe_return_to(None))
@@ -376,7 +378,7 @@ class AuthLocal(AuthProvider):
                     ),
                     {"i": ident},
                 )
-                await self._open_session(s, row[0], response)
+                await self._open_session(s, row[0], request, response)
                 core.audit.record(
                     s,
                     action="auth.login",
@@ -411,7 +413,7 @@ class AuthLocal(AuthProvider):
                             target_id=str(uid),
                         )
                     await s.commit()
-            core.http.delete_cookie(response, COOKIE)
+            core.http.delete_cookie(response, request, COOKIE)
             return response
 
         @router.post("/users", status_code=201, response_model=UserOut)

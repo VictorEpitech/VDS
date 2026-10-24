@@ -32,6 +32,7 @@ from vds_server.core.runtime import Runtime
 from vds_server.middleware.headers import SecurityHeadersMiddleware
 from vds_server.middleware.same_origin import SameOriginMiddleware
 from vds_server.middleware.upload_limit import UploadLimitMiddleware
+from vds_server.security.cookies import warn_if_insecure_http
 from vds_server.settings import Settings
 from vds_server.web import spa
 from vds_server.ws import agent as agent_ws
@@ -136,4 +137,5 @@ def app_factory() -> FastAPI:
         # un proxy « de confiance » universel permettrait de forger l'IP cliente (limiteurs)
         raise RuntimeError("errors.forwarded_allow_ips_wildcard")
     settings = Settings()
+    warn_if_insecure_http(settings)
     return create_app(settings, runtime=Runtime(settings))

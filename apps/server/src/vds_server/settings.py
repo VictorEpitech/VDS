@@ -2,6 +2,7 @@
 
 import re
 from pathlib import Path
+from typing import Literal
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -15,6 +16,7 @@ class Settings(BaseSettings):
     base_path: str = "/"
     database_url: str = "postgresql+asyncpg://vds:vds@db:5432/vds"
     public_origin: str | None = None
+    cookie_secure: Literal["auto", "true", "false"] = "auto"  # VDS_COOKIE_SECURE
     default_locale: str = "fr"
     auth_provider: str = "auth.local"
     theme: str = "theme.vtech"

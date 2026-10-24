@@ -42,12 +42,18 @@ class _Http:
         return cookies.cookie_path(self._s)
 
     def set_cookie(
-        self, response: Response, key: str, value: str, *, max_age: int | None = None
+        self,
+        response: Response,
+        request: Request,
+        key: str,
+        value: str,
+        *,
+        max_age: int | None = None,
     ) -> None:
-        cookies.set_cookie(response, self._s, key, value, max_age=max_age)
+        cookies.set_cookie(response, self._s, request, key, value, max_age=max_age)
 
-    def delete_cookie(self, response: Response, key: str) -> None:
-        cookies.delete_cookie(response, self._s, key)
+    def delete_cookie(self, response: Response, request: Request, key: str) -> None:
+        cookies.delete_cookie(response, self._s, request, key)
 
     def safe_return_to(self, value: str | None) -> str:
         return safe_return_to(value, self._s)
