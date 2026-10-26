@@ -353,3 +353,14 @@ async def test_disable_network_debugging_after_soft_kiosk(tmp_path: Path) -> Non
         assert tv.adb_cut
         # TV injoignable ensuite : retour False, sans exception
         assert not await d.disable_network_debugging(prov_req(tv.port))
+
+
+async def test_final_step_disables_adb_only_with_ack(tmp_path: Path) -> None:
+    async with fakes.FakeAdbTv("open") as tv:
+        tv.accounts = 2
+        out, _, _ = await run_prov(tv, tmp_path)
+        assert out.kiosk == "soft" and out.code == "provision.android.adb_open"
+    async with fakes.FakeAdbTv("open") as tv:
+        tv.accounts = 2
+        out, _, _ = await run_prov(tv, tmp_path, non_public_ack=True)
+        assert out.ok and out.code == "provision.android.adb_closed"

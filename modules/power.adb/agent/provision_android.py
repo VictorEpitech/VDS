@@ -167,11 +167,11 @@ class AndroidProvisioner:
             await rep(current, "failed", _code(e.code))
             return ProvisionOutcome(ok=False, kiosk="none", code=_code(e.code))
         kiosk = "device_owner" if owner else "soft" if soft else "none"
+        code = P + "no_kiosk" if kiosk == "none" else P + "adb_open" if kiosk == "soft" else None
+        if kiosk == "soft" and req.non_public_ack and await self.disable_network_debugging(req):
+            code = P + "adb_closed"  # étape finale, après `launch`, sur confirmation de l'admin
         return ProvisionOutcome(
-            ok=True,
-            kiosk=kiosk,
-            installed_version_code=int(installed),
-            code=P + "no_kiosk" if kiosk == "none" else P + "adb_open" if kiosk == "soft" else None,
+            ok=True, kiosk=kiosk, installed_version_code=int(installed), code=code
         )
 
     async def _connect(self, req: ProvisionRequest, rep: Rep) -> None:

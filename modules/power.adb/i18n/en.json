@@ -49,6 +49,7 @@
       "soft_kiosk_active": "Soft kiosk active: Home and Assistant keys remain usable. Use only for non-public screens.",
       "soft_kiosk_failed": "Soft kiosk not applied.",
       "no_kiosk": "No lock-down: the app is not protected.",
+      "adb_closed": "ADB network debugging was turned off on this screen after confirmation. Re-enable it on the TV (developer options).",
       "adb_open": "ADB network debugging stays open on this screen: any machine on the network can request access. Isolate screens (VLAN) or disable network debugging if power control does not use ADB.",
       "launch_by_app": "Launch handed over to the app (ADB is cut by Device Owner mode): pairing is confirmed by the screen.",
       "configure_failed": "Sleep setting not applied (non blocking).",
