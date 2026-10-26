@@ -13,6 +13,8 @@ Variables du serveur (fichier `.env`, jamais commité) :
 | `VDS_SECRET_KEY` | chiffre les tickets d'appairage ; **sans elle, l'assistant est indisponible** (« serveur non configuré ») | 32 caractères minimum, ex. `openssl rand -base64 36` |
 | `VDS_PUBLIC_ORIGIN` | origine publique vue par la TV, ex. `http://192.168.1.182:8002` ; injectée dans l'app, doit être joignable depuis la TV | schéma + hôte + port, sans chemin |
 | `VDS_BASE_PATH` | `/` puis `/espace/affichage` pour le second passage | |
+| `VDS_PROVISION_LAN_CHECK` | défaut `true` : le serveur refuse (401, ticket non consommé) un appairage venant d'une adresse privée différente de l'IP de la TV de la session ; mettre `false` derrière un NAT Docker | `true` / `false` |
+| `VDS_APK_SIGNER_SHA256` | empreinte attendue du certificat de signature ; une entrée de `apk.json` au `signer_sha256` différent est rejetée (côté CI : variable de dépôt, obligatoire pour `images.yml`) | SHA-256 hex, hors dépôt |
 | `VDS_APK_DIR` | dossier `apk.json` + `.apk` signés ; défaut `/opt/vds/apk` (celui de l'image) | voir ci-dessous |
 
 APK à fournir :
@@ -39,6 +41,7 @@ Rebuild docker (code serveur, admin et module `power.adb` 0.2.0 changés) :
 - [ ] Étapes dans l'ordre : connexion, autorisation, vérification, téléchargement, contrôle du fichier, installation, verrouillage complet (échec attendu : comptes présents), kiosque doux, réglage de la veille, transmission de l'appairage, lancement.
 - [ ] Erreur « comptes présents » lisible ; choix « Continuer en kiosque doux » proposé ; bandeau kiosque doux avec la procédure de verrouillage complet.
 - [ ] L'app démarre seule, sans saisie de code ni d'URL, l'écran passe « En ligne » ; l'assistant affiche « validée ».
+- [ ] Kiosque doux : l'assistant avertit que le port ADB reste ouvert (`adb_open`) et demande la confirmation « écran non public » ; sans case cochée, pas de coupure. Cochée : étape finale après lancement, message `adb_closed`, `adb connect` échoue ensuite (alimentation `power.adb` alors indisponible : attendu). L'action est auditée (acteur).
 - [ ] Écran admin : enforcement `soft`, alerte « Kiosque doux » (demandé `locked`, appliqué `soft`).
 - [ ] `adb shell settings get secure attentive_timeout` = `-1` ; `adb shell cmd package resolve-activity -a android.intent.action.MAIN -c android.intent.category.HOME` pointe l'app.
 - [ ] Alimentation : « Éteindre » puis « Allumer » depuis l'admin via `power.adb` (verified), toujours fonctionnels après l'installation.
@@ -59,6 +62,8 @@ Rebuild docker (code serveur, admin et module `power.adb` 0.2.0 changés) :
 - [ ] Débogage réseau coupé : « TV injoignable : activez le débogage réseau… ».
 - [ ] Adresse publique (ex. 8.8.8.8) ou `127.0.0.1` : refusée dès le formulaire. Mauvaise IP LAN : injoignable, message lisible.
 - [ ] Agent arrêté : assistant « agent hors ligne ». Module `power.adb` désactivé : message dédié.
+- [ ] Ticket d'appairage : usage unique, valable 10 min ; passé ce délai (ou après une première consommation) l'app est refusée. Appairage depuis une autre machine du LAN que la TV : 401, ticket intact (`VDS_PROVISION_LAN_CHECK=true`).
+- [ ] APK dont le signataire diffère de `VDS_APK_SIGNER_SHA256` : « application non disponible ».
 - [ ] « Annuler l'installation » : session annulée ; le ticket ne permet plus de s'appairer.
 - [ ] Repli : « Utiliser le code d'appairage manuel » fonctionne toujours.
 
@@ -73,6 +78,7 @@ Rebuild docker (code serveur, admin et module `power.adb` 0.2.0 changés) :
 - Un compte Google (ou un compte constructeur caché) ou un second profil Android bloque `dpm set-device-owner` : kiosque doux seulement (Accueil/Assistant/source ouvrent d'autres écrans puis l'app revient ; les touches ne sont pas bloquées). À réserver aux écrans non publics.
 - L'invite RSA doit être acceptée avec « Toujours autoriser » ; une OTA peut désactiver le débogage réseau ou reprendre le rôle HOME (à revérifier).
 - Pas de mise à jour silencieuse de l'APK sans Device Owner ; Play Protect peut avertir pour une APK hors Play Store (clé de signature stable).
+- Contrôle LAN inopérant si le serveur est distant (IP publique du site) ; ARP-spoof de la TV possible : segmenter le réseau des écrans.
 - Un seul provisioning actif par écran et par IP cible ; durée max bornée (délai global de la commande).
 - Les tests automatiques utilisent un faux ADB : le dialogue réel, `dpm` réel, les délais TCL et Play Protect ne sont validés que par cette recette.
 - Android uniquement (Tizen/Pi hors périmètre).

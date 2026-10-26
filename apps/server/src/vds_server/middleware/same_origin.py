@@ -25,7 +25,7 @@ class SameOriginMiddleware:
         self.settings = settings
         self.api_prefix = f"{settings.prefix}/api/"
         # appairage : anonyme, sans cookie, appelé par le player (origine arbitraire) ; l'échange
-        # par ticket est protégé par le ticket lui-même (usage unique, 30 min)
+        # par ticket est protégé par le ticket lui-même (usage unique, 10 min)
         self.exempt = {
             f"{settings.prefix}/api/v1/player/pairings",
             f"{settings.prefix}/api/v1/player/pair",

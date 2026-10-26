@@ -20,36 +20,51 @@ Réutilise : `modules/power.adb` (client ADB TCP, clé RSA de l'agent), `docs/ar
 
 ```python
 ProvisionStepId = Literal[
-    "connect", "authorize", "inspect", "download", "verify", "install",
-    "device_owner", "soft_kiosk", "configure", "inject", "launch",
+    "connect",
+    "authorize",
+    "inspect",
+    "download",
+    "verify",
+    "install",
+    "device_owner",
+    "soft_kiosk",
+    "configure",
+    "inject",
+    "launch",
 ]
 StepStatus = Literal["pending", "running", "waiting_user", "ok", "skipped", "failed"]
 
-class ApkRef(BaseModel):            # fourni par le serveur, jamais une URL
+
+class ApkRef(BaseModel):  # fourni par le serveur, jamais une URL
     package: Literal["app.vds.player"]
     version_code: int = Field(ge=1)
     version_name: str = Field(max_length=32)
     sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     size: int = Field(ge=1, le=200 * 1024 * 1024)
 
+
 class ProvisionRequest(BaseModel):
     provision_id: UUID
     screen_id: UUID
-    platform: str                    # "android"
-    address: IPv4Address | IPv6Address   # privée/lien local uniquement (validé noyau + module)
+    platform: str  # "android"
+    address: IPv4Address | IPv6Address  # privée/lien local uniquement (validé noyau + module)
     port: int = Field(default=5555, ge=1, le=65535)
     apk: ApkRef
-    server_url: AnyHttpUrl           # https obligatoire sauf build lanHttp (refus côté app sinon)
-    pairing_ticket: SecretStr        # jamais journalisé
+    server_url: AnyHttpUrl  # https obligatoire sauf build lanHttp (refus côté app sinon)
+    pairing_ticket: SecretStr  # jamais journalisé
     device_owner: Literal["try", "skip"] = "try"
     soft_kiosk_fallback: bool = True
-    from_step: ProvisionStepId | None = None   # reprise après correction (ex. comptes retirés)
+    from_step: ProvisionStepId | None = None  # reprise après correction (ex. comptes retirés)
+
 
 class StepReport(BaseModel):
     step: ProvisionStepId
     status: StepStatus
-    code: str | None = None          # "provision.android.<raison>", clé i18n du module
-    detail: dict[str, str | int | bool] = {}   # aucune donnée sensible (pas de ticket, pas de sortie shell brute)
+    code: str | None = None  # "provision.android.<raison>", clé i18n du module
+    detail: dict[
+        str, str | int | bool
+    ] = {}  # aucune donnée sensible (pas de ticket, pas de sortie shell brute)
+
 
 class ProvisionOutcome(BaseModel):
     ok: bool
@@ -57,12 +72,17 @@ class ProvisionOutcome(BaseModel):
     installed_version_code: int | None
     code: str | None = None
 
-class ApkSource(Protocol):           # fourni par le runtime, pas par le module
-    async def fetch(self, apk: ApkRef) -> Path: ...   # télécharge + vérifie sha256/taille, cache par sha256
+
+class ApkSource(Protocol):  # fourni par le runtime, pas par le module
+    async def fetch(
+        self, apk: ApkRef
+    ) -> Path: ...  # télécharge + vérifie sha256/taille, cache par sha256
+
 
 @runtime_checkable
 class ScreenProvisioner(Protocol):
-    platforms: ClassVar[frozenset[str]]   # {"android"} ; capacité manifeste "provision.android"
+    platforms: ClassVar[frozenset[str]]  # {"android"} ; capacité manifeste "provision.android"
+
     async def provision(
         self,
         req: ProvisionRequest,
