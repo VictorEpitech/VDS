@@ -18,6 +18,15 @@ Production signée : la CI (`.github/workflows/android.yml`) lit les secrets `AN
 `VDS_KEYSTORE_PATH`, `VDS_KEYSTORE_PASSWORD`, `VDS_KEY_ALIAS`, `VDS_KEY_PASSWORD`, puis `./gradlew :app:assembleRelease`.
 Aucune clé dans le dépôt (`*.jks` ignorés).
 
+### APK embarquée dans l'image serveur
+
+La CI (`android.yml`) publie l'artefact `vds-player-apk` : l'APK signée + `apk.json`
+(`[{package, version_code, version_name, sha256, size, signer_sha256, file}]`, généré par `make-apk-manifest.sh`).
+`images.yml` le télécharge dans `docker/apk/` (ignoré par git) et `docker/server.Dockerfile` le copie dans `/opt/vds/apk/`.
+Sans secrets de signature, aucune APK n'est produite et l'image n'en contient pas.
+`VDS_APK_DIR` (défaut `/opt/vds/apk`) remplace ce dossier, même format : instance autonome qui veut une APK plus récente
+(monter un volume en lecture seule). Aucune clé ni APK dans le dépôt.
+
 ## Installer sur la TCL
 
 1. Sur la TV : Paramètres > Système > À propos, taper 7 fois sur « Build » ; Options pour les développeurs > Débogage USB et **Débogage réseau** (ADB sans fil).

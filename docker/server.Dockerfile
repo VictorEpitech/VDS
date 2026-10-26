@@ -32,11 +32,14 @@ COPY modules modules
 RUN uv sync --frozen --no-dev --package vds-server
 COPY --from=web /repo/apps/admin/dist /app/web/admin
 COPY --from=web /out/player /app/web/player
+# APK player signée par la CI (docker/apk/ : apk.json + *.apk) ; vide hors CI, le serveur n'offre alors aucune APK.
+COPY docker/apk /opt/vds/apk
 ENV PATH="/app/.venv/bin:$PATH" \
     VDS_ADMIN_DIR=/app/web/admin \
     VDS_PLAYER_DIR=/app/web/player \
     VDS_MODULES_DIR=/app/modules \
     VDS_MEDIA_DIR=/data/media \
+    VDS_APK_DIR=/opt/vds/apk \
     PYTHONUNBUFFERED=1
 RUN useradd -r -u 10001 vds && mkdir -p /data/media && chown vds /data/media
 USER vds

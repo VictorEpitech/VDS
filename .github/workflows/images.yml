@@ -7,6 +7,7 @@ on:
 permissions:
   contents: read
   packages: write
+  actions: read
 env:
   REGISTRY: ghcr.io
 jobs:
@@ -21,6 +22,17 @@ jobs:
             dockerfile: docker/site-agent.Dockerfile
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: APK signée (dernier build android.yml réussi sur main)
+        if: matrix.name == 'vds-server'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          run_id="$(gh run list -R "$GITHUB_REPOSITORY" -w android.yml -b main -s success -L 20 --json databaseId,conclusion -q '.[0].databaseId' || true)"
+          if [ -n "$run_id" ]; then
+            gh run download "$run_id" -R "$GITHUB_REPOSITORY" -n vds-player-apk -D docker/apk || echo "::warning::pas d'APK signée dans ce run"
+          else
+            echo "::warning::aucun build android réussi : image sans APK"
+          fi
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
       - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:

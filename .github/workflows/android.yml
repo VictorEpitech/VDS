@@ -47,10 +47,17 @@ jobs:
           VDS_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           VDS_VERSION_CODE: ${{ github.run_number }}
         run: ./gradlew :app:assembleRelease --console=plain
+      - name: Manifeste apk.json (version_code, sha256, taille)
+        if: steps.sign.outputs.signed == 'true'
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/release/*-release.apk "dist/vds-player-${{ github.run_number }}.apk"
+          ./make-apk-manifest.sh "dist/vds-player-${{ github.run_number }}.apk" "${{ github.run_number }}" "0.2.0"
       - if: steps.sign.outputs.signed == 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: vds-player-apk
           if-no-files-found: error
           path: |
-            packaging/android/app/build/outputs/apk/release/*.apk
+            packaging/android/dist/*.apk
+            packaging/android/dist/apk.json
