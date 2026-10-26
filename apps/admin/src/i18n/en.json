@@ -164,6 +164,7 @@
     "agents": {
       "already_active": "This site already has an active agent. Revoke it before creating another.",
       "command_args_invalid": "The command parameters are not valid.",
+      "command_internal": "The command failed on the agent side. Try again or check the agent logs.",
       "command_screen_required": "Choose a screen for this command.",
       "command_unknown": "This command does not exist.",
       "not_found": "This agent no longer exists.",
@@ -854,7 +855,13 @@
       "online_timeout": "The TV did not connect to the server in time. Check its network, then start again.",
       "timeout": "The installation took too long. Try again.",
       "cancelled": "Installation cancelled.",
-      "unknown": "The installation failed. Try again or use the manual pairing code."
+      "unknown": "The installation failed. Try again or use the manual pairing code.",
+      "adb_open": "Without full lockdown, the TV's ADB port stays open on the network: only use soft kiosk on a screen that is not public.",
+      "adb_closed": "ADB port closed again on the TV."
+    },
+    "non_public": {
+      "label": "This screen is not accessible to the public",
+      "required": "Confirm that this screen is not accessible to the public to continue."
     }
   }
 }

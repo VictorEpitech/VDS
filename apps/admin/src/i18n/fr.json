@@ -164,6 +164,7 @@
     "agents": {
       "already_active": "Ce site a déjà un agent actif. Révoquez-le avant d'en créer un autre.",
       "command_args_invalid": "Les paramètres de la commande ne sont pas valides.",
+      "command_internal": "La commande a échoué côté agent. Réessayez ou consultez les journaux de l'agent.",
       "command_screen_required": "Choisissez un écran pour cette commande.",
       "command_unknown": "Cette commande n'existe pas.",
       "not_found": "Cet agent n'existe plus.",
@@ -854,7 +855,13 @@
       "online_timeout": "La TV ne s'est pas connectée au serveur à temps. Vérifiez son réseau, puis relancez l'installation.",
       "timeout": "L'installation a pris trop de temps. Réessayez.",
       "cancelled": "Installation annulée.",
-      "unknown": "L'installation a échoué. Réessayez ou utilisez le code d'appairage manuel."
+      "unknown": "L'installation a échoué. Réessayez ou utilisez le code d'appairage manuel.",
+      "adb_open": "Sans verrouillage complet, le port ADB de la TV reste ouvert sur le réseau : n'utilisez le kiosque doux que sur un écran non public.",
+      "adb_closed": "Port ADB refermé sur la TV."
+    },
+    "non_public": {
+      "label": "Cet écran n'est pas accessible au public",
+      "required": "Confirmez que cet écran n'est pas accessible au public pour continuer."
     }
   }
 }

@@ -52,7 +52,10 @@ export function useProvisionActions(pid: string | null, onCreated: (p: Provision
     },
   });
   const retry = useMutation({
-    mutationFn: (fromStep: StepId | null) => api.post<Provision>(`/provisioning/${pid}/retry`, { from_step: fromStep }),
+    mutationFn: async (v: { fromStep: StepId | null; ack?: boolean }) => {
+      if (v.ack) await api.post<Provision>(`/provisioning/${pid}/non-public-ack`, { confirmed: true });
+      return api.post<Provision>(`/provisioning/${pid}/retry`, { from_step: v.fromStep });
+    },
     onSuccess: store,
   });
   const cancel = useMutation({

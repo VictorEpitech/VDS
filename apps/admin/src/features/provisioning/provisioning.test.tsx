@@ -13,7 +13,7 @@ const OK_CAPS = { available: true, reason: null, platforms: ["android"], apk: { 
 const step = (id: string, status: string, code: string | null = null) => ({ step: id, status, code, at: null });
 const session = (status: string, steps: unknown[], extra: Record<string, unknown> = {}) => ({
   id: PID, screen_id: SCREEN.id, site_id: SITE.id, platform: "android", address: "192.168.1.50", port: 5555, status, code: null, steps,
-  outcome: null, apk_version_code: 7, pairing_code_fallback: false, ticket_expires_at: null, created_at: "2026-10-26T10:00:00Z", finished_at: null, ...extra,
+  outcome: null, apk_version_code: 7, pairing_code_fallback: false, non_public_ack: true, non_public_ack_at: null, ticket_expires_at: null, created_at: "2026-10-26T10:00:00Z", finished_at: null, ...extra,
 });
 const base = (caps: unknown = OK_CAPS) => ({
   "GET /sites": [SITE],
@@ -37,6 +37,12 @@ async function toAddress(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole("button", { name: "Continuer" }));
 }
 
+const ACK = "Cet écran n'est pas accessible au public";
+const lan = async (user: ReturnType<typeof userEvent.setup>, ip: string, ack = true) => {
+  await user.type(await screen.findByLabelText("Adresse IP de la TV"), ip);
+  if (ack) await user.click(screen.getByLabelText(ACK));
+};
+
 describe.each(["", "/espace/affichage"])("assistant TV Android, base « %s »", (b) => {
   it("masque la suite et explique quand l'agent est trop ancien", async () => {
     mockApi(base({ available: false, reason: "agent_outdated", platforms: [], apk: null }), b);
@@ -54,12 +60,49 @@ describe.each(["", "/espace/affichage"])("assistant TV Android, base « %s »", 
     await renderRoutes(routes, "/screens/android", b);
     await toAddress(user);
     expect(calls.some((c) => c.method === "POST" && c.path === "/screens")).toBe(true);
-    await user.type(await screen.findByLabelText("Adresse IP de la TV"), "192.168.1.50");
+    await lan(user, "192.168.1.50");
     await user.click(screen.getByRole("button", { name: "Lancer l'installation" }));
     expect((await screen.findAllByText("Acceptez l'invite sur la TV et cochez « Toujours autoriser ».")).length).toBeGreaterThan(0);
     const post = calls.find((c) => c.path === `/screens/${SCREEN.id}/provision`);
-    expect(post?.body).toMatchObject({ platform: "android", address: "192.168.1.50", port: 5555, device_owner: "try", soft_kiosk_fallback: true });
+    expect(post?.body).toMatchObject({ platform: "android", address: "192.168.1.50", port: 5555, device_owner: "try", soft_kiosk_fallback: true, non_public_ack: true });
     expect(screen.getAllByText("Action sur la TV").length).toBeGreaterThan(0);
+  });
+
+  it("exige la confirmation « écran non public » et avertit que l'ADB reste ouvert", async () => {
+    const calls = mockApi(base(), b);
+    const user = userEvent.setup();
+    await renderRoutes(routes, "/screens/android", b);
+    await toAddress(user);
+    await lan(user, "192.168.1.50", false);
+    expect(screen.getByText(/le port ADB de la TV reste ouvert/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Lancer l'installation" }));
+    expect(await screen.findByText("Confirmez que cet écran n'est pas accessible au public pour continuer.")).toBeInTheDocument();
+    expect(calls.some((c) => c.path.endsWith("/provision"))).toBe(false);
+  });
+
+  it("masque la case sans kiosque doux", async () => {
+    mockApi(base(), b);
+    const user = userEvent.setup();
+    await renderRoutes(routes, "/screens/android", b);
+    await toAddress(user);
+    await user.click(await screen.findByText("Avancé"));
+    await user.click(screen.getByLabelText("Se rabattre sur le kiosque doux si le verrouillage complet est impossible"));
+    expect(screen.queryByLabelText(ACK)).not.toBeInTheDocument();
+  });
+
+  it("confirme côté serveur avant un retry quand la session n'est pas acquittée", async () => {
+    const failed = session("failed", [step("connect", "ok"), step("device_owner", "failed", "provision.android.accounts_present")], { code: "provision.android.accounts_present", non_public_ack: false });
+    const calls = mockApi({ ...base(), [`POST /screens/${SCREEN.id}/provision`]: failed, [`GET /provisioning/${PID}`]: failed, [`POST /provisioning/${PID}/non-public-ack`]: { ...failed, non_public_ack: true }, [`POST /provisioning/${PID}/retry`]: session("running", []) }, b);
+    const user = userEvent.setup();
+    await renderRoutes(routes, "/screens/android", b);
+    await toAddress(user);
+    await lan(user, "192.168.1.52");
+    await user.click(screen.getByRole("button", { name: "Lancer l'installation" }));
+    await user.click(await screen.findByRole("button", { name: "Continuer en kiosque doux" }));
+    await waitFor(() => expect(calls.find((c) => c.path === `/provisioning/${PID}/retry`)).toBeTruthy());
+    const order = calls.filter((c) => c.path.startsWith(`/provisioning/${PID}/`)).map((c) => c.path.split("/").pop());
+    expect(order).toEqual(["non-public-ack", "retry"]);
+    expect(calls.find((c) => c.path.endsWith("/non-public-ack"))?.body).toEqual({ confirmed: true });
   });
 
   it("montre le tutoriel avec le cas compte Google", async () => {
@@ -76,7 +119,7 @@ describe.each(["", "/espace/affichage"])("assistant TV Android, base « %s »", 
     const user = userEvent.setup();
     await renderRoutes(routes, "/screens/android", b);
     await toAddress(user);
-    await user.type(await screen.findByLabelText("Adresse IP de la TV"), "tv.local");
+    await lan(user, "tv.local");
     await user.click(screen.getByRole("button", { name: "Lancer l'installation" }));
     expect(await screen.findByText("Saisissez une adresse IP valide.")).toBeInTheDocument();
     expect(calls.some((c) => c.path.endsWith("/provision"))).toBe(false);
@@ -88,7 +131,7 @@ describe.each(["", "/espace/affichage"])("assistant TV Android, base « %s »", 
     const user = userEvent.setup();
     await renderRoutes(routes, "/screens/android", b);
     await toAddress(user);
-    await user.type(await screen.findByLabelText("Adresse IP de la TV"), "192.168.1.51");
+    await lan(user, "192.168.1.51");
     await user.click(screen.getByRole("button", { name: "Lancer l'installation" }));
     expect((await screen.findAllByText(/n'accepte que le débogage sans fil chiffré/)).length).toBeGreaterThan(0);
     await user.click(screen.getByRole("button", { name: "Réessayer à cette étape" }));
@@ -101,7 +144,7 @@ describe.each(["", "/espace/affichage"])("assistant TV Android, base « %s »", 
     const user = userEvent.setup();
     await renderRoutes(routes, "/screens/android", b);
     await toAddress(user);
-    await user.type(await screen.findByLabelText("Adresse IP de la TV"), "192.168.1.52");
+    await lan(user, "192.168.1.52");
     await user.click(screen.getByRole("button", { name: "Lancer l'installation" }));
     await user.click(await screen.findByRole("button", { name: "Continuer en kiosque doux" }));
     await waitFor(() => expect(calls.find((c) => c.path === `/provisioning/${PID}/retry`)?.body).toEqual({ from_step: "soft_kiosk" }));
@@ -127,7 +170,7 @@ describe.each(["", "/espace/affichage"])("assistant TV Android, base « %s »", 
     const user = userEvent.setup();
     await renderRoutes(routes, "/screens/android", b);
     await toAddress(user);
-    await user.type(await screen.findByLabelText("Adresse IP de la TV"), "192.168.1.50");
+    await lan(user, "192.168.1.50");
     await user.click(screen.getByRole("button", { name: "Lancer l'installation" }));
     expect(await screen.findByText("L'écran est en ligne : l'installation est validée.", {}, { timeout: 7000 })).toBeInTheDocument();
     expect(screen.getByText(/Kiosque doux : les touches Accueil/)).toBeInTheDocument();
@@ -139,7 +182,7 @@ describe.each(["", "/espace/affichage"])("assistant TV Android, base « %s »", 
     const user = userEvent.setup();
     await renderRoutes(routes, "/screens/android", b);
     await toAddress(user);
-    await user.type(await screen.findByLabelText("Adresse IP de la TV"), "8.8.8.8");
+    await lan(user, "8.8.8.8");
     await user.click(screen.getByRole("button", { name: "Lancer l'installation" }));
     expect(await screen.findByText("Utilisez l'adresse IP locale de la TV (réseau privé).")).toBeInTheDocument();
   });

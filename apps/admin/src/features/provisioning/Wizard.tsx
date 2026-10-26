@@ -42,7 +42,8 @@ export function ProvisionWizard() {
   const [port, setPort] = useState("5555");
   const [deviceOwner, setDeviceOwner] = useState<"try" | "skip">("try");
   const [softKiosk, setSoftKiosk] = useState(true);
-  const [missing, setMissing] = useState<{ name?: boolean; site?: boolean; address?: boolean; port?: boolean }>({});
+  const [nonPublic, setNonPublic] = useState(false);
+  const [missing, setMissing] = useState<{ name?: boolean; site?: boolean; address?: boolean; port?: boolean; ack?: boolean }>({});
   const [screenId, setScreenId] = useState<string | null>(null);
   const [pid, setPid] = useState<string | null>(null);
 
@@ -77,10 +78,12 @@ export function ProvisionWizard() {
     const portNum = Number(port);
     const next = { address: !looksLikeAddress(address.trim()), port: !Number.isInteger(portNum) || portNum < 1 || portNum > 65535 };
     setMissing(next);
-    if (next.address || next.port || !screenId) return;
+    const ackMissing = softKiosk && !nonPublic;
+    setMissing({ ...next, ack: ackMissing });
+    if (next.address || next.port || ackMissing || !screenId) return;
     actions.create.mutate({
       screenId,
-      body: { platform: "android", address: address.trim(), port: portNum, device_owner: deviceOwner, soft_kiosk_fallback: softKiosk, reprovision: false },
+      body: { platform: "android", address: address.trim(), port: portNum, device_owner: deviceOwner, soft_kiosk_fallback: softKiosk, reprovision: false, non_public_ack: softKiosk && nonPublic },
     });
   };
 
@@ -224,6 +227,9 @@ export function ProvisionWizard() {
               </div>
             </div>
           </details>
+          {softKiosk ? (
+            <NonPublicAck id={`${uid}-ack`} checked={nonPublic} invalid={!!missing.ack} onChange={setNonPublic} />
+          ) : null}
           {actions.create.isError ? <ErrorAlert error={actions.create.error} /> : null}
           <div className="actions">
             <button type="submit" className="btn btn-filled" disabled={actions.create.isPending} aria-busy={actions.create.isPending}>
@@ -243,6 +249,8 @@ export function ProvisionWizard() {
           screenId={screenId}
           session={session}
           actions={actions}
+          nonPublic={nonPublic}
+          onNonPublic={setNonPublic}
           onChangeAddress={() => {
             actions.create.reset();
             setPid(null);
@@ -259,16 +267,21 @@ function Run({
   screenId,
   session,
   actions,
+  nonPublic,
+  onNonPublic,
   onChangeAddress,
 }: {
   pid: string;
   screenId: string | null;
   session: ReturnType<typeof useProvision>;
   actions: ReturnType<typeof useProvisionActions>;
+  nonPublic: boolean;
+  onNonPublic: (v: boolean) => void;
   onChangeAddress: () => void;
 }) {
   const { t } = useTranslation();
   const codeText = useCodeText();
+  const [ackMissing, setAckMissing] = useState(false);
   const p = session.data;
   if (!p) return <QueryStatus query={session} />;
   const failedStep: StepId | null = p.steps.find((s) => s.status === "failed")?.step ?? null;
@@ -276,6 +289,13 @@ function Run({
   const busy = actions.retry.isPending || actions.cancel.isPending;
   const waitingUser = p.status === "waiting_user" || p.steps.some((s) => s.status === "waiting_user");
   const stepTitle = `${pid}-run`;
+  const needsAck = !p.non_public_ack;
+  /** Le retry exige la confirmation « écran non public » ; elle est enregistrée côté serveur avant la reprise. */
+  const retry = (fromStep: StepId | null) => {
+    if (needsAck && !nonPublic) return setAckMissing(true);
+    setAckMissing(false);
+    actions.retry.mutate({ fromStep, ack: needsAck });
+  };
 
   return (
     <section className="card" aria-labelledby={stepTitle}>
@@ -328,6 +348,12 @@ function Run({
             <p className="alert-text">{t("provision.kiosk.none")}</p>
           </div>
         ) : null}
+        {p.status === "done" && p.outcome?.code === "provision.android.adb_closed" ? (
+          <p className="alert alert-info" role="status">
+            <Icon name="lock" />
+            <span>{t("provision.codes.adb_closed")}</span>
+          </p>
+        ) : null}
         {p.status === "done" && p.outcome?.kiosk === "device_owner" ? (
           <p className="meta">{t("provision.kiosk.device_owner")}</p>
         ) : null}
@@ -336,15 +362,16 @@ function Run({
       {actions.retry.isError ? <ErrorAlert error={actions.retry.error} /> : null}
       {actions.cancel.isError ? <ErrorAlert error={actions.cancel.error} /> : null}
       {session.isError ? <QueryStatus query={session} /> : null}
+      {p.status === "failed" && needsAck ? <NonPublicAck id={`${pid}-ack`} checked={nonPublic} invalid={ackMissing} onChange={onNonPublic} /> : null}
       <div className="actions">
         {p.status === "failed" ? (
           <>
-            <button type="button" className="btn btn-filled" disabled={busy} onClick={() => actions.retry.mutate(resumeAt)}>
+            <button type="button" className="btn btn-filled" disabled={busy} onClick={() => retry(resumeAt)}>
               <Icon name="rotate" />
               {t("provision.retry_here")}
             </button>
             {failedStep === "device_owner" ? (
-              <button type="button" className="btn btn-text" disabled={busy} onClick={() => actions.retry.mutate("soft_kiosk")}>
+              <button type="button" className="btn btn-text" disabled={busy} onClick={() => retry("soft_kiosk")}>
                 <Icon name="lock" />
                 {t("provision.continue_soft")}
               </button>
@@ -370,5 +397,28 @@ function Run({
         )}
       </div>
     </section>
+  );
+}
+
+/** Confirmation « écran non public » : sans verrouillage complet, l'ADB reste ouvert sur la TV. */
+function NonPublicAck({ id, checked, invalid, onChange }: { id: string; checked: boolean; invalid: boolean; onChange: (v: boolean) => void }) {
+  const { t } = useTranslation();
+  return (
+    <div className="field">
+      <div className="alert alert-warning" role="status">
+        <Icon name="warning" />
+        <p className="alert-text">{t("provision.codes.adb_open")}</p>
+      </div>
+      <div className="field-check">
+        <input id={id} type="checkbox" checked={checked} aria-invalid={invalid ? true : undefined} aria-describedby={invalid ? `${id}-err` : undefined} onChange={(e) => onChange(e.target.checked)} />
+        <label htmlFor={id}>{t("provision.non_public.label")}</label>
+      </div>
+      {invalid ? (
+        <p className="field-error" id={`${id}-err`}>
+          <Icon name="warning" />
+          <span>{t("provision.non_public.required")}</span>
+        </p>
+      ) : null}
+    </div>
   );
 }
