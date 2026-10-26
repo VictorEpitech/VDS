@@ -16,7 +16,7 @@ from uuid import UUID
 import httpx
 from pydantic import ValidationError
 from vds_sdk import CORE_API_VERSION
-from vds_sdk.agent import DetectHint, DetectResult, PowerState, PowerTarget
+from vds_sdk.agent import DetectHint, DetectResult, PowerState, PowerTarget, ScreenProvisioner
 from vds_sdk.wire import (
     AgentHello,
     AgentWelcome,
@@ -34,6 +34,7 @@ from .lan import LanServer, parse_listen
 from .link import ServerLink
 from .modules import Discovered, LoadedDriver, apply_defaults, discover, instantiate
 from .plan import current_slot, fetch_plan
+from .provision import ProvisionRunner
 from .settings import AGENT_VERSION, AgentSettings
 from .store import ModuleState, Store
 
@@ -112,6 +113,15 @@ class Agent:
         self._cache_key: tuple[str, bytes] | None = None
         self._cache_lock = asyncio.Lock()
         self.lan: LanServer | None = None
+        self.provisioner = ProvisionRunner(
+            http=self._http,
+            http_base=settings.http_base,
+            token=settings.token,
+            data_dir=settings.data_dir,
+            providers=self._provider_for,
+            emit=self.link.emit,
+            local_addresses=lan_ipv4,
+        )
 
     # --- démarrage --------------------------------------------------------------
     async def start(self) -> None:
@@ -157,7 +167,7 @@ class Agent:
                     d, AgentBus(self.link), ModuleState(self.store, m.id)
                 )
             except Exception:
-                log.exception("module.setup_failed", extra={"module": m.id})
+                log.exception("module.setup_failed", extra={"module_id": m.id})
 
     async def _deactivate_absent(self, enabled: list[dict[str, Any]]) -> None:
         """Pilotes chargés mais plus listés (désactivés côté serveur) : teardown et retrait."""
@@ -455,7 +465,20 @@ class Agent:
             return "ok", None, {}  # la config pilote vient du plan (rafraîchi par plan.updated)
         if cmd.name == "cache.sync":
             return await self.sync_cache()
+        if cmd.name == "screen.provision":
+            if sid is None:
+                return "rejected", "invalid_args", {}
+            return await self.provisioner.run(sid, args)
         return "failed", "agent.unknown_command", {}
+
+    def _provider_for(self, platform: str) -> ScreenProvisioner | None:
+        """Module actif déclarant `provision.<platform>` et implémentant `ScreenProvisioner`."""
+        for ld in self.drivers.values():
+            if f"provision.{platform}" in ld.manifest.capabilities and isinstance(
+                ld.driver, ScreenProvisioner
+            ):
+                return ld.driver
+        return None
 
     # --- cache média ------------------------------------------------------------------
     async def _load_cache_key(self) -> None:
