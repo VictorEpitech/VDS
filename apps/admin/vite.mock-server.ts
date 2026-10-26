@@ -10,6 +10,7 @@ import path from "node:path";
 import type { Connect, Plugin } from "vite";
 import { createDiffusionMock } from "./vite.mock-diffusion";
 import { createPowerMock } from "./vite.mock-power";
+import { createProvisionMock } from "./vite.mock-provision";
 
 const BASE_RE = /^(\/[a-z0-9_-]+)+$/;
 const TYPES: Record<string, string> = {
@@ -96,8 +97,9 @@ export function vdsMockServer(): Plugin {
 
   const diffusionMock = createDiffusionMock();
   const powerMock = createPowerMock(diffusionMock.world);
+  const provisionMock = createProvisionMock(diffusionMock.world);
   const diffusion = async (req: IncomingMessage, res: ServerResponse, route: string, query: URLSearchParams): Promise<boolean> =>
-    (await powerMock(req, res, route, query)) || diffusionMock(req, res, route, query);
+    (await provisionMock(req, res, route, query)) || (await powerMock(req, res, route, query)) || diffusionMock(req, res, route, query);
 
   async function api(req: IncomingMessage, res: ServerResponse, route: string, query: URLSearchParams): Promise<void> {
     const method = req.method ?? "GET";

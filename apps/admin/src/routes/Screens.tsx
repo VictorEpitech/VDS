@@ -48,6 +48,12 @@ export function Screens() {
               {t("screens.create.action")}
             </button>
           ) : null}
+          {isAdmin ? (
+            <Link className="btn btn-text" to="/screens/android">
+              <Icon name="detect" />
+              {t("provision.action")}
+            </Link>
+          ) : null}
           <Link className="btn btn-text" to="/pairing">
             <Icon name="pairing" />
             {t("screens.pair")}

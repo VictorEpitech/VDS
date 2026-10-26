@@ -887,3 +887,95 @@ fieldset.field > legend {
 .kiosk > p {
   margin: 0;
 }
+
+/* P7 : assistant « Ajouter une TV Android ». */
+.wizard-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vds-space-2) var(--vds-space-4);
+  margin-block-end: var(--vds-space-4);
+}
+
+.wizard-steps li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vds-space-2);
+  color: var(--vds-on-surface-variant);
+}
+
+.wizard-steps li[aria-current="step"] {
+  color: var(--vds-on-surface);
+  font-weight: 600;
+}
+
+.wizard-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  border: 1px solid currentcolor;
+  border-radius: var(--vds-radius-pill);
+}
+
+.wizard-steps li[aria-current="step"] .wizard-num {
+  background: var(--vds-primary);
+  border-color: var(--vds-primary);
+  color: var(--vds-on-primary);
+}
+
+.tutorial {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-3);
+  margin: 0;
+  padding-inline-start: var(--vds-space-6);
+}
+
+.tutorial h3 {
+  margin: 0;
+}
+
+.tutorial p {
+  margin: var(--vds-space-1) 0 0;
+}
+
+.tutorial-note {
+  padding: var(--vds-space-3);
+  border: 2px solid var(--vds-warning);
+  border-radius: var(--vds-radius-md);
+}
+
+.step-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-2);
+  margin-block: var(--vds-space-4);
+}
+
+.step-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vds-space-2) var(--vds-space-3);
+  padding: var(--vds-space-2) var(--vds-space-3);
+  border: 1px solid var(--vds-outline);
+  border-radius: var(--vds-radius-md);
+}
+
+.step-row[aria-current="step"] {
+  border-color: var(--vds-primary);
+  border-width: 2px;
+}
+
+.step-name {
+  flex: 1 1 12rem;
+  font-weight: 500;
+}
+
+.step-message {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--vds-space-2);
+  flex-basis: 100%;
+}

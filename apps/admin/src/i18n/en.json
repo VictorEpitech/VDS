@@ -200,6 +200,18 @@
       "scope_not_allowed": "This setting cannot be changed at this level.",
       "target_unknown": "This target no longer exists.",
       "value_invalid": "This value is not valid."
+    },
+    "provision": {
+      "unavailable": "The wizard is not available for this site.",
+      "screen_paired": "This screen is already paired.",
+      "session_active": "An installation is already running for this screen or address.",
+      "not_retryable": "This installation cannot be restarted.",
+      "not_cancellable": "This installation has already finished.",
+      "not_found": "This installation no longer exists.",
+      "args_invalid": "Invalid installation parameters.",
+      "apk_unavailable": "The Android app is not available on the server.",
+      "address_not_lan": "Use the TV's local IP address (private network).",
+      "address_invalid": "Invalid IP address."
     }
   },
   "auth": {
@@ -708,6 +720,141 @@
           "description": "Read-only: filled in by the screen's maintenance mode."
         }
       }
+    }
+  },
+  "provision": {
+    "title": "Add an Android TV",
+    "action": "Add an Android TV",
+    "intro": "Install and pair the VDS app on an Android TV from this page. No code to type on the TV.",
+    "progress_label": "Wizard steps",
+    "manual_code": "Use the manual pairing code",
+    "apk": "App version:",
+    "next": "Continue",
+    "previous": "Back",
+    "start": "Start installation",
+    "admin_only": "The wizard is reserved for administrators.",
+    "wizard": {
+      "1": "Screen",
+      "2": "Prepare the TV",
+      "3": "IP address",
+      "4": "Installation",
+      "5": "Validation"
+    },
+    "tutorial": {
+      "intro": "Do this on the TV before continuing. It takes a few minutes.",
+      "1": {
+        "title": "Turn on developer options",
+        "body": "Settings > System > About: press \"Build\" 7 times."
+      },
+      "2": {
+        "title": "Turn on network debugging",
+        "body": "In developer options, turn on \"USB debugging\" then \"Network debugging\" (port 5555), not wireless debugging."
+      },
+      "3": {
+        "title": "Google account",
+        "body": "For a full lock (Device Owner), first remove every account and profile from the TV, then add them back after the installation. Without this, the wizard installs a soft kiosk."
+      },
+      "4": {
+        "title": "Note the IP address",
+        "body": "Find the TV's IP address (Settings > Network); reserve it in the router."
+      },
+      "5": {
+        "title": "Accept the prompt",
+        "body": "During the installation, accept the debugging prompt on the TV and tick \"Always allow\"."
+      }
+    },
+    "address": {
+      "label": "TV IP address",
+      "help": "Local network address, for example 192.168.1.50. Public addresses are refused.",
+      "invalid": "Enter a valid IP address."
+    },
+    "port": "Network debugging port",
+    "port_invalid": "Enter a port between 1 and 65535.",
+    "device_owner": {
+      "label": "Full lock (Device Owner)",
+      "try": "Try",
+      "skip": "Skip"
+    },
+    "soft_kiosk": "Fall back to the soft kiosk if the full lock is impossible",
+    "unavailable": {
+      "agent_offline": "This site's agent is offline. Start it, then try again.",
+      "agent_outdated": "Update the site agent (version 1.3 or later) to use the wizard.",
+      "module_disabled": "The ADB power module is not enabled on this site. Enable it in the modules.",
+      "apk_unavailable": "The Android app is not available on this server.",
+      "server_unconfigured": "The server is not set up for the wizard (secret key or public address missing).",
+      "unknown": "The wizard is not available for this site."
+    },
+    "run": {
+      "steps_label": "Installation progress"
+    },
+    "step": {
+      "connect": "Connecting to the TV",
+      "authorize": "Accepting the prompt",
+      "inspect": "Checking the TV",
+      "download": "Downloading the app",
+      "verify": "Checking the file",
+      "install": "Installing",
+      "device_owner": "Full lock",
+      "soft_kiosk": "Soft kiosk",
+      "configure": "Sleep setting",
+      "inject": "Handing over the pairing",
+      "launch": "Starting the app"
+    },
+    "step_status": {
+      "pending": "Upcoming",
+      "running": "In progress",
+      "waiting_user": "Action on the TV",
+      "ok": "Done",
+      "skipped": "Skipped",
+      "failed": "Failed"
+    },
+    "waiting_user": "Accept the prompt on the TV and tick \"Always allow\".",
+    "waiting_online": "App installed. Waiting for the screen to be \"Online\".",
+    "done": "The screen is online: the installation is validated.",
+    "cancelled": "Installation cancelled.",
+    "kiosk": {
+      "soft": "Soft kiosk: the TV's Home and Assistant keys are not blocked. Reserve it for non-public screens.",
+      "procedure": "Full lock procedure:",
+      "none": "No lock: the app is not protected. Do not use it on a public screen.",
+      "device_owner": "Full lock active."
+    },
+    "retry_here": "Retry from this step",
+    "continue_soft": "Continue with the soft kiosk",
+    "change_address": "Change the IP address",
+    "cancel": {
+      "action": "Cancel the installation",
+      "confirm": "Confirm cancellation"
+    },
+    "go_screens": "See the screens",
+    "codes": {
+      "unreachable": "TV unreachable: turn on network debugging on the TV and check the IP address.",
+      "tls_required": "This TV only accepts encrypted wireless debugging. Turn on the classic \"Network debugging\" (port 5555) in developer options, then try again.",
+      "accept_on_tv": "RSA prompt on the TV: accept it and tick \"Always allow\".",
+      "unauthorized": "Authorization refused or expired: try again and choose \"Always allow\" on the TV.",
+      "protocol": "Unexpected reply from the TV. Try again.",
+      "sdk_too_old": "Android is too old (7.0 or later required).",
+      "apk_unavailable": "The app is not available on the server.",
+      "apk_mismatch": "App file is corrupted: try again.",
+      "already_installed": "App already up to date on the TV.",
+      "install_incompatible": "A version signed differently is already installed: uninstall the app from the TV, then try again.",
+      "install_failed": "The TV refused the installation.",
+      "device_owner_skipped": "Full lock was not requested.",
+      "owner_exists": "Another device manager already exists on the TV.",
+      "accounts_present": "Accounts (Google) are present on the TV. For a full lock, remove accounts and profiles, retry from this step, then add them back afterwards. Otherwise, continue with the soft kiosk.",
+      "extra_users": "Several profiles are present: remove them to enable the full lock, or continue with the soft kiosk.",
+      "dpm_refused": "The TV refuses the full lock (a factory reset may be needed). Continue with the soft kiosk.",
+      "soft_kiosk_active": "Soft kiosk active.",
+      "soft_kiosk_failed": "Soft kiosk not applied.",
+      "no_kiosk": "No lock: the app is not protected.",
+      "configure_failed": "Sleep setting not applied (non-blocking).",
+      "inject_failed": "Could not hand the pairing over to the TV. Use the manual pairing code.",
+      "launch_failed": "Could not start the app on the TV.",
+      "no_provider": "The site agent has no installation module for Android.",
+      "ticket_expired": "Pairing expired before the TV connected. Start the installation again.",
+      "online_timeout": "The TV did not connect to the server in time. Check its network, then start again.",
+      "timeout": "The installation took too long. Try again.",
+      "cancelled": "Installation cancelled.",
+      "unknown": "The installation failed. Try again or use the manual pairing code."
     }
   }
 }

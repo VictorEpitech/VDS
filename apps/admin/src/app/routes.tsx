@@ -13,6 +13,7 @@ import { Notifications } from "../routes/Notifications";
 import { PlaylistEditor } from "../routes/PlaylistEditor";
 import { Playlists } from "../routes/Playlists";
 import { Power } from "../routes/Power";
+import { ProvisionAndroid } from "../routes/ProvisionAndroid";
 import { Schedules } from "../routes/Schedules";
 import { Screens } from "../routes/Screens";
 import { SiteDetail } from "../routes/SiteDetail";
@@ -36,6 +37,7 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <Home /> },
           { path: "screens", element: <Screens /> },
+          { path: "screens/android", element: <ProvisionAndroid /> },
           { path: "sites", element: <Sites /> },
           { path: "sites/:id", element: <SiteDetail /> },
           { path: "supervision", element: <Supervision /> },

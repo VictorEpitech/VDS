@@ -200,6 +200,18 @@
       "scope_not_allowed": "Ce réglage ne peut pas être modifié à ce niveau.",
       "target_unknown": "Cette cible n'existe plus.",
       "value_invalid": "Cette valeur n'est pas valide."
+    },
+    "provision": {
+      "unavailable": "L'assistant n'est pas disponible pour ce site.",
+      "screen_paired": "Cet écran est déjà appairé.",
+      "session_active": "Une installation est déjà en cours pour cet écran ou cette adresse.",
+      "not_retryable": "Cette installation ne peut pas être relancée.",
+      "not_cancellable": "Cette installation est déjà terminée.",
+      "not_found": "Cette installation n'existe plus.",
+      "args_invalid": "Paramètres d'installation invalides.",
+      "apk_unavailable": "L'application Android n'est pas disponible sur le serveur.",
+      "address_not_lan": "Utilisez l'adresse IP locale de la TV (réseau privé).",
+      "address_invalid": "Adresse IP invalide."
     }
   },
   "auth": {
@@ -708,6 +720,141 @@
           "description": "Lecture seule : renseignée par le mode maintenance de l'écran."
         }
       }
+    }
+  },
+  "provision": {
+    "title": "Ajouter une TV Android",
+    "action": "Ajouter une TV Android",
+    "intro": "Installez et appairez l'application VDS sur une TV Android depuis cette page. Aucun code à saisir sur la TV.",
+    "progress_label": "Étapes de l'assistant",
+    "manual_code": "Utiliser le code d'appairage manuel",
+    "apk": "Version de l'application :",
+    "next": "Continuer",
+    "previous": "Retour",
+    "start": "Lancer l'installation",
+    "admin_only": "L'assistant est réservé aux administrateurs.",
+    "wizard": {
+      "1": "Écran",
+      "2": "Préparer la TV",
+      "3": "Adresse IP",
+      "4": "Installation",
+      "5": "Validation"
+    },
+    "tutorial": {
+      "intro": "À faire sur la TV avant de continuer. Comptez quelques minutes.",
+      "1": {
+        "title": "Activer les options développeur",
+        "body": "Paramètres > Système > À propos : appuyez 7 fois sur « Build »."
+      },
+      "2": {
+        "title": "Activer le débogage réseau",
+        "body": "Dans les options développeur, activez « Débogage USB » puis « Débogage réseau » (port 5555), pas le débogage sans fil."
+      },
+      "3": {
+        "title": "Compte Google",
+        "body": "Pour un verrouillage complet (Device Owner), retirez avant tous les comptes et profils de la TV, puis réajoutez-les après l'installation. Sans cela, l'assistant installe un kiosque doux."
+      },
+      "4": {
+        "title": "Noter l'adresse IP",
+        "body": "Relevez l'adresse IP de la TV (Paramètres > Réseau) ; réservez-la dans le routeur."
+      },
+      "5": {
+        "title": "Accepter l'invite",
+        "body": "Pendant l'installation, acceptez l'invite de débogage sur la TV et cochez « Toujours autoriser »."
+      }
+    },
+    "address": {
+      "label": "Adresse IP de la TV",
+      "help": "Adresse du réseau local, par exemple 192.168.1.50. Les adresses publiques sont refusées.",
+      "invalid": "Saisissez une adresse IP valide."
+    },
+    "port": "Port du débogage réseau",
+    "port_invalid": "Saisissez un port entre 1 et 65535.",
+    "device_owner": {
+      "label": "Verrouillage complet (Device Owner)",
+      "try": "Essayer",
+      "skip": "Passer"
+    },
+    "soft_kiosk": "Se rabattre sur le kiosque doux si le verrouillage complet est impossible",
+    "unavailable": {
+      "agent_offline": "L'agent de site de ce site est hors ligne. Démarrez-le, puis réessayez.",
+      "agent_outdated": "Mettez à jour l'agent de site (version 1.3 minimum) pour utiliser l'assistant.",
+      "module_disabled": "Le module d'alimentation ADB n'est pas activé sur ce site. Activez-le dans les modules.",
+      "apk_unavailable": "L'application Android n'est pas disponible sur ce serveur.",
+      "server_unconfigured": "Le serveur n'est pas configuré pour l'assistant (clé secrète ou adresse publique manquante).",
+      "unknown": "L'assistant n'est pas disponible pour ce site."
+    },
+    "run": {
+      "steps_label": "Avancement de l'installation"
+    },
+    "step": {
+      "connect": "Connexion à la TV",
+      "authorize": "Autorisation de l'invite",
+      "inspect": "Vérification de la TV",
+      "download": "Téléchargement de l'application",
+      "verify": "Contrôle du fichier",
+      "install": "Installation",
+      "device_owner": "Verrouillage complet",
+      "soft_kiosk": "Kiosque doux",
+      "configure": "Réglage de la veille",
+      "inject": "Transmission de l'appairage",
+      "launch": "Lancement de l'application"
+    },
+    "step_status": {
+      "pending": "À venir",
+      "running": "En cours",
+      "waiting_user": "Action sur la TV",
+      "ok": "Terminée",
+      "skipped": "Ignorée",
+      "failed": "Échec"
+    },
+    "waiting_user": "Acceptez l'invite sur la TV et cochez « Toujours autoriser ».",
+    "waiting_online": "Application installée. En attente que l'écran passe « En ligne ».",
+    "done": "L'écran est en ligne : l'installation est validée.",
+    "cancelled": "Installation annulée.",
+    "kiosk": {
+      "soft": "Kiosque doux : les touches Accueil et Assistant de la TV ne sont pas bloquées. À réserver aux écrans non publics.",
+      "procedure": "Procédure de verrouillage complet :",
+      "none": "Aucun verrouillage : l'application n'est pas protégée. Ne l'utilisez pas sur un écran public.",
+      "device_owner": "Verrouillage complet actif."
+    },
+    "retry_here": "Réessayer à cette étape",
+    "continue_soft": "Continuer en kiosque doux",
+    "change_address": "Changer l'adresse IP",
+    "cancel": {
+      "action": "Annuler l'installation",
+      "confirm": "Confirmer l'annulation"
+    },
+    "go_screens": "Voir les écrans",
+    "codes": {
+      "unreachable": "TV injoignable : activez le débogage réseau sur la TV et vérifiez l'adresse IP.",
+      "tls_required": "Cette TV n'accepte que le débogage sans fil chiffré. Activez le « Débogage réseau » classique (port 5555) dans les options développeur, puis réessayez.",
+      "accept_on_tv": "Invite RSA sur la TV : acceptez-la et cochez « Toujours autoriser ».",
+      "unauthorized": "Autorisation refusée ou expirée : réessayez et choisissez « Toujours autoriser » sur la TV.",
+      "protocol": "Réponse inattendue de la TV. Réessayez.",
+      "sdk_too_old": "Android trop ancien (version 7.0 minimum).",
+      "apk_unavailable": "L'application n'est pas disponible sur le serveur.",
+      "apk_mismatch": "Fichier d'application corrompu : réessayez.",
+      "already_installed": "Application déjà à jour sur la TV.",
+      "install_incompatible": "Une version signée autrement est déjà installée : désinstallez l'application de la TV, puis réessayez.",
+      "install_failed": "Installation refusée par la TV.",
+      "device_owner_skipped": "Verrouillage complet non demandé.",
+      "owner_exists": "Un autre gestionnaire d'appareil existe déjà sur la TV.",
+      "accounts_present": "Des comptes (Google) sont présents sur la TV. Pour un verrouillage complet, retirez comptes et profils, réessayez à cette étape, puis réajoutez-les ensuite. Sinon, continuez en kiosque doux.",
+      "extra_users": "Plusieurs profils sont présents : retirez-les pour activer le verrouillage complet, ou continuez en kiosque doux.",
+      "dpm_refused": "La TV refuse le verrouillage complet (une réinitialisation peut être nécessaire). Continuez en kiosque doux.",
+      "soft_kiosk_active": "Kiosque doux actif.",
+      "soft_kiosk_failed": "Kiosque doux non appliqué.",
+      "no_kiosk": "Aucun verrouillage : l'application n'est pas protégée.",
+      "configure_failed": "Réglage de veille non appliqué (non bloquant).",
+      "inject_failed": "Impossible de transmettre l'appairage à la TV. Utilisez le code d'appairage manuel.",
+      "launch_failed": "Impossible de lancer l'application sur la TV.",
+      "no_provider": "L'agent de site n'a aucun module d'installation pour Android.",
+      "ticket_expired": "L'appairage a expiré avant que la TV se connecte. Relancez l'installation.",
+      "online_timeout": "La TV ne s'est pas connectée au serveur à temps. Vérifiez son réseau, puis relancez l'installation.",
+      "timeout": "L'installation a pris trop de temps. Réessayez.",
+      "cancelled": "Installation annulée.",
+      "unknown": "L'installation a échoué. Réessayez ou utilisez le code d'appairage manuel."
     }
   }
 }
