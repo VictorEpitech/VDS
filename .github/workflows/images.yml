@@ -26,13 +26,38 @@ jobs:
         if: matrix.name == 'vds-server'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EXPECTED_SIGNER: ${{ vars.VDS_APK_SIGNER_SHA256 }}
         run: |
-          run_id="$(gh run list -R "$GITHUB_REPOSITORY" -w android.yml -b main -s success -L 20 --json databaseId,conclusion -q '.[0].databaseId' || true)"
-          if [ -n "$run_id" ]; then
-            gh run download "$run_id" -R "$GITHUB_REPOSITORY" -n vds-player-apk -D docker/apk || echo "::warning::pas d'APK signée dans ce run"
-          else
+          run_id="$(gh run list -R "$GITHUB_REPOSITORY" -w android.yml -b main -e push -s success -L 20 --json databaseId -q '.[0].databaseId' || true)"
+          if [ -z "$run_id" ]; then
             echo "::warning::aucun build android réussi : image sans APK"
+            exit 0
           fi
+          rm -rf docker/apk
+          gh run download "$run_id" -R "$GITHUB_REPOSITORY" -n vds-player-apk -D docker/apk || { echo "::warning::pas d'APK signée dans ce run"; exit 0; }
+          norm() { tr -d ': \n' | tr 'A-F' 'a-f'; }
+          if [ -z "$EXPECTED_SIGNER" ]; then
+            rm -rf docker/apk
+            echo "::error::variable de dépôt VDS_APK_SIGNER_SHA256 absente : APK refusée"; exit 1
+          fi
+          expected="$(printf '%s' "$EXPECTED_SIGNER" | norm)"
+          count="$(jq 'length' docker/apk/apk.json)"
+          [ "$count" -ge 1 ] || { rm -rf docker/apk; echo "::error::apk.json vide"; exit 1; }
+          for i in $(seq 0 $((count - 1))); do
+            signer="$(jq -r ".[$i].signer_sha256" docker/apk/apk.json | norm)"
+            name="$(jq -r ".[$i].file" docker/apk/apk.json)"
+            file="docker/apk/$name"
+            want_sha="$(jq -r ".[$i].sha256" docker/apk/apk.json)"
+            want_size="$(jq -r ".[$i].size" docker/apk/apk.json)"
+            if [ "$signer" != "$expected" ] \
+              || [ "$(basename "$name")" != "$name" ] \
+              || [ ! -f "$file" ] \
+              || [ "$(sha256sum "$file" | cut -d' ' -f1)" != "$want_sha" ] \
+              || [ "$(stat -c %s "$file")" != "$want_size" ]; then
+              rm -rf docker/apk
+              echo "::error::apk.json incohérent ou signataire inattendu : APK refusée"; exit 1
+            fi
+          done
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
       - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:

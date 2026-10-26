@@ -29,8 +29,9 @@ jobs:
         run: ./gradlew :relay:test --console=plain
       - name: Débogage (sans secret)
         run: ./gradlew :app:assembleDebug :app:lintDebug --console=plain
-      - name: Signature (secrets du dépôt, jamais commités)
+      - name: Signature (secrets du dépôt, jamais commités ; jamais sur pull_request)
         id: sign
+        if: github.event_name != 'pull_request'
         env:
           KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
