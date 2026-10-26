@@ -8,7 +8,7 @@ from cryptography.fernet import Fernet, InvalidToken
 
 from vds_server.agents.cache import hkdf_sha256
 
-TICKET_TTL_S = 30 * 60
+TICKET_TTL_S = 10 * 60  # le provisioning dure au plus 10 min côté agent
 ARGS_KEY = "pairing_ticket_enc"
 # Ticket de forme valide mais jamais émis : remis à l'agent si le chiffré n'est plus lisible
 # (clé changée, session close). Le player échoue alors proprement vers le code manuel.

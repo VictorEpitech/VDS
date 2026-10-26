@@ -5,6 +5,7 @@ site, suit les étapes rapportées par l'agent et passe la session à `done` qua
 ticket est appairé et a envoyé son premier heartbeat.
 """
 
+import ipaddress
 import logging
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
@@ -44,7 +45,7 @@ log = logging.getLogger("vds.provisioning")
 STEP_ORDER: tuple[str, ...] = get_args(ProvisionStepId)
 MIN_CORE = Version(1, 3, 0)
 COMMAND_TTL_S = 300  # expires_at = création + 5 min (contrôlé avant démarrage)
-ONLINE_TIMEOUT = timedelta(minutes=15)  # appairé mais jamais en ligne
+ONLINE_TIMEOUT = timedelta(minutes=5)  # appairé mais jamais en ligne (court : fenêtre d'usurpation)
 CMD_NAME = "screen.provision"
 
 # (id, version, plateformes) des modules site-agent actifs qui déclarent `provision.<plateforme>`
@@ -465,8 +466,31 @@ def _lan(value: str) -> str:
 
 
 # --- consommation du ticket (appairage) et validation (heartbeat) -------------------------
-async def consume_ticket(session: AsyncSession, ticket: str) -> ScreenProvision:
-    """Ticket valide, non expiré, non consommé -> session verrouillée, marquée appairée."""
+def lan_client_allowed(client: str, address: object) -> bool:
+    """Un client d'adresse privée (serveur sur le LAN du site) doit être la TV provisionnée.
+
+    Les adresses publiques (serveur distant, NAT du site) ne sont pas vérifiables ici ; la
+    boucle locale est exemptée (proxy local). Limite : docs/architecture-provision-android.md.
+    """
+    try:
+        ip = ipaddress.ip_address(client.split("%")[0])
+        expected = ipaddress.ip_address(str(address).split("/")[0])
+    except ValueError:
+        return False
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+        ip = ip.ipv4_mapped
+    if ip.is_loopback or not (ip.is_private or ip.is_link_local):
+        return True
+    return ip == expected
+
+
+async def consume_ticket(
+    session: AsyncSession, ticket: str, client: str | None = None, *, lan_check: bool = True
+) -> ScreenProvision:
+    """Ticket valide, non expiré, non consommé -> session verrouillée, marquée appairée.
+
+    Un client hors du réseau de la session est rejeté sans consommer le ticket (pas de déni).
+    """
     stmt = (
         select(ScreenProvision)
         .where(ScreenProvision.ticket_hash == ticket_hash(ticket))
@@ -481,6 +505,8 @@ async def consume_ticket(session: AsyncSession, ticket: str) -> ScreenProvision:
         or row.ticket_expires_at is None
         or row.ticket_expires_at <= now
     ):
+        raise ApiError("errors.pairing_ticket_invalid", 401)
+    if lan_check and client is not None and not lan_client_allowed(client, row.address):
         raise ApiError("errors.pairing_ticket_invalid", 401)
     row.paired_at = now
     row.ticket_hash = None  # usage unique

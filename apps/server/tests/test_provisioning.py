@@ -9,7 +9,7 @@ from typing import Any
 
 import pytest
 from fastapi import FastAPI
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from test_agents import HELLO, FakeWS, auth, connect, sql
 from test_auth import (  # noqa: F401
     ORIGIN,
@@ -453,3 +453,74 @@ def test_apk_catalog_rejects_unsafe_entries(tmp_path: Path) -> None:
     ]
     (root / "apk.json").write_text(json.dumps(manifest), encoding="utf-8")
     assert sha and set(load_entries(root)) == {12}
+
+
+def tv_client(app: FastAPI, host: str) -> AsyncClient:
+    return AsyncClient(transport=ASGITransport(app=app, client=(host, 40000)), base_url=ORIGIN)
+
+
+async def test_internal_command_refused_on_generic_route(
+    admin: AsyncClient, app: FastAPI, p: str, setup: dict[str, Any]
+) -> None:
+    s = setup
+    ws = await online(app, p, s)
+    r = await admin.get(f"{p}/api/v1/sites/{s['site']}/agents")
+    agent = r.json()[0]["id"]
+    args = {
+        "server_url": "https://serveur-tiers.example",
+        "pairing_ticket": "x" * 43,
+        "address": "192.168.1.50",
+    }
+    r = await admin.post(
+        f"{p}/api/v1/sites/{s['site']}/agents/{agent}/commands",
+        json={"name": "screen.provision", "args": args, "screen_id": s["screen"]},
+        headers=SAME,
+    )
+    assert (r.status_code, r.json()["code"]) == (422, "agents.command_internal")
+    assert await sql_count_commands(app) == 0
+    await ws.close()
+
+
+async def sql_count_commands(app: FastAPI) -> int:
+    url = app.state.runtime.settings.database_url
+    return int((await sql(url, "SELECT count(*) FROM remote_command"))[0][0])
+
+
+async def test_ticket_rejected_outside_session_network(
+    admin: AsyncClient, app: FastAPI, p: str, setup: dict[str, Any]
+) -> None:
+    s = setup
+    ws = await online(app, p, s)
+    await start(admin, p, s, device_owner="skip")
+    frame = await ws.recv()
+    assert frame is not None
+    ticket = frame["data"]["args"]["pairing_ticket"]
+    pair = {"pairing_ticket": ticket, "device": DEVICE}
+    # poste du même LAN mais autre que la TV : refusé, ticket non consommé
+    async with tv_client(app, "192.168.1.77") as other:
+        r = await other.post(f"{p}/api/v1/player/pair", json=pair)
+        assert (r.status_code, r.json()["code"]) == (401, "errors.pairing_ticket_invalid")
+    # IPv4 mappée en IPv6 de la TV : accepté (le ticket n'était pas brûlé)
+    async with tv_client(app, "::ffff:192.168.1.50") as tv:
+        r = await tv.post(f"{p}/api/v1/player/pair", json=pair)
+        assert r.status_code == 200, r.text
+    await ws.close()
+
+
+def test_lan_client_allowed_rules() -> None:
+    from vds_server.provisioning.service import lan_client_allowed as ok
+
+    assert ok("192.168.1.50", "192.168.1.50")
+    assert not ok("192.168.1.51", "192.168.1.50")
+    assert not ok("10.0.0.5", "192.168.1.50")
+    assert ok("127.0.0.1", "192.168.1.50")  # proxy local
+    assert ok("8.8.8.8", "192.168.1.50")  # NAT du site : limite acceptée
+    assert not ok("garbage", "192.168.1.50")
+    assert ok("192.168.1.50", "192.168.1.50/32")
+
+
+def test_ticket_windows_are_short() -> None:
+    from vds_server.provisioning.service import ONLINE_TIMEOUT
+    from vds_server.provisioning.tickets import TICKET_TTL_S
+
+    assert TICKET_TTL_S == 600 and ONLINE_TIMEOUT.total_seconds() == 300

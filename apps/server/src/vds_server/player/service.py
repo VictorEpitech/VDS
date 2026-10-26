@@ -171,9 +171,11 @@ class PairingService:
         )
         return token, events
 
-    async def pair_with_ticket(self, ticket: str, device: DeviceInfo) -> tuple[str, UUID]:
+    async def pair_with_ticket(
+        self, ticket: str, device: DeviceInfo, client: str | None = None, *, lan_check: bool = True
+    ) -> tuple[str, UUID]:
         """Échange un ticket de provisioning (usage unique) contre le jeton d'appareil."""
-        prov = await consume_ticket(self._s, ticket)
+        prov = await consume_ticket(self._s, ticket, client, lan_check=lan_check)
         screen_id = prov.screen_id
         token, events = await self._issue_device(screen_id, prov.created_by, device.model_dump())
         await self._s.commit()

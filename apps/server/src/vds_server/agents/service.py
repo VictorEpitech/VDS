@@ -155,6 +155,8 @@ class AgentService:
         row = await self._agent(site_id, agent_id)
         if row.revoked_at is not None:
             raise ApiError("agents.revoked", 409)
+        if body.name in INTERNAL_AGENT_COMMANDS:
+            raise ApiError("agents.command_internal", 422)
         validate_command(body.name, body.args, body.screen_id)
         if body.screen_id is not None:
             screen = await self._s.get(Screen, body.screen_id)
@@ -182,6 +184,10 @@ class AgentService:
         )
         await self._s.commit()
         return cmd
+
+
+# Réservées au noyau : seule la session de provisioning (provisioning/service.py) les émet.
+INTERNAL_AGENT_COMMANDS = frozenset({"screen.provision"})
 
 
 def validate_command(name: str, args: dict[str, Any], screen_id: UUID | None) -> None:

@@ -82,7 +82,12 @@ def build_router(rt: Runtime) -> APIRouter:
         body: sc.TicketPair, request: Request, response: Response, s: Pairing
     ) -> sc.PairingDone:
         ticket_limiter.check(client_ip(request))
-        token, screen_id = await s.pair_with_ticket(body.pairing_ticket, body.device)
+        token, screen_id = await s.pair_with_ticket(
+            body.pairing_ticket,
+            body.device,
+            client_ip(request),
+            lan_check=rt.settings.provision_lan_check,
+        )
         response.headers["Cache-Control"] = "no-store"
         return sc.PairingDone(
             device_token=token, screen_id=screen_id, server_time=datetime.now(UTC)

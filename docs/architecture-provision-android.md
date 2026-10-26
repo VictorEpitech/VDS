@@ -144,7 +144,7 @@ CREATE UNIQUE INDEX ux_screen_provision_active ON screen_provision (screen_id)
 - `POST /screens/{id}/provision` `{platform:"android", address, port?, device_owner?: "try"|"skip", soft_kiosk_fallback?: bool}` → 201 `ProvisionOut`. Refus : adresse non privée (422), écran déjà appairé (409, sauf `reprovision: true`), session active (409).
 - `POST /provisioning/{pid}/retry` `{from_step}` · `POST /provisioning/{pid}/cancel`
 - `GET  /provisioning/{pid}` → `ProvisionOut {id, screen_id, status, steps[], outcome, pairing_code_fallback?}` (l'admin interroge toutes les 2 s ; pas de WS admin en V1).
-- Player : `POST /player/pair` accepte en plus `{pairing_ticket}` (additif, API REST) : ticket valide, non expiré (30 min), non consommé → jeton d'appareil de l'écran lié, ticket consommé, `screen_provision.status = waiting_online`.
+- Player : `POST /player/pair` accepte en plus `{pairing_ticket}` (additif, API REST) : ticket valide, non expiré (10 min), réclamé depuis le réseau de la session (voir Risques), non consommé → jeton d'appareil de l'écran lié, ticket consommé, `screen_provision.status = waiting_online`.
 - Agent : `GET /agent/apk/android/{version_code:int}` (jeton agent `vds_agt_`) → fichier, `Content-Type: application/vnd.android.package-archive`, `ETag` = sha256.
 
 ### Hébergement de l'APK
@@ -179,7 +179,8 @@ Libellés FR/EN, charte V-Tech, aucun libellé en dur.
 
 - TV en débogage sans fil TLS seulement (Android 11+ « Wireless debugging ») : le client ADB n'a pas STLS ⇒ `tls_required`. Mitigation : tutoriel « Débogage réseau » (5555) ; STLS = point d'accroche.
 - Firmware imposant une réinitialisation pour retirer le compte principal ⇒ Device Owner impossible sans reset ; l'assistant le dit et propose le kiosque doux.
-- ADB TCP en clair sur le LAN : ticket interceptable ⇒ usage unique, 30 min, lié à l'écran, invalidé à la consommation.
+- ADB TCP en clair sur le LAN : ticket interceptable ⇒ usage unique, 10 min, lié à l'écran, invalidé à la consommation. Mitigations serveur (revue I5) : fenêtre `online_timeout` réduite à 5 min après l'appairage ; un client d'adresse privée (serveur sur le LAN du site) doit avoir l'IP de la TV de la session, sinon 401 sans consommer le ticket (désactivable : `VDS_PROVISION_LAN_CHECK=false`, utile derrière un NAT Docker). **Limite acceptée** : serveur distant, le client est vu avec l'IP publique de sortie du site, non comparable à l'adresse LAN ; un poste du même LAN usurpant la TV (ARP) reste possible. Recours : segmenter le réseau des écrans, vérifier le modèle appairé dans l'admin.
+- `screen.provision` est réservée au noyau : la route générique des commandes d'agent la refuse (422 `agents.command_internal`, revue I1).
 - Device Owner pose `DISALLOW_DEBUGGING_FEATURES` : après provisioning, ADB coupé ⇒ `power.adb` indisponible hors maintenance. À arbitrer : soit l'app autorise le débogage réseau en Device Owner (risque kiosque), soit l'alimentation passe par `power.cec`/natif. Défaut sûr : on garde la restriction, cascade sans ADB.
 
 ## Note d'implémentation serveur (P2)
@@ -187,5 +188,5 @@ Libellés FR/EN, charte V-Tech, aucun libellé en dur.
 - Prérequis de configuration : `VDS_SECRET_KEY` (clé Fernet du ticket, dérivée HKDF), `VDS_PUBLIC_ORIGIN`, APK dans `VDS_APK_DIR` (défaut `/opt/vds/apk`). Sinon `capabilities.reason` = `server_unconfigured` ou `apk_unavailable` (raisons additionnelles à la liste de l'architecture).
 - Ticket : 43 caractères base64url, sha256 en base (`ticket_hash`, index unique partiel), chiffré Fernet dans `remote_command.args.pairing_ticket_enc`, déchiffré à l'envoi (`command_frame_data`), effacé à la clôture. Chiffré illisible => ticket jamais émis envoyé (le player retombe sur le code manuel).
 - `POST /player/pair {pairing_ticket, device}` : sans cookie, exempté du contrôle d'origine (comme `/player/pairings`), limité à 10/min/IP, erreur unique `errors.pairing_ticket_invalid` (401) pour inconnu / expiré / rejoué / session close.
-- `done` = ticket consommé (`paired_at`) puis premier heartbeat (REST ou WS) de l'écran ; le résultat `cmd.result` de l'agent ne fait qu'échouer la session ou enregistrer `outcome`. Expiration paresseuse à la lecture (`provision.ticket_expired`, `provision.online_timeout` 15 min).
+- `done` = ticket consommé (`paired_at`) puis premier heartbeat (REST ou WS) de l'écran ; le résultat `cmd.result` de l'agent ne fait qu'échouer la session ou enregistrer `outcome`. Expiration paresseuse à la lecture (`provision.ticket_expired`, `provision.online_timeout` 5 min).
 - Migration additive : colonnes `code`, `paired_at`, `online_at` en plus du schéma proposé.
