@@ -706,7 +706,8 @@
     "power.detect",
     "plan.updated",
     "config.updated",
-    "cache.sync"
+    "cache.sync",
+    "screen.provision"
   ],
   "x-player-commands": [
     "reload",

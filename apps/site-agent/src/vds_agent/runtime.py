@@ -316,8 +316,13 @@ class Agent:
             outcome = await self._cascade_for(entry).run(sd, state)
             log.info(
                 "power.cascade_end",
-                extra={"screen_id": screen_id, "ok": outcome.ok, "code": outcome.code,
-                       "driver": outcome.driver, "attempted": outcome.attempted},
+                extra={
+                    "screen_id": screen_id,
+                    "ok": outcome.ok,
+                    "code": outcome.code,
+                    "driver": outcome.driver,
+                    "attempted": outcome.attempted,
+                },
             )
         name, payload = event_for(outcome, UUID(screen_id), request_id)
         await self.link.emit(name, payload)
@@ -379,8 +384,10 @@ class Agent:
         except ValidationError as e:
             log.warning("agent.cmd_invalid_frame", extra={"detail": str(e)[:200]})
             return
-        log.info("agent.cmd_received", extra={"cmd": cmd.name, "cmd_id": cmd.cmd_id,
-                                              "screen_id": cmd.screen_id})
+        log.info(
+            "agent.cmd_received",
+            extra={"cmd": cmd.name, "cmd_id": cmd.cmd_id, "screen_id": cmd.screen_id},
+        )
         if await self.store.cmd_seen(str(cmd.cmd_id)):
             log.info("agent.cmd_duplicate", extra={"cmd_id": cmd.cmd_id})
             return
@@ -393,8 +400,10 @@ class Agent:
             args = cmd.validate_for("agent")
         except (ValueError, ValidationError) as e:
             reject = "unknown_command" if str(e) == "unknown_command" else "invalid_args"
-            log.warning("agent.cmd_rejected", extra={"cmd": cmd.name, "code": reject,
-                                                     "detail": str(e)[:200]})
+            log.warning(
+                "agent.cmd_rejected",
+                extra={"cmd": cmd.name, "code": reject, "detail": str(e)[:200]},
+            )
             await self._result(cmd.cmd_id, "rejected", reject, {})
             return
         t0 = time.monotonic()

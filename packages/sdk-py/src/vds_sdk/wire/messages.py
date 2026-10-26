@@ -9,10 +9,11 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from ..agent.provision import TICKET_RE, ApkRef, ProvisionStepId, parse_lan_address
 from .frame import Frame, WireError
 
 # --- Listes fermées de commandes -------------------------------------------------
-AGENT_COMMANDS = (
+AGENT_COMMANDS_1_2 = (
     "power.set",
     "power.probe",
     "power.detect",
@@ -20,6 +21,10 @@ AGENT_COMMANDS = (
     "config.updated",
     "cache.sync",
 )
+AGENT_COMMANDS = (
+    *AGENT_COMMANDS_1_2,
+    "screen.provision",
+)  # 1.3 : un agent 1.2 répond unknown_command
 PLAYER_COMMANDS = ("reload", "identify", "screenshot", "power.set", "power.probe")
 CMD_STATUSES = ("ok", "failed", "expired", "rejected")
 POWER_REASONS = ("manual", "schedule", "exception", "alert")
@@ -144,6 +149,33 @@ class PowerDetectArgs(_M):
         return _lan_address(value)
 
 
+class ScreenProvisionArgs(_M):
+    """Commande fermée `screen.provision` (1.3). Le ticket n'est jamais journalisé."""
+
+    provision_id: UUID
+    platform: str = Field(pattern=r"^[a-z][a-z0-9_-]*$")
+    address: str
+    port: int = Field(5555, ge=1, le=65535)
+    apk: ApkRef
+    server_url: str = Field(max_length=2048, pattern=r"^https?://")
+    pairing_ticket: str = Field(repr=False)
+    device_owner: Literal["try", "skip"] = "try"
+    soft_kiosk_fallback: bool = True
+    from_step: ProvisionStepId | None = None
+
+    @field_validator("address")
+    @classmethod
+    def _address_is_lan(cls, value: str) -> str:
+        return parse_lan_address(value)
+
+    @field_validator("pairing_ticket")
+    @classmethod
+    def _ticket(cls, value: str) -> str:
+        if not TICKET_RE.match(value):
+            raise ValueError("provision.ticket_invalid")
+        return value
+
+
 class RevisionArgs(_M):
     revision: str
 
@@ -169,6 +201,7 @@ AGENT_COMMAND_ARGS: dict[str, type[_M]] = {
     "plan.updated": RevisionArgs,
     "config.updated": ConfigUpdatedArgs,
     "cache.sync": RevisionArgs,
+    "screen.provision": ScreenProvisionArgs,
 }
 PLAYER_COMMAND_ARGS: dict[str, type[_M]] = {
     "reload": EmptyArgs,

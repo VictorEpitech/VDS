@@ -299,7 +299,8 @@
           "users.provision",
           "power.control",
           "power.calendars.write",
-          "incidents.read"
+          "incidents.read",
+          "screens.provision"
         ],
         "type": "string"
       },

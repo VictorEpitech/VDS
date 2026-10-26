@@ -1,4 +1,4 @@
-"""Kinds de module côté agent de site (contrat vds-core 1.2.0)."""
+"""Kinds de module côté agent de site (contrat vds-core 1.3.0)."""
 
 from typing import Protocol
 
@@ -12,6 +12,15 @@ from .power import (
     PowerState,
     PowerTarget,
 )
+from .provision import (
+    ApkRef,
+    ApkSource,
+    ProvisionOutcome,
+    ProvisionRequest,
+    ScreenProvisioner,
+    StepReport,
+    check_provisioner,
+)
 from .state import StateStore
 
 
@@ -23,6 +32,8 @@ class AgentModuleContext(ModuleContext, Protocol):
 
 __all__ = [
     "AgentModuleContext",
+    "ApkRef",
+    "ApkSource",
     "Capability",
     "DetectHint",
     "DetectResult",
@@ -30,5 +41,10 @@ __all__ = [
     "PowerResult",
     "PowerState",
     "PowerTarget",
+    "ProvisionOutcome",
+    "ProvisionRequest",
+    "ScreenProvisioner",
+    "StepReport",
     "StateStore",
+    "check_provisioner",
 ]

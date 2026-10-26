@@ -84,3 +84,19 @@ CORE_EVENTS_1_2: frozenset[str] = CORE_EVENTS_1_1 | frozenset(
 CRITICAL_EVENTS_1_2: frozenset[str] = frozenset(
     {"agent.revoked", "power.requested", "power.failed", "incident.opened", "incident.resolved"}
 )
+
+# --- vds-core 1.3.0 (additif) : provisioning d'écran -------------------------------
+CORE_EVENT_PAYLOAD_1_3: dict[str, tuple[str, ...]] = {
+    **CORE_EVENT_PAYLOAD_1_2,
+    "screen.provision_started": ("provision_id", "screen_id", "site_id", "platform", "actor_id"),
+    "screen.provision_progressed": ("provision_id", "screen_id", "step", "status", "code"),
+    "screen.provisioned": ("provision_id", "screen_id", "kiosk", "version_code"),
+    "screen.provision_failed": ("provision_id", "screen_id", "step", "code"),
+}
+
+CORE_EVENTS_1_3: frozenset[str] = CORE_EVENTS_1_2 | frozenset(
+    set(CORE_EVENT_PAYLOAD_1_3) - set(CORE_EVENT_PAYLOAD_1_2)
+)
+
+# Fiable agent -> serveur (le relais agent->bus reste décidé côté serveur, lot P2/P4).
+CRITICAL_EVENTS_1_3: frozenset[str] = CRITICAL_EVENTS_1_2 | {"screen.provision_progressed"}

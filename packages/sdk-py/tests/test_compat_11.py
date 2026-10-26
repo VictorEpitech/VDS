@@ -62,8 +62,8 @@ def valid_content_type() -> dict[str, Any]:
     }
 
 
-def test_core_version_is_1_2() -> None:
-    assert CORE_API_VERSION == "1.2.0"
+def test_core_version_is_1_3() -> None:
+    assert CORE_API_VERSION == "1.3.0"
 
 
 def test_module_1_0_still_valid(tmp_path: Path) -> None:
