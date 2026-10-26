@@ -20,6 +20,7 @@ Bilan : 0 bloquant · 5 importants · 10 mineurs.
 ## Importants
 
 ### I1 — `screen.provision` reste envoyable par la route générique des commandes d'agent
+**Statut : corrigé** (`INTERNAL_AGENT_COMMANDS` refusée dans `send_command`, 422 `agents.command_internal`). Reste en défense en profondeur : contrôle d'origine côté agent. Clé i18n admin `agents.command_internal` à ajouter.
 `apps/server/src/vds_server/agents/service.py:152-185` et `:187-201` (`validate_command`) ; `packages/sdk-py/src/vds_sdk/wire/messages.py:160-161,204`.
 `POST /sites/{site}/agents/{agent}/commands` valide `screen.provision` avec le seul schéma `ScreenProvisionArgs`. Dans ce schéma, `server_url` est n'importe quelle URL `^https?://` et `pairing_ticket` une valeur arbitraire.
 **Scénario** : un admin (ou une session admin volée) envoie `screen.provision` avec `server_url=https://serveur-tiers` vers une TV du LAN. L'agent installe le player, tente le Device Owner et pointe la TV publique vers un serveur étranger, qui peut alors afficher n'importe quel contenu sur un écran du site. Cette voie contourne aussi :
@@ -29,7 +30,7 @@ Bilan : 0 bloquant · 5 importants · 10 mineurs.
 - le chiffrement du ticket (stocké en clair dans `remote_command.args`).
 **Correctif** : déclarer une liste de commandes réservées au noyau (`INTERNAL_AGENT_COMMANDS = {"screen.provision"}`) et la refuser dans `send_command` (422 `agents.command_internal`). En défense en profondeur, faire vérifier par l'agent que `server_url` a la même origine que son `http_base` ou que l'origine publique annoncée dans `welcome`.
 
-### I2 — Device Owner : la restriction de débogage coupe ADB avant l'étape `launch`, et l'échec invalide le ticket
+### I2 (corrigé côté module `power.adb`) — Device Owner : la restriction de débogage coupe ADB avant l'étape `launch`, et l'échec invalide le ticket
 `modules/power.adb/agent/provision_android.py:158-161,309-325` ; `packaging/android/app/src/main/kotlin/app/vds/player/ProvisionActivity.kt:31` ; `AndroidKiosk.kt:73-74` ; `apps/server/src/vds_server/provisioning/service.py:579-586`.
 À l'étape `inject`, `ProvisionActivity` démarre `MainActivity`. Celle-ci applique aussitôt le kiosque, donc `DISALLOW_DEBUGGING_FEATURES`, ce qui coupe adbd. La connexion ADB suivante (`launch`) échoue alors (`launch_failed`/`unreachable`). L'agent renvoie `failed`, et `on_cmd_result` appelle `finish("failed")`, qui efface `ticket_hash`. Si le player n'a pas encore échangé son ticket (cas probable : chargement du WebView), `POST /player/pair` répond 401 et la TV retombe sur le code manuel. Si le player a déjà échangé, la session passe quand même `failed` alors que l'écran est appairé. Les tests à faux ADB ne voient pas cette course.
 **Correctif** :
@@ -37,7 +38,9 @@ Bilan : 0 bloquant · 5 importants · 10 mineurs.
 2. Côté serveur, ne plus invalider le ticket sur un échec rapporté après une étape `inject` à `ok` : laisser l'expiration du ticket et `online_timeout` trancher.
 3. Recette sur une vraie TV en Device Owner.
 
-### I3 — Kiosque doux : le débogage réseau ADB (5555) reste ouvert en permanence sur l'écran
+**Statut module `power.adb`** : corrigé. En Device Owner l'étape `launch` est `skipped` (`launch_by_app`) et plus aucune connexion ADB n'est tentée après `inject` ; test à faux ADB qui coupe adbd après `ProvisionActivity`. Reste côté serveur (point 2 : ne pas invalider le ticket après `inject` `ok`) et la recette sur TV réelle.
+
+### I3 (partiellement corrigé côté module `power.adb`) — Kiosque doux : le débogage réseau ADB (5555) reste ouvert en permanence sur l'écran
 `provision_android.py:284-296` ; `docs/architecture-provision-android.md` › Risques.
 Sans Device Owner, ADB TCP reste actif après le provisioning (c'est nécessaire pour `power.adb`).
 **Scénario** : un poste du LAN (invité, Wi-Fi mal segmenté) ouvre une connexion ADB. L'invite RSA s'affiche sur l'écran public, et une personne qui a la télécommande, ou qui accepte par erreur, donne un shell complet : sortie du kiosque, réinstallation, lecture du jeton d'appareil. Cela contredit la règle 6 (kiosque) si l'écran est public.
@@ -46,6 +49,8 @@ Sans Device Owner, ADB TCP reste actif après le provisioning (c'est nécessaire
 - tracer ce choix dans l'audit (`screen.provision.finished.kiosk=soft` existe déjà ; y ajouter l'acteur de l'accusé) ;
 - documenter la segmentation réseau (VLAN écrans) ;
 - à terme, désactiver `adb tcpip` en fin de provisioning quand `power.adb` n'est pas le pilote retenu pour l'écran.
+
+**Statut module `power.adb`** : corrigé pour ce qui est de son ressort. Résultat `adb_open` + `detail.adb_open` sur `soft_kiosk` (avertissement explicite, i18n FR/EN) ; `Driver.disable_network_debugging(req)` coupe adbd (testé avec faux ADB). Reste hors module : champ de requête SDK, confirmation « écran non public » et étape finale dans l'assistant, audit de l'acteur.
 
 ### I4 — CI : APK signée avec la clé de production sur `pull_request`, choix d'artefact sans filtre d'événement ni contrôle du signataire — CORRIGÉ
 `.github/workflows/android.yml:7-8,31-48` (préexistant pour la signature) ; `.github/workflows/images.yml:40-50`.
@@ -57,6 +62,7 @@ Sans Device Owner, ADB TCP reste actif après le provisioning (c'est nécessaire
 - dans `images.yml`, ajouter `-e push` et vérifier, après téléchargement, `apksigner verify --print-certs` contre une empreinte épinglée (variable de dépôt `VDS_APK_SIGNER_SHA256`) ainsi que la cohérence sha256/taille avec `apk.json`.
 
 ### I5 — Ticket transmis en clair sur le LAN : un poste malveillant peut s'appairer à la place de la TV
+**Statut : corrigé côté serveur, limite acceptée documentée** : TTL ticket 10 min, `online_timeout` 5 min, rejet d'un client privé différent de la TV (`VDS_PROVISION_LAN_CHECK`). Non couvert : serveur distant (IP publique du site) et ARP-spoof de la TV ; bouton « Ce n'est pas ma TV » non fait.
 `provision_android.py:309-319` ; `apps/server/src/vds_server/provisioning/service.py:468-487`.
 C'est un risque documenté, mais sans mitigation dans le code. Un attaquant en position d'écoute ou d'usurpation ARP sur le LAN capte le ticket dans la trame ADB (non chiffrée), appelle `POST /player/pair` avant la TV et obtient un jeton d'appareil de l'écran : il lit le plan et les médias, et la session passe `done` dès son heartbeat. Un ARP-spoof suffit aussi à usurper la TV elle-même, car ADB n'authentifie pas l'appareil.
 **Correctif** (au choix, cumulables) :

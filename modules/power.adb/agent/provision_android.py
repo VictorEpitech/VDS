@@ -58,6 +58,7 @@ CMD_HOME = f"cmd package set-home-activity {MAIN_ACTIVITY}"
 CMD_OVERLAY = f"appops set {PKG} SYSTEM_ALERT_WINDOW allow"
 CMD_AWAKE = "settings put secure attentive_timeout -1"
 CMD_LAUNCH = f"am start -n {MAIN_ACTIVITY}"
+CMD_ADB_OFF = "settings put global adb_enabled 0"
 
 _ACCOUNTS_RE = re.compile(r"^\s*Accounts:\s*(\d+)", re.M)
 _VERSION_RE = re.compile(rf"package:{re.escape(PKG)}\s+versionCode:(\d+)")
@@ -158,7 +159,7 @@ class AndroidProvisioner:
             current = "inject"
             await self._inject(req, rep)
             current = "launch"
-            await self._launch(req, rep)
+            await self._launch(req, owner, rep)
         except _Stop as e:
             await rep(e.step, "failed", e.code)
             return ProvisionOutcome(ok=False, kiosk="none", code=e.code)
@@ -170,7 +171,7 @@ class AndroidProvisioner:
             ok=True,
             kiosk=kiosk,
             installed_version_code=int(installed),
-            code=None if kiosk != "none" else P + "no_kiosk",
+            code=P + "no_kiosk" if kiosk == "none" else P + "adb_open" if kiosk == "soft" else None,
         )
 
     async def _connect(self, req: ProvisionRequest, rep: Rep) -> None:
@@ -292,7 +293,8 @@ class AndroidProvisioner:
             await rep("soft_kiosk", "failed", P + "soft_kiosk_failed")
             return False
         # Annonce : Accueil/Assistant restent utilisables, à réserver aux écrans non publics.
-        await rep("soft_kiosk", "ok", P + "soft_kiosk_active")
+        # ADB TCP reste ouvert (requis par power.adb) : à signaler explicitement (revue I3).
+        await rep("soft_kiosk", "ok", P + "soft_kiosk_active", adb_open=True, adb_port=req.port)
         return True
 
     async def _configure(self, req: ProvisionRequest, rep: Rep) -> None:
@@ -318,8 +320,26 @@ class AndroidProvisioner:
             raise _Stop("inject", P + "inject_failed")
         await rep("inject", "ok")
 
-    async def _launch(self, req: ProvisionRequest, rep: Rep) -> None:
+    async def _launch(self, req: ProvisionRequest, owner: bool, rep: Rep) -> None:
+        if owner:
+            # Device Owner : ProvisionActivity lance déjà MainActivity, qui applique
+            # DISALLOW_DEBUGGING_FEATURES et coupe adbd. Toute connexion ADB après `inject`
+            # échouerait (revue I2) : étape non bloquante, l'appairage est confirmé par le player.
+            await rep("launch", "skipped", P + "launch_by_app")
+            return
         await rep("launch", "running")
         if _bad(await self._sh(req, CMD_LAUNCH)):
             raise _Stop("launch", P + "launch_failed")
         await rep("launch", "ok")
+
+    async def disable_network_debugging(self, req: ProvisionRequest) -> bool:
+        """Coupe le débogage réseau (adbd) d'un kiosque doux : à n'appeler qu'après confirmation
+        explicite de l'opérateur, et seulement si power.adb n'est pas le pilote de l'écran.
+
+        Irréversible à distance : la réactivation se fait sur la TV (options développeur).
+        """
+        try:
+            out = await self._sh(req, CMD_ADB_OFF)
+        except AdbError:
+            return False
+        return not _bad(out)

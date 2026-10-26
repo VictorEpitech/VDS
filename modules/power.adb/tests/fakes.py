@@ -48,6 +48,7 @@ class FakeAdbTv:
         self.install_output = "Success\n"
         self.set_owner_output = "Success: Device owner set\n"
         self.received_apk = bytearray()
+        self.adb_cut = False  # Device Owner : adbd coupé après le lancement de MainActivity
         self.accept_event = asyncio.Event()  # mode 'prompt' : l'utilisateur accepte l'invite
 
     async def __aenter__(self) -> "FakeAdbTv":
@@ -66,6 +67,8 @@ class FakeAdbTv:
 
     async def _handle(self, r: asyncio.StreamReader, w: asyncio.StreamWriter) -> None:
         try:
+            if self.adb_cut:
+                return
             if self.mode == "hang":
                 await asyncio.sleep(1.5)
                 return
@@ -156,6 +159,15 @@ class FakeAdbTv:
                     "User 0: admin=ComponentInfo{app.vds.player/app.vds.player.AdminReceiver}\n"
                 )
             return self.set_owner_output
+        if cmd == "settings put global adb_enabled 0":
+            self.adb_cut = True
+            return ""
+        if (
+            cmd.startswith("am start")
+            and "ProvisionActivity" in cmd
+            and "AdminReceiver" in self.owner
+        ):
+            self.adb_cut = True  # MainActivity applique DISALLOW_DEBUGGING_FEATURES
         if cmd.startswith(("cmd package set-home-activity", "appops set", "settings put")):
             return "Success\n" if "home" in cmd else ""
         if cmd.startswith("am start"):
