@@ -52,6 +52,10 @@ def build_router(rt: Runtime) -> APIRouter:
     async def retry(pid: UUID, body: sc.ProvisionRetry, s: Svc) -> sc.ProvisionOut:
         return to_out(await s.retry(pid, body))
 
+    @router.post("/provisioning/{pid}/non-public-ack", response_model=sc.ProvisionOut)
+    async def non_public_ack(pid: UUID, _body: sc.NonPublicAck, s: Svc) -> sc.ProvisionOut:
+        return to_out(await s.ack_non_public(pid))
+
     @router.post("/provisioning/{pid}/cancel", response_model=sc.ProvisionOut)
     async def cancel(pid: UUID, s: Svc) -> sc.ProvisionOut:
         return to_out(await s.cancel(pid))

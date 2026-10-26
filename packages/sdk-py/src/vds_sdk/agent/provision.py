@@ -78,6 +78,9 @@ class ProvisionRequest(BaseModel):
     device_owner: Literal["try", "skip"] = "try"
     soft_kiosk_fallback: bool = True
     from_step: ProvisionStepId | None = None
+    # Confirmation opérateur « écran non public » (revue I3) : autorise la coupure finale du
+    # débogage réseau d'un kiosque doux. Posée par le noyau, jamais déduite par l'agent.
+    non_public_ack: bool = False
 
     @field_validator("address")
     @classmethod

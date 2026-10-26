@@ -524,3 +524,82 @@ def test_ticket_windows_are_short() -> None:
     from vds_server.provisioning.tickets import TICKET_TTL_S
 
     assert TICKET_TTL_S == 600 and ONLINE_TIMEOUT.total_seconds() == 300
+
+
+async def test_failure_after_inject_ok_keeps_ticket(
+    admin: AsyncClient,
+    app: FastAPI,
+    p: str,
+    setup: dict[str, Any],
+    migrated_db_url: str,  # noqa: F811
+) -> None:
+    """Revue I2 : ADB coupé après `inject` ok -> ni ticket invalidé ni session en échec."""
+    s = setup
+    ws = await online(app, p, s)
+    out = await start(admin, p, s)
+    pid = out["id"]
+    frame = await ws.recv()
+    assert frame
+    ticket = frame["data"]["args"]["pairing_ticket"]
+    await event(
+        ws,
+        1,
+        {
+            "provision_id": pid,
+            "screen_id": s["screen"],
+            "step": "inject",
+            "status": "ok",
+            "code": None,
+        },
+    )
+    await ws.send(
+        "cmd.result",
+        {"cmd_id": frame["id"], "status": "failed", "code": "power.adb.unreachable", "data": {}},
+        seq=2,
+    )
+    assert (await ws.recv())["type"] == "ack"  # type: ignore[index]
+    got = (await admin.get(f"{p}/api/v1/provisioning/{pid}")).json()
+    assert got["status"] == "running" and got["ticket_expires_at"] is not None
+    async with new_client(app) as player:
+        r = await player.post(
+            f"{p}/api/v1/player/pair", json={"pairing_ticket": ticket, "device": DEVICE}
+        )
+        assert r.status_code == 200
+    await ws.close()
+
+
+async def test_non_public_ack_endpoint(
+    admin: AsyncClient,
+    app: FastAPI,
+    p: str,
+    setup: dict[str, Any],
+    migrated_db_url: str,  # noqa: F811
+) -> None:
+    s = setup
+    ws = await online(app, p, s)
+    out = await start(admin, p, s)
+    pid = out["id"]
+    assert out["non_public_ack"] is False and out["non_public_ack_at"] is None
+    frame = await ws.recv()
+    assert frame and frame["data"]["args"]["non_public_ack"] is False
+    url = f"{p}/api/v1/provisioning/{pid}/non-public-ack"
+    r = await admin.post(url, json={"confirmed": False}, headers=SAME)
+    assert r.status_code == 422
+    r = await admin.post(url, json={"confirmed": True}, headers=SAME)
+    assert r.status_code == 200 and r.json()["non_public_ack"] is True
+    assert (await admin.post(url, json={"confirmed": True}, headers=SAME)).status_code == 200
+    rows = await sql(
+        migrated_db_url,
+        "SELECT actor_kind, actor_id FROM audit_log"
+        " WHERE action = 'screen.provision.non_public_acked'",
+    )
+    assert len(rows) == 1 and rows[0][0] == "user" and rows[0][1]
+    # sans cookie de même origine : refusé
+    assert (await admin.post(url, json={"confirmed": True})).status_code in (401, 403)
+    # transmis à l'agent à la reprise
+    await sql(migrated_db_url, "UPDATE screen_provision SET status = 'failed'")
+    r = await admin.post(f"{p}/api/v1/provisioning/{pid}/retry", json={}, headers=SAME)
+    assert r.status_code == 200
+    frame2 = await ws.recv()
+    assert frame2 and frame2["data"]["args"]["non_public_ack"] is True
+    await ws.close()

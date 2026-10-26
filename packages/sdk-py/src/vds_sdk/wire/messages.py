@@ -162,6 +162,7 @@ class ScreenProvisionArgs(_M):
     device_owner: Literal["try", "skip"] = "try"
     soft_kiosk_fallback: bool = True
     from_step: ProvisionStepId | None = None
+    non_public_ack: bool = False
 
     @field_validator("address")
     @classmethod

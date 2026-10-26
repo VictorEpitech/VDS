@@ -635,6 +635,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/provisioning/{pid}/non-public-ack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Non Public Ack */
+        post: operations["non_public_ack_api_v1_provisioning__pid__non_public_ack_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/provisioning/{pid}/retry": {
         parameters: {
             query?: never;
@@ -1916,6 +1933,14 @@ export interface components {
                 [key: string]: string;
             };
         };
+        /** NonPublicAck */
+        NonPublicAck: {
+            /**
+             * Confirmed
+             * @constant
+             */
+            confirmed: true;
+        };
         /** OffSlot */
         OffSlot: {
             /** End */
@@ -2191,6 +2216,11 @@ export interface components {
              * @enum {string}
              */
             device_owner: "try" | "skip";
+            /**
+             * Non Public Ack
+             * @default false
+             */
+            non_public_ack: boolean;
             /** Platform */
             platform: string;
             /**
@@ -2229,6 +2259,10 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Non Public Ack */
+            non_public_ack: boolean;
+            /** Non Public Ack At */
+            non_public_ack_at: string | null;
             outcome: components["schemas"]["OutcomeOut"] | null;
             /** Pairing Code Fallback */
             pairing_code_fallback: boolean;
@@ -4312,6 +4346,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProvisionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    non_public_ack_api_v1_provisioning__pid__non_public_ack_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NonPublicAck"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
