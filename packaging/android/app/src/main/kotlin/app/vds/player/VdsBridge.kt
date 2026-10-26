@@ -5,6 +5,7 @@ import android.os.SystemClock
 import app.vds.relay.BridgeRouter
 import app.vds.relay.CecDispatcher
 import app.vds.relay.KioskDispatcher
+import app.vds.relay.PairingTicketVault
 import org.json.JSONObject
 import java.util.concurrent.Executors
 
@@ -24,6 +25,8 @@ class VdsBridge(
     onReload: () -> Unit,
     cec: CecDispatcher = CecDispatcher(null),
     kiosk: KioskDispatcher? = null,
+    tickets: PairingTicketVault? = null,
+    serverUrl: () -> String? = { null },
 ) {
     // Les ordres CEC peuvent bloquer (attente de la réponse du bus) : jamais sur le thread UI.
     private val cecExecutor = Executors.newSingleThreadExecutor { r -> Thread(r, "vds-cec").apply { isDaemon = true } }
@@ -38,6 +41,8 @@ class VdsBridge(
         onReload = onReload,
         cec = cec,
         kiosk = kiosk,
+        tickets = tickets,
+        serverUrl = serverUrl,
         background = { cecExecutor.execute(it) },
     )
 
@@ -87,6 +92,10 @@ class VdsBridge(
                 },
                 // Remise UNIQUE du pont kiosque : le contrôleur du player l'appelle au démarrage, avant tout
                 // content-type ; ensuite plus rien n'expose le jeton à un autre script de la page.
+                // Ticket d'appairage injecté par ADB : remis une fois (le natif l'efface), jamais lu ailleurs.
+                claimPairingTicket:function(){
+                  return req("ticket","claim",'{}');
+                },
                 claimKiosk:function(){
                   if(claimed||!kioskToken)return null;
                   claimed=true;
@@ -98,7 +107,7 @@ class VdsBridge(
                 }
               };
               t.onmessage=function(e){
-                var d=String(e.data),m=/^(cec|kiosk):([A-Za-z0-9_-]+):(.*)${'$'}/.exec(d);
+                var d=String(e.data),m=/^(cec|kiosk|ticket):([A-Za-z0-9_-]+):(.*)${'$'}/.exec(d);
                 if(m&&w[m[1]+":"+m[2]])w[m[1]+":"+m[2]](m[3]);
               };
             })();

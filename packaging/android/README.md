@@ -37,6 +37,10 @@ Sans secrets de signature, aucune APK n'est produite et l'image n'en contient pa
    - ADB : `adb shell am start -n app.vds.player/.ProvisionActivity --es server_url https://allia-innovation.fr/espace/affichage`
      (activité protégée par la permission signature `DUMP` : seul l'utilisateur shell peut la lancer, aucune app tierce ;
      `MainActivity` ignore désormais tout extra `server_url`) ;
+   - ADB avec appairage automatique (assistant « Ajouter une TV Android ») : même commande plus `--es pairing_ticket <ticket>`
+     (base64url, 16 à 64 caractères). Le ticket est stocké chiffré (Android Keystore, AES-GCM), lié à l'URL serveur, périmé
+     après 30 min, remis une seule fois au player (`VdsNative.claimPairingTicket`) puis effacé ; jamais journalisé ni affiché.
+     Refus du serveur ou pont absent : le player affiche le code d'appairage classique ;
    - configuration gérée (MDM / Device Owner) : restriction d'application `server_url`, lue au lancement.
    Le préfixe fait partie de l'URL ; en mode autonome : `https://vds.client.fr`. Changer l'URL purge le stockage web du player.
 

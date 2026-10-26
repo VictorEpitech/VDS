@@ -53,11 +53,15 @@ class MainActivity : Activity() {
     private val kiosk = AndroidKiosk(this, BuildConfig.KIOSK_RELAXED) { if (!hasWindowFocus()) ui.post(relaunch) }
     private val kioskDispatcher = KioskDispatcher(kiosk, HandlerKioskTimer(ui), kioskToken, SystemClock::elapsedRealtime)
 
+    private val ticketVault = PairingTickets.vault { this }
+
     private val bridge = VdsBridge(
         trusted = { cfg?.let { currentUrl.startsWith("${it.localOrigin(Relay.DEFAULT_PORT)}${it.basePath}/player/") } == true },
         onReload = { runOnUiThread { reloadPlayer() } },
         cec = CecDispatcher(AndroidCec(this)),
         kiosk = kioskDispatcher,
+        tickets = ticketVault,
+        serverUrl = { cfg?.url },
     )
 
     private val watchdog = object : Runnable {
@@ -95,6 +99,7 @@ class MainActivity : Activity() {
         // (ADB) ou la configuration gérée l'écrivent en Prefs, on relit simplement.
         applyRestrictions()
         if (prefs.config()?.url != cfg?.url) bootstrap()
+        else if (ticketVault.hasPending() && bridgeInstalled) reloadPlayer() // nouveau ticket : le player le réclame
     }
 
     /** Configuration gérée (Device Owner / MDM) : clé `server_url`, prioritaire sur la saisie locale. */

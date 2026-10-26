@@ -111,6 +111,11 @@ export interface PlatformBridge {
    * `until` en secondes, 0 sinon : identifie la fenêtre, le natif ne la réarme jamais) et résout un JSON
    * `{ok, enforcement, mode}` : `mode` = mode APPLIQUÉ, `ok:false` = état demandé non confirmé.
    */
+  /**
+   * Ticket d'appairage injecté à l'installation (Android, ADB) : résout un JSON `{"ticket":"…"}` ou `{}`.
+   * Le natif ne le remet qu'une fois (puis l'efface) ; il ne doit jamais être persisté ni affiché.
+   */
+  claimPairingTicket?(): Promise<string>;
   claimKiosk?(): ((mode: KioskMode, remainingMs: number, windowSec: number) => Promise<string>) | null;
 }
 
