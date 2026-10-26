@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     @field_validator("secret_key")
     @classmethod
     def _secret_key_length(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            return None  # variable vide transmise par docker compose = non définie
         if value is not None and len(value.encode()) < 32:
             raise ValueError("errors.secret_key_too_short")
         return value

@@ -1,0 +1,6 @@
+# APK player plus récente que celle de l'image : dossier hôte (apk.json + .apk signés), lecture seule.
+# Usage : VDS_APK_HOST_DIR=/srv/vds-apk docker compose -f docker/compose.yaml -f docker/compose.apk.yaml up -d
+services:
+  server:
+    volumes:
+      - ${VDS_APK_HOST_DIR:?définir VDS_APK_HOST_DIR (dossier avec apk.json)}:/opt/vds/apk:ro

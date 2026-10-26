@@ -8,7 +8,9 @@ Lancer : `make e2e-agent` (conteneur PG jetable, supprimé en fin de run).
 
 import asyncio
 import contextlib
+import hashlib
 import importlib.util
+import json
 import os
 import secrets
 import subprocess
@@ -38,6 +40,8 @@ ADMIN_PASSWORD = "e2e-" + secrets.token_urlsafe(12)
 COMBOS = [("root", "", 4291), ("subpath", "/espace/affichage", 4292)]
 PG_PORT = 4390
 PG_NAME = "vds-e2e-agent-pg"
+APK_BYTES = b"PK\x03\x04e2e-fake-apk"
+TV_LAN = "192.168.1.50"  # adresse LAN acceptée par le serveur ; redirigée vers le faux ADB
 
 
 def _load(path: Path, name: str) -> Any:
@@ -108,6 +112,17 @@ class Server:
         self.url = self.origin + base
         media = tmp / "media"
         media.mkdir()
+        apk_dir = tmp / "apk"
+        apk_dir.mkdir()
+        (apk_dir / "vds-player-7.apk").write_bytes(APK_BYTES)
+        (apk_dir / "apk.json").write_text(
+            json.dumps([{
+                "package": "app.vds.player", "version_code": 7, "version_name": "1.0.7",
+                "sha256": hashlib.sha256(APK_BYTES).hexdigest(), "size": len(APK_BYTES),
+                "signer_sha256": "0" * 64, "file": "vds-player-7.apk",
+            }]),
+            encoding="utf-8",
+        )  # fmt: skip
         self.env = {
             **os.environ,
             **env,
@@ -116,6 +131,8 @@ class Server:
             "VDS_PUBLIC_ORIGIN": self.origin,
             "VDS_MODULES_DIR": str(ROOT / "modules"),
             "VDS_MEDIA_DIR": str(media),
+            "VDS_APK_DIR": str(apk_dir),
+            "VDS_SECRET_KEY": "e2e-" + "k" * 40,
             "VDS_PLAYER_DIR": str(tmp),
             "VDS_ADMIN_EMAIL": ADMIN_EMAIL,
             "VDS_ADMIN_PASSWORD": ADMIN_PASSWORD,
@@ -179,7 +196,7 @@ async def stack(
     request: pytest.FixtureRequest, pg: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> AsyncIterator[dict[str, Any]]:
     name, base, port = request.param
-    dbname = f"vds_{name}"
+    dbname = f"vds_{name}_{secrets.token_hex(3)}"
     assert _psql(pg, "postgres", f"CREATE DATABASE {dbname}").returncode == 0  # noqa: S608
     notify = _load(ROOT / "modules/notify.mail/tests/fakes.py", "notify_mail_fakes_e2e")
     smtp = notify.FakeSmtp(mode="starttls").start()
@@ -484,3 +501,138 @@ async def test_server_agent_full_flow(stack: dict[str, Any]) -> None:
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError, Exception):
                 await task
+
+
+@contextlib.asynccontextmanager
+async def lan_to_loopback() -> AsyncIterator[None]:
+    """La TV factice écoute en boucle locale (refusée par la validation LAN) : on redirige la
+    connexion TCP du pilote, sans toucher aux validations serveur et agent."""
+    real = asyncio.open_connection
+
+    async def redirected(host: Any = None, port: Any = None, **kw: Any) -> Any:
+        return await real("127.0.0.1" if host == TV_LAN else host, port, **kw)
+
+    asyncio.open_connection = redirected  # type: ignore[assignment]
+    try:
+        yield
+    finally:
+        asyncio.open_connection = real  # type: ignore[assignment]
+
+
+async def _provision_setup(stack: dict[str, Any], admin: httpx.AsyncClient) -> dict[str, Any]:
+    srv: Server = stack["srv"]
+    tmp: Path = stack["tmp"]
+    r = await admin.post(
+        "/api/v1/m/auth.local/login", json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
+    )
+    assert r.status_code == 200, r.text
+    site = (await admin.post("/api/v1/sites", json={"name": "Moulins", "slug": "moulins"})).json()
+    screen = (
+        await admin.post("/api/v1/screens", json={"site_id": site["id"], "name": "Hall"})
+    ).json()
+    made = await admin.post(f"/api/v1/sites/{site['id']}/agents", json={"name": "Pi"})
+    token = made.json()["token"]
+    settings = AgentSettings(
+        server_url=srv.url, token=token, data_dir=tmp / "agent",
+        modules_dir=ROOT / "modules", ca_file=srv.ca,
+    )  # fmt: skip
+    agent = Agent(settings, Store(settings.data_dir), heartbeat_s=1.0)
+    task = asyncio.create_task(agent.run())
+    caps_url = f"/api/v1/provisioning/capabilities?site_id={site['id']}"
+
+    async def ready() -> bool:
+        r = await admin.get(caps_url)
+        return r.status_code == 200 and "android" in json.dumps(r.json())
+
+    await poll(ready, "agent connecté avec provision.android", 40)
+    return {"site": site["id"], "screen": screen["id"], "agent": agent, "task": task}
+
+
+async def _stop(ctx: dict[str, Any]) -> None:
+    ctx["agent"].link.stop()
+    ctx["task"].cancel()
+    with contextlib.suppress(asyncio.CancelledError, Exception):
+        await ctx["task"]
+
+
+async def test_provision_android_serveur_agent_adb_player(stack: dict[str, Any]) -> None:
+    """Parcours complet : API serveur -> commande agent -> power.adb (faux ADB) -> player appairé."""
+    srv: Server = stack["srv"]
+    fakes_adb = load_fakes("power.adb")
+    async with fakes_adb.FakeAdbTv(mode="auth") as adb, srv.client() as admin, lan_to_loopback():
+        ctx = await _provision_setup(stack, admin)
+        try:
+            r = await admin.post(
+                f"/api/v1/screens/{ctx['screen']}/provision",
+                json={"platform": "android", "address": TV_LAN, "port": adb.port,
+                      "device_owner": "try"},
+            )  # fmt: skip
+            assert r.status_code == 201, r.text
+            pid = r.json()["id"]
+            assert "pairing_ticket" not in r.text
+
+            async def launched() -> Any:
+                return next((c for c in adb.commands if "pairing_ticket" in c), None)
+
+            cmd = await poll(launched, "player lancé avec le ticket (am start)", 60)
+            ticket = cmd.split("--es pairing_ticket ")[1].strip("' \x00")
+            assert bytes(adb.received_apk) == APK_BYTES and adb.version_code == 7
+            assert any(c.startswith("shell:dpm set-device-owner") for c in adb.commands)
+            assert len(adb.accepted) == 1  # clé RSA de l'agent mémorisée par la TV
+
+            async with srv.client() as player:
+                r = await player.post(
+                    "/api/v1/player/pair",
+                    json={"pairing_ticket": ticket,
+                          "device": {"platform": "android", "model": "TCL", "app_version": "1.0.0",
+                                     "screen_w": 1920}},
+                )  # fmt: skip
+                assert r.status_code == 200, r.text
+                dev = r.json()["device_token"]
+                assert r.json()["screen_id"] == ctx["screen"]
+                again = await player.post(
+                    "/api/v1/player/pair",
+                    json={"pairing_ticket": ticket, "device": {"platform": "android"}},
+                )
+                assert again.status_code == 401  # ticket à usage unique
+                hb = await player.post(
+                    "/api/v1/player/heartbeat", json={}, headers={"Authorization": f"Bearer {dev}"}
+                )
+                assert hb.status_code == 200, hb.text
+
+            async def done() -> Any:
+                got = (await admin.get(f"/api/v1/provisioning/{pid}")).json()
+                return got if got["status"] == "done" else None
+
+            got = await poll(done, "session validée (premier heartbeat)", 30)
+            assert got["outcome"]["kiosk"] == "device_owner"
+            assert "pairing_ticket" not in json.dumps(got) and ticket not in json.dumps(got)
+            # le pilote d'alimentation fonctionne toujours après le provisioning
+            assert any("KEYCODE" not in c for c in adb.commands)
+        finally:
+            await _stop(ctx)
+
+
+async def test_provision_android_invite_rsa_refusee(stack: dict[str, Any]) -> None:
+    """Invite de débogage refusée sur la TV : échec lisible (code), ticket jamais exposé."""
+    srv: Server = stack["srv"]
+    fakes_adb = load_fakes("power.adb")
+    async with fakes_adb.FakeAdbTv(mode="deny") as adb, srv.client() as admin, lan_to_loopback():
+        ctx = await _provision_setup(stack, admin)
+        try:
+            r = await admin.post(
+                f"/api/v1/screens/{ctx['screen']}/provision",
+                json={"platform": "android", "address": TV_LAN, "port": adb.port},
+            )
+            pid = r.json()["id"]
+
+            async def failed() -> Any:
+                got = (await admin.get(f"/api/v1/provisioning/{pid}")).json()
+                return got if got["status"] == "failed" else None
+
+            got = await poll(failed, "échec de l'autorisation ADB", 60)
+            assert got["code"] and got["code"].startswith("provision.")
+            assert not adb.received_apk and not any("pairing_ticket" in c for c in adb.commands)
+            assert "pairing_ticket" not in json.dumps(got)
+        finally:
+            await _stop(ctx)
