@@ -3,13 +3,78 @@
     "name": "ADB power (Android TV / Google TV)",
     "description": "Turns an Android TV or Google TV on and off over network ADB."
   },
-  "config": { "power_adb": {
-    "host": { "title": "TV IP address", "description": "Address of the TV on the local network." },
-    "port": { "title": "ADB port", "description": "Network debugging port (5555 by default)." },
-    "timeout_ms": { "title": "Maximum delay (ms)", "description": "Maximum duration of one ADB operation." },
-    "unreachable_means_off": { "title": "Unreachable means off", "description": "Treat the TV as off when it stops answering (deep standby without network)." }
-  } },
-  "power": { "adb": {
-    "accept_on_tv": "Accept the debugging key on the TV (tick \"Always allow\")."
-  } }
+  "config": {
+    "power_adb": {
+      "host": {
+        "title": "TV IP address",
+        "description": "Address of the TV on the local network."
+      },
+      "port": {
+        "title": "ADB port",
+        "description": "Network debugging port (5555 by default)."
+      },
+      "timeout_ms": {
+        "title": "Maximum delay (ms)",
+        "description": "Maximum duration of one ADB operation."
+      },
+      "unreachable_means_off": {
+        "title": "Unreachable means off",
+        "description": "Treat the TV as off when it stops answering (deep standby without network)."
+      }
+    }
+  },
+  "power": {
+    "adb": {
+      "accept_on_tv": "Accept the debugging key on the TV (tick \"Always allow\")."
+    }
+  },
+  "provision": {
+    "android": {
+      "unreachable": "TV unreachable: enable network debugging and check the IP address.",
+      "tls_required": "This TV only accepts encrypted wireless debugging: enable classic “Network debugging” (port 5555).",
+      "accept_on_tv": "Accept the prompt on the TV and tick “Always allow”.",
+      "unauthorized": "Authorization refused or expired: retry and choose “Always allow”.",
+      "protocol": "Unexpected ADB response from the TV.",
+      "sdk_too_old": "Android too old (7.0 minimum).",
+      "apk_unavailable": "App unavailable on the server.",
+      "apk_mismatch": "Corrupted app file: retry.",
+      "already_installed": "App already up to date on the TV.",
+      "install_incompatible": "A differently signed version is already installed: uninstall the app from the TV.",
+      "install_failed": "Installation refused by the TV.",
+      "device_owner_skipped": "Device Owner not requested.",
+      "owner_exists": "Another device owner already exists on the TV.",
+      "accounts_present": "Accounts (Google) are present: remove accounts and profiles, resume at this step, then add them back afterwards. Otherwise, soft kiosk.",
+      "extra_users": "Several profiles exist: remove them to enable Device Owner.",
+      "dpm_refused": "The TV refuses Device Owner (a factory reset may be required).",
+      "soft_kiosk_active": "Soft kiosk active: Home and Assistant keys remain usable. Use only for non-public screens.",
+      "soft_kiosk_failed": "Soft kiosk not applied.",
+      "no_kiosk": "No lock-down: the app is not protected.",
+      "configure_failed": "Sleep setting not applied (non blocking).",
+      "inject_failed": "Could not pass the pairing to the TV.",
+      "launch_failed": "Could not launch the app.",
+      "no_provider": "No provisioning driver for this platform."
+    },
+    "tutorial": {
+      "1": {
+        "title": "Enable developer options",
+        "body": "Settings > System > About: press “Build” 7 times."
+      },
+      "2": {
+        "title": "Enable network debugging",
+        "body": "In developer options, enable “USB debugging” then “Network debugging” (port 5555), not wireless debugging."
+      },
+      "3": {
+        "title": "Google account",
+        "body": "For full lock-down (Device Owner), remove all accounts and profiles from the TV first, then add them back after installation."
+      },
+      "4": {
+        "title": "Note the IP address",
+        "body": "Note the TV IP address (Settings > Network) and reserve it in the router."
+      },
+      "5": {
+        "title": "Accept the prompt",
+        "body": "During installation, accept the debugging prompt on the TV and tick “Always allow”."
+      }
+    }
+  }
 }

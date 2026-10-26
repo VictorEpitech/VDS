@@ -7,6 +7,8 @@ import asyncio
 import base64
 import contextlib
 import struct
+from collections.abc import Awaitable, Callable
+from pathlib import Path
 from typing import Protocol
 
 from cryptography.hazmat.primitives import hashes, serialization
@@ -28,6 +30,22 @@ class AdbError(Exception):
 
 class AdbTransport(Protocol):
     async def shell(self, host: str, port: int, command: str, timeout: float) -> str: ...
+
+
+class AdbProvisionTransport(AdbTransport, Protocol):
+    """Extension utilisée par le provisioning : flux binaire et invite RSA observable."""
+
+    async def probe(
+        self,
+        host: str,
+        port: int,
+        timeout: float,
+        on_pending: Callable[[], Awaitable[None]] | None = None,
+    ) -> str: ...
+
+    async def exec_stream(
+        self, host: str, port: int, command: str, source: Path, timeout: float
+    ) -> str: ...
 
 
 def generate_key_pem() -> str:
@@ -74,23 +92,60 @@ class TcpAdbTransport:
         self._auth_pending = False
 
     async def shell(self, host: str, port: int, command: str, timeout: float) -> str:
+        return await self._run(host, port, f"shell:{command}", None, timeout, None)
+
+    async def probe(
+        self,
+        host: str,
+        port: int,
+        timeout: float,
+        on_pending: Callable[[], Awaitable[None]] | None = None,
+    ) -> str:
+        """Handshake + `getprop` ; `on_pending` est appelé quand l'invite RSA est affichée."""
+        return await self._run(
+            host, port, "shell:getprop ro.product.manufacturer", None, timeout, on_pending
+        )
+
+    async def exec_stream(
+        self, host: str, port: int, command: str, source: Path, timeout: float
+    ) -> str:
+        """`exec:<command>` avec le contenu de `source` envoyé en flux (WRTE/OKAY, sans mémoire)."""
+        return await self._run(host, port, f"exec:{command}", source, timeout, None)
+
+    async def _run(
+        self,
+        host: str,
+        port: int,
+        service: str,
+        source: Path | None,
+        timeout: float,
+        on_pending: Callable[[], Awaitable[None]] | None,
+    ) -> str:
         self._auth_pending = False
         try:
-            return await asyncio.wait_for(self._shell(host, port, command, timeout), timeout)
+            return await asyncio.wait_for(
+                self._session(host, port, service, source, on_pending), timeout
+            )
         except TimeoutError as e:
             code = "power.adb.unauthorized" if self._auth_pending else "power.adb.timeout"
             raise AdbError(code) from e
         except (ConnectionError, OSError, asyncio.IncompleteReadError) as e:
             raise AdbError("power.adb.unreachable") from e
 
-    async def _connect(self, r: asyncio.StreamReader, w: asyncio.StreamWriter) -> None:
+    async def _connect(
+        self,
+        r: asyncio.StreamReader,
+        w: asyncio.StreamWriter,
+        on_pending: Callable[[], Awaitable[None]] | None = None,
+    ) -> int:
+        """Retourne la taille maximale de charge utile annoncée par l'appareil."""
         w.write(pack(A_CNXN, VERSION, MAX_DATA, b"host::\x00"))
         await w.drain()
         sent_sig = sent_pub = False
         while True:
-            cmd, a0, _a1, data = await read_msg(r)
+            cmd, a0, a1, data = await read_msg(r)
             if cmd == A_CNXN:
-                return
+                return max(1024, min(a1, MAX_DATA))
             if cmd == A_STLS:
                 raise AdbError("power.adb.tls_required")
             if cmd != A_AUTH or a0 != AUTH_TOKEN:
@@ -101,30 +156,45 @@ class TcpAdbTransport:
             elif not sent_pub:
                 sent_pub = self._auth_pending = True
                 w.write(pack(A_AUTH, AUTH_RSAPUBLICKEY, 0, android_pubkey(self._key)))
+                await w.drain()
+                if on_pending is not None:
+                    await on_pending()
             else:
                 raise AdbError("power.adb.unauthorized")
             await w.drain()  # puis attente (bornée par `timeout`) de l'acceptation sur la TV
 
-    async def _shell(self, host: str, port: int, command: str, timeout: float) -> str:
+    async def _session(
+        self,
+        host: str,
+        port: int,
+        service: str,
+        source: Path | None,
+        on_pending: Callable[[], Awaitable[None]] | None,
+    ) -> str:
         r, w = await asyncio.open_connection(host, port)
+        fh = source.open("rb") if source is not None else None
         try:
-            await self._connect(r, w)
-            w.write(pack(A_OPEN, 1, 0, f"shell:{command}".encode() + b"\x00"))
+            chunk = min(await self._connect(r, w, on_pending), 64 * 1024)
+            w.write(pack(A_OPEN, 1, 0, service.encode() + b"\x00"))
             await w.drain()
             out = bytearray()
-            remote = 0
             while True:
-                cmd, a0, a1, data = await read_msg(r)
+                cmd, a0, _a1, data = await read_msg(r)
                 if cmd == A_OKAY:
-                    remote = a0
+                    # flux ouvert, ou charge utile précédente consommée : envoyer la suivante
+                    block = fh.read(chunk) if fh is not None else b""
+                    if block:
+                        w.write(pack(A_WRTE, 1, a0, block))
+                        await w.drain()
                 elif cmd == A_WRTE:
-                    remote = a0
                     out += data
-                    w.write(pack(A_OKAY, 1, remote))
+                    w.write(pack(A_OKAY, 1, a0))
                     await w.drain()
                 elif cmd == A_CLSE:
                     return out.decode("utf-8", "replace")
         finally:
+            if fh is not None:
+                fh.close()
             w.close()
             with contextlib.suppress(OSError):
                 await w.wait_closed()

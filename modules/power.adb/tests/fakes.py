@@ -27,7 +27,7 @@ def parse_android_pubkey(b64line: bytes) -> RSAPublicNumbers:
 
 
 class FakeAdbTv:
-    """mode: 'open' (sans AUTH) | 'auth' (clé à accepter) | 'deny' | 'hang' | 'stls'."""
+    """mode: open (sans AUTH) | auth | prompt (invite en attente) | deny | hang | stls."""
 
     def __init__(self, mode: str = "auth", wakefulness: str = "Awake") -> None:
         self.mode = mode
@@ -37,6 +37,18 @@ class FakeAdbTv:
         self.port = 0
         self._server: asyncio.Server | None = None
         self.on_command: Callable[[str], None] | None = None
+        # provisioning
+        self.sdk = "30"
+        self.model = "Fake TV"
+        self.accounts = 0
+        self.users = 1
+        self.version_code = 0  # 0 = app absente
+        self.install_as = 7
+        self.owner = ""  # sortie de `dpm list-owners`
+        self.install_output = "Success\n"
+        self.set_owner_output = "Success: Device owner set\n"
+        self.received_apk = bytearray()
+        self.accept_event = asyncio.Event()  # mode 'prompt' : l'utilisateur accepte l'invite
 
     async def __aenter__(self) -> "FakeAdbTv":
         self._server = await asyncio.start_server(self._handle, "127.0.0.1", 0)
@@ -72,7 +84,29 @@ class FakeAdbTv:
             line = data.rstrip(b"\x00").decode()
             self.commands.append(line)
             out = b""
-            if line.startswith("shell:dumpsys power"):
+            if line.startswith("exec:cmd package install"):
+                size = int(line.rsplit(" ", 1)[1])
+                w.write(pack(A_OKAY, 77, a0))
+                await w.drain()
+                while len(self.received_apk) < size:
+                    c, _x, _y, chunk = await self._read(r)
+                    if c == A_WRTE:
+                        self.received_apk += chunk
+                        w.write(pack(A_OKAY, 77, a0))
+                        await w.drain()
+                out = self.install_output.encode()
+                if out.startswith(b"Success"):
+                    self.version_code = self.install_as
+                w.write(pack(A_WRTE, 77, a0, out))
+                await w.drain()
+                await self._read(r)
+                w.write(pack(A_CLSE, 77, a0))
+                await w.drain()
+                return
+            scripted = self._scripted(line)
+            if scripted is not None:
+                out = scripted.encode()
+            elif line.startswith("shell:dumpsys power"):
                 out = (
                     b"Power Manager State:\n  mWakefulness="
                     + self.wakefulness.encode()
@@ -98,6 +132,36 @@ class FakeAdbTv:
         finally:
             w.close()
 
+    def _scripted(self, line: str) -> str | None:
+        cmd = line.removeprefix("shell:")
+        if cmd == "getprop ro.build.version.sdk":
+            return self.sdk + "\n"
+        if cmd == "getprop ro.product.model":
+            return self.model + "\n"
+        if cmd == "dumpsys account":
+            return f"User UserInfo{{0:Owner:13}}:\n  Accounts: {self.accounts}\n"
+        if cmd == "pm list users":
+            return "Users:\n" + "".join(
+                f"\tUserInfo{{{i}:U{i}:13}} running\n" for i in range(self.users)
+            )
+        if cmd.startswith("pm list packages"):
+            if self.version_code:
+                return f"package:app.vds.player versionCode:{self.version_code}\n"
+            return ""
+        if cmd == "dpm list-owners":
+            return self.owner
+        if cmd.startswith("dpm set-device-owner"):
+            if self.set_owner_output.startswith("Success"):
+                self.owner = (
+                    "User 0: admin=ComponentInfo{app.vds.player/app.vds.player.AdminReceiver}\n"
+                )
+            return self.set_owner_output
+        if cmd.startswith(("cmd package set-home-activity", "appops set", "settings put")):
+            return "Success\n" if "home" in cmd else ""
+        if cmd.startswith("am start"):
+            return "Starting: Intent { cmp=app.vds.player/... }\n"
+        return None
+
     async def _auth(self, r: asyncio.StreamReader, w: asyncio.StreamWriter) -> bool:
         token = b"0123456789abcdef0123"
         w.write(pack(A_AUTH, 1, 0, token))
@@ -118,6 +182,8 @@ class FakeAdbTv:
             w.write(pack(A_AUTH, 1, 0, token))
             await w.drain()
             return False
+        if self.mode == "prompt":
+            await self.accept_event.wait()
         self.pending_key = parse_android_pubkey(data)
         self.accepted.append(self.pending_key)
         return True

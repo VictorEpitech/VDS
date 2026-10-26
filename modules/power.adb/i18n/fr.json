@@ -3,13 +3,78 @@
     "name": "Alimentation par ADB (Android TV / Google TV)",
     "description": "Allume et éteint une TV Android ou Google TV par ADB réseau."
   },
-  "config": { "power_adb": {
-    "host": { "title": "Adresse IP de la TV", "description": "Adresse de la TV sur le réseau local." },
-    "port": { "title": "Port ADB", "description": "Port du débogage réseau (5555 par défaut)." },
-    "timeout_ms": { "title": "Délai maximal (ms)", "description": "Durée maximale d'une opération ADB." },
-    "unreachable_means_off": { "title": "Injoignable = éteinte", "description": "Considère la TV éteinte quand elle ne répond plus (veille profonde sans réseau)." }
-  } },
-  "power": { "adb": {
-    "accept_on_tv": "Acceptez la clé de débogage sur la TV (cochez « Toujours autoriser »)."
-  } }
+  "config": {
+    "power_adb": {
+      "host": {
+        "title": "Adresse IP de la TV",
+        "description": "Adresse de la TV sur le réseau local."
+      },
+      "port": {
+        "title": "Port ADB",
+        "description": "Port du débogage réseau (5555 par défaut)."
+      },
+      "timeout_ms": {
+        "title": "Délai maximal (ms)",
+        "description": "Durée maximale d'une opération ADB."
+      },
+      "unreachable_means_off": {
+        "title": "Injoignable = éteinte",
+        "description": "Considère la TV éteinte quand elle ne répond plus (veille profonde sans réseau)."
+      }
+    }
+  },
+  "power": {
+    "adb": {
+      "accept_on_tv": "Acceptez la clé de débogage sur la TV (cochez « Toujours autoriser »)."
+    }
+  },
+  "provision": {
+    "android": {
+      "unreachable": "TV injoignable : activez le débogage réseau et vérifiez l'adresse IP.",
+      "tls_required": "Cette TV n'accepte que le débogage sans fil chiffré : activez le « Débogage réseau » classique (port 5555).",
+      "accept_on_tv": "Acceptez l'invite sur la TV et cochez « Toujours autoriser ».",
+      "unauthorized": "Autorisation refusée ou expirée : relancez et choisissez « Toujours autoriser ».",
+      "protocol": "Réponse ADB inattendue de la TV.",
+      "sdk_too_old": "Android trop ancien (version 7.0 minimum).",
+      "apk_unavailable": "Application indisponible sur le serveur.",
+      "apk_mismatch": "Fichier d'application corrompu : réessayez.",
+      "already_installed": "Application déjà à jour sur la TV.",
+      "install_incompatible": "Une version signée autrement est déjà installée : désinstallez l'application de la TV.",
+      "install_failed": "Installation refusée par la TV.",
+      "device_owner_skipped": "Device Owner non demandé.",
+      "owner_exists": "Un autre gestionnaire d'appareil existe déjà sur la TV.",
+      "accounts_present": "Des comptes (Google) sont présents : retirez comptes et profils, relancez à cette étape, puis réajoutez-les ensuite. Sinon, kiosque doux.",
+      "extra_users": "Plusieurs profils sont présents : retirez-les pour activer le Device Owner.",
+      "dpm_refused": "La TV refuse le Device Owner (une réinitialisation peut être nécessaire).",
+      "soft_kiosk_active": "Kiosque doux actif : les touches Accueil et Assistant restent utilisables. À réserver aux écrans non publics.",
+      "soft_kiosk_failed": "Kiosque doux non appliqué.",
+      "no_kiosk": "Aucun verrouillage : l'application n'est pas protégée.",
+      "configure_failed": "Réglage de veille non appliqué (non bloquant).",
+      "inject_failed": "Impossible de transmettre l'appairage à la TV.",
+      "launch_failed": "Impossible de lancer l'application.",
+      "no_provider": "Aucun pilote de provisioning pour cette plateforme."
+    },
+    "tutorial": {
+      "1": {
+        "title": "Activer les options développeur",
+        "body": "Paramètres > Système > À propos : appuyez 7 fois sur « Build »."
+      },
+      "2": {
+        "title": "Activer le débogage réseau",
+        "body": "Dans les options développeur, activez « Débogage USB » puis « Débogage réseau » (port 5555), pas le débogage sans fil."
+      },
+      "3": {
+        "title": "Compte Google",
+        "body": "Pour un verrouillage complet (Device Owner), retirez avant tous les comptes et profils de la TV, puis réajoutez-les après l'installation."
+      },
+      "4": {
+        "title": "Noter l'adresse IP",
+        "body": "Relevez l'adresse IP de la TV (Paramètres > Réseau) ; réservez-la dans le routeur."
+      },
+      "5": {
+        "title": "Accepter l'invite",
+        "body": "Pendant l'installation, acceptez l'invite de débogage sur la TV et cochez « Toujours autoriser »."
+      }
+    }
+  }
 }

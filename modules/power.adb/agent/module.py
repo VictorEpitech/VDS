@@ -1,10 +1,12 @@
 """power.adb : KEYCODE_WAKEUP / KEYCODE_SLEEP, état via `dumpsys power`."""
 
 import re
+from collections.abc import Awaitable, Callable
 from typing import Any, ClassVar, Literal
 
 from vds_sdk import Health, ModuleContext
 from vds_sdk.agent import (
+    ApkSource,
     Capability,
     DetectHint,
     DetectResult,
@@ -12,9 +14,14 @@ from vds_sdk.agent import (
     PowerResult,
     PowerState,
     PowerTarget,
+    ProvisionOutcome,
+    ProvisionRequest,
+    ScreenProvisioner,
+    StepReport,
 )
 
-from .adb import AdbError, AdbTransport, TcpAdbTransport, generate_key_pem
+from .adb import AdbError, AdbProvisionTransport, AdbTransport, TcpAdbTransport, generate_key_pem
+from .provision_android import AndroidProvisioner
 
 KEY_STATE = "adb_private_key"
 _WAKE_RE = re.compile(r"mWakefulness=(\w+)")
@@ -32,10 +39,12 @@ def parse_state(dumpsys: str) -> PowerState:
     return "unknown"
 
 
-class AdbDriver(PowerDriver):
+class AdbDriver(PowerDriver, ScreenProvisioner):
     capabilities: ClassVar[frozenset[Capability]] = frozenset(
         {"power.on", "power.off", "power.state"}
     )
+
+    platforms: ClassVar[frozenset[str]] = frozenset({"android"})
 
     def __init__(self, transport: AdbTransport | None = None) -> None:
         self._transport = transport
@@ -120,3 +129,15 @@ class AdbDriver(PowerDriver):
             capabilities=self.capabilities,
             proposed_config=proposed,
         )
+
+    async def provision(
+        self,
+        req: ProvisionRequest,
+        apk: ApkSource,
+        report: Callable[[StepReport], Awaitable[None]],
+    ) -> ProvisionOutcome:
+        """`provision.android` : même transport, donc même clé RSA que l'alimentation."""
+        if req.platform != "android" or self._transport is None:
+            return ProvisionOutcome(ok=False, kiosk="none", code="provision.no_provider")
+        transport: AdbProvisionTransport = self._transport  # type: ignore[assignment]
+        return await AndroidProvisioner(transport).provision(req, apk, report)
