@@ -20,6 +20,7 @@ from vds_sdk import (
     ScopedBus,
     parse_event,
 )
+from vds_sdk.agent.provision import provision_platforms
 from vds_sdk.versions import satisfies
 
 from vds_server.core.mux import ModuleMux
@@ -352,6 +353,16 @@ class ModuleRegistry:
             for mid, d in self._known.items()
             if d.error is None and mid in self._running and "site-agent" in d.manifest.targets
         ]
+
+    def provision_modules(self) -> list[tuple[str, str, frozenset[str]]]:
+        """(id, version, plateformes) des modules site-agent actifs déclarant `provision.*`."""
+        out: list[tuple[str, str, frozenset[str]]] = []
+        for mid, d in self._known.items():
+            if d.error is None and mid in self._running and "site-agent" in d.manifest.targets:
+                platforms = provision_platforms(d.manifest.capabilities)
+                if platforms:
+                    out.append((mid, d.manifest.version, platforms))
+        return out
 
     def info(self) -> list[dict[str, Any]]:
         return [{"id": k, "running": k in self._running} for k in self._known]

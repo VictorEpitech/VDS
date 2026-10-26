@@ -17,6 +17,7 @@ dependencies = [
     "pypdfium2>=5.14.0",
     "pillow>=13.0.0",
     "aiosmtplib>=5.1.3",
+    "cryptography>=43",
 ]
 
 [build-system]

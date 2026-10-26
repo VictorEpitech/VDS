@@ -184,7 +184,9 @@ def build_router(rt: Runtime) -> APIRouter:
                         continue  # trop fréquent : ignoré, aucune écriture
                     last_hb = now
                     async with rt.maker() as s:
-                        await heartbeat(s, device_id, hb.model_dump(mode="json"), hb.app_version)
+                        await heartbeat(
+                            s, device_id, hb.model_dump(mode="json"), hb.app_version, rt.bus
+                        )
 
         tasks = [asyncio.create_task(pusher()), asyncio.create_task(reader())]
         try:

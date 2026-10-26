@@ -28,6 +28,16 @@ class PairingStarted(BaseModel):
     poll_interval_s: int
 
 
+class TicketPair(BaseModel):
+    """Appairage par ticket de provisioning (additif) ; le ticket n'est jamais journalisé."""
+
+    model_config = ConfigDict(extra="forbid")
+    pairing_ticket: str = Field(
+        min_length=16, max_length=64, pattern=r"^[A-Za-z0-9_-]+$", repr=False
+    )
+    device: DeviceInfo
+
+
 class PairingClaim(BaseModel):
     model_config = ConfigDict(extra="forbid")
     code: str = Field(min_length=6, max_length=12)

@@ -32,6 +32,7 @@ def build_router(rt: Runtime) -> APIRouter:
     Admin = Annotated[Principal, Depends(rt.pipeline.require("admin"))]
     Device = Annotated[DevicePrincipal, Depends(rt.device_auth)]
     start_limiter = RateLimiter(limit=10, window_s=60)
+    ticket_limiter = RateLimiter(limit=10, window_s=60)
     poll_limiter = RateLimiter(limit=40, window_s=60)
 
     def svc(session: Session) -> PairingService:
@@ -76,6 +77,17 @@ def build_router(rt: Runtime) -> APIRouter:
             device_token=token, screen_id=screen_id, server_time=datetime.now(UTC)
         )
 
+    @router.post("/player/pair", response_model=sc.PairingDone)
+    async def pair_with_ticket(
+        body: sc.TicketPair, request: Request, response: Response, s: Pairing
+    ) -> sc.PairingDone:
+        ticket_limiter.check(client_ip(request))
+        token, screen_id = await s.pair_with_ticket(body.pairing_ticket, body.device)
+        response.headers["Cache-Control"] = "no-store"
+        return sc.PairingDone(
+            device_token=token, screen_id=screen_id, server_time=datetime.now(UTC)
+        )
+
     @router.post("/pairings/claim", response_model=sc.PairingClaimed)
     async def claim(body: sc.PairingClaim, actor: Admin, s: Pairing) -> sc.PairingClaimed:
         return sc.PairingClaimed(screen_id=await s.claim(actor, body.code, body.screen_id))
@@ -89,7 +101,9 @@ def build_router(rt: Runtime) -> APIRouter:
     async def player_heartbeat(
         body: sc.Heartbeat, device: Device, session: Session, b: Builder
     ) -> sc.HeartbeatAck:
-        await heartbeat(session, device.device_id, body.model_dump(mode="json"), body.app_version)
+        await heartbeat(
+            session, device.device_id, body.model_dump(mode="json"), body.app_version, rt.bus
+        )
         current = await b.build(device.screen_id)
         return sc.HeartbeatAck(
             revision=str(current["revision"]),

@@ -16,6 +16,7 @@ from vds_server.core.errors import ApiError
 from vds_server.db.models import PairingRequest, Screen, ScreenDevice
 from vds_server.player.device_auth import hash_secret, new_token
 from vds_server.player.schemas import DeviceInfo
+from vds_server.provisioning.service import consume_ticket, mark_online
 
 CODE_ALPHABET = "ABCDEFGHJKMNPQRSTVWXYZ23456789"  # Crockford sans I L O U 0 1
 CODE_LENGTH = 6
@@ -98,7 +99,17 @@ class PairingService:
     async def _consume(self, row: PairingRequest) -> tuple[str, str | None, UUID | None]:
         if row.screen_id is None:
             raise ApiError("errors.pairing_gone", 410)
-        info: dict[str, Any] = row.device or {}
+        token, events = await self._issue_device(row.screen_id, row.claimed_by, row.device or {})
+        row.status = "consumed"
+        screen_id = row.screen_id
+        await self._s.commit()
+        await self._publish(events)
+        return "done", token, screen_id
+
+    async def _issue_device(
+        self, screen_id: UUID, paired_by: UUID | None, info: dict[str, Any]
+    ) -> tuple[str, list[Event]]:
+        """Révoque l'appareil précédent, crée le nouveau ; commit à la charge de l'appelant."""
         token = new_token()
         now = datetime.now(UTC)
         events: list[Event] = []
@@ -106,9 +117,7 @@ class PairingService:
             (
                 await self._s.execute(
                     select(ScreenDevice)
-                    .where(
-                        ScreenDevice.screen_id == row.screen_id, ScreenDevice.revoked_at.is_(None)
-                    )
+                    .where(ScreenDevice.screen_id == screen_id, ScreenDevice.revoked_at.is_(None))
                     .with_for_update()
                 )
             )
@@ -117,7 +126,7 @@ class PairingService:
         )
         for dev in old:
             dev.revoked_at = now
-            dev.revoked_by = row.claimed_by
+            dev.revoked_by = paired_by
             audit.record(
                 self._s,
                 actor_kind="device",
@@ -130,41 +139,46 @@ class PairingService:
             events.append(_unpaired(dev, "replaced"))
         await self._s.flush()
         device = ScreenDevice(
-            screen_id=row.screen_id,
+            screen_id=screen_id,
             token_hash=hash_secret(token),
             platform=str(info.get("platform") or "unknown"),
             model=info.get("model"),
             app_version=info.get("app_version"),
-            paired_by=row.claimed_by,
+            paired_by=paired_by,
             expires_at=now + DEVICE_TOKEN_TTL,
         )
         self._s.add(device)
         await self._s.flush()
-        row.status = "consumed"
         audit.record(
             self._s,
             actor_kind="device",
             actor_id=str(device.id),
             action="screen.paired",
             target_type="screen",
-            target_id=str(row.screen_id),
+            target_id=str(screen_id),
             details={"device_id": str(device.id), "platform": device.platform},
         )
         events.append(
             Event(
                 name="screen.paired",
                 payload={
-                    "screen_id": str(row.screen_id),
+                    "screen_id": str(screen_id),
                     "device_id": str(device.id),
                     "platform": device.platform,
                 },
                 source="core",
             )
         )
-        screen_id = row.screen_id
+        return token, events
+
+    async def pair_with_ticket(self, ticket: str, device: DeviceInfo) -> tuple[str, UUID]:
+        """Échange un ticket de provisioning (usage unique) contre le jeton d'appareil."""
+        prov = await consume_ticket(self._s, ticket)
+        screen_id = prov.screen_id
+        token, events = await self._issue_device(screen_id, prov.created_by, device.model_dump())
         await self._s.commit()
         await self._publish(events)
-        return "done", token, screen_id
+        return token, screen_id
 
     # --- côté admin -------------------------------------------------------
     async def claim(self, actor: Principal, code: str, screen_id: UUID) -> UUID:
@@ -243,13 +257,24 @@ def _unpaired(dev: ScreenDevice, reason: str) -> Event:
 
 
 async def heartbeat(
-    session: AsyncSession, device_id: UUID, body: dict[str, Any], app_version: str | None
+    session: AsyncSession,
+    device_id: UUID,
+    body: dict[str, Any],
+    app_version: str | None,
+    bus: EventBus | None = None,
 ) -> None:
     now = datetime.now(UTC)
     values: dict[str, Any] = {"last_seen_at": now, "last_heartbeat": body}
     if app_version:
         values["app_version"] = app_version
-    await session.execute(update(ScreenDevice).where(ScreenDevice.id == device_id).values(**values))
+    screen_id = (
+        await session.execute(
+            update(ScreenDevice)
+            .where(ScreenDevice.id == device_id)
+            .values(**values)
+            .returning(ScreenDevice.screen_id)
+        )
+    ).scalar_one_or_none()
     # expiration glissante : un appareil vivant n'expire pas, un appareil abandonné si
     await session.execute(
         update(ScreenDevice)
@@ -260,3 +285,5 @@ async def heartbeat(
         .values(expires_at=now + DEVICE_TOKEN_TTL)
     )
     await session.commit()
+    if screen_id is not None:  # premier heartbeat d'un écran appairé par ticket : validation
+        await mark_online(session, screen_id, bus)

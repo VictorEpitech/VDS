@@ -16,14 +16,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from vds_sdk import Event, EventBus
 from vds_sdk.bus import EventHandler
-from vds_sdk.events import CRITICAL_EVENTS_1_2
+from vds_sdk.events import CRITICAL_EVENTS_1_3
 
 from vds_server.db.models import EventDelivery, EventOutbox
 
 log = logging.getLogger("vds.bus")
 
 CORE_SOURCE = "core"
-CRITICAL_EVENTS: frozenset[str] = frozenset({"module.quarantined"}) | CRITICAL_EVENTS_1_2
+CRITICAL_EVENTS: frozenset[str] = frozenset({"module.quarantined"}) | CRITICAL_EVENTS_1_3
 INITIAL_DELAY_S = 5
 MAX_ATTEMPTS = 5
 

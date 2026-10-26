@@ -24,8 +24,12 @@ class SameOriginMiddleware:
         self.app = app
         self.settings = settings
         self.api_prefix = f"{settings.prefix}/api/"
-        # démarrage d'appairage : anonyme, sans cookie, appelé par le player (origine arbitraire)
-        self.exempt = {f"{settings.prefix}/api/v1/player/pairings"}
+        # appairage : anonyme, sans cookie, appelé par le player (origine arbitraire) ; l'échange
+        # par ticket est protégé par le ticket lui-même (usage unique, 30 min)
+        self.exempt = {
+            f"{settings.prefix}/api/v1/player/pairings",
+            f"{settings.prefix}/api/v1/player/pair",
+        }
         # routes à jeton (pas de cookie, pas de CSRF possible) : exemptées si Bearer présent
         self.bearer_exact = {f"{settings.prefix}/api/v1/player/heartbeat"}
         self.bearer_prefixes = (f"{settings.prefix}/api/v1/agent/",)

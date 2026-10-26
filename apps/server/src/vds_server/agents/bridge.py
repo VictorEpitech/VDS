@@ -16,7 +16,9 @@ from vds_sdk.wire import CLOSE_BAD_MESSAGE, CLOSE_FORBIDDEN, EventData, WireErro
 from vds_server.db.models import Screen
 
 # Événements du cœur qu'un agent peut émettre (agent.* est émis par le serveur seul).
-AGENT_CORE_EVENTS = frozenset({"power.changed", "power.failed", "cache.synced"})
+AGENT_CORE_EVENTS = frozenset(
+    {"power.changed", "power.failed", "cache.synced", "screen.provision_progressed"}
+)
 # nom d'événement -> id du module (cible site-agent) qui le déclare
 ModuleEvents = Callable[[], dict[str, str]]
 

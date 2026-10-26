@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     organization_name: str = "VDS"
     quarantine_failures: int = 5
     quarantine_window_s: int = 600
+    apk_dir: Path = Path("/opt/vds/apk")  # VDS_APK_DIR : apk.json + fichiers APK signés par la CI
     secret_key: str | None = None  # VDS_SECRET_KEY : dérive les clés du service LAN de cache
 
     @field_validator("secret_key")

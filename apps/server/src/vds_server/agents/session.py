@@ -3,10 +3,10 @@
 import asyncio
 import contextlib
 import time
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Any, Protocol
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -36,7 +36,7 @@ from vds_sdk.wire import (
 
 from vds_server.agents.bridge import EventBridge
 from vds_server.agents.hub import AgentHub
-from vds_server.agents.queue import CommandQueue
+from vds_server.agents.queue import CommandQueue, QueuedCommand
 from vds_server.agents.service import command_frame_data
 from vds_server.db.models_power import SiteAgent
 
@@ -74,6 +74,8 @@ class AgentSession:
         bridge: EventBridge,
         modules_enabled: Callable[[], list[ModuleEnabled]] = list,
         cache_info: Callable[[SiteAgent], CacheInfo] = lambda _row: CacheInfo(),
+        frame_data: Callable[[QueuedCommand], dict[str, Any]] = command_frame_data,
+        on_result: Callable[[UUID, str, str | None, dict[str, Any]], Awaitable[None]] | None = None,
         hello_timeout_s: float | None = None,
         poll_s: float | None = None,
         idle_timeout_s: float | None = None,
@@ -81,6 +83,7 @@ class AgentSession:
         self._ws, self._maker, self._bus, self._hub = ws, maker, bus, hub
         self._queue, self._bridge, self._modules = queue, bridge, modules_enabled
         self._cache_info = cache_info
+        self._frame_data, self._on_result = frame_data, on_result
         self._hello_timeout = HELLO_TIMEOUT_S if hello_timeout_s is None else hello_timeout_s
         self._poll = POLL_S if poll_s is None else poll_s
         self._idle = IDLE_TIMEOUT_S if idle_timeout_s is None else idle_timeout_s
@@ -264,9 +267,7 @@ class AgentSession:
         # `sent` avant l'envoi : queued et sent sont rejoués à la reprise, rien n'est perdu
         await self._queue.mark_sent([c.id for c in cmds])
         for cmd in cmds:
-            await self._send(
-                Frame(id=cmd.id, type="cmd", seq=cmd.seq, data=command_frame_data(cmd))
-            )
+            await self._send(Frame(id=cmd.id, type="cmd", seq=cmd.seq, data=self._frame_data(cmd)))
             self._last_sent = cmd.seq
 
     async def _reader(self) -> None:
@@ -296,9 +297,11 @@ class AgentSession:
             raise _Closed(exc.close_code, exc.code) from exc
         if fresh:
             if isinstance(data, CmdResult):
-                await self._queue.complete(
+                fresh_result = await self._queue.complete(
                     "agent", self.agent_id, data.cmd_id, data.status, data.code, data.data
                 )
+                if fresh_result and self._on_result is not None:
+                    await self._on_result(data.cmd_id, data.status, data.code, data.data)
             elif isinstance(data, EventData):
                 try:
                     await self._bridge.republish(self.site_id, data)

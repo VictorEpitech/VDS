@@ -20,6 +20,7 @@ from vds_server.core.errors import ApiError
 from vds_server.db.models import Screen, Site
 from vds_server.db.models_power import RemoteCommand, SiteAgent
 from vds_server.player.device_auth import hash_secret
+from vds_server.provisioning.tickets import ARGS_KEY, UNUSABLE_TICKET, TicketBox
 
 OFFLINE_AFTER_S = 180  # 3 heartbeats manqués
 SCREEN_COMMANDS = frozenset({"power.set", "power.probe"})
@@ -200,12 +201,18 @@ def validate_command(name: str, args: dict[str, Any], screen_id: UUID | None) ->
         raise ApiError("agents.command_unknown", 422) from exc
 
 
-def command_frame_data(cmd: QueuedCommand) -> dict[str, Any]:
+def command_frame_data(cmd: QueuedCommand, box: TicketBox | None = None) -> dict[str, Any]:
+    args = cmd.args
+    if cmd.name == "screen.provision" and ARGS_KEY in args:
+        # le ticket n'est en clair que sur le fil : déchiffré à l'envoi, jamais stocké en clair
+        args = {k: v for k, v in args.items() if k != ARGS_KEY}
+        ticket = box.decrypt(str(cmd.args[ARGS_KEY])) if box is not None else None
+        args["pairing_ticket"] = ticket or UNUSABLE_TICKET
     return Cmd(
         cmd_id=cmd.id,
         name=cmd.name,
         screen_id=cmd.screen_id,
-        args=cmd.args,
+        args=args,
         expires_at=cmd.expires_at,
         correlation_id=str(cmd.correlation_id) if cmd.correlation_id else None,
     ).model_dump(mode="json", exclude_none=True)

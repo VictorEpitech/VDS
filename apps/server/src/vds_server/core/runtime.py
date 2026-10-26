@@ -33,6 +33,9 @@ from vds_server.events import CoreBus
 from vds_server.player.device_auth import DeviceAuth, bearer
 from vds_server.player.schedule import screen_media_ids
 from vds_server.power.state import PowerStateTracker
+from vds_server.provisioning.apk import ApkCatalog
+from vds_server.provisioning.service import ProvisionEvents
+from vds_server.provisioning.tickets import TicketBox
 from vds_server.registry import ModuleRegistry
 from vds_server.settings import Settings
 from vds_server.supervision import Supervisor
@@ -70,8 +73,12 @@ class Runtime:
         self.media_access.register_reader(self._agent_reader)
         self.agent_auth = AgentAuth(self.maker)  # jeton d'agent (WS, HTTP réservé à l'agent)
         self.agent_hub = AgentHub()
+        self.ticket_box = TicketBox(settings.secret_key) if settings.secret_key else None
+        self.apk_catalog = ApkCatalog(settings.apk_dir)
         self.command_queue = CommandQueue(self.maker)
         self.agent_bridge = EventBridge(self.maker, self.bus, self.registry.agent_events)
+        self.provision_events = ProvisionEvents(self.maker, self.bus)
+        self.provision_events.register(self.bus.subscribe)
         self.supervisor = Supervisor(
             self.maker,
             self.bus,
@@ -161,6 +168,7 @@ class Runtime:
     async def lifespan(self, app: FastAPI) -> AsyncIterator[None]:
         await self.ensure_organization()
         await self.registry.start()
+        await self.apk_catalog.load()
         self.agent_hub.start(self.engine)
         self.supervisor.start()
         self.power_state.start()

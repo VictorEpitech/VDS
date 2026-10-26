@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/v1/agent/apk/android/{version_code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Apk */
+        get: operations["apk_api_v1_agent_apk_android__version_code__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agent/cache/manifest": {
         parameters: {
             query?: never;
@@ -243,6 +260,23 @@ export interface paths {
         put?: never;
         /** Player Heartbeat */
         post: operations["player_heartbeat_api_v1_player_heartbeat_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/player/pair": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pair With Ticket */
+        post: operations["pair_with_ticket_api_v1_player_pair_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -550,6 +584,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/provisioning/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Capabilities */
+        get: operations["capabilities_api_v1_provisioning_capabilities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/provisioning/{pid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read */
+        get: operations["read_api_v1_provisioning__pid__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/provisioning/{pid}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel */
+        post: operations["cancel_api_v1_provisioning__pid__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/provisioning/{pid}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retry */
+        post: operations["retry_api_v1_provisioning__pid__retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/registry/content-types": {
         parameters: {
             query?: never;
@@ -722,6 +824,23 @@ export interface paths {
         post: operations["start_api_v1_screens__screen_id__kiosk_maintenance_post"];
         /** End */
         delete: operations["end_api_v1_screens__screen_id__kiosk_maintenance_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/screens/{screen_id}/provision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create */
+        post: operations["create_api_v1_screens__screen_id__provision_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -943,6 +1062,13 @@ export interface components {
             /** Token */
             token: string;
         };
+        /** ApkInfo */
+        ApkInfo: {
+            /** Version Code */
+            version_code: number;
+            /** Version Name */
+            version_name: string;
+        };
         /** AssetRef */
         AssetRef: {
             /** Bytes */
@@ -1008,6 +1134,16 @@ export interface components {
             };
             /** Refreshed At */
             refreshed_at: string | null;
+        };
+        /** CapabilitiesOut */
+        CapabilitiesOut: {
+            apk: components["schemas"]["ApkInfo"] | null;
+            /** Available */
+            available: boolean;
+            /** Platforms */
+            platforms: string[];
+            /** Reason */
+            reason: ("agent_offline" | "agent_outdated" | "module_disabled" | "apk_unavailable" | "server_unconfigured") | null;
         };
         /** CommandCreate */
         CommandCreate: {
@@ -1825,6 +1961,20 @@ export interface components {
             /** Name */
             name?: string | null;
         };
+        /** OutcomeOut */
+        OutcomeOut: {
+            /** Code */
+            code: string | null;
+            /** Installed Version Code */
+            installed_version_code: number | null;
+            /**
+             * Kiosk
+             * @enum {string}
+             */
+            kiosk: "device_owner" | "soft" | "none";
+            /** Ok */
+            ok: boolean;
+        };
         /** PairingClaim */
         PairingClaim: {
             /** Code */
@@ -2030,6 +2180,86 @@ export interface components {
             description?: string | null;
             /** Name */
             name?: string | null;
+        };
+        /** ProvisionCreate */
+        ProvisionCreate: {
+            /** Address */
+            address: string;
+            /**
+             * Device Owner
+             * @default try
+             * @enum {string}
+             */
+            device_owner: "try" | "skip";
+            /** Platform */
+            platform: string;
+            /**
+             * Port
+             * @default 5555
+             */
+            port: number;
+            /**
+             * Reprovision
+             * @default false
+             */
+            reprovision: boolean;
+            /**
+             * Soft Kiosk Fallback
+             * @default true
+             */
+            soft_kiosk_fallback: boolean;
+        };
+        /** ProvisionOut */
+        ProvisionOut: {
+            /** Address */
+            address: string;
+            /** Apk Version Code */
+            apk_version_code: number | null;
+            /** Code */
+            code: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Finished At */
+            finished_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            outcome: components["schemas"]["OutcomeOut"] | null;
+            /** Pairing Code Fallback */
+            pairing_code_fallback: boolean;
+            /** Platform */
+            platform: string;
+            /** Port */
+            port: number;
+            /**
+             * Screen Id
+             * Format: uuid
+             */
+            screen_id: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "waiting_user" | "waiting_online" | "done" | "failed" | "cancelled";
+            /** Steps */
+            steps: components["schemas"]["StepOut"][];
+            /** Ticket Expires At */
+            ticket_expires_at: string | null;
+        };
+        /** ProvisionRetry */
+        ProvisionRetry: {
+            /** From Step */
+            from_step?: ("connect" | "authorize" | "inspect" | "download" | "verify" | "install" | "device_owner" | "soft_kiosk" | "configure" | "inject" | "launch") | null;
         };
         /** RuleIn */
         RuleIn: {
@@ -2327,6 +2557,32 @@ export interface components {
              */
             schedule_id: string;
         };
+        /** StepOut */
+        StepOut: {
+            /** At */
+            at: string | null;
+            /** Code */
+            code: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "running" | "waiting_user" | "ok" | "skipped" | "failed";
+            /**
+             * Step
+             * @enum {string}
+             */
+            step: "connect" | "authorize" | "inspect" | "download" | "verify" | "install" | "device_owner" | "soft_kiosk" | "configure" | "inject" | "launch";
+        };
+        /**
+         * TicketPair
+         * @description Appairage par ticket de provisioning (additif) ; le ticket n'est jamais journalisé.
+         */
+        TicketPair: {
+            device: components["schemas"]["DeviceInfo"];
+            /** Pairing Ticket */
+            pairing_ticket: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -2349,6 +2605,44 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    apk_api_v1_agent_apk_android__version_code__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_code: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.android.package-archive": unknown;
+                };
+            };
+            /** @description Inchangé */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     manifest_api_v1_agent_cache_manifest_get: {
         parameters: {
             query?: never;
@@ -2980,6 +3274,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HeartbeatAck"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pair_with_ticket_api_v1_player_pair_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TicketPair"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PairingDone"];
                 };
             };
             /** @description Validation Error */
@@ -3913,6 +4240,134 @@ export interface operations {
             };
         };
     };
+    capabilities_api_v1_provisioning_capabilities_get: {
+        parameters: {
+            query: {
+                site_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CapabilitiesOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_api_v1_provisioning__pid__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProvisionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_api_v1_provisioning__pid__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProvisionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retry_api_v1_provisioning__pid__retry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProvisionRetry"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProvisionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_content_types_api_v1_registry_content_types_get: {
         parameters: {
             query?: never;
@@ -4433,6 +4888,41 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_api_v1_screens__screen_id__provision_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                screen_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProvisionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProvisionOut"];
+                };
             };
             /** @description Validation Error */
             422: {

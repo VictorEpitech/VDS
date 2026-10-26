@@ -181,3 +181,11 @@ Libellés FR/EN, charte V-Tech, aucun libellé en dur.
 - Firmware imposant une réinitialisation pour retirer le compte principal ⇒ Device Owner impossible sans reset ; l'assistant le dit et propose le kiosque doux.
 - ADB TCP en clair sur le LAN : ticket interceptable ⇒ usage unique, 30 min, lié à l'écran, invalidé à la consommation.
 - Device Owner pose `DISALLOW_DEBUGGING_FEATURES` : après provisioning, ADB coupé ⇒ `power.adb` indisponible hors maintenance. À arbitrer : soit l'app autorise le débogage réseau en Device Owner (risque kiosque), soit l'alimentation passe par `power.cec`/natif. Défaut sûr : on garde la restriction, cascade sans ADB.
+
+## Note d'implémentation serveur (P2)
+
+- Prérequis de configuration : `VDS_SECRET_KEY` (clé Fernet du ticket, dérivée HKDF), `VDS_PUBLIC_ORIGIN`, APK dans `VDS_APK_DIR` (défaut `/opt/vds/apk`). Sinon `capabilities.reason` = `server_unconfigured` ou `apk_unavailable` (raisons additionnelles à la liste de l'architecture).
+- Ticket : 43 caractères base64url, sha256 en base (`ticket_hash`, index unique partiel), chiffré Fernet dans `remote_command.args.pairing_ticket_enc`, déchiffré à l'envoi (`command_frame_data`), effacé à la clôture. Chiffré illisible => ticket jamais émis envoyé (le player retombe sur le code manuel).
+- `POST /player/pair {pairing_ticket, device}` : sans cookie, exempté du contrôle d'origine (comme `/player/pairings`), limité à 10/min/IP, erreur unique `errors.pairing_ticket_invalid` (401) pour inconnu / expiré / rejoué / session close.
+- `done` = ticket consommé (`paired_at`) puis premier heartbeat (REST ou WS) de l'écran ; le résultat `cmd.result` de l'agent ne fait qu'échouer la session ou enregistrer `outcome`. Expiration paresseuse à la lecture (`provision.ticket_expired`, `provision.online_timeout` 15 min).
+- Migration additive : colonnes `code`, `paired_at`, `online_at` en plus du schéma proposé.
