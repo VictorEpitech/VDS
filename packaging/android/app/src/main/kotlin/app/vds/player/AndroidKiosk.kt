@@ -20,11 +20,12 @@ import app.vds.relay.KioskTimer
  * `stopLockTask` et HOME persistant retiré. Sinon kiosque doux (`soft`) : [locked] pilote le
  * Retour neutralisé et la relance automatique de [MainActivity]. Démarre verrouillé.
  *
- * Restrictions Device Owner (surface ADB et horloge) : `DISALLOW_DEBUGGING_FEATURES`,
- * `DISALLOW_CONFIG_DATE_TIME` (+ date automatique), `DISALLOW_SAFE_BOOT`, `DISALLOW_FACTORY_RESET`
- * posées dès que l'état n'est pas `MAINTENANCE` ; les deux premières ne sont levées que pendant une
- * maintenance bornée et rétablies au reverrouillage. [relaxed] (build `-Pvds.kioskRelaxed=true`)
- * ne pose jamais les restrictions de débogage et d'horloge (poste de recette uniquement).
+ * Restrictions Device Owner : `DISALLOW_SAFE_BOOT` et `DISALLOW_FACTORY_RESET` en permanence ;
+ * `DISALLOW_CONFIG_DATE_TIME` (+ date automatique) hors `MAINTENANCE`, levée pendant une
+ * maintenance bornée et rétablie au reverrouillage. [relaxed] (build `-Pvds.kioskRelaxed=true`)
+ * ne pose jamais la restriction d'horloge (poste de recette uniquement).
+ * `DISALLOW_DEBUGGING_FEATURES` n'est PLUS posée (décision : l'ADB réseau reste allumé pour
+ * l'alimentation par ADB) ; elle est levée si une version précédente l'avait posée.
  *
  * [enforce] LÈVE tant que l'état verrouillé n'est pas confirmé (lock task actif) : le dispatcher
  * retente, et ne renvoie `lock_task` qu'après confirmation par `ActivityManager.lockTaskModeState`.
@@ -73,6 +74,7 @@ class AndroidKiosk(
         if (!dpm.isDeviceOwnerApp(activity.packageName)) return Enforcement.SOFT
         val admin = ComponentName(activity, AdminReceiver::class.java)
         restrict(dpm, admin, DISALLOW_ALWAYS, true)
+        restrict(dpm, admin, LEGACY_RELEASED, false)
         restrict(dpm, admin, DISALLOW_OUTSIDE_MAINTENANCE, !maintenance && !relaxed)
         if (!relaxed) dpm.setAutoTimeRequired(admin, !maintenance)
         if (locked) {
@@ -107,7 +109,8 @@ class AndroidKiosk(
 
     private companion object {
         val DISALLOW_ALWAYS = listOf(UserManager.DISALLOW_SAFE_BOOT, UserManager.DISALLOW_FACTORY_RESET)
-        val DISALLOW_OUTSIDE_MAINTENANCE = listOf(UserManager.DISALLOW_DEBUGGING_FEATURES, UserManager.DISALLOW_CONFIG_DATE_TIME)
+        val DISALLOW_OUTSIDE_MAINTENANCE = listOf(UserManager.DISALLOW_CONFIG_DATE_TIME)
+        val LEGACY_RELEASED = listOf(UserManager.DISALLOW_DEBUGGING_FEATURES)
     }
 }
 

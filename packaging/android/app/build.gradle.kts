@@ -7,7 +7,7 @@ plugins {
 // Option LAN explicite : amont en HTTP vers un hôte du réseau local (mode autonome sans certificat).
 // Désactivée par défaut ; active la config réseau permissive et signale `player.insecure_upstream`.
 val lanHttp: Boolean = (findProperty("vds.lanHttp") as String?) == "true"
-// Poste de recette : ne pose pas DISALLOW_DEBUGGING_FEATURES / DISALLOW_CONFIG_DATE_TIME (jamais en production).
+// Poste de recette : ne pose pas DISALLOW_CONFIG_DATE_TIME (jamais en production).
 val kioskRelaxed: Boolean = (findProperty("vds.kioskRelaxed") as String?) == "true"
 val keystorePath: String? = System.getenv("VDS_KEYSTORE_PATH")
 

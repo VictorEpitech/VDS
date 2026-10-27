@@ -202,12 +202,12 @@ async def test_provision_device_owner_happy_path(tmp_path: Path) -> None:
         assert out.ok and out.kiosk == "device_owner" and out.installed_version_code == 7
         assert bytes(tv.received_apk) == APK  # flux complet, sans copie en mémoire côté agent
         assert status(reports, "install").status == "ok"
-        assert status(reports, "device_owner").detail == {"debugging_restricted": True}
+        assert status(reports, "device_owner").detail == {}
         assert status(reports, "soft_kiosk").status == "skipped"
-        # I2 : adbd est coupé par l'app après `inject`, aucune connexion ADB ne suit
-        assert tv.adb_cut and tv.commands[-1].startswith("shell:am start -n app.vds.player/.Prov")
-        assert status(reports, "launch").status == "skipped"
-        assert status(reports, "launch").code == "provision.android.launch_by_app"
+        # ADB réseau reste allumé en Device Owner : `launch` s'exécute (décision assumée)
+        assert tv.commands[-1].startswith("shell:am start -n app.vds.player/.MainActivity")
+        assert status(reports, "launch").status == "ok"
+        assert out.code is None
         inject = [c for c in tv.commands if "ProvisionActivity" in c]
         assert len(inject) == 1 and TICKET in inject[0]
         assert "--es server_url https://vds.example/espace/affichage" in inject[0]
@@ -274,10 +274,8 @@ async def test_provision_accounts_present_soft_kiosk(tmp_path: Path) -> None:
         sk = status(reports, "soft_kiosk")
         assert sk.status == "ok" and sk.code == "provision.android.soft_kiosk_active"
         assert out.ok and out.kiosk == "soft"
-        # I3 : avertissement explicite, ADB reste ouvert, étape launch exécutée
-        assert out.code == "provision.android.adb_open"
-        assert sk.detail == {"adb_open": True, "adb_port": tv.port}
-        assert status(reports, "launch").status == "ok" and not tv.adb_cut
+        assert out.code is None
+        assert status(reports, "launch").status == "ok"
 
 
 async def test_provision_no_soft_fallback_means_no_kiosk(tmp_path: Path) -> None:
@@ -334,7 +332,7 @@ async def test_provision_resume_from_device_owner(tmp_path: Path) -> None:
 
 async def test_provision_power_driver_still_works_after(tmp_path: Path) -> None:
     async with fakes.FakeAdbTv("auth") as tv:
-        tv.accounts = 1  # kiosque doux : ADB reste ouvert (en Device Owner il est coupé)
+        tv.accounts = 1  # kiosque doux
         state = MemoryState()
         await run_prov(tv, tmp_path, state=state)
         d = await make_driver(state)
@@ -343,24 +341,9 @@ async def test_provision_power_driver_still_works_after(tmp_path: Path) -> None:
         await asyncio.sleep(0)
 
 
-async def test_disable_network_debugging_after_soft_kiosk(tmp_path: Path) -> None:
-    async with fakes.FakeAdbTv("open") as tv:
-        tv.accounts = 1
-        await run_prov(tv, tmp_path)
+async def test_shell_output_is_bounded() -> None:
+    async with fakes.FakeAdbTv("auth") as tv:
         d = await make_driver()
-        assert not tv.adb_cut
-        assert await d.disable_network_debugging(prov_req(tv.port))
-        assert tv.adb_cut
-        # TV injoignable ensuite : retour False, sans exception
-        assert not await d.disable_network_debugging(prov_req(tv.port))
-
-
-async def test_final_step_disables_adb_only_with_ack(tmp_path: Path) -> None:
-    async with fakes.FakeAdbTv("open") as tv:
-        tv.accounts = 2
-        out, _, _ = await run_prov(tv, tmp_path)
-        assert out.kiosk == "soft" and out.code == "provision.android.adb_open"
-    async with fakes.FakeAdbTv("open") as tv:
-        tv.accounts = 2
-        out, _, _ = await run_prov(tv, tmp_path, non_public_ack=True)
-        assert out.ok and out.code == "provision.android.adb_closed"
+        with pytest.raises(Exception) as exc:  # noqa: PT011 - AdbError chargé dynamiquement
+            await d._transport.shell("127.0.0.1", tv.port, "flood", 5.0)  # M3
+        assert getattr(exc.value, "code", "") == "power.adb.protocol"

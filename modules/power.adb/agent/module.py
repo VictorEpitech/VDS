@@ -141,10 +141,3 @@ class AdbDriver(PowerDriver, ScreenProvisioner):
             return ProvisionOutcome(ok=False, kiosk="none", code="provision.no_provider")
         transport: AdbProvisionTransport = self._transport  # type: ignore[assignment]
         return await AndroidProvisioner(transport).provision(req, apk, report)
-
-    async def disable_network_debugging(self, req: ProvisionRequest) -> bool:
-        """Kiosque doux : coupe adbd après confirmation explicite (I3). Irréversible à distance."""
-        if req.platform != "android" or self._transport is None:
-            return False
-        transport: AdbProvisionTransport = self._transport  # type: ignore[assignment]
-        return await AndroidProvisioner(transport).disable_network_debugging(req)

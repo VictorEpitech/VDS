@@ -22,6 +22,9 @@ MAX_DATA = 256 * 1024
 HEADER = struct.Struct("<6I")
 
 
+MAX_OUTPUT = 64 * 1024
+
+
 class AdbError(Exception):
     def __init__(self, code: str) -> None:
         super().__init__(code)
@@ -188,6 +191,8 @@ class TcpAdbTransport:
                         await w.drain()
                 elif cmd == A_WRTE:
                     out += data
+                    if len(out) > MAX_OUTPUT:  # M3 : appareil hostile, sortie bornée
+                        raise AdbError("power.adb.protocol")
                     w.write(pack(A_OKAY, 1, a0))
                     await w.drain()
                 elif cmd == A_CLSE:

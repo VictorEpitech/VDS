@@ -112,4 +112,4 @@ de la frame principale du player. Messages : `ping`, `reload`, `cec:<id>:<action
 Voir `docs/architecture.md` › « Contraintes découvertes (L2-T9) » (cleartext, port ouvert aux autres apps, WebSocket lot 3, limites du lancement en arrière-plan).
 
 
-Build de recette : `-Pvds.kioskRelaxed=true` ne pose pas `DISALLOW_DEBUGGING_FEATURES` / `DISALLOW_CONFIG_DATE_TIME` (jamais en production ; en production elles ne sont levées que pendant une maintenance bornée).
+Build de recette : `-Pvds.kioskRelaxed=true` ne pose pas `DISALLOW_CONFIG_DATE_TIME` (jamais en production ; en production elle n'est levée que pendant une maintenance bornée). `DISALLOW_DEBUGGING_FEATURES` n'est plus posée : l'ADB réseau reste allumé (alimentation par ADB).
