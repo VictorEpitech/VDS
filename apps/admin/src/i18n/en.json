@@ -855,13 +855,7 @@
       "online_timeout": "The TV did not connect to the server in time. Check its network, then start again.",
       "timeout": "The installation took too long. Try again.",
       "cancelled": "Installation cancelled.",
-      "unknown": "The installation failed. Try again or use the manual pairing code.",
-      "adb_open": "Without full lockdown, the TV's ADB port stays open on the network: only use soft kiosk on a screen that is not public.",
-      "adb_closed": "ADB port closed again on the TV."
-    },
-    "non_public": {
-      "label": "This screen is not accessible to the public",
-      "required": "Confirm that this screen is not accessible to the public to continue."
+      "unknown": "The installation failed. Try again or use the manual pairing code."
     }
   }
 }

@@ -39,17 +39,11 @@ class ProvisionCreate(BaseModel):
     device_owner: Literal["try", "skip"] = "try"
     soft_kiosk_fallback: bool = True
     reprovision: bool = False
-    non_public_ack: bool = False  # confirmation « écran non public », audité avec l'acteur
 
 
 class ProvisionRetry(BaseModel):
     model_config = ConfigDict(extra="forbid")
     from_step: ProvisionStepId | None = None
-
-
-class NonPublicAck(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    confirmed: Literal[True]  # seule la confirmation est acceptée ; pas de retrait
 
 
 class StepOut(BaseModel):
@@ -81,6 +75,4 @@ class ProvisionOut(BaseModel):
     ticket_expires_at: datetime | None
     created_at: datetime
     finished_at: datetime | None
-    non_public_ack: bool  # écran déclaré non public par un admin (autorise la coupure d'ADB)
-    non_public_ack_at: datetime | None
     pairing_code_fallback: bool  # le code d'appairage manuel reste utilisable tant que non appairé

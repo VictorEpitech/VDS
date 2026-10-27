@@ -7,11 +7,12 @@ from typing import Literal
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+_ORIGIN_RE = re.compile(r"^https?://([A-Za-z0-9.\-]+|\[[0-9a-fA-F:]+\])(:\d{1,5})?$")
 _BASE_RE = re.compile(r"^(/[a-z0-9_-]+)+$")
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="VDS_", extra="ignore")
+    model_config = SettingsConfigDict(env_prefix="VDS_", extra="ignore", hide_input_in_errors=True)
 
     base_path: str = "/"
     database_url: str = "postgresql+asyncpg://vds:vds@db:5432/vds"
@@ -31,6 +32,15 @@ class Settings(BaseSettings):
     apk_dir: Path = Path("/opt/vds/apk")  # VDS_APK_DIR : apk.json + fichiers APK signés par la CI
     provision_lan_check: bool = True  # VDS_PROVISION_LAN_CHECK
     secret_key: str | None = None  # VDS_SECRET_KEY : dérive les clés du service LAN de cache
+
+    @field_validator("public_origin")
+    @classmethod
+    def _public_origin_shape(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            return None
+        if value is not None and not _ORIGIN_RE.match(value):
+            raise ValueError("errors.public_origin_invalid")  # M8 : origine nue, sans chemin ni /
+        return value
 
     @field_validator("secret_key")
     @classmethod

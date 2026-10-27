@@ -57,9 +57,5 @@ class ScreenProvision(Base):
     created_by: Mapped[UUID | None] = mapped_column(
         ForeignKey("user_account.id", ondelete="SET NULL")
     )
-    non_public_ack_at: Mapped[datetime | None] = tstz(nullable=True, now=False)
-    non_public_ack_by: Mapped[UUID | None] = mapped_column(
-        ForeignKey("user_account.id", ondelete="SET NULL")
-    )
     created_at: Mapped[datetime] = tstz()
     finished_at: Mapped[datetime | None] = tstz(nullable=True, now=False)

@@ -152,6 +152,8 @@ class PowerDetectArgs(_M):
 class ScreenProvisionArgs(_M):
     """Commande fermée `screen.provision` (1.3). Le ticket n'est jamais journalisé."""
 
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)  # M6
+
     provision_id: UUID
     platform: str = Field(pattern=r"^[a-z][a-z0-9_-]*$")
     address: str
@@ -162,7 +164,6 @@ class ScreenProvisionArgs(_M):
     device_owner: Literal["try", "skip"] = "try"
     soft_kiosk_fallback: bool = True
     from_step: ProvisionStepId | None = None
-    non_public_ack: bool = False
 
     @field_validator("address")
     @classmethod

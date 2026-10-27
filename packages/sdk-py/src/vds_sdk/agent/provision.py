@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import ClassVar, Literal, Protocol, runtime_checkable
 from uuid import UUID
 
-from pydantic import AnyHttpUrl, BaseModel, Field, SecretStr, field_validator
+from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, SecretStr, field_validator
 
 from ..errors import ContractError
 
@@ -67,6 +67,7 @@ class ApkRef(BaseModel):
 
 
 class ProvisionRequest(BaseModel):
+    model_config = ConfigDict(hide_input_in_errors=True)  # M6 : ticket jamais dans une erreur
     provision_id: UUID
     screen_id: UUID
     platform: str = Field(pattern=r"^[a-z][a-z0-9_-]*$")
@@ -78,9 +79,6 @@ class ProvisionRequest(BaseModel):
     device_owner: Literal["try", "skip"] = "try"
     soft_kiosk_fallback: bool = True
     from_step: ProvisionStepId | None = None
-    # Confirmation opérateur « écran non public » (revue I3) : autorise la coupure finale du
-    # débogage réseau d'un kiosque doux. Posée par le noyau, jamais déduite par l'agent.
-    non_public_ack: bool = False
 
     @field_validator("address")
     @classmethod
@@ -106,7 +104,7 @@ class ProvisionOutcome(BaseModel):
     ok: bool
     kiosk: Literal["device_owner", "soft", "none"]
     installed_version_code: int | None = None
-    code: str | None = None
+    code: str | None = Field(default=None, pattern=r"^[a-z0-9_.]{1,96}$")
 
 
 class ApkSource(Protocol):

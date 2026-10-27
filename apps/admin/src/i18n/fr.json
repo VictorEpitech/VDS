@@ -855,13 +855,7 @@
       "online_timeout": "La TV ne s'est pas connectée au serveur à temps. Vérifiez son réseau, puis relancez l'installation.",
       "timeout": "L'installation a pris trop de temps. Réessayez.",
       "cancelled": "Installation annulée.",
-      "unknown": "L'installation a échoué. Réessayez ou utilisez le code d'appairage manuel.",
-      "adb_open": "Sans verrouillage complet, le port ADB de la TV reste ouvert sur le réseau : n'utilisez le kiosque doux que sur un écran non public.",
-      "adb_closed": "Port ADB refermé sur la TV."
-    },
-    "non_public": {
-      "label": "Cet écran n'est pas accessible au public",
-      "required": "Confirmez que cet écran n'est pas accessible au public pour continuer."
+      "unknown": "L'installation a échoué. Réessayez ou utilisez le code d'appairage manuel."
     }
   }
 }

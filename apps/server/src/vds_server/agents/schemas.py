@@ -4,7 +4,9 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from vds_server.provisioning.tickets import ARGS_KEY
 
 AgentStatus = Literal["online", "offline", "unseen", "revoked"]
 
@@ -57,3 +59,9 @@ class CommandOut(BaseModel):
     sent_at: datetime | None
     done_at: datetime | None
     expires_at: datetime
+
+    @field_validator("args")
+    @classmethod
+    def _mask_ticket(cls, v: dict[str, Any]) -> dict[str, Any]:
+        """M5 : le ticket chiffré n'a rien à faire dans la liste des commandes."""
+        return {k: ("***" if k == ARGS_KEY else x) for k, x in v.items()}

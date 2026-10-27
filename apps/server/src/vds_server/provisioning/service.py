@@ -7,6 +7,7 @@ ticket est appairé et a envoyé son premier heartbeat.
 
 import ipaddress
 import logging
+import re
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from typing import Any, get_args
@@ -50,6 +51,9 @@ CMD_NAME = "screen.provision"
 
 # (id, version, plateformes) des modules site-agent actifs qui déclarent `provision.<plateforme>`
 ProvisionModules = Callable[[], list[tuple[str, str, frozenset[str]]]]
+
+
+_CODE_RE = re.compile(r"[a-z0-9_.]{1,96}")
 
 
 def _now() -> datetime:
@@ -166,8 +170,6 @@ def to_out(row: ScreenProvision) -> sc.ProvisionOut:
         ticket_expires_at=row.ticket_expires_at,
         created_at=row.created_at,
         finished_at=row.finished_at,
-        non_public_ack=row.non_public_ack_at is not None,
-        non_public_ack_at=row.non_public_ack_at,
         pairing_code_fallback=row.paired_at is None,
     )
 
@@ -308,9 +310,6 @@ class ProvisionService:
             apk_version_code=apk.version_code,
             created_by=self._actor.user_id,
         )
-        if body.non_public_ack:
-            row.non_public_ack_at, row.non_public_ack_by = _now(), self._actor.user_id
-            self._record_ack(row, screen_id)
         self._s.add(row)
         audit.record(
             self._s,
@@ -378,7 +377,6 @@ class ProvisionService:
             "device_owner": device_owner,
             "soft_kiosk_fallback": soft,
             "from_step": from_step,
-            "non_public_ack": row.non_public_ack_at is not None,
         }
         try:
             ScreenProvisionArgs.model_validate(args)
@@ -440,28 +438,6 @@ class ProvisionService:
             await self._s.rollback()
             raise ApiError("provision.session_active", 409) from exc
         await self._dispatch(row, apk, device_owner="try", soft=True, from_step=body.from_step)
-        return row
-
-    def _record_ack(self, row: ScreenProvision, screen_id: UUID) -> None:
-        audit.record(
-            self._s,
-            actor_kind="user",
-            actor_id=self._actor.actor_id,
-            action="screen.provision.non_public_acked",
-            target_type="screen",
-            target_id=str(screen_id),
-            details={"provision_id": str(row.id)},
-        )
-
-    async def ack_non_public(self, pid: UUID) -> ScreenProvision:
-        """Confirme « écran non public » : pris en compte à la prochaine émission (reprise)."""
-        row = await self._row(pid, lock=True)
-        if row.status == "cancelled":
-            raise ApiError("provision.not_ackable", 409)
-        if row.non_public_ack_at is None:
-            row.non_public_ack_at, row.non_public_ack_by = _now(), self._actor.user_id
-            self._record_ack(row, row.screen_id)
-            await self._s.commit()
         return row
 
     async def cancel(self, pid: UUID) -> ScreenProvision:
@@ -593,6 +569,8 @@ class ProvisionEvents:
         ):
             return
         code = p.get("code")
+        if not (isinstance(code, str) and _CODE_RE.fullmatch(code)):
+            code = None  # M4 : code de l'agent borné
         async with self._maker() as s:
             row = (
                 await s.execute(
@@ -606,7 +584,7 @@ class ProvisionEvents:
             steps = dict(row.steps or {})
             steps[step] = {
                 "status": status,
-                "code": code if isinstance(code, str) else None,
+                "code": code,
                 "at": _now().isoformat(),
             }
             row.steps = steps
@@ -647,6 +625,9 @@ class ProvisionEvents:
                     fail = (outcome.code if outcome else None) or code or "provision.failed"
                     events = await finish(s, row, "failed", fail)
             elif row.status == "done" and status == "ok":
-                row.outcome = data or row.outcome
+                try:
+                    row.outcome = ProvisionOutcome.model_validate(data).model_dump(mode="json")
+                except ValidationError:
+                    pass  # M4 : sortie invalide ignorée, la précédente est conservée
             await s.commit()
         await _publish(self._bus, events)

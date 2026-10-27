@@ -186,3 +186,11 @@ def test_startup_warning_http(caplog: pytest.LogCaptureFixture) -> None:
     with caplog.at_level("WARNING", logger="vds.security"):
         warn_if_insecure_http(Settings(public_origin="https://vds.test"))
     assert not caplog.text
+
+
+@pytest.mark.parametrize(
+    "bad", ["https://vds.test/", "https://vds.test/x", "ftp://vds.test", "https://a b"]
+)
+def test_public_origin_must_be_bare_origin(bad: str) -> None:
+    with pytest.raises(ValueError):
+        Settings(public_origin=bad)

@@ -25,8 +25,6 @@ interface Row {
   restart: number;
   from: Step | null;
   cancelled: boolean;
-  ack: boolean;
-  ackAt: string | null;
 }
 
 const isPrivate = (a: string) => /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(a) || /^f[cd][0-9a-f]{2}:/i.test(a);
@@ -86,9 +84,7 @@ export function createProvisionMock(world: { sites: { id: string }[]; screens: {
       status,
       code,
       steps: status === "failed" ? steps.filter((s) => s.status !== "pending") : steps,
-      outcome: ended ? { ok: status === "done", kiosk, installed_version_code: 7, code: status === "done" && kiosk === "soft" ? "provision.android.adb_open" : code } : null,
-      non_public_ack: r.ack,
-      non_public_ack_at: r.ackAt,
+      outcome: ended ? { ok: status === "done", kiosk, installed_version_code: 7, code } : null,
       apk_version_code: 7,
       pairing_code_fallback: status === "failed",
       ticket_expires_at: new Date(r.created + 30 * 60_000).toISOString(),
@@ -134,22 +130,15 @@ export function createProvisionMock(world: { sites: { id: string }[]; screens: {
       if (!isPrivate(address)) return fail(422, "provision.address_not_lan"), true;
       for (const r of rows.values()) if (r.screen_id === screen.id && !r.cancelled && !["done", "failed"].includes(String(view(r).status))) return fail(409, "provision.session_active"), true;
       const now = Date.now();
-      const row: Row = { id: randomUUID(), screen_id: screen.id, site_id: screen.site_id, address, port: Number(body.port ?? 5555), created: now, restart: now, from: null, cancelled: false, ack: body.non_public_ack === true, ackAt: body.non_public_ack === true ? new Date(now).toISOString() : null };
+      const row: Row = { id: randomUUID(), screen_id: screen.id, site_id: screen.site_id, address, port: Number(body.port ?? 5555), created: now, restart: now, from: null, cancelled: false };
       rows.set(row.id, row);
       return send(201, view(row)), true;
     }
-    const one = /^\/provisioning\/([^/]+)(\/retry|\/cancel|\/non-public-ack)?$/.exec(route);
+    const one = /^\/provisioning\/([^/]+)(\/retry|\/cancel)?$/.exec(route);
     if (one) {
       const row = rows.get(one[1]!);
       if (!row) return fail(404, "provision.not_found"), true;
       if (one[2] === undefined && method === "GET") return send(200, view(row)), true;
-      if (one[2] === "/non-public-ack" && method === "POST") {
-        const body = await json();
-        if (body.confirmed !== true) return fail(422, "provision.ack_required"), true;
-        row.ack = true;
-        row.ackAt = new Date().toISOString();
-        return send(200, view(row)), true;
-      }
       if (one[2] === "/retry" && method === "POST") {
         if (view(row).status !== "failed") return fail(409, "provision.not_retryable"), true;
         const body = await json();
