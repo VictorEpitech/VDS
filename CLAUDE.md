@@ -22,7 +22,7 @@ Spécifications détaillées (à lire avant toute tâche de conception) :
 3. **Un seul format de module** (manifeste + schéma JSON de config), qu'il soit intégré ou installé à chaud. Voir le skill `vds-module`.
 4. **Configuration héritée** organisation → site → groupe → écran. Chaque niveau ne stocke que ses surcharges ; l'API renvoie la valeur résolue **et sa provenance**.
 5. **Le player est autonome** : il reçoit une programmation déjà résolue (journée + lendemain), la met en cache et la joue hors ligne, y compris les rallumages programmés.
-6. **Kiosque obligatoire** : les écrans sont accessibles au public. Aucune voie de sortie du player, aucune info technique affichée au public.
+6. **Kiosque verrouillé par défaut, déverrouillable par un admin** : les écrans sont accessibles au public. Aucune voie de sortie du player pour le public, aucune info technique affichée au public ; seul un admin peut déverrouiller (action tracée).
 7. **L'agent de site n'ouvre aucun port entrant** : connexion sortante WebSocket TLS vers le serveur.
 8. **Interface FR/EN** : aucun libellé en dur dans le code UI. Voir le skill `vds-i18n`.
 9. **Charte V-Tech** pour toute UI : tokens MD3, pas d'ombres portées, police mono réservée aux données techniques. Voir le skill `vds-ui-charte`.
