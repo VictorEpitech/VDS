@@ -137,7 +137,7 @@ Toutes les commandes shell sont des constantes du module ; aucune chaîne venue 
 | `soft_kiosk` | si pas de Device Owner et `soft_kiosk_fallback` : `set-home-activity`, `appops SYSTEM_ALERT_WINDOW allow` | `soft_kiosk_failed` (non bloquant) |
 | `configure` | `settings put secure attentive_timeout -1` | non bloquant |
 | `inject` | `am start -n app.vds.player/.ProvisionActivity --es server_url <url> --es pairing_ticket <t>` | `inject_failed` |
-| `launch` | `am start -n app.vds.player/.MainActivity` | `launch_failed` |
+| `launch` | `am start -n app.vds.player/.MainActivity` (toujours exécuté, y compris en Device Owner) | `launch_failed` |
 
 Reprise : `from_step` (ex. après retrait des comptes, relancer à `device_owner`). Les étapes déjà `ok` d'une session ne sont pas rejouées sauf `inspect`.
 
@@ -192,7 +192,7 @@ CREATE UNIQUE INDEX ux_screen_provision_active ON screen_provision (screen_id)
 
 ## Admin (assistant)
 
-Écrans : 1. Nom + site + groupe (crée l'écran) · 2. Tutoriel (clés i18n du module : options développeur, débogage réseau, **cas compte Google : retirer comptes et profils avant, réajouter après**) · 3. Adresse IP (+ « Device Owner : essayer / passer ») · 4. Exécution : liste des étapes avec statut, `waiting_user` en évidence (« Acceptez l'invite sur la TV, cochez Toujours autoriser »), erreur lisible + action (Réessayer à cette étape, Annuler, Passer en kiosque doux) · 5. Attente « En ligne » puis succès ; sans Device Owner : bandeau **kiosque doux** (limites : Accueil/Assistant non bloquables, à réserver aux écrans non publics) + lien procédure Device Owner. Repli permanent : afficher le code d'appairage manuel.
+Écrans : 1. Nom + site + groupe (crée l'écran) · 2. Tutoriel (clés i18n du module : options développeur, débogage réseau, **cas compte Google : retirer comptes et profils avant, réajouter après**) · 3. Adresse IP (+ « Device Owner : essayer / passer ») · 4. Exécution : liste des étapes avec statut, `waiting_user` en évidence (« Acceptez l'invite sur la TV, cochez Toujours autoriser »), erreur lisible + action (Réessayer à cette étape, Annuler, Passer en kiosque doux) · 5. Attente « En ligne » puis succès ; sans Device Owner : bandeau **kiosque doux** (limites : touches Accueil/Assistant non bloquables ; à réserver aux écrans non publics) + lien procédure Device Owner. Repli permanent : afficher le code d'appairage manuel.
 Libellés FR/EN, charte V-Tech, aucun libellé en dur.
 
 ## Risques
@@ -201,7 +201,7 @@ Libellés FR/EN, charte V-Tech, aucun libellé en dur.
 - Firmware imposant une réinitialisation pour retirer le compte principal ⇒ Device Owner impossible sans reset ; l'assistant le dit et propose le kiosque doux.
 - ADB TCP en clair sur le LAN : ticket interceptable ⇒ usage unique, 10 min, lié à l'écran, invalidé à la consommation. Mitigations serveur (revue I5) : fenêtre `online_timeout` réduite à 5 min après l'appairage ; un client d'adresse privée (serveur sur le LAN du site) doit avoir l'IP de la TV de la session, sinon 401 sans consommer le ticket (désactivable : `VDS_PROVISION_LAN_CHECK=false`, utile derrière un NAT Docker). **Limite acceptée** : serveur distant, le client est vu avec l'IP publique de sortie du site, non comparable à l'adresse LAN ; un poste du même LAN usurpant la TV (ARP) reste possible. Recours : segmenter le réseau des écrans, vérifier le modèle appairé dans l'admin.
 - `screen.provision` est réservée au noyau : la route générique des commandes d'agent la refuse (422 `agents.command_internal`, revue I1).
-- Device Owner pose `DISALLOW_DEBUGGING_FEATURES` : après provisioning, ADB coupé ⇒ `power.adb` indisponible hors maintenance. À arbitrer : soit l'app autorise le débogage réseau en Device Owner (risque kiosque), soit l'alimentation passe par `power.cec`/natif. Défaut sûr : on garde la restriction, cascade sans ADB.
+- **Décision (27 octobre 2026)** : en Device Owner, l'ADB réseau reste allumé. L'app ne pose plus `DISALLOW_DEBUGGING_FEATURES` (et la lève si besoin) ; le module ne coupe plus adbd ; `launch` s'exécute toujours ; l'alimentation par ADB reste utilisable. Conséquence : le port 5555 de la TV est joignable depuis le LAN (invite RSA affichée sur l'écran si un poste tente de s'y connecter). Mitigation : VLAN des écrans. Plus de confirmation « écran non public » ni de `adb_open`/`adb_closed`.
 
 ## Note d'implémentation serveur (P2)
 

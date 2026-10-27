@@ -23,7 +23,7 @@ Automatisé (déjà vert) : `make lint`, `make test`, `make e2e`, `make api-type
 - [ ] Redémarrer la TV : l'app revient seule, verrouillée. Tuer l'app (`adb shell am force-stop app.vds.player`) : relance verrouillée.
 - [ ] Aucune URL, code ni info technique visible du public à aucun moment.
 - [ ] `adb shell dumpsys activity activities | grep -i lock` : lock task actif.
-- [ ] Débogage ADB réseau et changement de date refusés dans les Réglages (restrictions Device Owner). `adb connect` impossible après reverrouillage (procédure technicien : maintenance d'abord).
+- [ ] Changement de date refusé dans les Réglages (restriction Device Owner). Le débogage ADB réseau n'est plus restreint (décision du 27 octobre 2026) : `adb connect` fonctionne après reverrouillage.
 
 ## 3. Kiosque doux (sans Device Owner)
 

@@ -41,7 +41,7 @@ Rebuild docker (code serveur, admin et module `power.adb` 0.2.0 changés) :
 - [ ] Étapes dans l'ordre : connexion, autorisation, vérification, téléchargement, contrôle du fichier, installation, verrouillage complet (échec attendu : comptes présents), kiosque doux, réglage de la veille, transmission de l'appairage, lancement.
 - [ ] Erreur « comptes présents » lisible ; choix « Continuer en kiosque doux » proposé ; bandeau kiosque doux avec la procédure de verrouillage complet.
 - [ ] L'app démarre seule, sans saisie de code ni d'URL, l'écran passe « En ligne » ; l'assistant affiche « validée ».
-- [ ] Kiosque doux : l'assistant avertit que le port ADB reste ouvert (`adb_open`) et demande la confirmation « écran non public » ; sans case cochée, pas de coupure. Cochée : étape finale après lancement, message `adb_closed`, `adb connect` échoue ensuite (alimentation `power.adb` alors indisponible : attendu). L'action est auditée (acteur).
+- [ ] Kiosque doux : aucune case de confirmation à cocher ; l'ADB réseau reste allumé (décision assumée), `adb connect` fonctionne toujours après l'installation.
 - [ ] Écran admin : enforcement `soft`, alerte « Kiosque doux » (demandé `locked`, appliqué `soft`).
 - [ ] `adb shell settings get secure attentive_timeout` = `-1` ; `adb shell cmd package resolve-activity -a android.intent.action.MAIN -c android.intent.category.HOME` pointe l'app.
 - [ ] Alimentation : « Éteindre » puis « Allumer » depuis l'admin via `power.adb` (verified), toujours fonctionnels après l'installation.
@@ -52,6 +52,7 @@ Rebuild docker (code serveur, admin et module `power.adb` 0.2.0 changés) :
 - [ ] Retirer le compte Google puis les profils supplémentaires (`adb shell dumpsys account` : aucun compte ; `adb shell pm list users` : un seul utilisateur). Noter si une réinitialisation d'usine est exigée par la TCL.
 - [ ] Assistant, Device Owner « Essayer ». Étape « Verrouillage complet » : OK (`dpm set-device-owner app.vds.player/.AdminReceiver` accepté).
 - [ ] Bandeau « Verrouillage complet actif » ; admin : « Verrouillé », enforcement `lock_task`, aucune alerte kiosque doux.
+- [ ] Device Owner : l'étape « Lancement » est `ok` (plus de `launch_by_app`), `adb connect <ip>:5555` fonctionne encore après l'installation et « Éteindre » / « Allumer » via `power.adb` marchent (ADB réseau laissé allumé : décision assumée).
 - [ ] Réajouter le compte Google après coup : Play Store s'ouvre, le kiosque tient.
 - [ ] Reprise : provoquer un échec (débrancher le réseau pendant le téléchargement) puis « Réessayer à cette étape » reprend sans tout refaire.
 - [ ] Device Owner « Passer » : kiosque doux sans tenter `dpm`.
@@ -75,7 +76,8 @@ Rebuild docker (code serveur, admin et module `power.adb` 0.2.0 changés) :
 ## 6. Limites connues
 
 - L'ADB réseau et le TLS : la TV doit accepter ADB en clair (port 5555) sur le LAN ; une TV en `stls`/TLS-only affiche « tls_required » (non pris en charge, voir l'erreur dédiée).
-- Un compte Google (ou un compte constructeur caché) ou un second profil Android bloque `dpm set-device-owner` : kiosque doux seulement (Accueil/Assistant/source ouvrent d'autres écrans puis l'app revient ; les touches ne sont pas bloquées). À réserver aux écrans non publics.
+- Un compte Google (ou un compte constructeur caché) ou un second profil Android bloque `dpm set-device-owner` : kiosque doux seulement, ADB réseau resté allumé (Accueil/Assistant/source ouvrent d'autres écrans puis l'app revient ; les touches ne sont pas bloquées). À réserver aux écrans non publics (touches).
+- ADB réseau volontairement laissé allumé, y compris en Device Owner : isoler les écrans (VLAN).
 - L'invite RSA doit être acceptée avec « Toujours autoriser » ; une OTA peut désactiver le débogage réseau ou reprendre le rôle HOME (à revérifier).
 - Pas de mise à jour silencieuse de l'APK sans Device Owner ; Play Protect peut avertir pour une APK hors Play Store (clé de signature stable).
 - Contrôle LAN inopérant si le serveur est distant (IP publique du site) ; ARP-spoof de la TV possible : segmenter le réseau des écrans.

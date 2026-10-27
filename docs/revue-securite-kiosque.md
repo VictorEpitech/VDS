@@ -10,7 +10,7 @@ Périmètre : commits `1660866`..`5eaa6d4` (1660866, 08079d6, 6988f59, 324c136, 
 | I1 recul d'horloge hors ligne | Corrigé | échéance absolue `elapsedRealtime` jamais allongée ; maintenance refusée si l'horloge retarde de plus de 5 min sur `server_time` ; `DISALLOW_CONFIG_DATE_TIME` + date auto. Reste : après redémarrage de la TV l'ancre est perdue (borne serveur+240 min). |
 | I2 JS tierce peut déverrouiller | Corrigé | `claimKiosk` (une fois, avant tout content-type, retiré de `window.VdsNative`) + jeton aléatoire ; `unlocked` = bail natif de 15 min. Reporté : isolation des content-types tiers en iframe sandbox. |
 | I3 heartbeat = mode demandé | Corrigé | le natif répond le mode appliqué (`kiosk.applied`) ; `ok:false` = non confirmé, `soft` (`kiosk.mismatch` côté player). |
-| I4 ADB et options développeur | Corrigé (Device Owner) | `DISALLOW_DEBUGGING_FEATURES`, `SAFE_BOOT`, `FACTORY_RESET`, `CONFIG_DATE_TIME`, levées seulement en maintenance. Sans Device Owner : non applicable. |
+| I4 ADB et options développeur | Corrigé en partie, risque assumé | `SAFE_BOOT`, `FACTORY_RESET`, `CONFIG_DATE_TIME` (levée en maintenance). `DISALLOW_DEBUGGING_FEATURES` n'est plus posée : ADB LAN ouvert accepté (décision du 27 octobre 2026, voir `docs/revue-securite-provision-android.md` I2/I3). Sans Device Owner : non applicable. |
 | M1 audit | Corrigé | motif optionnel, valeur résolue auditée, déplacement d'écran audité. |
 | M2 motif non normalisé | Corrigé | `clean_reason`. Reporté : neutralisation `=+-@` à l'export CSV (aucun export aujourd'hui). |
 | M3 `enforce` renvoie `LOCK_TASK` à tort | Corrigé | voir B1. |
@@ -86,7 +86,7 @@ Périmètre : commits `1660866`..`5eaa6d4` (1660866, 08079d6, 6988f59, 324c136, 
 
 - **Où** : `AndroidKiosk.kt` (aucune `addUserRestriction`).
 - **Scénario** : pendant une maintenance, une personne active le débogage réseau dans les Réglages. Après le reverrouillage, n'importe qui sur le LAN peut lancer `adb connect`, puis `am task lock stop`, réécrire l'URL via `ProvisionActivity` (`DUMP`, accordée au shell), ou désinstaller des apps.
-- **Correctif** : avec Device Owner, poser `DISALLOW_DEBUGGING_FEATURES`, `DISALLOW_SAFE_BOOT`, `DISALLOW_FACTORY_RESET` et `DISALLOW_CONFIG_DATE_TIME`. Les lever seulement pendant `maintenance` si le besoin est réel, sinon les garder en permanence. Documenter la procédure ADB du technicien.
+- **Note (27 octobre 2026)** : la partie `DISALLOW_DEBUGGING_FEATURES` est abandonnée par décision (ADB LAN ouvert accepté pour l'alimentation par ADB). Correctif d'origine : avec Device Owner, poser `DISALLOW_DEBUGGING_FEATURES`, `DISALLOW_SAFE_BOOT`, `DISALLOW_FACTORY_RESET` et `DISALLOW_CONFIG_DATE_TIME`. Les lever seulement pendant `maintenance` si le besoin est réel, sinon les garder en permanence. Documenter la procédure ADB du technicien.
 
 ## Mineur
 
