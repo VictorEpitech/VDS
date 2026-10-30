@@ -1043,6 +1043,73 @@
     "open": "Open",
     "sites": "Sites, groups and site agents.",
     "power": "Power-on windows, exceptions and power drivers.",
-    "notifications": "E-mail alerts."
+    "notifications": "E-mail alerts.",
+    "help": {
+      "title": "Help",
+      "onboarding": "Getting started guides you through setting up your fleet."
+    }
+  },
+  "onboarding": {
+    "title": "Getting started",
+    "collapse": "Collapse",
+    "expand": "Expand",
+    "progress": "{completed} of {total} steps completed",
+    "done": "Well done, your setup is ready. This card is now hidden; you can show it again in More, under Help.",
+    "optional": "optional",
+    "next": "Next step",
+    "skip": "Skip this step",
+    "reopen": "Reopen this step",
+    "reopen_card": "Show Getting started",
+    "status": {
+      "todo": "To do",
+      "in_progress": "In progress",
+      "done": "Done",
+      "skipped": "Skipped"
+    },
+    "count": {
+      "site": "{count, plural, one {# site} other {# sites}}",
+      "screen": "{count, plural, one {# screen} other {# screens}}",
+      "media": "{count, plural, one {# media item} other {# media items}}",
+      "playlist": "{count, plural, one {# playlist} other {# playlists}}",
+      "schedule": "{count, plural, one {# schedule} other {# schedules}}",
+      "power": "{count, plural, one {# setting} other {# settings}}"
+    },
+    "step": {
+      "account": {
+        "title": "Create your account",
+        "hint": "Administrator account created and personal password chosen.",
+        "action": "View my account"
+      },
+      "site": {
+        "title": "Create a site",
+        "hint": "A site groups the screens of one place.",
+        "action": "Create a site"
+      },
+      "screen": {
+        "title": "Add a first screen",
+        "hint": "Enter the code shown on the TV.",
+        "action": "Add a screen"
+      },
+      "media": {
+        "title": "Import content",
+        "hint": "An image, video or web page to show.",
+        "action": "Import content"
+      },
+      "playlist": {
+        "title": "Create a playlist",
+        "hint": "A sequence of content with durations.",
+        "action": "Create a playlist"
+      },
+      "schedule": {
+        "title": "Schedule playback",
+        "hint": "Choose what to show, where and when.",
+        "action": "Schedule"
+      },
+      "power": {
+        "title": "Set power on and off times",
+        "hint": "When screens switch on and off.",
+        "action": "Set power"
+      }
+    }
   }
 }

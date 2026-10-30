@@ -1120,3 +1120,53 @@ fieldset.field > legend {
   align-items: center;
   gap: var(--vds-space-1) var(--vds-space-3);
 }
+
+.onboarding {
+  margin-block-end: var(--vds-space-4);
+}
+
+.onboarding .page-head {
+  margin-block-end: var(--vds-space-1);
+}
+
+.onboarding-steps {
+  display: grid;
+  gap: var(--vds-space-3);
+  margin-block-start: var(--vds-space-3);
+}
+
+.onboarding-steps[hidden] {
+  display: none;
+}
+
+.onboarding-step {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vds-space-3);
+  padding: var(--vds-space-3) var(--vds-space-4);
+  border: 1px solid var(--vds-outline-variant);
+  border-radius: var(--vds-radius-md);
+  background: var(--vds-surface);
+}
+
+.onboarding-step[data-next="true"] {
+  border: 2px solid var(--vds-primary);
+}
+
+.onboarding-step h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vds-space-2);
+  margin: 0 0 var(--vds-space-1);
+}
+
+.onboarding-step .badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vds-space-2);
+  margin-block-start: var(--vds-space-2);
+}

@@ -1,5 +1,7 @@
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useSession } from "../auth/session";
+import { ReopenOnboarding } from "../features/onboarding/OnboardingCard";
 import { Icon, type IconName } from "../components/Icon";
 
 const ENTRIES: { to: string; icon: IconName; key: string }[] = [
@@ -11,6 +13,8 @@ const ENTRIES: { to: string; icon: IconName; key: string }[] = [
 /** Entrée « Plus » : réglages (sites et agents, alimentation, notifications). */
 export function More() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const session = useSession();
   return (
     <>
       <h1>{t("more.title")}</h1>
@@ -31,6 +35,16 @@ export function More() {
           </li>
         ))}
       </ul>
+      {session.data?.role === "admin" ? (
+        <section className="card section" aria-labelledby="more-help">
+          <h2 id="more-help">
+            <Icon name="home" />
+            {t("more.help.title")}
+          </h2>
+          <p className="meta">{t("more.help.onboarding")}</p>
+          <ReopenOnboarding onDone={() => navigate("/", { state: { onboardingReopened: true } })} />
+        </section>
+      ) : null}
     </>
   );
 }

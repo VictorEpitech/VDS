@@ -8,13 +8,29 @@ const SITE = { id: "10000000-0000-4000-8000-000000000001", name: "Siège", slug:
 const dev = (presence: string) => ({ presence, last_seen_at: null });
 const scr = (n: number, device: unknown) => ({ id: `3000000${n}-0000-4000-8000-000000000001`, site_id: SITE.id, group_id: null, name: `E${n}`, orientation: "landscape", archived_at: null, device });
 
+const FLEET = {
+  site_id: null,
+  generated_at: "2026-10-30T09:12:00Z",
+  screens: { total: 14, by_status: { online: 9, offline: 2, unseen: 1 } },
+  to_handle: { screens: 4, by_reason: { offline: 2 } },
+  incidents: { open: 0, unacknowledged: 0, by_severity: {}, by_kind: {} },
+  agents: { total: 0, online: 0, offline: 0 },
+};
+const ONB = {
+  steps: [],
+  progress: { completed: 0, total: 6 },
+  next_step: null,
+  complete: false,
+  card: { hidden: false, hidden_at: null },
+};
+
 describe.each(["", "/espace/affichage"])("Accueil et fil d'Ariane, base « %s »", (b) => {
-  it("compteurs depuis les API existantes, lien « à traiter » vers le filtre", async () => {
+  it("compteurs depuis /fleet/summary, lien « à traiter » vers le filtre", async () => {
     mockApi(
       {
         "GET /sites": [SITE],
-        "GET /screens": [scr(1, dev("online")), scr(2, dev("offline")), scr(3, null)],
-        "GET /incidents": [],
+        "GET /fleet/summary": FLEET,
+        "GET /onboarding": { ...ONB, card: { hidden: true, hidden_at: "x" } },
         "GET /media": [{ id: "m1" }],
         "GET /playlists": [],
         "GET /schedules": [],
@@ -23,13 +39,14 @@ describe.each(["", "/espace/affichage"])("Accueil et fil d'Ariane, base « %s »
     );
     await renderRoutes(routes, "/", b);
     const card = (await screen.findByRole("heading", { name: "À traiter" })).closest("section")!;
-    expect(await within(card).findByText("1")).toBeInTheDocument();
+    expect(await within(card).findByText("4")).toBeInTheDocument();
     expect(within(card).getByRole("link", { name: "Voir ce qui est à traiter" })).toHaveAttribute("href", `${b}/screens?filter=issues`);
-    expect(screen.getByText("1 en ligne")).toBeInTheDocument();
+    expect(screen.getByText("9 en ligne")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Premiers pas" })).toBeNull();
   });
 
   it("Accueil sans écran : état vide avec action", async () => {
-    mockApi({ "GET /sites": [], "GET /screens": [], "GET /incidents": [], "GET /media": [], "GET /playlists": [], "GET /schedules": [] }, b);
+    mockApi({ "GET /sites": [], "GET /fleet/summary": { ...FLEET, screens: { total: 0, by_status: {} }, to_handle: { screens: 0, by_reason: {} } }, "GET /onboarding": ONB, "GET /media": [], "GET /playlists": [], "GET /schedules": [] }, b);
     await renderRoutes(routes, "/", b);
     expect(await screen.findByText(/Aucun écran pour l'instant/)).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Ajouter un écran" })[0]).toHaveAttribute("href", `${b}/screens/add`);

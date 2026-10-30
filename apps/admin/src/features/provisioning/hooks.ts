@@ -8,8 +8,8 @@ type S = components["schemas"];
 export type Capabilities = S["vds_server__provisioning__schemas__CapabilitiesOut"];
 export type Provision = S["ProvisionOut"];
 export type ProvisionCreate = S["ProvisionCreate"];
-export type StepId = S["StepOut"]["step"];
-export type StepStatus = S["StepOut"]["status"];
+export type StepId = S["vds_server__provisioning__schemas__StepOut"]["step"];
+export type StepStatus = S["vds_server__provisioning__schemas__StepOut"]["status"];
 
 /** Ordre des étapes de l'assistant (contrat vds-core 1.3.0). */
 export const STEP_ORDER: readonly StepId[] = ["connect", "authorize", "inspect", "download", "verify", "install", "device_owner", "soft_kiosk", "configure", "inject", "launch"];

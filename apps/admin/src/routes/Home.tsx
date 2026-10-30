@@ -5,9 +5,9 @@ import { Link } from "react-router-dom";
 import { Empty, QueryStatus } from "../components/feedback";
 import { Icon, type IconName } from "../components/Icon";
 import { StatusBadge, type ScreenState } from "../components/StatusBadge";
-import { displayState } from "../features/supervision/status";
+import { OnboardingCard } from "../features/onboarding/OnboardingCard";
 import { useAppUrl } from "../lib/runtime-config";
-import { useIncidents, useMedia, usePlaylists, useSchedules, useScreens, useSites } from "../lib/queries";
+import { useFleetSummary, useMedia, usePlaylists, useSchedules, useSites } from "../lib/queries";
 
 function Stat({ icon, title, value, to, action, children }: { icon: IconName; title: string; value: number | undefined; to: string; action: string; children?: React.ReactNode }) {
   const id = `stat-${to.replace(/\W+/g, "-")}`;
@@ -44,9 +44,8 @@ export function Home() {
     retry: false,
     refetchInterval: 30_000,
   });
-  const screens = useScreens({ refetchInterval: 30_000 });
+  const summary = useFleetSummary({ refetchInterval: 30_000 });
   const sites = useSites();
-  const incidents = useIncidents("open");
   const media = useMedia();
   const playlists = usePlaylists();
   const schedules = useSchedules();
@@ -57,13 +56,11 @@ export function Home() {
       ? { state: "offline", label: t("home.server.offline") }
       : { state: "online", label: t("home.server.online") };
 
-  const active = (screens.data ?? []).filter((s) => !s.archived_at);
-  const now = new Date();
-  const count = (state: string) => active.filter((s) => displayState(s, undefined, incidents.data ?? [], now) === state).length;
-  const online = count("online");
-  const waiting = count("pairing");
-  const toHandle = count("offline") + count("power_failed");
-  const noScreens = screens.isSuccess && active.length === 0;
+  const total = summary.data?.screens.total ?? 0;
+  const online = summary.data?.screens.by_status["online"] ?? 0;
+  const waiting = summary.data?.screens.by_status["unseen"] ?? 0;
+  const toHandle = summary.data?.to_handle.screens ?? 0;
+  const noScreens = summary.isSuccess && total === 0;
 
   return (
     <>
@@ -72,7 +69,8 @@ export function Home() {
         <StatusBadge state={server.state} label={server.label} />
       </div>
       <p className="lead">{t("home.intro")}</p>
-      <QueryStatus query={screens} />
+      <OnboardingCard />
+      <QueryStatus query={summary} />
       {noScreens ? (
         <Empty
           icon="screen"
@@ -87,8 +85,8 @@ export function Home() {
         </Empty>
       ) : null}
       <div className="cards">
-        <Stat icon="screen" title={t("home.stats.screens")} value={screens.isSuccess ? active.length : undefined} to="/screens" action={t("home.stats.screens_action")}>
-          {screens.isSuccess && active.length > 0 ? (
+        <Stat icon="screen" title={t("home.stats.screens")} value={summary.isSuccess ? total : undefined} to="/screens" action={t("home.stats.screens_action")}>
+          {summary.isSuccess && total > 0 ? (
             <ul className="badge-list">
               <li>
                 <StatusBadge state="online" label={t("home.stats.online", { count: online })} />
@@ -101,8 +99,8 @@ export function Home() {
             </ul>
           ) : null}
         </Stat>
-        <Stat icon="incident" title={t("home.stats.to_handle")} value={screens.isSuccess ? toHandle : undefined} to="/screens?filter=issues" action={t("home.stats.to_handle_action")}>
-          {screens.isSuccess ? (
+        <Stat icon="incident" title={t("home.stats.to_handle")} value={summary.isSuccess ? toHandle : undefined} to="/screens?filter=issues" action={t("home.stats.to_handle_action")}>
+          {summary.isSuccess ? (
             toHandle > 0 ? (
               <StatusBadge state="offline" label={t("home.stats.to_handle_some", { count: toHandle })} />
             ) : (

@@ -48,7 +48,17 @@ beforeEach(() => {
     "fetch",
     vi.fn((url: string) =>
       Promise.resolve(
-        new Response(JSON.stringify(url.endsWith("/me") ? ME : url.includes("/api/v1/") ? [] : { status: "ok" }), { status: 200 }),
+        new Response(JSON.stringify(
+            url.endsWith("/me")
+              ? ME
+              : url.endsWith("/onboarding")
+                ? { steps: [], progress: { completed: 0, total: 6 }, next_step: null, complete: false, card: { hidden: true, hidden_at: "x" } }
+                : url.endsWith("/fleet/summary")
+                  ? { screens: { total: 0, by_status: {} }, to_handle: { screens: 0, by_reason: {} } }
+                  : url.includes("/api/v1/")
+                    ? []
+                    : { status: "ok" },
+          ), { status: 200 }),
       ),
     ),
   );

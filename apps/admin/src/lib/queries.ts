@@ -12,6 +12,9 @@ export type PlaylistDetail = S["PlaylistDetailOut"];
 export type PlaylistItem = S["ItemOut"];
 export type Schedule = S["ScheduleOut"];
 export type Rule = S["RuleIn"];
+export type Onboarding = S["OnboardingOut"];
+export type OnboardingStep = Onboarding["steps"][number];
+export type FleetSummary = S["FleetSummaryOut"];
 
 export const keys = {
   screens: ["screens"] as const,
@@ -21,6 +24,8 @@ export const keys = {
   playlists: ["playlists"] as const,
   playlist: (id: string) => ["playlists", id] as const,
   schedules: ["schedules"] as const,
+  onboarding: ["onboarding"] as const,
+  fleetSummary: ["fleet", "summary"] as const,
 };
 
 export function useScreens(opts: { refetchInterval?: number } = {}) {
@@ -157,4 +162,15 @@ export function useConfig(level: string, id: string, ns: string, enabled = true)
     enabled: enabled && id !== "",
     queryFn: () => api.get<ConfigOut>(`/config/${level}/${id}/${ns}`),
   });
+}
+
+export function useOnboarding() {
+  const api = useApi();
+  return useQuery({ queryKey: keys.onboarding, queryFn: () => api.get<Onboarding>("/onboarding") });
+}
+
+/** Résumé de parc : source unique des compteurs de l'Accueil (même prédicat « à traiter » que le filtre de liste). */
+export function useFleetSummary(opts: { refetchInterval?: number } = {}) {
+  const api = useApi();
+  return useQuery({ queryKey: keys.fleetSummary, queryFn: () => api.get<FleetSummary>("/fleet/summary"), refetchInterval: opts.refetchInterval });
 }

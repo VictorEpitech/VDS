@@ -1043,6 +1043,73 @@
     "open": "Ouvrir",
     "sites": "Sites, groupes et agents de site.",
     "power": "Plages d'allumage, exceptions et pilotes d'alimentation.",
-    "notifications": "Alertes par e-mail."
+    "notifications": "Alertes par e-mail.",
+    "help": {
+      "title": "Aide",
+      "onboarding": "Les Premiers pas guident la mise en route de votre parc."
+    }
+  },
+  "onboarding": {
+    "title": "Premiers pas",
+    "collapse": "Replier",
+    "expand": "Déplier",
+    "progress": "{completed} sur {total} étapes terminées",
+    "done": "Bravo, votre installation est prête. Cette carte est maintenant masquée ; vous pouvez la rouvrir dans Plus, rubrique Aide.",
+    "optional": "facultatif",
+    "next": "Étape suivante",
+    "skip": "Ignorer cette étape",
+    "reopen": "Rouvrir cette étape",
+    "reopen_card": "Afficher les Premiers pas",
+    "status": {
+      "todo": "À faire",
+      "in_progress": "En cours",
+      "done": "Fait",
+      "skipped": "Ignorée"
+    },
+    "count": {
+      "site": "{count, plural, one {# site} other {# sites}}",
+      "screen": "{count, plural, one {# écran} other {# écrans}}",
+      "media": "{count, plural, one {# média} other {# médias}}",
+      "playlist": "{count, plural, one {# playlist} other {# playlists}}",
+      "schedule": "{count, plural, one {# programmation} other {# programmations}}",
+      "power": "{count, plural, one {# réglage} other {# réglages}}"
+    },
+    "step": {
+      "account": {
+        "title": "Créer votre compte",
+        "hint": "Compte administrateur créé et mot de passe personnel choisi.",
+        "action": "Voir mon compte"
+      },
+      "site": {
+        "title": "Créer un site",
+        "hint": "Un site regroupe les écrans d'un même lieu.",
+        "action": "Créer un site"
+      },
+      "screen": {
+        "title": "Ajouter un premier écran",
+        "hint": "Saisissez le code affiché sur la télévision.",
+        "action": "Ajouter un écran"
+      },
+      "media": {
+        "title": "Importer un contenu",
+        "hint": "Image, vidéo ou page web à afficher.",
+        "action": "Importer un contenu"
+      },
+      "playlist": {
+        "title": "Créer une playlist",
+        "hint": "Une suite de contenus avec leurs durées.",
+        "action": "Créer une playlist"
+      },
+      "schedule": {
+        "title": "Programmer la diffusion",
+        "hint": "Choisissez quoi diffuser, où et quand.",
+        "action": "Programmer"
+      },
+      "power": {
+        "title": "Régler l'allumage et l'extinction",
+        "hint": "Heures d'allumage des écrans.",
+        "action": "Régler l'alimentation"
+      }
+    }
   }
 }
