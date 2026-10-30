@@ -181,5 +181,5 @@ Arbitrages de Victor : image agent privée, Windows ignoré, recherche de TV au 
 Avancement (lot enrôlement) :
 - [x] E1 — contrat vds-core 1.4.0 (`vds_sdk.agent.enroll`, `CORE_EVENTS_1_4`, `test_compat_14.py`)
 - [x] E2 — serveur : migration 0008, service d'enrôlement, endpoints, limiteur, rotation, audit
-- [ ] E3 — serveur : canal local (`VDS_LOCAL_AGENT_DIR`, `GET /agent/local`, `POST /sites/{id}/agent/local`)
+- [x] E3 — serveur : canal local (`VDS_LOCAL_AGENT_DIR`, `GET /agent/local`, `POST /sites/{id}/agent/local`)
 - [ ] E4 à E8 — agent, livraison Compose, admin, E2E, revue sécurité

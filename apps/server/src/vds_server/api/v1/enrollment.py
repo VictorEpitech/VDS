@@ -10,6 +10,7 @@ from vds_sdk.agent.enroll import EnrollRequest
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
 from vds_server.core.runtime import Runtime
+from vds_server.db.models_power import SiteAgent
 from vds_server.enrollment import schemas as sc
 from vds_server.enrollment.service import EnrollmentService, to_out
 from vds_server.security.client_ip import client_ip
@@ -46,6 +47,32 @@ def build_router(rt: Runtime) -> APIRouter:
     async def revoke(site_id: UUID, enrollment_id: UUID, s: Svc, actor: Admin) -> Response:
         await s.revoke(site_id, enrollment_id, actor)
         return Response(status_code=204)
+
+    @router.get("/agent/local", response_model=sc.LocalAgentOut)
+    async def local_agent(session: Session, _a: Admin) -> sc.LocalAgentOut:
+        detected = await rt.local_channel.read_presence()
+        site_id = None
+        if detected is not None and detected.agent_id is not None:
+            agent = await session.get(SiteAgent, detected.agent_id)
+            if agent is not None and agent.revoked_at is None:
+                site_id = agent.site_id
+        return sc.LocalAgentOut(
+            available=rt.local_channel.available, detected=detected, site_id=site_id
+        )
+
+    @router.post("/sites/{site_id}/agent/local", response_model=sc.LocalActivated, status_code=202)
+    async def activate_local(site_id: UUID, s: Svc, actor: Admin) -> sc.LocalActivated:
+        if not rt.local_channel.available:
+            raise ApiError("agent.local.unavailable", 409)
+        if await rt.local_channel.read_presence() is None:
+            raise ApiError("agent.local.not_detected", 409)
+        row, code = await s.create(site_id, actor, channel="local")
+        try:
+            await rt.local_channel.write_handoff(code, row.id, row.expires_at)
+        except OSError as exc:
+            await s.revoke(site_id, row.id, actor)  # pas de code orphelin
+            raise ApiError("agent.local.write_failed", 502) from exc
+        return sc.LocalActivated(enrollment_id=row.id, expires_at=row.expires_at)
 
     @router.post("/agent/enroll", response_model=sc.EnrollOut)
     async def enroll(request: Request, body: EnrollRequest, s: Svc) -> sc.EnrollOut:

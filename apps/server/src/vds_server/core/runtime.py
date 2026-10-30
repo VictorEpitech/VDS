@@ -29,6 +29,7 @@ from vds_server.core.mux import ModuleMux
 from vds_server.db.base import make_engine, make_sessionmaker
 from vds_server.db.models import Organization
 from vds_server.diffusion.access import MediaAccess
+from vds_server.enrollment.local import LocalChannel
 from vds_server.events import CoreBus
 from vds_server.player.device_auth import DeviceAuth, bearer
 from vds_server.player.ratelimit import FailureLimiter
@@ -74,6 +75,7 @@ class Runtime:
         self.media_access.register_reader(self._agent_reader)
         self.agent_auth = AgentAuth(self.maker)  # jeton d'agent (WS, HTTP réservé à l'agent)
         self.agent_hub = AgentHub()
+        self.local_channel = LocalChannel(settings.local_agent_dir)
         self.enroll_limiter = FailureLimiter(limit=10, window_s=15 * 60)  # échecs par IP (/64)
         self.ticket_box = TicketBox(settings.secret_key) if settings.secret_key else None
         self.apk_catalog = ApkCatalog(settings.apk_dir)

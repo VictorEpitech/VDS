@@ -157,6 +157,16 @@ class EnrollmentService:
             target_id=str(row.id),
             details={"site_id": str(site_id), "channel": channel},
         )
+        if channel == "local":
+            audit.record(
+                self._s,
+                actor_kind="user",
+                actor_id=actor.actor_id,
+                action="agent.local.activated",
+                target_type="agent_enrollment",
+                target_id=str(row.id),
+                details={"site_id": str(site_id)},
+            )
         await self._s.commit()
         events.append(
             _event(

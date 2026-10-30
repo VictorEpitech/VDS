@@ -5,6 +5,7 @@ from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
+from vds_sdk.agent.enroll import LocalPresence
 
 EnrollmentState = Literal["pending", "consumed", "expired", "revoked"]
 Channel = Literal["remote", "local"]
@@ -52,3 +53,16 @@ class EnrollOut(BaseModel):
     site_id: UUID
     token: str
     ws_path: Literal["ws/agent"] = "ws/agent"
+
+
+class LocalAgentOut(BaseModel):
+    """Canal local : `detected` est une donnée non fiable de l'agent (affichage seul)."""
+
+    available: bool
+    detected: LocalPresence | None
+    site_id: UUID | None
+
+
+class LocalActivated(BaseModel):
+    enrollment_id: UUID
+    expires_at: datetime

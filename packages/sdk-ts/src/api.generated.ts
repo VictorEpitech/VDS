@@ -55,6 +55,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agent/local": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Local Agent */
+        get: operations["local_agent_api_v1_agent_local_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agent/plan": {
         parameters: {
             query?: never;
@@ -930,6 +947,23 @@ export interface paths {
         post?: never;
         /** Revoke */
         delete: operations["revoke_api_v1_sites__site_id__agent_enrollments__enrollment_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sites/{site_id}/agent/local": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Activate Local */
+        post: operations["activate_local_api_v1_sites__site_id__agent_local_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1871,6 +1905,62 @@ export interface components {
             x: number;
             /** Y */
             y: number;
+        };
+        /** LocalActivated */
+        LocalActivated: {
+            /**
+             * Enrollment Id
+             * Format: uuid
+             */
+            enrollment_id: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+        };
+        /**
+         * LocalAgentOut
+         * @description Canal local : `detected` est une donnée non fiable de l'agent (affichage seul).
+         */
+        LocalAgentOut: {
+            /** Available */
+            available: boolean;
+            detected: components["schemas"]["LocalPresence"] | null;
+            /** Site Id */
+            site_id: string | null;
+        };
+        /**
+         * LocalPresence
+         * @description Fichier `<dir>/presence.json`, écrit par l'agent (≤ 4 Kio) : donnée non fiable.
+         */
+        LocalPresence: {
+            /** Agent Id */
+            agent_id?: string | null;
+            /** Agent Version */
+            agent_version: string;
+            /** Error */
+            error?: string | null;
+            /** Hostname */
+            hostname: string;
+            /** Platform */
+            platform: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "dormant" | "enrolling" | "active" | "error";
+            /**
+             * Ts
+             * Format: date-time
+             */
+            ts: string;
+            /**
+             * V
+             * @default 1
+             * @constant
+             */
+            v: 1;
         };
         /** MaintenanceIn */
         MaintenanceIn: {
@@ -2856,6 +2946,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    local_agent_api_v1_agent_local_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocalAgentOut"];
                 };
             };
         };
@@ -5375,6 +5485,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    activate_local_api_v1_sites__site_id__agent_local_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocalActivated"];
+                };
             };
             /** @description Validation Error */
             422: {
