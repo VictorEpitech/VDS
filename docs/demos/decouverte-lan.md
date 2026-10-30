@@ -7,7 +7,7 @@ Durée : ~30 min. Aucun secret ici. Matériel : serveur VDS (autonome `https://v
 - Les vraies réponses mDNS / SSDP / ARP d'une TCL, les ports réellement ouverts (5555, 8008, 8009, 6466), la veille réseau réelle.
 - Le périmètre réel de l'agent (interfaces, masque, VLAN, Docker, VPN) et le comportement derrière un pare-feu.
 - Le rendu (375 px, thèmes clair / sombre / Allia).
-- Automatisé : `make e2e-agent` (`test_discovery_lan_scan_to_prefill`, vrai serveur + vrai agent + réseau factice, `/` et `/espace/affichage`), tests serveur `test_discovery.py`, module `modules/discovery.lan/tests`, agent `apps/site-agent/tests/test_discovery.py`, admin `discovery.test.tsx`.
+- Automatisé : `make e2e-agent` (`test_discovery_lan_scan_to_prefill`, vrai serveur + vrai agent + réseau factice, `/` et `/espace/affichage`), tests serveur `test_discovery.py`, module `modules/discovery.lan/tests`, agent `apps/site-agent/tests/test_agent_discovery.py`, admin `discovery.test.tsx`.
 
 ## 0. Préparer
 
