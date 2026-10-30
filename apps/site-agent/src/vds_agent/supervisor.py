@@ -16,10 +16,11 @@ from uuid import UUID
 
 import httpx
 
-from .enroll import EnrollError, exchange, take_handoff, write_presence
+from .enroll import HANDOFF_FILE, EnrollError, exchange, take_handoff, write_presence
 from .runtime import Agent
 from .settings import AgentSettings
 from .store import Store
+from .trust import ServerGuard, ServerUnverified, enroll_auth, new_http
 
 log = logging.getLogger("vds.agent")
 
@@ -43,6 +44,7 @@ class Supervisor:
         *,
         agent_factory: AgentFactory | None = None,
         http: httpx.AsyncClient | None = None,
+        guard: ServerGuard | None = None,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
         watch_s: float = WATCH_S,
         presence_s: float = PRESENCE_S,
@@ -51,9 +53,10 @@ class Supervisor:
         self.s = settings
         self.store = store
         self._factory = agent_factory or (lambda s, st: Agent(s, st))
-        self._http = http or httpx.AsyncClient(
-            verify=settings.ssl_context(), timeout=15, follow_redirects=False
-        )
+        if http is None:
+            self._http, self._guard = new_http(settings)
+        else:
+            self._http, self._guard = http, guard or ServerGuard(settings)
         self._sleep = sleep
         self._watch_s = watch_s
         self._presence_s = presence_s
@@ -95,9 +98,16 @@ class Supervisor:
     async def _forget(self) -> None:
         await self.store.state_delete(STATE_MODULE, STATE_KEY)
 
-    async def _enroll(self, code: str, previous: str | None = None) -> str:
-        """Échange le code, range le jeton chiffré, l'oublie ensuite (code : variable locale)."""
-        res = await exchange(self._http, self.s.http_base, code, previous, sleep=self._sleep)
+    async def _enroll(self, code: str, previous: str | None = None, *, local: bool = False) -> str:
+        """Échange le code, range le jeton chiffré, l'oublie ensuite (code : variable locale).
+
+        `local` : code reçu par le dossier partagé ; la requête prouve alors le secret du volume
+        (seau de limitation distinct de celui des clients anonymes).
+        """
+        auth = enroll_auth(self.s.local_dir, code) if local and self.s.local_dir else None
+        res = await exchange(
+            self._http, self.s.http_base, code, previous, local_auth=auth, sleep=self._sleep
+        )
         token = res.token.get_secret_value()
         await self._remember(token)
         self.agent_id = res.agent_id
@@ -114,6 +124,7 @@ class Supervisor:
             if presence:
                 presence.cancel()
             await self._http.aclose()
+            await self._guard.aclose()
 
     async def _run(self) -> int:
         s = self.s
@@ -157,6 +168,12 @@ class Supervisor:
     async def _poll_handoff(self, previous: str | None) -> str | None:
         """Consomme `enroll.json` s'il existe ; None si absent ou si l'échange échoue."""
         assert self.s.local_dir is not None  # noqa: S101
+        if (self.s.local_dir / HANDOFF_FILE).exists():
+            try:  # serveur prouvé AVANT de consommer le dépôt : sinon il reste en place
+                await self._guard.verify(fresh=True)
+            except ServerUnverified:
+                log.warning("agent.server_unverified")
+                return None
         handoff = take_handoff(self.s.local_dir)
         if handoff is None:
             return None
@@ -166,7 +183,7 @@ class Supervisor:
         keep = self.state
         self._set("enrolling")
         try:
-            return await self._enroll(handoff.code.get_secret_value(), previous)
+            return await self._enroll(handoff.code.get_secret_value(), previous, local=True)
         except EnrollError as e:
             log.error("agent.enroll_failed", extra={"code": e.code})
             self._set("error" if previous is None else keep, e.code)

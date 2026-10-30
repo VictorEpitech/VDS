@@ -28,6 +28,7 @@ from vds_sdk.agent.enroll import (
 )
 
 from .settings import AGENT_VERSION
+from .trust import AUTH_HEADER, ServerUnverified
 
 log = logging.getLogger("vds.agent.enroll")
 
@@ -70,6 +71,7 @@ async def exchange(
     code: str,
     previous_token: str | None = None,
     *,
+    local_auth: str | None = None,
     sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
 ) -> EnrollResponse:
     """POST /api/v1/agent/enroll. Réseau ou 5xx : 3 tentatives ; 4xx : abandon immédiat."""
@@ -88,7 +90,13 @@ async def exchange(
     for attempt in range(ATTEMPTS):
         try:
             # Aucun cookie, aucun Origin : l'endpoint public refuse toute requête avec Origin.
-            r = await http.post(f"{http_base}/api/v1/agent/enroll", json=body)
+            r = await http.post(
+                f"{http_base}/api/v1/agent/enroll",
+                json=body,
+                headers={AUTH_HEADER: local_auth} if local_auth else None,
+            )
+        except ServerUnverified as e:  # rien n'est parti : le code n'a pas quitté l'agent
+            raise EnrollError("enroll.server_unverified") from e
         except httpx.HTTPError:
             r = None
         if r is not None and r.status_code < 500:

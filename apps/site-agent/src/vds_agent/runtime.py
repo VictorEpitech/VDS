@@ -37,6 +37,7 @@ from .plan import current_slot, fetch_plan
 from .provision import ProvisionRunner
 from .settings import AGENT_VERSION, AgentSettings
 from .store import ModuleState, Store
+from .trust import ServerGuard, new_http
 
 log = logging.getLogger("vds.agent")
 
@@ -84,9 +85,10 @@ class Agent:
         self.store = store
         self.cascade = cascade or Cascade()
         self.clock = clock
-        self._http = http or httpx.AsyncClient(
-            verify=settings.ssl_context(), timeout=15, follow_redirects=False
-        )
+        if http is None:
+            self._http, self._guard = new_http(settings)
+        else:
+            self._http, self._guard = http, ServerGuard(settings)
         self.link = ServerLink(
             settings,
             store,
@@ -96,6 +98,7 @@ class Agent:
             on_cmd=self._on_cmd,
             sleep=sleep,
             heartbeat_s=heartbeat_s,
+            verify_server=self._guard.verify,
         )
         self.discovered: list[Discovered] = []
         self.drivers: dict[str, LoadedDriver] = {}
@@ -161,6 +164,7 @@ class Agent:
             with contextlib.suppress(Exception):
                 await d.driver.teardown()
         await self._http.aclose()
+        await self._guard.aclose()
 
     async def _activate(self, enabled: list[dict[str, Any]]) -> None:
         want = {e["id"]: e["version"] for e in enabled}

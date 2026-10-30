@@ -8,6 +8,7 @@ from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Any
 
+import httpx
 from vds_sdk.wire import (
     CLOSE_REVOKED,
     CLOSE_TOKEN_ROTATED,
@@ -77,6 +78,7 @@ class ServerLink:
         on_cmd: Callable[[Frame], Awaitable[None]],
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
         heartbeat_s: float = 60.0,
+        verify_server: Callable[..., Awaitable[None]] | None = None,
     ) -> None:
         self.s = settings
         self.store = store
@@ -86,6 +88,7 @@ class ServerLink:
         self._on_cmd = on_cmd
         self._sleep = sleep
         self._hb_s = heartbeat_s
+        self._verify = verify_server
         self._wake = asyncio.Event()
         self._stop = asyncio.Event()
         self.connected = asyncio.Event()
@@ -152,6 +155,11 @@ class ServerLink:
 
     async def _session(self) -> bool:
         last_server_seq = int(await self.store.kv_get("in_seq", 0))
+        if self._verify is not None:  # boucle locale : serveur prouvé AVANT d'envoyer le jeton
+            try:
+                await self._verify(fresh=True)
+            except httpx.TransportError as e:
+                raise OSError("agent.server_unverified") from e
         async with connect(
             self.s.ws_url,
             ssl=self.s.ssl_context() if self.s.is_tls else None,

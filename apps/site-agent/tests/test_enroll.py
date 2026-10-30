@@ -59,6 +59,19 @@ class FakeEnrollServer:
         return httpx.AsyncClient(transport=httpx.MockTransport(handler))
 
 
+class OkGuard:
+    """Serveur toujours prouvé (la preuve a ses propres tests : test_trust.py)."""
+
+    def __init__(self, _s: AgentSettings) -> None:
+        pass
+
+    async def verify(self, *, fresh: bool = False) -> None:
+        return None
+
+    async def aclose(self) -> None:
+        return None
+
+
 class FakeAgent:
     """Remplace Agent : tourne jusqu'à stop() ou fin forcée (revocation)."""
 
@@ -105,6 +118,7 @@ def sup(s: AgentSettings, srv: FakeEnrollServer) -> tuple[Supervisor, Store]:
             store,
             agent_factory=FakeAgent,  # type: ignore[arg-type]
             http=srv.client(),
+            guard=OkGuard(s),  # type: ignore[arg-type]
             sleep=nosleep,
             watch_s=0.01,
             presence_s=0.01,
