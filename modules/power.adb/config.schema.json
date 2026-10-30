@@ -6,7 +6,8 @@
     "host": {
       "type": "string", "default": "", "maxLength": 253, "pattern": "^([A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?|[0-9A-Fa-f:]{2,45})?(?![\\s\\S])",
       "title": "config.power_adb.host.title", "description": "config.power_adb.host.description",
-      "x-vds-level": "simple", "x-vds-scopes": ["screen"]
+      "x-vds-level": "simple", "x-vds-scopes": ["screen"],
+      "x-vds-device-address": "ip"
     },
     "port": {
       "type": "integer", "minimum": 1, "maximum": 65535, "default": 5555,

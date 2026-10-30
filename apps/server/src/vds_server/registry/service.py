@@ -364,5 +364,34 @@ class ModuleRegistry:
                     out.append((mid, d.manifest.version, platforms))
         return out
 
+    def discovery_modules(self) -> list[tuple[str, str]]:
+        """(id, version) des modules site-agent actifs déclarant la capacité `discovery.lan`."""
+        return [
+            (mid, d.manifest.version)
+            for mid, d in self._known.items()
+            if d.error is None
+            and mid in self._running
+            and "site-agent" in d.manifest.targets
+            and "discovery.lan" in d.manifest.capabilities
+        ]
+
+    def device_address_fields(self) -> dict[str, dict[str, str]]:
+        """Namespace -> {clé: "ip"|"mac"} des pilotes actifs (annotation `x-vds-device-address`)."""
+        out: dict[str, dict[str, str]] = {}
+        for mid, d in self._known.items():
+            if d.error is not None or mid not in self._running or d.config_schema is None:
+                continue
+            if d.manifest.kind != "power-driver":
+                continue
+            props = d.config_schema.get("properties", {})
+            fields = {
+                k: str(v["x-vds-device-address"])
+                for k, v in props.items()
+                if isinstance(v, dict) and v.get("x-vds-device-address") in ("ip", "mac")
+            }
+            if fields:
+                out[mid] = fields
+        return out
+
     def info(self) -> list[dict[str, Any]]:
         return [{"id": k, "running": k in self._running} for k in self._known]

@@ -72,6 +72,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agent/local/proof": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Local Proof
+         * @description Défi de l'agent local : preuve HMAC que ce serveur détient le secret du volume.
+         */
+        get: operations["local_proof_api_v1_agent_local_proof_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agent/plan": {
         parameters: {
             query?: never;
@@ -1039,6 +1059,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sites/{site_id}/discovery/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Capabilities */
+        get: operations["capabilities_api_v1_sites__site_id__discovery_capabilities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sites/{site_id}/discovery/scans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create */
+        post: operations["create_api_v1_sites__site_id__discovery_scans_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sites/{site_id}/discovery/scans/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Latest */
+        get: operations["latest_api_v1_sites__site_id__discovery_scans_latest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sites/{site_id}/discovery/scans/{scan_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read */
+        get: operations["read_api_v1_sites__site_id__discovery_scans__scan_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sites/{site_id}/groups": {
         parameters: {
             query?: never;
@@ -1221,16 +1309,6 @@ export interface components {
             /** Refreshed At */
             refreshed_at: string | null;
         };
-        /** CapabilitiesOut */
-        CapabilitiesOut: {
-            apk: components["schemas"]["ApkInfo"] | null;
-            /** Available */
-            available: boolean;
-            /** Platforms */
-            platforms: string[];
-            /** Reason */
-            reason: ("agent_offline" | "agent_outdated" | "module_disabled" | "apk_unavailable" | "server_unconfigured") | null;
-        };
         /** CommandCreate */
         CommandCreate: {
             /**
@@ -1410,6 +1488,34 @@ export interface components {
             screen_w?: number | null;
             /** User Agent */
             user_agent?: string | null;
+        };
+        /** DeviceOut */
+        DeviceOut: {
+            /** Confidence */
+            confidence: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Ip */
+            ip: string;
+            /** Known Screen Id */
+            known_screen_id: string | null;
+            /** Mac */
+            mac: string | null;
+            /** Model */
+            model: string | null;
+            /** Name */
+            name: string | null;
+            /** Platform */
+            platform: string;
+            /** Protocols */
+            protocols: string[];
+            /** Suggested Drivers */
+            suggested_drivers: string[];
+            /** Vendor */
+            vendor: string | null;
         };
         /**
          * DeviceStateOut
@@ -1961,6 +2067,14 @@ export interface components {
              * @constant
              */
             v: 1;
+        };
+        /**
+         * LocalProof
+         * @description Preuve HMAC-SHA256 (hex) du défi de l'agent local.
+         */
+        LocalProof: {
+            /** Proof */
+            proof: string;
         };
         /** MaintenanceIn */
         MaintenanceIn: {
@@ -2533,6 +2647,54 @@ export interface components {
             /** Weekdays */
             weekdays: number;
         };
+        /**
+         * ScanCreate
+         * @description Corps vide : aucune cible, aucun CIDR, aucun port (le périmètre est celui de l'agent).
+         */
+        ScanCreate: Record<string, never>;
+        /** ScanCreated */
+        ScanCreated: {
+            /**
+             * Scan Id
+             * Format: uuid
+             */
+            scan_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "running" | "completed" | "failed";
+        };
+        /** ScanOut */
+        ScanOut: {
+            /** Capped */
+            capped: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Devices */
+            devices: components["schemas"]["DeviceOut"][];
+            /** Error Code */
+            error_code: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Networks */
+            networks: string[];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "running" | "completed" | "failed";
+            /** Truncated */
+            truncated: boolean;
+        };
         /** ScheduleCreate */
         ScheduleCreate: {
             /**
@@ -2850,6 +3012,25 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** CapabilitiesOut */
+        vds_server__discovery__schemas__CapabilitiesOut: {
+            /** Available */
+            available: boolean;
+            /** Probe Ports */
+            probe_ports: boolean;
+            /** Reason */
+            reason: ("agent_missing" | "agent_offline" | "agent_outdated" | "module_disabled") | null;
+        };
+        /** CapabilitiesOut */
+        vds_server__provisioning__schemas__CapabilitiesOut: {
+            apk: components["schemas"]["ApkInfo"] | null;
+            /** Available */
+            available: boolean;
+            /** Platforms */
+            platforms: string[];
+            /** Reason */
+            reason: ("agent_offline" | "agent_outdated" | "module_disabled" | "apk_unavailable" | "server_unconfigured") | null;
+        };
     };
     responses: never;
     parameters: never;
@@ -2966,6 +3147,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LocalAgentOut"];
+                };
+            };
+        };
+    };
+    local_proof_api_v1_agent_local_proof_get: {
+        parameters: {
+            query: {
+                nonce: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocalProof"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -4564,7 +4776,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CapabilitiesOut"];
+                    "application/json": components["schemas"]["vds_server__provisioning__schemas__CapabilitiesOut"];
                 };
             };
             /** @description Validation Error */
@@ -5713,6 +5925,135 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AgentWithToken"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    capabilities_api_v1_sites__site_id__discovery_capabilities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["vds_server__discovery__schemas__CapabilitiesOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_api_v1_sites__site_id__discovery_scans_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ScanCreate"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanCreated"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    latest_api_v1_sites__site_id__discovery_scans_latest_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_api_v1_sites__site_id__discovery_scans__scan_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: string;
+                scan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanOut"];
                 };
             };
             /** @description Validation Error */

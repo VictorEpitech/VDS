@@ -137,7 +137,7 @@ class Module(Base, Timestamps):
     __table_args__ = (
         CheckConstraint(
             "kind IN ('player-adapter','power-driver','content-type','trigger',"
-            "'notifier','auth-provider','theme','storage')",
+            "'notifier','auth-provider','theme','storage','discovery')",
             name="kind",
         ),
         CheckConstraint("source IN ('builtin','installed')", name="source"),

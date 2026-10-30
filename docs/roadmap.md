@@ -199,7 +199,7 @@ Avancement (lot découverte) :
 - [x] D1 — contrat vds-core 1.5.0 (kind `discovery`, `discovery.lan`, `network.discover`, `x-vds-device-address`, `vds_sdk.agent.discovery`, `discovery.scan` + `DiscoveryScanArgs|Batch|Result`, `CORE_EVENTS_1_5`, `test_compat_15.py`)
 - [x] D2 — agent : façade `DiscoveryNet` et runtime de scan
 - [x] D3 — module `discovery.lan`
-- [ ] D4 — serveur : migration 0009, service, endpoints, annotations
+- [x] D4 — serveur : migration 0010 (0009 prise), service, endpoints, annotations
 - [ ] D5 — admin : bouton, liste en direct, préremplissage
 - [ ] D6 — E2E réel
 - [ ] D7 — revue sécurité

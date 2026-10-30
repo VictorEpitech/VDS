@@ -5,6 +5,7 @@ import contextlib
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Any
 from uuid import UUID
 
 from fastapi import FastAPI, Request
@@ -29,6 +30,7 @@ from vds_server.core.mux import ModuleMux
 from vds_server.db.base import make_engine, make_sessionmaker
 from vds_server.db.models import Organization
 from vds_server.diffusion.access import MediaAccess
+from vds_server.discovery.service import DiscoveryEvents
 from vds_server.enrollment.local import LocalChannel
 from vds_server.events import CoreBus
 from vds_server.player.device_auth import DeviceAuth, bearer
@@ -84,6 +86,8 @@ class Runtime:
         self.agent_bridge = EventBridge(self.maker, self.bus, self.registry.agent_events)
         self.provision_events = ProvisionEvents(self.maker, self.bus)
         self.provision_events.register(self.bus.subscribe)
+        self.discovery_events = DiscoveryEvents(self.maker, self.bus)
+        self.discovery_events.register(self.bus.subscribe)
         self.supervisor = Supervisor(
             self.maker,
             self.bus,
@@ -96,6 +100,13 @@ class Runtime:
         self.plan_pusher.register(self.bus.subscribe)
         for name in ("module.enabled", "module.disabled", "module.quarantined"):
             self.bus.subscribe(name, self._modules_changed)
+
+    async def on_agent_result(
+        self, cmd_id: UUID, status: str, code: str | None, data: dict[str, Any]
+    ) -> None:
+        """Résultat d'une commande d'agent : chaque suiveur ignore les commandes des autres."""
+        await self.provision_events.on_cmd_result(cmd_id, status, code, data)
+        await self.discovery_events.on_cmd_result(cmd_id, status, code, data)
 
     async def _modules_changed(self, _event: Event) -> None:
         """Propagé à tous les workers par NOTIFY (chacun ferme ses sessions d'agent)."""

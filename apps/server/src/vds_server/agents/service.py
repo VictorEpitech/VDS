@@ -186,8 +186,8 @@ class AgentService:
         return cmd
 
 
-# Réservées au noyau : seule la session de provisioning (provisioning/service.py) les émet.
-INTERNAL_AGENT_COMMANDS = frozenset({"screen.provision"})
+# Réservées au noyau : seules les sessions de provisioning et de découverte les émettent.
+INTERNAL_AGENT_COMMANDS = frozenset({"screen.provision", "discovery.scan"})
 
 
 def validate_command(name: str, args: dict[str, Any], screen_id: UUID | None) -> None:

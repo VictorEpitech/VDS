@@ -6,7 +6,8 @@
     "mac": {
       "type": "string", "default": "", "maxLength": 17, "pattern": "^(([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2})?(?![\\s\\S])",
       "title": "config.power_wol.mac.title", "description": "config.power_wol.mac.description",
-      "x-vds-level": "simple", "x-vds-scopes": ["screen"]
+      "x-vds-level": "simple", "x-vds-scopes": ["screen"],
+      "x-vds-device-address": "mac"
     },
     "broadcast": {
       "type": "string", "default": "255.255.255.255", "maxLength": 45,

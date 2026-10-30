@@ -54,7 +54,7 @@ def build_router(rt: Runtime) -> APIRouter:
             modules_enabled=modules_enabled,
             cache_info=lambda row: cache_info(rt.settings.secret_key, row),
             frame_data=lambda cmd: command_frame_data(cmd, rt.ticket_box),
-            on_result=rt.provision_events.on_cmd_result,
+            on_result=rt.on_agent_result,
         ).run()
 
     return router

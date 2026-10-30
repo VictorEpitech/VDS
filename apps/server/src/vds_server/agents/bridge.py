@@ -10,14 +10,20 @@ from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from vds_sdk import CORE_EVENT_PAYLOAD_1_4, CORE_EVENTS_1_4, Event, EventBus
+from vds_sdk import CORE_EVENT_PAYLOAD_1_5, CORE_EVENTS_1_5, Event, EventBus
 from vds_sdk.wire import CLOSE_BAD_MESSAGE, CLOSE_FORBIDDEN, EventData, WireError
 
 from vds_server.db.models import Screen
 
 # Événements du cœur qu'un agent peut émettre (agent.* est émis par le serveur seul).
 AGENT_CORE_EVENTS = frozenset(
-    {"power.changed", "power.failed", "cache.synced", "screen.provision_progressed"}
+    {
+        "power.changed",
+        "power.failed",
+        "cache.synced",
+        "screen.provision_progressed",
+        "discovery.batch",  # DiscoveryBatch de la découverte LAN (progression)
+    }
 )
 # nom d'événement -> id du module (cible site-agent) qui le déclare
 ModuleEvents = Callable[[], dict[str, str]]
@@ -73,7 +79,7 @@ class EventBridge:
     def _source(self, name: str) -> str:
         if name in AGENT_CORE_EVENTS:
             return "agent"
-        if name in CORE_EVENTS_1_4:
+        if name in CORE_EVENTS_1_5:
             raise WireError("event_not_allowed", CLOSE_FORBIDDEN)
         module_id = self._module_events().get(name)
         if module_id is None:
@@ -82,7 +88,7 @@ class EventBridge:
 
     async def republish(self, site_id: UUID, data: EventData) -> None:
         source = self._source(data.name)
-        required = CORE_EVENT_PAYLOAD_1_4.get(data.name, ())
+        required = CORE_EVENT_PAYLOAD_1_5.get(data.name, ())
         if any(k not in data.payload for k in required):
             raise WireError("invalid_payload", CLOSE_BAD_MESSAGE)
         if "site_id" in data.payload and str(data.payload["site_id"]) != str(site_id):
