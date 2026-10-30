@@ -362,3 +362,16 @@ def test_hostname_matches_contract() -> None:
     import re
 
     assert re.fullmatch(r"[A-Za-z0-9._-]+", local_hostname())
+
+
+def test_websockets_debug_never_logs_bearer_token() -> None:
+    """`websockets` journalise l'en-tête Authorization en DEBUG : plafonné à INFO même si DEBUG."""
+    import logging
+
+    from vds_agent.logsetup import setup_logging
+
+    setup_logging(logging.DEBUG)
+    try:
+        assert not logging.getLogger("websockets.client").isEnabledFor(logging.DEBUG)
+    finally:
+        setup_logging()

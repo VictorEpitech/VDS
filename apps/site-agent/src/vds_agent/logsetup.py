@@ -23,3 +23,5 @@ def setup_logging(level: int = logging.INFO) -> None:
     handler = logging.StreamHandler()
     handler.setFormatter(ExtraFormatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
     logging.basicConfig(level=level, handlers=[handler], force=True)
+    # `websockets` journalise en DEBUG le handshake, dont `Authorization: Bearer <jeton>`.
+    logging.getLogger("websockets").setLevel(max(level, logging.INFO))

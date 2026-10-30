@@ -185,4 +185,5 @@ Avancement (lot enrôlement) :
 - [x] E4 — agent : ordre de démarrage, enrôlement par code, jeton chiffré, sommeil et présence, réenrôlement, clair vers loopback seul
 - [x] E5 — livraison : service `agent` + volume `local-agent` dans `docker/compose.yaml` (build local, image privée)
 - [x] E6 — admin : panneau Site › Agent (« Ce serveur », « Une autre machine », suivi 3 s, « Ce n'est pas mon agent », codes en attente)
-- [ ] E7 à E8 — E2E, revue sécurité
+- [x] E7 — E2E réel (canal local, canal distant, déplacement, révocation, 429, aux deux bases) + compose vérifié
+- [ ] E8 — revue sécurité

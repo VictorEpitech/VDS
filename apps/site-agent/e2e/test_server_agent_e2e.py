@@ -29,6 +29,7 @@ from vds_agent import runtime as agent_runtime
 from vds_agent.runtime import Agent
 from vds_agent.settings import AgentSettings
 from vds_agent.store import Store
+from vds_agent.supervisor import Supervisor
 from vds_agent.testing import load_fakes
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -202,10 +203,15 @@ async def stack(
     smtp = notify.FakeSmtp(mode="starttls").start()
     cert = tmp_path / "smtp-ca.pem"
     cert.write_text(smtp.cert_pem)
+    (tmp_path / "local-agent").mkdir()
     srv = Server(
         tmp_path, base, port,
         f"postgresql+asyncpg://vds:{pg}@127.0.0.1:{PG_PORT}/{dbname}",
-        {**smtp.env(), "SSL_CERT_FILE": str(cert)},
+        {
+            **smtp.env(),
+            "SSL_CERT_FILE": str(cert),
+            "VDS_LOCAL_AGENT_DIR": str(tmp_path / "local-agent"),
+        },
     )  # fmt: skip
     srv.start()
     monkeypatch.setattr(agent_runtime, "SCHEDULE_TICK_S", 0.3)
@@ -636,3 +642,224 @@ async def test_provision_android_invite_rsa_refusee(stack: dict[str, Any]) -> No
             assert "pairing_ticket" not in json.dumps(got)
         finally:
             await _stop(ctx)
+
+
+# --- Enrôlement par code : canal local (dossier partagé) et canal distant (lot enrôlement E7) ------
+CODE_UNKNOWN = "vds_enr_" + "0123456789ABCDEFGHJKMNPQRS"
+
+
+def _enroll_settings(srv: Server, tmp: Path, **kw: Any) -> AgentSettings:
+    return AgentSettings(
+        server_url=srv.url, data_dir=tmp / "agent", modules_dir=ROOT / "modules",
+        ca_file=srv.ca, **kw,
+    )  # fmt: skip
+
+
+def _supervisor(settings: AgentSettings) -> tuple[Supervisor, "asyncio.Task[int]"]:
+    sup = Supervisor(settings, Store(settings.data_dir), watch_s=0.3, presence_s=0.5)
+    return sup, asyncio.create_task(sup.run())
+
+
+async def _stop_supervisor(sup: Supervisor, task: "asyncio.Task[int]") -> None:
+    sup.stop()
+    try:
+        await asyncio.wait_for(task, 20)
+    except (TimeoutError, asyncio.CancelledError):
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError, Exception):
+            await task
+
+
+async def _login(admin: httpx.AsyncClient) -> None:
+    r = await admin.post(
+        "/api/v1/m/auth.local/login", json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
+    )
+    assert r.status_code == 200, r.text
+
+
+async def _mk_site(admin: httpx.AsyncClient, slug: str) -> str:
+    r = await admin.post("/api/v1/sites", json={"name": slug, "slug": slug})
+    assert r.status_code == 201, r.text
+    return str(r.json()["id"])
+
+
+def _public_client(srv: Server) -> httpx.AsyncClient:
+    """Client de l'agent : ni cookie ni Origin (l'endpoint public refuse Origin)."""
+    return httpx.AsyncClient(base_url=srv.url, verify=srv.ca, timeout=20)
+
+
+def _enroll_body(code: str) -> dict[str, str]:
+    return {"code": code, "hostname": "intrus", "agent_version": "1.0.0", "platform": "linux/amd64"}
+
+
+def _no_secret_on_disk(directory: Path, *needles: str) -> None:
+    for f in directory.rglob("*"):
+        if f.is_file():
+            data = f.read_bytes()
+            for n in needles:
+                assert n.encode() not in data, f"{n[:8]}... en clair dans {f}"
+
+
+def _assert_log_clean(srv: Server) -> None:
+    out = srv.log.read_text(errors="replace") if srv.log.exists() else ""
+    assert "vds_agt_" not in out and "vds_enr_" not in out
+
+
+async def test_enroll_local_channel(
+    stack: dict[str, Any], caplog: pytest.LogCaptureFixture
+) -> None:
+    """Dormant -> clic d'activation -> en ligne < 15 s ; déplacement ; révocation."""
+    srv: Server = stack["srv"]
+    tmp: Path = stack["tmp"]
+    local = tmp / "local-agent"
+    caplog.set_level("DEBUG", logger="vds")
+    async with srv.client() as admin:
+        await _login(admin)
+        s1, s2 = await _mk_site(admin, "moulins"), await _mk_site(admin, "vichy")
+        r = await admin.get("/api/v1/agent/local")
+        assert r.json()["available"] is True and r.json()["detected"] is None
+        r = await admin.post(f"/api/v1/sites/{s1}/agent/local")
+        assert r.status_code == 409 and "not_detected" in r.text  # aucun agent dormant
+
+        sup, task = _supervisor(_enroll_settings(srv, tmp, local_dir=local))
+        try:
+
+            async def local_state() -> dict[str, Any]:
+                return dict((await admin.get("/api/v1/agent/local")).json())
+
+            async def dormant() -> bool:
+                d = (await local_state())["detected"]
+                return bool(d and d["state"] == "dormant")
+
+            async def active_on(site: str) -> bool:
+                d = await local_state()
+                return bool(
+                    d["detected"] and d["detected"]["state"] == "active" and d["site_id"] == site
+                )
+
+            await poll(dormant, "agent dormant détecté", 15)
+            assert (await local_state())["site_id"] is None
+
+            t0 = time.monotonic()
+            r = await admin.post(f"/api/v1/sites/{s1}/agent/local")
+            assert r.status_code == 202, r.text
+            await poll(lambda: active_on(s1), "agent actif sur le site 1", 15)
+            assert time.monotonic() - t0 < 15
+            assert not (local / "enroll.json").exists()
+
+            first = (await srv.sql("SELECT id FROM site_agent WHERE site_id = :s", s=s1))[0][0]
+
+            async def seen(agent_id: Any) -> bool:
+                rows = await srv.sql(
+                    "SELECT last_seen_at FROM site_agent WHERE id = :i", i=agent_id
+                )
+                return bool(rows and rows[0][0])
+
+            await poll(lambda: seen(first), "session WS ouverte", 15)
+            token = str(await sup.store.state_get("core", "agent_token"))
+            assert token.startswith("vds_agt_")
+            _no_secret_on_disk(tmp / "agent", token)
+            _no_secret_on_disk(local, token, "vds_enr_")
+            lst = await admin.get(f"/api/v1/sites/{s1}/agent/enrollments")
+            assert lst.json()[0]["state"] == "consumed" and lst.json()[0]["channel"] == "local"
+            assert "vds_enr_" not in lst.text and "vds_agt_" not in lst.text
+
+            # déplacement : ancien agent révoqué, nouveau en ligne
+            r = await admin.post(f"/api/v1/sites/{s2}/agent/local")
+            assert r.status_code == 202, r.text
+            await poll(lambda: active_on(s2), "agent déplacé sur le site 2", 20)
+            old = await srv.sql("SELECT revoked_at FROM site_agent WHERE id = :i", i=first)
+            assert old[0][0] is not None
+            new = await srv.sql(
+                "SELECT id FROM site_agent WHERE site_id = :s AND revoked_at IS NULL", s=s2
+            )
+            assert len(new) == 1
+            await poll(lambda: seen(new[0][0]), "nouvel agent en ligne", 15)
+
+            # « Ce n'est pas mon agent » : révocation, retour au sommeil, jeton oublié
+            r = await admin.post(f"/api/v1/sites/{s2}/agents/{new[0][0]}/revoke")
+            assert r.status_code == 200, r.text
+            await poll(dormant, "agent dormant après révocation", 20)
+            assert await sup.store.state_get("core", "agent_token") is None
+            assert (await local_state())["site_id"] is None
+        finally:
+            await _stop_supervisor(sup, task)
+    _assert_log_clean(srv)
+    assert "vds_agt_" not in caplog.text and "vds_enr_" not in caplog.text
+
+
+async def test_enroll_remote_channel(
+    stack: dict[str, Any], caplog: pytest.LogCaptureFixture
+) -> None:
+    """Code distant en variable -> jeton chiffré ; redémarrage sans code ; rejeu 409 ; expiré 410."""
+    srv: Server = stack["srv"]
+    tmp: Path = stack["tmp"]
+    caplog.set_level("DEBUG", logger="vds")
+    async with srv.client() as admin, _public_client(srv) as anon:
+        await _login(admin)
+        site = await _mk_site(admin, "moulins")
+        r = await admin.post(f"/api/v1/sites/{site}/agent/enrollments", json={})
+        assert r.status_code == 201, r.text
+        code = r.json()["code"]
+        assert code.startswith("vds_enr_") and r.json()["server_url"] == srv.url
+        assert "vds_enr_" not in (await admin.get(f"/api/v1/sites/{site}/agent/enrollments")).text
+
+        async def online() -> bool:
+            rows = await srv.sql("SELECT last_seen_at FROM site_agent WHERE site_id = :s", s=site)
+            return bool(rows and rows[0][0])
+
+        sup, task = _supervisor(_enroll_settings(srv, tmp, enroll_code=code))
+        try:
+            await poll(online, "agent enrôlé en ligne", 20)
+            lst = (await admin.get(f"/api/v1/sites/{site}/agent/enrollments")).json()
+            assert lst[0]["state"] == "consumed" and lst[0]["consumed_hostname"]
+            token = str(await sup.store.state_get("core", "agent_token"))
+            _no_secret_on_disk(tmp / "agent", token, code)
+        finally:
+            await _stop_supervisor(sup, task)
+
+        # rejeu : 409 ; annulation d'une inscription consommée : 409
+        r = await anon.post("/api/v1/agent/enroll", json=_enroll_body(code))
+        assert r.status_code == 409, r.text
+        assert token not in r.text
+        r = await admin.delete(f"/api/v1/sites/{site}/agent/enrollments/{lst[0]['id']}")
+        assert r.status_code == 409
+
+        # redémarrage SANS code : le jeton rangé suffit
+        await srv.sql("UPDATE site_agent SET last_seen_at = NULL WHERE site_id = :s", s=site)
+        sup2, task2 = _supervisor(_enroll_settings(srv, tmp))
+        try:
+            await poll(online, "redémarrage avec le jeton rangé", 20)
+        finally:
+            await _stop_supervisor(sup2, task2)
+
+        # expiré -> 410 ; inconnu -> 401 ; requête avec Origin -> 403
+        made = (await admin.post(f"/api/v1/sites/{site}/agent/enrollments", json={})).json()
+        await srv.sql(
+            "UPDATE agent_enrollment SET expires_at = now() - interval '1 minute' WHERE id = :i",
+            i=made["id"],
+        )
+        r = await anon.post("/api/v1/agent/enroll", json=_enroll_body(made["code"]))
+        assert r.status_code == 410, r.text
+        r = await anon.post("/api/v1/agent/enroll", json=_enroll_body(CODE_UNKNOWN))
+        assert r.status_code == 401
+        r = await anon.post(
+            "/api/v1/agent/enroll", json=_enroll_body(CODE_UNKNOWN), headers={"Origin": srv.origin}
+        )
+        assert r.status_code == 403
+    _assert_log_clean(srv)
+    assert "vds_agt_" not in caplog.text and "vds_enr_" not in caplog.text
+
+
+async def test_enroll_rate_limit(stack: dict[str, Any]) -> None:
+    """10 échecs par IP => la 11e tentative reçoit 429 + Retry-After."""
+    srv: Server = stack["srv"]
+    async with _public_client(srv) as anon:
+        codes = []
+        for _ in range(10):
+            r = await anon.post("/api/v1/agent/enroll", json=_enroll_body(CODE_UNKNOWN))
+            codes.append(r.status_code)
+        assert codes == [401] * 10, codes
+        r = await anon.post("/api/v1/agent/enroll", json=_enroll_body(CODE_UNKNOWN))
+        assert r.status_code == 429 and int(r.headers["Retry-After"]) > 0, r.text
+    _assert_log_clean(srv)
