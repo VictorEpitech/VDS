@@ -240,6 +240,8 @@ class EnrollmentService:
         run = " ".join(
             [
                 "docker run -d --name vds-agent --restart unless-stopped --network host",
+                "--user 10001:10001 --cap-drop ALL --security-opt no-new-privileges:true",
+                "--read-only --tmpfs /tmp --memory 512m --pids-limit 256",
                 "-v vds-agent-data:/data/agent -e VDS_AGENT_DATA_DIR=/data/agent",
                 f"-e VDS_SERVER_URL={shlex.quote(server_url)}",
                 f"-e VDS_ENROLL_CODE={shlex.quote(code)}",

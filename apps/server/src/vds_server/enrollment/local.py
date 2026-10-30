@@ -6,6 +6,8 @@ sans lien symbolique, donnée non fiable : affichage seul, jamais une autorisati
 
 import asyncio
 import contextlib
+import hashlib
+import hmac
 import json
 import os
 import stat
@@ -19,11 +21,74 @@ from vds_sdk.agent.enroll import PRESENCE_MAX_BYTES, LocalHandoff, LocalPresence
 HANDOFF_FILE = "enroll.json"
 PRESENCE_FILE = "presence.json"
 PRESENCE_MAX_AGE = timedelta(seconds=30)
+KEY_FILE = "proof.key"
+KEY_BYTES = 32
+PROOF_CONTEXT = b"vds-local-proof\0"
+ENROLL_CONTEXT = b"vds-local-enroll\0"
 
 
 class LocalChannel:
     def __init__(self, directory: Path | None) -> None:
         self._dir = directory
+        self._key: bytes | None = None
+
+    # --- secret partagé avec l'agent local (preuve HMAC, jamais transmis) ------------
+    def _load_key(self) -> bytes:
+        """Lit `proof.key` ou le crée (0600, sans écrasement : plusieurs workers sans course)."""
+        assert self._dir is not None  # noqa: S101
+        path = self._dir / KEY_FILE
+        for _ in range(3):
+            try:
+                fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+            except FileNotFoundError:
+                fd = -1
+            if fd >= 0:
+                try:
+                    raw = os.read(fd, 4 * KEY_BYTES) if stat.S_ISREG(os.fstat(fd).st_mode) else b""
+                finally:
+                    os.close(fd)
+                key = raw.strip()
+                if len(key) == 2 * KEY_BYTES:
+                    return bytes.fromhex(key.decode())
+                raise OSError("proof.key invalide")
+            tmp = self._dir / f".{KEY_FILE}.{os.getpid()}.{os.urandom(4).hex()}.tmp"
+            wfd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+            try:
+                with os.fdopen(wfd, "wb") as f:
+                    f.write(os.urandom(KEY_BYTES).hex().encode())
+                    f.flush()
+                    os.fsync(f.fileno())
+                try:
+                    os.link(tmp, path)  # atomique, échoue si un autre worker a gagné
+                except FileExistsError:
+                    pass
+            finally:
+                with contextlib.suppress(OSError):
+                    os.unlink(tmp)
+        raise OSError("proof.key illisible")
+
+    async def key(self) -> bytes | None:
+        if self._dir is None:
+            return None
+        if self._key is None:
+            self._key = await asyncio.to_thread(self._load_key)
+        return self._key
+
+    async def prove_server(self, nonce: str) -> str | None:
+        """Preuve que ce serveur détient le secret du volume (défi de l'agent local)."""
+        key = await self.key()
+        if key is None:
+            return None
+        return hmac.new(key, PROOF_CONTEXT + nonce.encode(), hashlib.sha256).hexdigest()
+
+    async def is_local_agent(self, auth: str | None, code: str) -> bool:
+        """L'agent local prouve qu'il détient le secret : requête d'enrôlement authentifiée."""
+        if not auth or self._dir is None:
+            return False
+        key = await self.key()
+        assert key is not None  # noqa: S101
+        want = hmac.new(key, ENROLL_CONTEXT + code.encode(), hashlib.sha256).hexdigest()
+        return hmac.compare_digest(want.encode(), auth.encode())
 
     @property
     def available(self) -> bool:

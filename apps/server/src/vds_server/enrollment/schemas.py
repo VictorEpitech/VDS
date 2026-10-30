@@ -66,3 +66,9 @@ class LocalAgentOut(BaseModel):
 class LocalActivated(BaseModel):
     enrollment_id: UUID
     expires_at: datetime
+
+
+class LocalProof(BaseModel):
+    """Preuve HMAC-SHA256 (hex) du défi de l'agent local."""
+
+    proof: str

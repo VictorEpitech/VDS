@@ -3,7 +3,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from vds_sdk.agent.enroll import EnrollRequest
 
@@ -16,6 +16,9 @@ from vds_server.enrollment.service import EnrollmentService, to_out
 from vds_server.security.client_ip import client_ip
 
 COUNTED_FAILURES = frozenset({401, 409, 410})
+LOCAL_AUTH_HEADER = "x-vds-local-auth"
+LOCAL_KEY = "local-agent"  # seau distinct des IP (aucune IP ne peut s'appeler ainsi)
+NONCE = r"^[0-9a-f]{16,64}$"
 
 
 def build_router(rt: Runtime) -> APIRouter:
@@ -79,13 +82,37 @@ def build_router(rt: Runtime) -> APIRouter:
         # Un agent n'est pas un navigateur : tout Origin est refusé (comme /ws/agent).
         if "origin" in request.headers:
             raise ApiError("errors.origin_mismatch", 403)
-        key = client_ip(request)
-        rt.enroll_limiter.check(key)
-        try:
-            return await s.consume(body, request.client.host if request.client else None)
-        except ApiError as exc:
-            if exc.status in COUNTED_FAILURES:
-                rt.enroll_limiter.fail(key)
-            raise
+        # Borne de concurrence : au-delà, on refuse sans toucher à la base (pool protégé).
+        if rt.enroll_gate.locked():
+            raise ApiError("errors.rate_limited", 429, retry_after_s=1)
+        async with rt.enroll_gate:
+            # L'agent local qui prouve détenir le secret du volume a son propre seau : il ne
+            # consomme pas le quota des autres, et les autres ne le verrouillent pas.
+            local = await rt.local_channel.is_local_agent(
+                request.headers.get(LOCAL_AUTH_HEADER), body.code
+            )
+            key = LOCAL_KEY if local else client_ip(request)
+            res = rt.enroll_limiter.reserve(key)  # tentative comptée avant le travail
+            counted = False
+            try:
+                return await s.consume(body, request.client.host if request.client else None)
+            except ApiError as exc:
+                counted = exc.status in COUNTED_FAILURES
+                raise
+            finally:
+                if not counted:
+                    rt.enroll_limiter.release(res)
+
+    @router.get("/agent/local/proof", response_model=sc.LocalProof)
+    async def local_proof(
+        request: Request, nonce: Annotated[str, Query(pattern=NONCE)]
+    ) -> sc.LocalProof:
+        """Défi de l'agent local : preuve HMAC que ce serveur détient le secret du volume."""
+        if "origin" in request.headers:
+            raise ApiError("errors.origin_mismatch", 403)
+        proof = await rt.local_channel.prove_server(nonce)
+        if proof is None:
+            raise ApiError("agent.local.unavailable", 404)
+        return sc.LocalProof(proof=proof)
 
     return router
