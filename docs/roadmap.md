@@ -182,4 +182,6 @@ Avancement (lot enrôlement) :
 - [x] E1 — contrat vds-core 1.4.0 (`vds_sdk.agent.enroll`, `CORE_EVENTS_1_4`, `test_compat_14.py`)
 - [x] E2 — serveur : migration 0008, service d'enrôlement, endpoints, limiteur, rotation, audit
 - [x] E3 — serveur : canal local (`VDS_LOCAL_AGENT_DIR`, `GET /agent/local`, `POST /sites/{id}/agent/local`)
-- [ ] E4 à E8 — agent, livraison Compose, admin, E2E, revue sécurité
+- [x] E4 — agent : ordre de démarrage, enrôlement par code, jeton chiffré, sommeil et présence, réenrôlement, clair vers loopback seul
+- [x] E5 — livraison : service `agent` + volume `local-agent` dans `docker/compose.yaml` (build local, image privée)
+- [ ] E6 à E8 — admin, E2E, revue sécurité

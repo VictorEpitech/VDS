@@ -33,6 +33,10 @@ Les valeurs secrètes ne sont jamais écrites dans le dépôt.
 - Le préfixe n'est **pas** retiré (pas de `stripPrefix`) : VDS sert tout sous `VDS_BASE_PATH` (admin, API, WebSocket `/ws/*`, médias).
 - WebSocket : aucun middleware ne doit couper les connexions longues. Supervision : `<base>/health` (Uptime Kuma).
 
+## Agent local
+
+Pas d'agent local en mode hébergé : ne définir ni `VDS_LOCAL_AGENT_DIR` ni le service `agent` (le fichier `docker/compose.yaml` est celui du mode autonome). `GET /api/v1/agent/local` répond `available: false`; l'admin ne propose que « Une autre machine du site » (enrôlement par code).
+
 ## Sauvegardes
 
 - `vds-db` : `pg_dump` planifié vers MinIO, rétention à définir.
