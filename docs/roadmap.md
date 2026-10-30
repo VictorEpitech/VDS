@@ -177,3 +177,9 @@ Tâches :
 
 ### 30 octobre 2026 — Refonte lot 1 : enrôlement et agent local activable depuis l'admin (architecte, vds-core 1.4.0 additif)
 Arbitrages de Victor : image agent privée, Windows ignoré, recherche de TV au clic seulement, ordre enrôlement → `discovery.lan` → navigation ; aucune commande sur l'hôte du serveur après le premier `docker compose up` · **vds-core 1.4.0** limité à l'enrôlement (`vds_sdk.agent.enroll`, événements `agent.enrollment_created|revoked`, `agent.enrolled` critique ; aucun changement de manifeste, permissions ni wire ; découverte reportée en 1.5.0) · migration `0008_agent_enrollment`, code `vds_enr_` 128 bits haché sha256, usage unique (60 min distant, 10 min local), une inscription en attente par site, `POST /api/v1/agent/enroll` public limité par IP (10 échecs / 15 min), rotation 4411 si le site a déjà un agent, `previous_token` pour déplacer un agent · **agent local** = service Compose `agent` toujours présent (`network_mode: host`), en sommeil, réveillé par un code déposé par le serveur dans un volume partagé `local-agent` (`VDS_LOCAL_AGENT_DIR`) ; boucle locale en clair autorisée vers loopback seul ; en hébergé le réglage est absent ⇒ indisponible proprement ; écartés : agent dans le processus serveur, profil + CLI, `docker.sock` · ligne `docker run` générée pour les machines distantes, `docker login` optionnel (`VDS_AGENT_PULL_TOKEN` `read:packages`). Détail et tâches E1 à E8 : `docs/architecture-enrolement.md` (à fusionner dans `architecture.md`).
+
+Avancement (lot enrôlement) :
+- [x] E1 — contrat vds-core 1.4.0 (`vds_sdk.agent.enroll`, `CORE_EVENTS_1_4`, `test_compat_14.py`)
+- [ ] E2 — serveur : migration 0008, service d'enrôlement, endpoints, limiteur, rotation, audit
+- [ ] E3 — serveur : canal local (`VDS_LOCAL_AGENT_DIR`, `GET /agent/local`, `POST /sites/{id}/agent/local`)
+- [ ] E4 à E8 — agent, livraison Compose, admin, E2E, revue sécurité

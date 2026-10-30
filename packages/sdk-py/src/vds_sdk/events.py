@@ -100,3 +100,18 @@ CORE_EVENTS_1_3: frozenset[str] = CORE_EVENTS_1_2 | frozenset(
 
 # Fiable agent -> serveur (le relais agent->bus reste décidé côté serveur, lot P2/P4).
 CRITICAL_EVENTS_1_3: frozenset[str] = CRITICAL_EVENTS_1_2 | {"screen.provision_progressed"}
+
+# --- vds-core 1.4.0 (additif) : enrôlement d'agent ---------------------------------
+# `agent.enrolled` (déjà en 1.2 : agent_id, site_id) reste valide avec ces seules clés ; le
+# payload enrichi (vds_sdk.agent.enroll.AgentEnrolled) est celui de l'enrôlement par code.
+CORE_EVENT_PAYLOAD_1_4: dict[str, tuple[str, ...]] = {
+    **CORE_EVENT_PAYLOAD_1_3,
+    "agent.enrollment_created": ("enrollment_id", "site_id", "channel", "expires_at", "created_by"),
+    "agent.enrollment_revoked": ("enrollment_id", "site_id", "reason"),
+}
+
+CORE_EVENTS_1_4: frozenset[str] = CORE_EVENTS_1_3 | frozenset(
+    set(CORE_EVENT_PAYLOAD_1_4) - set(CORE_EVENT_PAYLOAD_1_3)
+)
+
+CRITICAL_EVENTS_1_4: frozenset[str] = CRITICAL_EVENTS_1_3 | {"agent.enrolled"}

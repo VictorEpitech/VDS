@@ -1,6 +1,6 @@
-"""Contrat de module VDS (vds-core 1.3.0)."""
+"""Contrat de module VDS (vds-core 1.4.0)."""
 
-CORE_API_VERSION = "1.3.0"
+CORE_API_VERSION = "1.4.0"
 
 from . import permissions  # noqa: E402
 from .bus import Event, EventBus, ScopedBus  # noqa: E402
@@ -17,9 +17,11 @@ from .events import (  # noqa: E402
     CORE_EVENT_PAYLOAD_1_1,
     CORE_EVENT_PAYLOAD_1_2,
     CORE_EVENT_PAYLOAD_1_3,
+    CORE_EVENT_PAYLOAD_1_4,
     CORE_EVENTS_1_1,
     CORE_EVENTS_1_2,
     CORE_EVENTS_1_3,
+    CORE_EVENTS_1_4,
     EVENT_NAME_RE,
     parse_event,
 )
@@ -31,9 +33,11 @@ __all__ = [
     "CORE_EVENTS_1_1",
     "CORE_EVENTS_1_2",
     "CORE_EVENTS_1_3",
+    "CORE_EVENTS_1_4",
     "CORE_EVENT_PAYLOAD_1_1",
     "CORE_EVENT_PAYLOAD_1_2",
     "CORE_EVENT_PAYLOAD_1_3",
+    "CORE_EVENT_PAYLOAD_1_4",
     "EVENT_NAME_RE",
     "AccessDenied",
     "ConfigSchemaError",

@@ -1,8 +1,19 @@
-"""Kinds de module côté agent de site (contrat vds-core 1.3.0)."""
+"""Kinds de module côté agent de site (contrat vds-core 1.4.0)."""
 
 from typing import Protocol
 
 from ..module import ModuleContext
+from .enroll import (
+    ENROLL_CODE_PREFIX,
+    AgentEnrolled,
+    AgentEnrollmentCreated,
+    AgentEnrollmentRevoked,
+    EnrollRequest,
+    EnrollResponse,
+    LocalHandoff,
+    LocalPresence,
+    parse_presence,
+)
 from .power import (
     Capability,
     DetectHint,
@@ -31,6 +42,15 @@ class AgentModuleContext(ModuleContext, Protocol):
 
 
 __all__ = [
+    "ENROLL_CODE_PREFIX",
+    "AgentEnrolled",
+    "AgentEnrollmentCreated",
+    "AgentEnrollmentRevoked",
+    "EnrollRequest",
+    "EnrollResponse",
+    "LocalHandoff",
+    "LocalPresence",
+    "parse_presence",
     "AgentModuleContext",
     "ApkRef",
     "ApkSource",
