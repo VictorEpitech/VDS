@@ -16,7 +16,13 @@ class ApiError(Exception):
 
 async def _handle(_: Request, exc: Exception) -> JSONResponse:
     err = exc if isinstance(exc, ApiError) else ApiError("errors.internal", 500)
-    return JSONResponse(status_code=err.status, content={"code": err.code, "params": err.params})
+    headers = {}
+    retry = err.params.get("retry_after_s")
+    if err.status == 429 and isinstance(retry, int):
+        headers["Retry-After"] = str(retry)
+    return JSONResponse(
+        status_code=err.status, content={"code": err.code, "params": err.params}, headers=headers
+    )
 
 
 def install_error_handlers(app: FastAPI) -> None:

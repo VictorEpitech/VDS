@@ -29,6 +29,9 @@ class SameOriginMiddleware:
         self.exempt = {
             f"{settings.prefix}/api/v1/player/pairings",
             f"{settings.prefix}/api/v1/player/pair",
+            # enrôlement d'agent : aucun cookie accepté ; le code est le secret, et la route
+            # refuse toute requête qui porte `Origin` (un agent n'est pas un navigateur)
+            f"{settings.prefix}/api/v1/agent/enroll",
         }
         # routes à jeton (pas de cookie, pas de CSRF possible) : exemptées si Bearer présent
         self.bearer_exact = {f"{settings.prefix}/api/v1/player/heartbeat"}

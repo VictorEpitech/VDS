@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from typing import Literal
 
-from pydantic import field_validator
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _ORIGIN_RE = re.compile(r"^https?://([A-Za-z0-9.\-]+|\[[0-9a-fA-F:]+\])(:\d{1,5})?$")
@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     apk_dir: Path = Path("/opt/vds/apk")  # VDS_APK_DIR : apk.json + fichiers APK signés par la CI
     provision_lan_check: bool = True  # VDS_PROVISION_LAN_CHECK
     secret_key: str | None = None  # VDS_SECRET_KEY : dérive les clés du service LAN de cache
+    local_agent_dir: Path | None = None  # VDS_LOCAL_AGENT_DIR : canal local (absent = indisponible)
+    agent_image: str | None = None  # VDS_AGENT_IMAGE : image affichée dans la commande générée
+    agent_pull_user: str | None = None  # VDS_AGENT_PULL_USER : registre privé (lecture seule)
+    agent_pull_token: SecretStr | None = None  # VDS_AGENT_PULL_TOKEN : read:packages seul
 
     @field_validator("public_origin")
     @classmethod
@@ -41,6 +45,13 @@ class Settings(BaseSettings):
         if value is not None and not _ORIGIN_RE.match(value):
             raise ValueError("errors.public_origin_invalid")  # M8 : origine nue, sans chemin ni /
         return value
+
+    @field_validator(
+        "local_agent_dir", "agent_image", "agent_pull_user", "agent_pull_token", mode="before"
+    )
+    @classmethod
+    def _blank_is_unset(cls, value: object) -> object:
+        return None if isinstance(value, str) and not value.strip() else value
 
     @field_validator("secret_key")
     @classmethod

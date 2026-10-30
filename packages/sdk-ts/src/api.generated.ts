@@ -38,6 +38,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agent/enroll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enroll */
+        post: operations["enroll_api_v1_agent_enroll_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agent/plan": {
         parameters: {
             query?: never;
@@ -883,6 +900,41 @@ export interface paths {
         patch: operations["patch_site_api_v1_sites__site_id__patch"];
         trace?: never;
     };
+    "/api/v1/sites/{site_id}/agent/enrollments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Enrollments */
+        get: operations["list_enrollments_api_v1_sites__site_id__agent_enrollments_get"];
+        put?: never;
+        /** Create */
+        post: operations["create_api_v1_sites__site_id__agent_enrollments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sites/{site_id}/agent/enrollments/{enrollment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke */
+        delete: operations["revoke_api_v1_sites__site_id__agent_enrollments__enrollment_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sites/{site_id}/agents": {
         parameters: {
             query?: never;
@@ -1356,6 +1408,118 @@ export interface components {
             presence: "online" | "offline" | "unseen" | "revoked";
             /** Revoked At */
             revoked_at: string | null;
+        };
+        /**
+         * EnrollOut
+         * @description Réponse d'enrôlement : le jeton est en clair ici, une seule fois (cf. EnrollResponse).
+         */
+        EnrollOut: {
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /** Token */
+            token: string;
+            /**
+             * Ws Path
+             * @default ws/agent
+             * @constant
+             */
+            ws_path: "ws/agent";
+        };
+        /** EnrollRequest */
+        EnrollRequest: {
+            /** Agent Version */
+            agent_version: string;
+            /** Code */
+            code: string;
+            /** Hostname */
+            hostname: string;
+            /** Platform */
+            platform: string;
+            /** Previous Token */
+            previous_token?: string | null;
+        };
+        /** EnrollmentCommands */
+        EnrollmentCommands: {
+            /** Docker Login */
+            docker_login?: string | null;
+            /** Docker Run */
+            docker_run: string;
+        };
+        /** EnrollmentCreate */
+        EnrollmentCreate: {
+            /**
+             * Ttl Min
+             * @default 60
+             */
+            ttl_min: number;
+        };
+        /** EnrollmentCreated */
+        EnrollmentCreated: {
+            /** Code */
+            code: string;
+            commands: components["schemas"]["EnrollmentCommands"];
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            files: components["schemas"]["EnrollmentFiles"];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Image */
+            image: string;
+            /** Server Url */
+            server_url: string;
+        };
+        /** EnrollmentFiles */
+        EnrollmentFiles: {
+            /** Agent Env */
+            agent_env: string;
+        };
+        /** EnrollmentOut */
+        EnrollmentOut: {
+            /** Agent Id */
+            agent_id: string | null;
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "remote" | "local";
+            /** Consumed Hostname */
+            consumed_hostname: string | null;
+            /** Consumed Ip */
+            consumed_ip: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "pending" | "consumed" | "expired" | "revoked";
         };
         /** ExceptionCreate */
         ExceptionCreate: {
@@ -2659,6 +2823,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    enroll_api_v1_agent_enroll_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnrollRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -5082,6 +5279,102 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SiteOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_enrollments_api_v1_sites__site_id__agent_enrollments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_api_v1_sites__site_id__agent_enrollments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnrollmentCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentCreated"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_api_v1_sites__site_id__agent_enrollments__enrollment_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: string;
+                enrollment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

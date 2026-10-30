@@ -31,6 +31,7 @@ from vds_server.db.models import Organization
 from vds_server.diffusion.access import MediaAccess
 from vds_server.events import CoreBus
 from vds_server.player.device_auth import DeviceAuth, bearer
+from vds_server.player.ratelimit import FailureLimiter
 from vds_server.player.schedule import screen_media_ids
 from vds_server.power.state import PowerStateTracker
 from vds_server.provisioning.apk import ApkCatalog
@@ -73,6 +74,7 @@ class Runtime:
         self.media_access.register_reader(self._agent_reader)
         self.agent_auth = AgentAuth(self.maker)  # jeton d'agent (WS, HTTP réservé à l'agent)
         self.agent_hub = AgentHub()
+        self.enroll_limiter = FailureLimiter(limit=10, window_s=15 * 60)  # échecs par IP (/64)
         self.ticket_box = TicketBox(settings.secret_key) if settings.secret_key else None
         self.apk_catalog = ApkCatalog(settings.apk_dir)
         self.command_queue = CommandQueue(self.maker)
