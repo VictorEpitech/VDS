@@ -113,7 +113,9 @@
       "confirm": "Supprimer définitivement",
       "archive_instead": "Archiver à la place",
       "done": "L'écran {name} est supprimé."
-    }
+    },
+    "reinstall": "Réinstaller / Installer l'app",
+    "reinstall_for": "Réinstaller ou installer l'app sur {name}"
   },
   "errors": {
     "not_found": {
@@ -947,6 +949,11 @@
       "timeout": "L'installation a pris trop de temps. Réessayez.",
       "cancelled": "Installation annulée.",
       "unknown": "L'installation a échoué. Réessayez ou utilisez le code d'appairage manuel."
-    }
+    },
+    "screen_missing": "Cet écran n'existe plus ou est archivé. Retournez à la liste pour choisir un écran.",
+    "existing": {
+      "title": "Écran existant"
+    },
+    "reinstall": "Réinstaller l'app"
   }
 }

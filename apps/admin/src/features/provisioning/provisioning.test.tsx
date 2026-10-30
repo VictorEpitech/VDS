@@ -200,4 +200,49 @@ describe.each(["", "/espace/affichage"])("bouton d'installation auto sur /pairin
     expect(await screen.findByRole("button", { name: "Installer automatiquement (Android TV)" })).toBeDisabled();
     expect(screen.queryByRole("link", { name: "Installer automatiquement (Android TV)" })).toBeNull();
   });
+
+  it("saute l'étape 1 pour un écran existant et préremplit l'adresse connue", async () => {
+    const calls = mockApi({ ...base(), [`GET /config/screen/${SCREEN.id}/power.adb`]: { values: { host: { value: "192.168.1.77", inherited: null, origin: { level: "screen", scope_id: SCREEN.id }, inherited_origin: { level: "default", scope_id: null }, overridable: true } }, warnings: [] } }, b);
+    const user = userEvent.setup();
+    await renderRoutes(routes, `/screens/android?screen=${SCREEN.id}`, b);
+    expect(await screen.findByText("Écran existant")).toBeInTheDocument();
+    expect(screen.getByText("Hall TV")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Continuer" })).toBeEnabled());
+    await user.click(screen.getByRole("button", { name: "Continuer" }));
+    expect(await screen.findByLabelText("Adresse IP de la TV")).toHaveValue("192.168.1.77");
+    expect(calls.some((c) => c.method === "POST" && c.path === "/screens")).toBe(false);
+  });
+
+  it("explique et ramène à la liste quand l'écran n'existe pas", async () => {
+    mockApi(base(), b);
+    await renderRoutes(routes, "/screens/android?screen=30000000-0000-4000-8000-0000000000ff", b);
+    expect(await screen.findByText(/n'existe plus ou est archivé/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Voir les écrans" })).toBeInTheDocument();
+  });
+
+  it("propose Réinstaller dans la liste des écrans (admin, agent disponible)", async () => {
+    mockApi(base(), b);
+    await renderRoutes(routes, "/screens", b);
+    const link = await screen.findByRole("link", { name: "Réinstaller ou installer l'app sur Hall TV" });
+    expect(link).toHaveAttribute("href", `${b}/screens/android?screen=${SCREEN.id}`);
+  });
+
+  it("masque Réinstaller sans agent disponible", async () => {
+    mockApi(base({ available: false, reason: "no_agent", platforms: [], apk: null }), b);
+    await renderRoutes(routes, "/screens", b);
+    await screen.findByText("Hall TV");
+    expect(screen.queryByRole("link", { name: /Réinstaller ou installer/ })).toBeNull();
+  });
+
+  it("propose Réinstaller l'app après une annulation", async () => {
+    const cancelled = session("cancelled", [step("connect", "ok")]);
+    mockApi({ ...base(), [`POST /screens/${SCREEN.id}/provision`]: cancelled, [`GET /provisioning/${PID}`]: cancelled }, b);
+    const user = userEvent.setup();
+    await renderRoutes(routes, "/screens/android", b);
+    await toAddress(user);
+    await lan(user, "192.168.1.53");
+    await user.click(screen.getByRole("button", { name: "Lancer l'installation" }));
+    await user.click(await screen.findByRole("button", { name: "Réinstaller l'app" }));
+    expect(await screen.findByText("À faire sur la TV avant de continuer. Comptez quelques minutes.")).toBeInTheDocument();
+  });
 });

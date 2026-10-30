@@ -1,12 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useId, useState, type FormEvent } from "react";
+import { useEffect, useId, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ConfirmAction, ErrorAlert, QueryStatus, SuccessAlert } from "../../components/feedback";
 import { Icon } from "../../components/Icon";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useApi } from "../../lib/api";
-import { keys, useAllGroups, useSites, type Screen } from "../../lib/queries";
+import { keys, useAllGroups, useConfig, useScreens, useSites, type Screen } from "../../lib/queries";
 import { isActive, STEP_ORDER, useAgentStall, useCapabilities, useProvision, useProvisionActions, STALL_MS, type Provision, type StepId } from "./hooks";
 import { StepList, useCodeText } from "./StepList";
 import { AgentSetupLink } from "../sites/EnrollPanel";
@@ -34,6 +34,11 @@ export function ProvisionWizard() {
   const qc = useQueryClient();
   const sites = useSites();
   const groups = useAllGroups();
+  const screens = useScreens();
+  const wanted = useSearchParams()[0].get("screen") ?? "";
+  const existing = wanted ? screens.data?.find((s) => s.id === wanted && !s.archived_at) : undefined;
+  const missingScreen = !!wanted && screens.isSuccess && !existing;
+  const knownAddress = useConfig("screen", wanted, "power.adb", !!existing);
   const [view, setView] = useState<1 | 2 | 3>(1);
   const [name, setName] = useState("");
   const [siteId, setSiteId] = useState("");
@@ -46,6 +51,20 @@ export function ProvisionWizard() {
   const [missing, setMissing] = useState<{ name?: boolean; site?: boolean; address?: boolean; port?: boolean }>({});
   const [screenId, setScreenId] = useState<string | null>(null);
   const [pid, setPid] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!existing || screenId !== null) return;
+    setScreenId(existing.id);
+    setName(existing.name);
+    setSiteId(existing.site_id);
+    setGroupId(existing.group_id ?? "");
+    setOrientation(existing.orientation);
+    setView(2);
+  }, [existing, screenId]);
+  const knownHost = knownAddress.data?.values.host?.value;
+  useEffect(() => {
+    if (typeof knownHost === "string" && knownHost) setAddress((a) => a || knownHost);
+  }, [knownHost]);
 
   const caps = useCapabilities(siteId);
   const session = useProvision(pid);
@@ -81,7 +100,7 @@ export function ProvisionWizard() {
     if (next.address || next.port || !screenId) return;
     actions.create.mutate({
       screenId,
-      body: { platform: "android", address: address.trim(), port: portNum, device_owner: deviceOwner, soft_kiosk_fallback: softKiosk, reprovision: false },
+      body: { platform: "android", address: address.trim(), port: portNum, device_owner: deviceOwner, soft_kiosk_fallback: softKiosk, reprovision: !!existing?.device },
     });
   };
 
@@ -92,6 +111,33 @@ export function ProvisionWizard() {
         <span>{text}</span>
       </p>
     ) : null;
+
+  if (wanted && (missingScreen || screens.isPending)) {
+    return (
+      <>
+        <div className="page-head">
+          <h1>{t("provision.title")}</h1>
+        </div>
+        <QueryStatus query={screens} />
+        {missingScreen ? (
+          <div className="alert alert-error" role="alert">
+            <Icon name="failed" />
+            <div>
+              <p className="alert-text">{t("provision.screen_missing")}</p>
+              <div className="actions">
+                <Link className="btn btn-filled" to="/screens">
+                  <Icon name="screen" />
+                  {t("provision.go_screens")}
+                </Link>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </>
+    );
+  }
+  const group = (groups.data ?? []).find((g) => g.id === groupId);
+  const site = (sites.data ?? []).find((s) => s.id === siteId);
 
   return (
     <>
@@ -112,7 +158,37 @@ export function ProvisionWizard() {
         ))}
       </ol>
 
-      {pid === null && current === 1 ? (
+      {existing && pid === null ? (
+        <section className="card form-narrow" aria-label={t("provision.existing.title")}>
+          <h2>
+            <Icon name="check" />
+            {t("provision.existing.title")}
+          </h2>
+          <dl className="device-facts">
+            <div>
+              <dt>{t("screens.create.name")}</dt> <dd>{name}</dd>
+            </div>
+            <div>
+              <dt>{t("screens.create.site")}</dt> <dd>{site?.name ?? ""}</dd>
+            </div>
+            <div>
+              <dt>{t("screens.create.group")}</dt> <dd>{group?.name ?? t("screens.create.no_group")}</dd>
+            </div>
+          </dl>
+          {siteId && current === 2 ? <QueryStatus query={caps} /> : null}
+          {caps.isSuccess && !caps.data.available ? (
+            <div className="alert alert-warning" role="status">
+              <Icon name="warning" />
+              <div>
+                <p className="alert-text">{t(`provision.unavailable.${caps.data.reason ?? "unknown"}`)}</p>
+                <AgentSetupLink siteId={siteId} />
+              </div>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {pid === null && current === 1 && !existing ? (
         <form className="card form-narrow" onSubmit={submitScreen} noValidate aria-label={t("provision.wizard.1")}>
           <div className="field">
             <label htmlFor={`${uid}-name`}>{t("screens.create.name")}</label>
@@ -185,12 +261,14 @@ export function ProvisionWizard() {
           <p className="meta">{t("provision.tutorial.intro")}</p>
           <Tutorial />
           <div className="actions">
-            <button type="button" className="btn btn-filled" onClick={() => setView(3)}>
+            <button type="button" className="btn btn-filled" disabled={!!existing && !available} onClick={() => setView(3)}>
               {t("provision.next")}
             </button>
-            <button type="button" className="btn btn-text" onClick={() => setView(1)}>
-              {t("provision.previous")}
-            </button>
+            {existing ? null : (
+              <button type="button" className="btn btn-text" onClick={() => setView(1)}>
+                {t("provision.previous")}
+              </button>
+            )}
           </div>
         </section>
       ) : null}
@@ -245,6 +323,11 @@ export function ProvisionWizard() {
           screenId={screenId}
           session={session}
           actions={actions}
+          onRestart={() => {
+            actions.create.reset();
+            setPid(null);
+            setView(2);
+          }}
           onChangeAddress={() => {
             actions.create.reset();
             setPid(null);
@@ -262,12 +345,14 @@ function Run({
   session,
   actions,
   onChangeAddress,
+  onRestart,
 }: {
   pid: string;
   screenId: string | null;
   session: ReturnType<typeof useProvision>;
   actions: ReturnType<typeof useProvisionActions>;
   onChangeAddress: () => void;
+  onRestart: () => void;
 }) {
   const { t } = useTranslation();
   const codeText = useCodeText();
@@ -379,6 +464,12 @@ function Run({
               {t("provision.change_address")}
             </button>
           </>
+        ) : null}
+        {p.status === "failed" || p.status === "cancelled" ? (
+          <button type="button" className="btn btn-text" disabled={busy} onClick={onRestart}>
+            <Icon name="rotate" />
+            {t("provision.reinstall")}
+          </button>
         ) : null}
         {isActive(p.status) && p.status !== "waiting_online" && !stall.stalled ? (
           <ConfirmAction icon="revoke" label={t("provision.cancel.action")} confirmLabel={t("provision.cancel.confirm")} pending={busy} onConfirm={() => actions.cancel.mutate()} />

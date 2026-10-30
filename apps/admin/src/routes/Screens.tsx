@@ -12,6 +12,7 @@ import { ConfirmAction, Empty, ErrorAlert, QueryStatus, SuccessAlert } from "../
 import { Icon } from "../components/Icon";
 import { PresenceBadge } from "../components/StatusBadge";
 import { useApi } from "../lib/api";
+import { useProvisioningAvailable } from "../features/provisioning/hooks";
 import { keys, useAllGroups, useScreens, useSites, type Screen } from "../lib/queries";
 
 export function Screens() {
@@ -23,6 +24,7 @@ export function Screens() {
   const qc = useQueryClient();
   const session = useSession();
   const isAdmin = session.data?.role === "admin";
+  const provisionable = useProvisioningAvailable((sites.data ?? []).map((x) => x.id));
   const [creating, setCreating] = useState(false);
   const [revoked, setRevoked] = useState<string | null>(null);
   const [panel, setPanel] = useState<{ id: string; kind: "edit" | "delete"; archive?: boolean } | null>(null);
@@ -135,6 +137,12 @@ export function Screens() {
                 <Icon name="pairing" />
                 {t("screens.pair_this")}
               </Link>
+              {isAdmin && provisionable ? (
+                <Link className="btn btn-text" to={`/screens/android?screen=${s.id}`} aria-label={t("screens.reinstall_for", { name: s.name })}>
+                  <Icon name="detect" />
+                  {t("screens.reinstall")}
+                </Link>
+              ) : null}
               {s.device && !s.device.revoked_at && s.device.presence !== "revoked" ? (
                 <ConfirmAction
                   icon="revoke"

@@ -113,7 +113,9 @@
       "confirm": "Delete permanently",
       "archive_instead": "Archive instead",
       "done": "Screen {name} deleted."
-    }
+    },
+    "reinstall": "Reinstall / Install the app",
+    "reinstall_for": "Reinstall or install the app on {name}"
   },
   "errors": {
     "not_found": {
@@ -947,6 +949,11 @@
       "timeout": "The installation took too long. Try again.",
       "cancelled": "Installation cancelled.",
       "unknown": "The installation failed. Try again or use the manual pairing code."
-    }
+    },
+    "screen_missing": "This screen no longer exists or is archived. Go back to the list to pick a screen.",
+    "existing": {
+      "title": "Existing screen"
+    },
+    "reinstall": "Reinstall the app"
   }
 }
