@@ -44,10 +44,11 @@ Sans secrets de signature, aucune APK n'est produite et l'image n'en contient pa
    - configuration gérée (MDM / Device Owner) : restriction d'application `server_url`, lue au lancement.
    Le préfixe fait partie de l'URL ; en mode autonome : `https://vds.client.fr`. Changer l'URL purge le stockage web du player.
 
-**HTTPS obligatoire.** Le trafic en clair n'est autorisé que vers `127.0.0.1` (WebView vers relais) par
-`network_security_config`. Une URL `http://` hors boucle locale est refusée. Option LAN explicite (serveur autonome
-sans certificat) : construire avec `./gradlew :app:assembleRelease -Pvds.lanHttp=true` ; l'app accepte alors `http://`
-et le player remonte `player.insecure_upstream` dans le heartbeat (visible de l'admin, jamais du public).
+**HTTPS obligatoire, sauf réseau local.** Saisies acceptées : `https://hôte[:port][/préfixe]` ; `http://` uniquement vers
+`127.0.0.1`/`localhost`, une IP privée (10/8, 172.16/12, 192.168/16, 169.254/16, fc00::/7, fe80::/10) ou un nom `.local` ;
+sans schéma, `https://` est supposé (`http://` si l'hôte est local, ex. `192.168.1.182:8002`). Tout autre `http://` est
+refusé. Le clair vers le LAN signale `player.insecure_upstream` dans le heartbeat (visible de l'admin, jamais du public).
+`network_security_config` autorise le clair (Android ne filtre pas par plage IP) ; le filtre est `RelayConfig.parse`.
 
 ### Device Owner (kiosque verrouillé, recommandé)
 

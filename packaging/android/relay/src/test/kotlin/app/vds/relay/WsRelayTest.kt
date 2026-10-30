@@ -81,7 +81,7 @@ class WsRelayTest {
 
     private fun start(base: String = "", mode: String = "echo", max: Int = WsBridge.MAX_MESSAGE): Int {
         val u = FakeWsUpstream(mode).also { up = it }
-        val cfg = RelayConfig.parse("http://127.0.0.1:${u.port}$base", allowInsecureLan = true)!!
+        val cfg = RelayConfig.parse("http://127.0.0.1:${u.port}$base")!!
         val port = freePort()
         relay = Relay(cfg, port, maxWsMessage = max).also { it.start() }
         return port

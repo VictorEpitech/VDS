@@ -49,7 +49,7 @@ class SetupActivity : Activity() {
     }
 
     private fun submit() {
-        val cfg = RelayConfig.parse(input.text.toString(), BuildConfig.ALLOW_LAN_HTTP)
+        val cfg = RelayConfig.parse(input.text.toString())
         if (cfg == null) {
             status.setText(R.string.setup_error_url)
             return

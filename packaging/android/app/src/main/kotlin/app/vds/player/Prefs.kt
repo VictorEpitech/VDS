@@ -16,7 +16,7 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_WEB, null)
         set(v) = sp.edit().putString(KEY_WEB, v).apply()
 
-    fun config(): RelayConfig? = RelayConfig.parse(serverUrl, BuildConfig.ALLOW_LAN_HTTP)
+    fun config(): RelayConfig? = RelayConfig.parse(serverUrl)
 
     /** Vrai si le stockage web doit être purgé avant de charger le player. */
     fun needsPurge(cfg: RelayConfig): Boolean = webStorageFor != cfg.url

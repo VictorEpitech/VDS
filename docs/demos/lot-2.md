@@ -36,7 +36,7 @@ adb shell dpm set-device-owner app.vds.player/.AdminReceiver
 - [ ] Premier lancement : écran « Adresse du serveur » ; saisir l'URL **avec préfixe** en hébergé. Vérification `GET <url>/health` OK.
 - [ ] URL erronée : message d'erreur sobre, pas de sortie de l'app.
 - [ ] Injection alternative : `adb shell am start -n app.vds.player/.ProvisionActivity --es server_url <url>` (permission `DUMP`, shell uniquement). Vérifier qu'un `--es server_url` envoyé à `MainActivity` est sans effet.
-- [ ] URL `http://` hors boucle locale : refusée (APK standard). APK `-Pvds.lanHttp=true` : acceptée, `player.insecure_upstream` visible côté admin.
+- [ ] URL `http://` hors boucle locale : refusée (IP publique/hôte non local) ; IP privée ou `.local` : acceptée, `player.insecure_upstream` visible côté admin.
 - [ ] Iframe `content.url` d'une autre origine : `window.VdsNative` indéfini (aucun `ping`/`reload`/`info`).
 - [ ] Faire l'essai complet une fois avec `VDS_BASE_PATH=/` puis une fois avec `/espace/affichage`.
 

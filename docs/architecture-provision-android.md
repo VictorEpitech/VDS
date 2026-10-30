@@ -50,7 +50,7 @@ class ProvisionRequest(BaseModel):
     address: IPv4Address | IPv6Address  # privée/lien local uniquement (validé noyau + module)
     port: int = Field(default=5555, ge=1, le=65535)
     apk: ApkRef
-    server_url: AnyHttpUrl  # https obligatoire sauf build lanHttp (refus côté app sinon)
+    server_url: AnyHttpUrl  # https, ou http vers IP privée/.local (refus côté app sinon)
     pairing_ticket: SecretStr  # jamais journalisé
     device_owner: Literal["try", "skip"] = "try"
     soft_kiosk_fallback: bool = True

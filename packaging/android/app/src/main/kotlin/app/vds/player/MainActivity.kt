@@ -106,7 +106,7 @@ class MainActivity : Activity() {
     private fun applyRestrictions() {
         val rm = getSystemService(RestrictionsManager::class.java) ?: return
         val raw = rm.applicationRestrictions?.getString(EXTRA_SERVER_URL) ?: return
-        val parsed = RelayConfig.parse(raw, BuildConfig.ALLOW_LAN_HTTP) ?: return
+        val parsed = RelayConfig.parse(raw) ?: return
         if (parsed.url != prefs.serverUrl) prefs.serverUrl = parsed.url
     }
 

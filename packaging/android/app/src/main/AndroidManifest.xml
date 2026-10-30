@@ -7,7 +7,7 @@
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
-    <!-- Clair interdit sauf vers 127.0.0.1 (WebView <-> relais) ; l'amont est en HTTPS. Option LAN : propriété Gradle vds.lanHttp=true. -->
+    <!-- Clair permis au niveau OS (Android ne sait pas filtrer par plage IP) ; RelayConfig.parse restreint l'amont à HTTPS ou HTTP vers un hôte local. -->
     <application
         android:name=".VdsApp"
         android:allowBackup="false"
@@ -15,7 +15,7 @@
         android:banner="@drawable/ic_launcher"
         android:label="@string/app_name"
         android:usesCleartextTraffic="false"
-        android:networkSecurityConfig="${networkSecurityConfig}"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen">
 
         <meta-data android:name="android.content.APP_RESTRICTIONS" android:resource="@xml/app_restrictions" />
