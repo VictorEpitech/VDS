@@ -764,6 +764,27 @@ async def test_enroll_local_channel(
             assert lst.json()[0]["state"] == "consumed" and lst.json()[0]["channel"] == "local"
             assert "vds_enr_" not in lst.text and "vds_agt_" not in lst.text
 
+            async def roundtrip(site: str, agent_id: Any) -> dict[str, Any]:
+                """Commande réelle serveur -> agent (canal local) -> résultat."""
+                url = f"/api/v1/sites/{site}/agents/{agent_id}/commands"
+                r = await admin.post(
+                    url,
+                    json={
+                        "name": "config.updated",
+                        "args": {"module_id": "core", "config_revision": "r1"},
+                    },
+                )
+                assert r.status_code == 202, r.text
+                cid = r.json()["id"]
+
+                async def done() -> Any:
+                    row = next(x for x in (await admin.get(url)).json() if x["id"] == cid)
+                    return None if row["status"] in ("queued", "sent") else row
+
+                return dict(await poll(done, "résultat de commande livrée à l'agent", 20))
+
+            assert (await roundtrip(s1, first))["status"] == "ok"
+
             # déplacement : ancien agent révoqué, nouveau en ligne
             r = await admin.post(f"/api/v1/sites/{s2}/agent/local")
             assert r.status_code == 202, r.text
@@ -775,6 +796,18 @@ async def test_enroll_local_channel(
             )
             assert len(new) == 1
             await poll(lambda: seen(new[0][0]), "nouvel agent en ligne", 15)
+            # régression seq_gap : commande périmée (hors ligne) PUIS commande valide, sans trou
+            await srv.sql(
+                "INSERT INTO remote_command (id, target_kind, target_id, seq, name, args, status,"
+                " created_at, expires_at) SELECT gen_random_uuid(), 'agent', :a, COALESCE(MAX(seq),0)+1,"
+                ' \'config.updated\', \'{"module_id":"core","config_revision":"x"}\'::jsonb,'
+                " 'queued', now() - interval '1 h', now() - interval '1 s'"
+                " FROM remote_command WHERE target_kind='agent' AND target_id=:a",
+                a=new[0][0],
+            )
+            # régression seq_gap : le nouvel agent (seq serveur repartis à 1) reçoit et répond
+            assert (await roundtrip(s2, new[0][0]))["status"] == "ok"
+            assert (await roundtrip(s2, new[0][0]))["status"] == "ok"
 
             # « Ce n'est pas mon agent » : révocation, retour au sommeil, jeton oublié
             r = await admin.post(f"/api/v1/sites/{s2}/agents/{new[0][0]}/revoke")

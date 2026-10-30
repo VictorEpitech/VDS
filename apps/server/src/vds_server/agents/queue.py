@@ -42,10 +42,13 @@ class QueuedCommand:
     expires_at: datetime
 
 
-def _view(row: RemoteCommand) -> QueuedCommand:
+def _view(row: RemoteCommand, *, dead: bool = False) -> QueuedCommand:
+    # `dead` : commande déjà terminée/expirée. Elle reste envoyée (le seq doit rester continu côté
+    # agent : un trou = seq_gap) mais périmée d'office, donc jamais exécutée par l'agent.
+    expires = datetime.now(UTC) - timedelta(seconds=1) if dead else row.expires_at
     return QueuedCommand(
         row.id, row.seq, row.name, row.screen_id, dict(row.args or {}), row.correlation_id,
-        row.expires_at,
+        expires,
     )  # fmt: skip
 
 
@@ -98,7 +101,11 @@ class CommandQueue:
     async def pending(
         self, kind: str, target_id: UUID, after_seq: int, *, limit: int = 100
     ) -> list[QueuedCommand]:
-        """Commandes `queued|sent` non expirées, seq > after_seq (périmées -> `expired`)."""
+        """Commandes seq > after_seq, SANS TROU (périmées -> `expired`).
+
+        Les commandes déjà terminées ou expirées sont renvoyées périmées d'office : omettre un seq
+        ferait échouer la reprise de l'agent en `seq_gap`.
+        """
         now = datetime.now(UTC)
         async with self._maker.begin() as s:
             await s.execute(
@@ -117,14 +124,13 @@ class CommandQueue:
                     .where(
                         RemoteCommand.target_kind == kind,
                         RemoteCommand.target_id == target_id,
-                        RemoteCommand.status.in_(("queued", "sent")),
                         RemoteCommand.seq > after_seq,
                     )
                     .order_by(RemoteCommand.seq)
                     .limit(limit)
                 )
             ).scalars()
-            return [_view(r) for r in rows]
+            return [_view(r, dead=r.status not in ("queued", "sent")) for r in rows]
 
     async def mark_sent(self, ids: list[UUID]) -> None:
         if not ids:

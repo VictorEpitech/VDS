@@ -47,6 +47,9 @@ def make_cert(d: Path) -> tuple[str, str]:
     return str(c), str(k)
 
 
+FAKE_AGENT_ID = str(uuid4())
+
+
 def welcome_data(
     modules: list[str],
     resume_from: int = 0,
@@ -55,7 +58,7 @@ def welcome_data(
 ) -> dict[str, Any]:
     return {
         "cache": cache or {},
-        "agent_id": str(uuid4()),
+        "agent_id": FAKE_AGENT_ID,
         "site_id": str(uuid4()),
         "session_id": str(uuid4()),
         "server_time": datetime.datetime.now(datetime.UTC).isoformat(),

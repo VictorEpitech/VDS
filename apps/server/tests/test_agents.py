@@ -290,8 +290,12 @@ async def test_expired_command_not_sent(
     await admin.post(
         cmd_url(p, s), json={"name": "cache.sync", "args": {"revision": "2"}}, headers=SAME
     )
+    # seq continu (sinon l'agent coupe en seq_gap) : la périmée est envoyée déjà expirée
+    first = await ws.recv()
+    assert first and first["seq"] == 1 and first["data"]["name"] == "plan.updated"
+    assert datetime.fromisoformat(first["data"]["expires_at"]) < datetime.now(UTC)
     f = await ws.recv()
-    assert f and f["data"]["name"] == "cache.sync"
+    assert f and f["seq"] == 2 and f["data"]["name"] == "cache.sync"
     rows = await sql(migrated_db_url, "SELECT status FROM remote_command ORDER BY seq")
     assert [r[0] for r in rows] == ["expired", "sent"]
 

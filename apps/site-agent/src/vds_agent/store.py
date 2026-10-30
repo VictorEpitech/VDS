@@ -67,6 +67,13 @@ class Store:
     async def kv_set(self, key: str, value: Any) -> None:
         await self._run("INSERT OR REPLACE INTO kv VALUES (?,?)", (key, json.dumps(value)))
 
+    async def reset_seq(self) -> None:
+        """Repart de zéro (nouvelle identité d'agent côté serveur : ses seq recommencent à 1)."""
+        async with self._out_lock:
+            await self.kv_set("in_seq", 0)
+            await self.kv_set("out_seq", 0)
+            await self._run("DELETE FROM outbox", ())
+
     # outbox
     async def outbox_add(self, frame: Frame) -> Frame:
         """Attribue le prochain seq, persiste ; borne à MAX_UNACKED (purge des plus anciennes)."""

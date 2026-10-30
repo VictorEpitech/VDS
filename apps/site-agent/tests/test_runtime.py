@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import httpx
 import pytest
-from helpers import FakeServer, cmd_frame, eventually, write_fake_module
+from helpers import FAKE_AGENT_ID, FakeServer, cmd_frame, eventually, write_fake_module
 from vds_agent.cascade import Cascade
 from vds_agent.runtime import Agent
 from vds_agent.settings import AgentSettings, SettingsError, http_base, ws_url
@@ -143,6 +143,7 @@ async def test_reconnect_resume_and_outbox_replay(tmp_path: Path) -> None:
     async with FakeServer(tmp_path, ["power.fake"]) as srv:
         agent = make_agent(tmp_path, srv, plan())
         await agent.start()
+        await agent.store.kv_set("seq_owner", FAKE_AGENT_ID)
         # événements produits hors ligne : conservés dans l'outbox SQLite
         await agent.link.emit(
             "power.failed", {"screen_id": SID, "state": "on", "attempted": [], "code": "x"}
@@ -256,6 +257,7 @@ async def test_token_rotated_keeps_state_and_announces_out_seq(tmp_path: Path) -
         agent = make_agent(tmp_path, srv, plan())
         await agent.store.state_set("power.samsung-ws", "token:x", "secret")
         await agent.store.kv_set("out_seq", 7)
+        await agent.store.kv_set("seq_owner", FAKE_AGENT_ID)
         await asyncio.wait_for(agent.link.run(), 5)
         assert srv.connections == 1
         assert await agent.store.state_get("power.samsung-ws", "token:x") == "secret"
@@ -331,3 +333,22 @@ def test_screen_hint_uses_plan_driver_config() -> None:
     }
     assert ag.screen_hint("s1", None) == ("10.0.0.5", "aa:bb")
     assert ag.screen_hint("zz", None) == (None, None)
+
+
+async def test_seq_state_of_another_identity_is_reset(tmp_path: Path) -> None:
+    """Bug recette : seq d'un autre agent face à un serveur qui repart à 1 (seq_gap)."""
+    async with FakeServer(tmp_path, []) as srv:
+        agent = make_agent(tmp_path, srv, plan())
+        await agent.store.kv_set("in_seq", 5)
+        await agent.store.kv_set("out_seq", 3)
+        await agent.store.kv_set("seq_owner", "ancien-agent")
+        await agent.link.emit("event", {})
+        task = asyncio.create_task(agent.link.run())
+        try:
+            await eventually(lambda: len(srv.hellos) >= 2, 10)
+        finally:
+            agent.link.stop()
+            await asyncio.wait_for(task, 5)
+        assert srv.hellos[-1]["last_server_seq"] == 0
+        assert srv.hellos[-1]["out_seq"] == 0
+        assert await agent.store.kv_get("seq_owner") == FAKE_AGENT_ID

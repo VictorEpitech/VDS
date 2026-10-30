@@ -184,6 +184,20 @@ class ServerLink:
                 if frame.type != "welcome":
                     raise WireError("expected_welcome")
                 welcome = AgentWelcome.model_validate(frame.data)
+                owner = await self.store.kv_get("seq_owner")
+                if owner != str(welcome.agent_id) and (
+                    owner is not None
+                    or last_server_seq
+                    or int(await self.store.kv_get("out_seq", 0))
+                ):
+                    # numérotation d'une autre identité (réenrôlement, ancien état) : les seq du
+                    # serveur recommencent à 1 ; on repart de zéro et on se reconnecte proprement
+                    await self.store.reset_seq()
+                    await self.store.kv_set("seq_owner", str(welcome.agent_id))
+                    log.warning("agent.seq_reset")
+                    return False
+                if owner is None:
+                    await self.store.kv_set("seq_owner", str(welcome.agent_id))
                 self.welcome = welcome
                 await self.store.outbox_ack(welcome.resume_from)
                 await self._on_welcome(welcome)
