@@ -7,6 +7,7 @@ import { ErrorAlert, QueryStatus, SuccessAlert } from "../components/feedback";
 import { Icon } from "../components/Icon";
 import { useSession } from "../auth/session";
 import { useProvisioningAvailable } from "../features/provisioning/hooks";
+import { AgentSetupLink } from "../features/sites/EnrollPanel";
 import { useApi } from "../lib/api";
 import { keys, useScreens, useSites } from "../lib/queries";
 
@@ -68,6 +69,7 @@ export function Pairing() {
               <p className="field-help" id="pairing-auto-help">
                 {t("pairing.auto.unavailable")}
               </p>
+              <AgentSetupLink />
             </>
           )}
         </div>

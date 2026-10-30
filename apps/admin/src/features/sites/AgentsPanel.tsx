@@ -5,6 +5,7 @@ import { ConfirmAction, Empty, ErrorAlert, QueryStatus } from "../../components/
 import { Icon } from "../../components/Icon";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useApi } from "../../lib/api";
+import { EnrollPanel } from "./EnrollPanel";
 import { agentKeys, useAgents, type Agent, type AgentWithToken } from "../../lib/queries";
 
 const STATE: Record<Agent["status"], { state: "online" | "offline" | "pairing" | "revoked"; icon: "online" | "offline" | "pairing" | "revoke" }> = {
@@ -108,6 +109,7 @@ export function AgentsPanel({ siteId }: { siteId: string }) {
         {t("agents.title")}
       </h2>
       <p className="lead">{t("agents.intro")}</p>
+      <EnrollPanel siteId={siteId} />
       <QueryStatus query={agents} />
       {revealed ? <TokenReveal result={revealed} onDismiss={() => setRevealed(null)} /> : null}
       {create.isError ? <ErrorAlert error={create.error} /> : null}

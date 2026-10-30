@@ -171,6 +171,18 @@
       "revoked": "This agent is revoked.",
       "screen_not_in_site": "This screen does not belong to this site."
     },
+    "enroll": {
+      "consumed": "This code was already used: the agent has arrived. To replace it, revoke it and generate a new code.",
+      "not_found": "This enrollment no longer exists. Refresh the list."
+    },
+    "agent": {
+      "public_origin_missing": "The server's public address is not set. Set VDS_PUBLIC_ORIGIN in the server configuration, restart it, then try again.",
+      "local": {
+        "unavailable": "The agent on this server is not enabled. Start the agent service with the server (docker compose up), then refresh the page.",
+        "not_detected": "No agent was detected on this server. Check that the agent service is running, wait a few seconds, then try again.",
+        "write_failed": "The server could not pass the activation to the agent. Check the folder shared with the agent and its permissions, then try again."
+      }
+    },
     "power": {
       "calendar_day_not_found": "This day no longer exists.",
       "calendar_exists": "A calendar already uses this key.",
@@ -438,6 +450,51 @@
     "archive": {
       "action": "Archive site",
       "confirm": "Archive {name}"
+    }
+  },
+  "enroll": {
+    "title": "Add an agent",
+    "intro": "Choose where the agent should run. No command to write: enable it here, or copy the provided line on the other machine.",
+    "copy": "Copy",
+    "copied": "Copied to the clipboard.",
+    "setup_link": "Set up the site agent",
+    "waiting": "Waiting for the agent. The code expires on {when}.",
+    "lapsed": {
+      "expired": "The code expired before the agent arrived. Start again.",
+      "revoked": "The code was revoked. Start again if needed."
+    },
+    "channel": { "local": "This server", "remote": "Another machine" },
+    "local": {
+      "action": "This server",
+      "detected": "Agent detected on this server ({host}). One click is enough.",
+      "not_detected": "No agent detected on this server yet. Start the agent service: this page updates by itself."
+    },
+    "remote": {
+      "action": "Another machine",
+      "title": "Enrollment code",
+      "once": "This code is shown only once and works only once. Copy it now.",
+      "expires": "Expires on {when}.",
+      "login": "1. Sign in to the image registry",
+      "no_login": "The machine must already be signed in to the agent image registry.",
+      "run": "Start the agent",
+      "env_help": "Prefer a file? Download agent.env and use it with docker run --env-file.",
+      "download_env": "Download agent.env",
+      "done": "I copied the code"
+    },
+    "pending": {
+      "title": "Pending codes",
+      "expires": "expires on {when}",
+      "revoke": "Revoke",
+      "revoke_confirm": "Revoke this code?"
+    },
+    "arrived": {
+      "title": "An agent has arrived.",
+      "name": "Name",
+      "ip": "IP address",
+      "unknown": "Unknown",
+      "ok": "It is mine",
+      "not_mine": "This is not my agent",
+      "not_mine_confirm": "Revoke this agent?"
     }
   },
   "agents": {

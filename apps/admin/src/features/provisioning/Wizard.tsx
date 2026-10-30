@@ -9,6 +9,7 @@ import { useApi } from "../../lib/api";
 import { keys, useAllGroups, useSites, type Screen } from "../../lib/queries";
 import { isActive, STEP_ORDER, useCapabilities, useProvision, useProvisionActions, type Provision, type StepId } from "./hooks";
 import { StepList, useCodeText } from "./StepList";
+import { AgentSetupLink } from "../sites/EnrollPanel";
 import { Tutorial } from "./Tutorial";
 
 type Orientation = "landscape" | "portrait";
@@ -154,6 +155,7 @@ export function ProvisionWizard() {
               <Icon name="warning" />
               <div>
                 <p className="alert-text">{t(`provision.unavailable.${caps.data.reason ?? "unknown"}`)}</p>
+                <AgentSetupLink siteId={siteId} />
                 <Link className="btn btn-text" to={screenId ? `/pairing?screen=${screenId}` : "/pairing"}>
                   <Icon name="pairing" />
                   {t("provision.manual_code")}

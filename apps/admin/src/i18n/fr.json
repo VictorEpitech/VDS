@@ -171,6 +171,18 @@
       "revoked": "Cet agent est révoqué.",
       "screen_not_in_site": "Cet écran n'appartient pas à ce site."
     },
+    "enroll": {
+      "consumed": "Ce code a déjà été utilisé : l'agent est arrivé. Pour le remplacer, révoquez-le puis générez un nouveau code.",
+      "not_found": "Cette inscription n'existe plus. Actualisez la liste."
+    },
+    "agent": {
+      "public_origin_missing": "L'adresse publique du serveur n'est pas définie. Renseignez VDS_PUBLIC_ORIGIN dans la configuration du serveur, redémarrez-le, puis réessayez.",
+      "local": {
+        "unavailable": "L'agent sur ce serveur n'est pas activé. Démarrez le service agent avec le serveur (docker compose up), puis actualisez la page.",
+        "not_detected": "Aucun agent n'a été détecté sur ce serveur. Vérifiez que le service agent tourne, patientez quelques secondes, puis réessayez.",
+        "write_failed": "Le serveur n'a pas pu transmettre l'activation à l'agent. Vérifiez le dossier partagé avec l'agent et ses droits, puis réessayez."
+      }
+    },
     "power": {
       "calendar_day_not_found": "Ce jour n'existe plus.",
       "calendar_exists": "Un calendrier porte déjà cette clé.",
@@ -438,6 +450,51 @@
     "archive": {
       "action": "Archiver le site",
       "confirm": "Archiver {name}"
+    }
+  },
+  "enroll": {
+    "title": "Ajouter un agent",
+    "intro": "Choisissez où l'agent doit tourner. Aucune commande à écrire : activez-le ici, ou copiez la ligne fournie sur l'autre machine.",
+    "copy": "Copier",
+    "copied": "Copié dans le presse-papiers.",
+    "setup_link": "Configurer l'agent du site",
+    "waiting": "En attente de l'agent. Le code expire le {when}.",
+    "lapsed": {
+      "expired": "Le code a expiré avant l'arrivée de l'agent. Recommencez.",
+      "revoked": "Le code a été révoqué. Recommencez si besoin."
+    },
+    "channel": { "local": "Ce serveur", "remote": "Une autre machine" },
+    "local": {
+      "action": "Ce serveur",
+      "detected": "Agent détecté sur ce serveur ({host}). Un clic suffit.",
+      "not_detected": "Aucun agent détecté pour l'instant sur ce serveur. Démarrez le service agent : cette page se met à jour toute seule."
+    },
+    "remote": {
+      "action": "Une autre machine",
+      "title": "Code d'enrôlement",
+      "once": "Ce code n'est affiché qu'une seule fois et ne sert qu'une fois. Copiez-le maintenant.",
+      "expires": "Expire le {when}.",
+      "login": "1. Connexion au registre d'images",
+      "no_login": "La machine doit déjà être connectée au registre d'images de l'agent.",
+      "run": "Lancer l'agent",
+      "env_help": "Vous préférez un fichier ? Téléchargez agent.env et utilisez-le avec docker run --env-file.",
+      "download_env": "Télécharger agent.env",
+      "done": "J'ai copié le code"
+    },
+    "pending": {
+      "title": "Codes en attente",
+      "expires": "expire le {when}",
+      "revoke": "Révoquer",
+      "revoke_confirm": "Révoquer ce code ?"
+    },
+    "arrived": {
+      "title": "Un agent est arrivé.",
+      "name": "Nom",
+      "ip": "Adresse IP",
+      "unknown": "Inconnu",
+      "ok": "C'est bien le mien",
+      "not_mine": "Ce n'est pas mon agent",
+      "not_mine_confirm": "Révoquer cet agent ?"
     }
   },
   "agents": {
