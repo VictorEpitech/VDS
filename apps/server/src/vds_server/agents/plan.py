@@ -28,6 +28,7 @@ TRIGGERS = (
     "config.changed",
     "screen.created",
     "screen.updated",
+    "screen.deleted",
     "screen.paired",
     "screen.unpaired",
 )
@@ -67,6 +68,13 @@ class PlanPusher:
         if level is None and "scope_level" not in payload:
             # événement d'écran
             site = await s.scalar(select(Screen.site_id).where(Screen.id == target))
+            if site is None and payload.get(
+                "site_id"
+            ):  # écran supprimé : le site vient de l'événement
+                try:
+                    site = UUID(str(payload["site_id"]))
+                except ValueError:
+                    return set()
             return {site} if site else set()
         if level == "site" and target:
             return {target} if await s.get(Site, target) else set()

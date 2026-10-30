@@ -12,7 +12,15 @@ from vds_sdk import Event, EventBus
 from vds_server.core import audit
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
-from vds_server.db.models import Organization, Schedule, Screen, ScreenGroup, Site
+from vds_server.db.models import (
+    Organization,
+    Schedule,
+    Screen,
+    ScreenDevice,
+    ScreenGroup,
+    Site,
+)
+from vds_server.db.models_power import Incident, PowerException, RemoteCommand
 from vds_server.inventory import schemas as sc
 from vds_server.player.kiosk import load_requests
 
@@ -261,6 +269,46 @@ class InventoryService:
     async def delete_screen(self, screen_id: UUID) -> None:
         screen = await self.get_screen(screen_id)
         dropped = await self._drop_schedules("screen", screen_id)
+        # Références sans FK (polymorphes) : à nettoyer à la main, le reste part en CASCADE
+        # (screen_device, screen_provision, pairing_request, config_override, power_state,
+        # power_action, remote_command.screen_id).
+        devices = list(
+            (
+                await self._s.execute(
+                    select(ScreenDevice).where(ScreenDevice.screen_id == screen_id)
+                )
+            ).scalars()
+        )
+        device_ids = [d.id for d in devices]
+        for d in devices:
+            if d.revoked_at is None:  # le player est déconnecté : son jeton disparaît avec l'écran
+                self._events.append(
+                    Event(
+                        name="screen.unpaired",
+                        payload={
+                            "screen_id": str(screen_id),
+                            "device_id": str(d.id),
+                            "reason": "screen_deleted",
+                        },
+                        source="core",
+                    )
+                )
+        if device_ids:
+            await self._s.execute(
+                delete(RemoteCommand).where(
+                    RemoteCommand.target_kind == "device", RemoteCommand.target_id.in_(device_ids)
+                )
+            )
+        await self._s.execute(
+            delete(PowerException).where(
+                PowerException.scope_level == "screen", PowerException.scope_id == screen_id
+            )
+        )
+        await self._s.execute(
+            delete(Incident).where(
+                Incident.subject_type == "screen", Incident.subject_id == str(screen_id)
+            )
+        )
         await self._s.delete(screen)
         self._audit(
             "screen.deleted",
@@ -268,5 +316,6 @@ class InventoryService:
             screen_id,
             site_id=str(screen.site_id),
             schedules_deleted=dropped,
+            devices_revoked=len(device_ids),
         )
         await self._commit("screen.conflict")
