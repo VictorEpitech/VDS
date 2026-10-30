@@ -146,6 +146,14 @@ class Agent:
                 t.cancel()
             await self.close()
 
+    def stop(self) -> None:
+        """Arrêt propre de la liaison (le supervisor attend ensuite la fin de `run`)."""
+        self.link.stop()
+
+    @property
+    def end_reason(self) -> str | None:
+        return self.link.end_reason
+
     async def close(self) -> None:
         if self.lan:
             await self.lan.stop()

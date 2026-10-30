@@ -26,10 +26,21 @@ def _check_insecure_host(host: str | None) -> None:
         raise SettingsError("agent.insecure_dev_private_ip_only")
 
 
+def _is_loopback(host: str | None) -> bool:
+    try:
+        return ipaddress.ip_address(host or "").is_loopback
+    except ValueError:
+        return False
+
+
 def _scheme_ok(parts: SplitResult, insecure_dev: bool) -> bool:
     if not parts.netloc:
         return False
     if parts.scheme in ("https", "wss"):
+        return True
+    # Agent local : le clair est accepté vers la boucle locale seule (IP littérale 127/8, ::1),
+    # sans drapeau ; toute autre URL http exige VDS_AGENT_INSECURE_DEV=1 vers une IP privée.
+    if parts.scheme in ("http", "ws") and _is_loopback(parts.hostname):
         return True
     if insecure_dev and parts.scheme in ("http", "ws"):
         _check_insecure_host(parts.hostname)
@@ -75,6 +86,9 @@ class AgentSettings:
     # Opt-in DEV uniquement (VDS_AGENT_INSECURE_DEV=1) : http/ws clair vers une IP privée.
     # Le jeton d'agent circule alors en clair sur le LAN. Défaut : False (TLS obligatoire).
     insecure_dev: bool = False
+    # Enrôlement (spec §2.7) : code à usage unique en variable, canal local (dossier partagé).
+    enroll_code: str | None = None
+    local_dir: Path | None = None
 
     @property
     def ws_url(self) -> str:
@@ -95,12 +109,15 @@ class AgentSettings:
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "AgentSettings":
         e = os.environ if env is None else env
+        local_dir = e.get("VDS_AGENT_LOCAL_DIR") or None
         url = e.get("VDS_SERVER_URL")
+        if not url and local_dir:
+            # Agent local (réseau hôte) : port publié du serveur, joint par la boucle locale.
+            base = (e.get("VDS_BASE_PATH") or "/").strip("/")
+            url = f"http://127.0.0.1:{e.get('VDS_PORT') or '8000'}" + (f"/{base}" if base else "")
         if not url:
             raise SettingsError("agent.server_url_missing")
-        token = _read_secret(e, "VDS_AGENT_TOKEN")
-        if not token:
-            raise SettingsError("agent.token_missing")
+        token = _read_secret(e, "VDS_AGENT_TOKEN") or ""
         insecure = e.get("VDS_AGENT_INSECURE_DEV") == "1"
         ws_url(url, insecure)
         if insecure and not url.startswith(("wss", "https")):
@@ -118,4 +135,6 @@ class AgentSettings:
             cache_max_gb=float(e.get("VDS_AGENT_CACHE_MAX_GB", "20")),
             cache_lan_listen=e.get("VDS_AGENT_CACHE_LAN_LISTEN") or None,
             insecure_dev=insecure,
+            enroll_code=_read_secret(e, "VDS_ENROLL_CODE"),
+            local_dir=Path(local_dir) if local_dir else None,
         )

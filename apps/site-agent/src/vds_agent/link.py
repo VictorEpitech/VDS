@@ -91,6 +91,7 @@ class ServerLink:
         self.connected = asyncio.Event()
         self._ws: ClientConnection | None = None
         self.welcome: AgentWelcome | None = None
+        self.end_reason: str | None = None  # "revoked" | "rotated" | None (arrêt demandé)
 
     def stop(self) -> None:
         self._stop.set()
@@ -127,6 +128,7 @@ class ServerLink:
                     delay = BACKOFF_MIN
             except Revoked:
                 log.error("agent.revoked")
+                self.end_reason = "revoked"
                 await self.store.wipe_secrets()
                 self._stop.set()
                 return
@@ -134,6 +136,7 @@ class ServerLink:
                 # rotation : on conserve l'état (modules, appairages, seq) ; le nouveau jeton
                 # s'installe par redémarrage de l'agent
                 log.error("agent.token_rotated")
+                self.end_reason = "rotated"
                 self._stop.set()
                 return
             except (OSError, ConnectionClosed, WireError, TimeoutError, InvalidHandshake) as e:

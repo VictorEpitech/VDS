@@ -41,7 +41,8 @@ ENV PATH="/app/.venv/bin:$PATH" \
     VDS_MEDIA_DIR=/data/media \
     VDS_APK_DIR=/opt/vds/apk \
     PYTHONUNBUFFERED=1
-RUN useradd -r -u 10001 vds && mkdir -p /data/media && chown vds /data/media
+RUN useradd -r -u 10001 vds && mkdir -p /data/media /run/vds/local-agent \
+    && chown vds /data/media /run/vds/local-agent
 USER vds
 VOLUME /data/media
 EXPOSE 8000

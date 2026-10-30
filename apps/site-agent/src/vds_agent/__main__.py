@@ -4,9 +4,9 @@ import asyncio
 import sys
 
 from .logsetup import setup_logging
-from .runtime import Agent
 from .settings import AgentSettings, SettingsError
 from .store import Store
+from .supervisor import CredentialsMissingError, Supervisor
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -22,8 +22,11 @@ def main(argv: list[str] | None = None) -> int:
         # Efface l'état d'un module (ex. jeton Samsung périmé, empreinte TLS changée).
         asyncio.run(store.state_delete(args[1], args[2] if len(args) > 2 else None))
         return 0
-    asyncio.run(Agent(settings, store).run())
-    return 0
+    try:
+        return asyncio.run(Supervisor(settings, store).run())
+    except CredentialsMissingError as e:
+        print(f"vds-agent: {e.code}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

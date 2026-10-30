@@ -88,8 +88,8 @@ def test_settings_token_file(tmp_path: Path) -> None:
     f.write_text(TOKEN + "\n")
     s = AgentSettings.from_env({"VDS_SERVER_URL": "https://h/", "VDS_AGENT_TOKEN_FILE": str(f)})
     assert s.token == TOKEN
-    with pytest.raises(SettingsError):
-        AgentSettings.from_env({"VDS_SERVER_URL": "https://h/"})
+    # sans jeton en variable : le supervisor décide (jeton rangé, code, canal local)
+    assert AgentSettings.from_env({"VDS_SERVER_URL": "https://h/"}).token == ""
 
 
 async def test_connect_cmd_flow_and_headers(tmp_path: Path) -> None:

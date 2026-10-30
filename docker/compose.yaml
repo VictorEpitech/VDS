@@ -34,10 +34,17 @@ services:
       VDS_SMTP_USERNAME: ${VDS_SMTP_USERNAME:-}
       VDS_SMTP_PASSWORD: ${VDS_SMTP_PASSWORD:-}
       VDS_MAIL_FROM: ${VDS_MAIL_FROM:-}
+      # Canal local d'enrôlement (volume partagé avec le service `agent`). Absent en hébergé.
+      VDS_LOCAL_AGENT_DIR: /run/vds/local-agent
+      # Image affichée dans la commande « autre machine » (privée : vide = vds-agent:<version>).
+      VDS_AGENT_IMAGE: ${VDS_AGENT_IMAGE:-}
+      VDS_AGENT_PULL_USER: ${VDS_AGENT_PULL_USER:-}
+      VDS_AGENT_PULL_TOKEN: ${VDS_AGENT_PULL_TOKEN:-}
       FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-127.0.0.1}
       VDS_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-vds}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-vds}
     volumes:
       - media-data:/data/media
+      - local-agent:/run/vds/local-agent
     ports:
       - "${VDS_PORT:-8000}:8000"
     depends_on:
@@ -48,6 +55,31 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+  # Agent local : en sommeil tant qu'aucun site ne l'a activé depuis l'admin (aucune commande).
+  # Réseau hôte (Linux) : Wake-on-LAN en broadcast et, plus tard, ARP/mDNS ne traversent pas
+  # le NAT d'un réseau bridge. Aucun port entrant : il joint le serveur par la boucle locale
+  # (http://127.0.0.1:${VDS_PORT}${VDS_BASE_PATH}, clair accepté vers loopback seul).
+  # Image PRIVÉE : construite localement, jamais tirée de GHCR ; VDS_AGENT_IMAGE reste surchargeable.
+  # Même UID (10001) que le serveur : le volume `local-agent` est créé avec ce propriétaire.
+  agent:
+    image: ${VDS_AGENT_IMAGE:-vds-site-agent:local}
+    build:
+      context: ..
+      dockerfile: docker/site-agent.Dockerfile
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      VDS_AGENT_LOCAL_DIR: /run/vds/local-agent
+      VDS_AGENT_DATA_DIR: /data/agent
+      VDS_PORT: ${VDS_PORT:-8000}
+      VDS_BASE_PATH: ${VDS_BASE_PATH:-/}
+      # Serveur derrière un proxy TLS sans port publié : URL complète (préfixe compris).
+      VDS_SERVER_URL: ${VDS_LOCAL_AGENT_SERVER_URL:-}
+    volumes:
+      - local-agent:/run/vds/local-agent
+      - agent-data:/data/agent
 volumes:
   db-data:
   media-data:
+  local-agent:
+  agent-data:
