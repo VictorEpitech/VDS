@@ -16,3 +16,6 @@ playwright-report/
 apps/player/e2e/.fixtures/
 docker/apk/*
 !docker/apk/.gitkeep
+
+# Secrets locaux des agents (jamais dans le dépôt)
+docker/agent.env
