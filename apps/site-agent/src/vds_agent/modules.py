@@ -11,7 +11,7 @@ from typing import Any
 
 import jsonschema
 from vds_sdk import CORE_API_VERSION, ModuleManifest, ScopedBus, ScopeRef
-from vds_sdk.agent import PowerDriver, StateStore, check_provisioner
+from vds_sdk.agent import PowerDriver, StateStore, check_discoverer, check_provisioner
 
 log = logging.getLogger("vds.agent.modules")
 
@@ -126,6 +126,7 @@ async def instantiate(d: Discovered, bus: Any, state: StateStore) -> LoadedDrive
     mod = import_in_module(d.path, m.id, mod_path)
     driver = getattr(mod, cls_name)()
     check_provisioner(driver, m.capabilities)  # capacité `provision.*` => ScreenProvisioner
+    check_discoverer(driver, m.capabilities)  # capacité `discovery.*` => Discoverer
     ctx = AgentContext(m.id, ScopedBus(bus, m), state, d.schema)
     await driver.setup(ctx)
     return LoadedDriver(m, driver, ctx)

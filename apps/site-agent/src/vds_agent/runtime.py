@@ -16,7 +16,14 @@ from uuid import UUID
 import httpx
 from pydantic import ValidationError
 from vds_sdk import CORE_API_VERSION
-from vds_sdk.agent import DetectHint, DetectResult, PowerState, PowerTarget, ScreenProvisioner
+from vds_sdk.agent import (
+    DetectHint,
+    DetectResult,
+    Discoverer,
+    PowerState,
+    PowerTarget,
+    ScreenProvisioner,
+)
 from vds_sdk.wire import (
     AgentHello,
     AgentWelcome,
@@ -30,6 +37,7 @@ from vds_sdk.wire import (
 from .bridge import AgentBus
 from .cache import MediaCache, SyncResult, fetch_manifest
 from .cascade import Cascade, ScreenDrivers, event_for
+from .discovery import DiscoveryRunner
 from .lan import LanServer, parse_listen
 from .link import ServerLink
 from .modules import Discovered, LoadedDriver, apply_defaults, discover, instantiate
@@ -125,6 +133,13 @@ class Agent:
             emit=self.link.emit,
             local_addresses=lan_ipv4,
         )
+        self.discovery = DiscoveryRunner(
+            provider=self._discoverer,
+            active_drivers=lambda: {
+                i for i, ld in self.drivers.items() if ld.manifest.kind == "power-driver"
+            },
+            emit=self.link.emit,
+        )
 
     # --- démarrage --------------------------------------------------------------
     async def start(self) -> None:
@@ -170,7 +185,11 @@ class Agent:
         want = {e["id"]: e["version"] for e in enabled}
         for d in self.discovered:
             m = d.manifest
-            if m.kind != "power-driver" or d.error or want.get(m.id) != m.version:
+            if (
+                m.kind not in ("power-driver", "discovery")
+                or d.error
+                or want.get(m.id) != m.version
+            ):
                 continue
             if m.id in self.drivers:
                 continue
@@ -481,7 +500,16 @@ class Agent:
             if sid is None:
                 return "rejected", "invalid_args", {}
             return await self.provisioner.run(sid, args)
+        if cmd.name == "discovery.scan":
+            return await self.discovery.run(args)
         return "failed", "agent.unknown_command", {}
+
+    def _discoverer(self) -> Discoverer | None:
+        """Module actif déclarant `discovery.lan` et implémentant `Discoverer`."""
+        for ld in self.drivers.values():
+            if "discovery.lan" in ld.manifest.capabilities and isinstance(ld.driver, Discoverer):
+                return ld.driver
+        return None
 
     def _provider_for(self, platform: str) -> ScreenProvisioner | None:
         """Module actif déclarant `provision.<platform>` et implémentant `ScreenProvisioner`."""
@@ -590,5 +618,7 @@ class Agent:
             )
             return res
 
-        found = await asyncio.gather(*(one(d) for d in self.drivers.values()))
+        found = await asyncio.gather(
+            *(one(d) for d in self.drivers.values() if d.manifest.kind == "power-driver")
+        )
         return sorted((r for r in found if r), key=lambda r: -r.confidence)
