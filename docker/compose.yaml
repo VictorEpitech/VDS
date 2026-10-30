@@ -68,6 +68,18 @@ services:
       dockerfile: docker/site-agent.Dockerfile
     network_mode: host
     restart: unless-stopped
+    # Durcissement : réseau hôte + pilotes tiers dans le processus => privilèges au minimum.
+    # Wake-on-LAN (UDP broadcast) n'exige aucune capacité ; la découverte ARP du lot suivant
+    # demandera `cap_add: [NET_RAW]` explicitement, à documenter à ce moment.
+    user: "10001:10001"
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    mem_limit: 512m
+    pids_limit: 256
     environment:
       VDS_AGENT_LOCAL_DIR: /run/vds/local-agent
       VDS_AGENT_DATA_DIR: /data/agent
