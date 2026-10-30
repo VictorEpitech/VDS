@@ -1,8 +1,20 @@
-"""Kinds de module côté agent de site (contrat vds-core 1.4.0)."""
+"""Kinds de module côté agent de site (contrat vds-core 1.5.0)."""
 
 from typing import Protocol
 
 from ..module import ModuleContext
+from .discovery import (
+    DISCOVERY_PORTS,
+    DiscoveredDevice,
+    Discoverer,
+    DiscoveryNet,
+    DiscoveryScope,
+    DiscoveryScopeError,
+    MdnsRecord,
+    SsdpDescription,
+    SsdpReply,
+    check_discoverer,
+)
 from .enroll import (
     ENROLL_CODE_PREFIX,
     AgentEnrolled,
@@ -42,6 +54,16 @@ class AgentModuleContext(ModuleContext, Protocol):
 
 
 __all__ = [
+    "DISCOVERY_PORTS",
+    "DiscoveredDevice",
+    "Discoverer",
+    "DiscoveryNet",
+    "DiscoveryScope",
+    "DiscoveryScopeError",
+    "MdnsRecord",
+    "SsdpDescription",
+    "SsdpReply",
+    "check_discoverer",
     "ENROLL_CODE_PREFIX",
     "AgentEnrolled",
     "AgentEnrollmentCreated",

@@ -191,3 +191,15 @@ Avancement (lot enrôlement) :
 ### 30 octobre 2026 — Adresse et pilote d'une TV modifiables depuis l'admin (sans champ dans le noyau Screen)
 - [x] Adresse = config héritée du pilote (`power.adb.host`, `power.samsung-ws.host`, `power.wol.mac`, niveau écran, valeur + provenance) ; pilote et ordre = `core › power.cascade`. Édition par l'API config existante (admin, même origine, validation JSON Schema, audit sans valeur) ; l'agent reçoit `plan.updated` sur `config.changed`.
 - [x] Fin de l'assistant Android : `ScreenProvision.address` est recopiée dans `power.adb.host` de l'écran (écriture système, auditée, événement `config.changed`) ; la config reste la source unique.
+
+### 30 octobre 2026 — Refonte lot 2 : découverte LAN des TV (architecte, vds-core 1.5.0 additif)
+Commande fermée `discovery.scan {scan_id, scope:"lan", probe_ports}` **sans aucune cible** (anti-SSRF : l'agent calcule son périmètre = RFC1918 de ses interfaces, /22 max, 2 réseaux max) ; le runtime agent possède le réseau (façade `DiscoveryNet` bornée : voisinage en lecture, mDNS QU, SSDP + description ≤ 64 Kio même IP, `connect()` TCP sans octet sur 8 ports fixes), le module `discovery.lan` (nouveau `kind: discovery`, capacité `discovery.lan`, permission `network.discover`) n'interprète que les réponses · au clic d'un admin seulement, 30 s, 128 appareils max, 1 scan par site, 60 s entre deux, 20/h ; aucune connexion ADB/WS/HTTP ni authentification ; seuls les hôtes à signal TV remontent, conservés 24 h · migration `0009_discovery_scan`, endpoints `/sites/{id}/discovery/{capabilities,scans,scans/latest,scans/{sid}}`, événements `discovery.started|completed|failed@1`, audit `site.discovery.started|finished` · préremplissage par annotation de schéma `x-vds-device-address: ip|mac` (aucune clé de pilote dans le noyau ni l'admin) + `core.power.cascade` = pilotes suggérés · bouton masqué si le site n'a pas d'agent (hébergé sans agent compris), sans lecture du mode. Détail et tâches D1 à D7 : `docs/architecture-découverte.md` (à fusionner dans `architecture.md`).
+
+Avancement (lot découverte) :
+- [x] D1 — contrat vds-core 1.5.0 (kind `discovery`, `discovery.lan`, `network.discover`, `x-vds-device-address`, `vds_sdk.agent.discovery`, `discovery.scan` + `DiscoveryScanArgs|Batch|Result`, `CORE_EVENTS_1_5`, `test_compat_15.py`)
+- [ ] D2 — agent : façade `DiscoveryNet` et runtime de scan
+- [ ] D3 — module `discovery.lan`
+- [ ] D4 — serveur : migration 0009, service, endpoints, annotations
+- [ ] D5 — admin : bouton, liste en direct, préremplissage
+- [ ] D6 — E2E réel
+- [ ] D7 — revue sécurité

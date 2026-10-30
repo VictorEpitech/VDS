@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import ipaddress
 from datetime import datetime
+from ipaddress import IPv4Network
 from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from ..agent.discovery import MAX_BATCH, MAX_DEVICES, DiscoveredDevice
 from ..agent.provision import TICKET_RE, ApkRef, ProvisionStepId, parse_lan_address
 from .frame import Frame, WireError
 
@@ -23,8 +25,9 @@ AGENT_COMMANDS_1_2 = (
 )
 AGENT_COMMANDS = (
     *AGENT_COMMANDS_1_2,
-    "screen.provision",
-)  # 1.3 : un agent 1.2 répond unknown_command
+    "screen.provision",  # 1.3 : un agent 1.2 répond unknown_command
+    "discovery.scan",  # 1.5 : un agent 1.4 répond unknown_command
+)
 PLAYER_COMMANDS = ("reload", "identify", "screenshot", "power.set", "power.probe")
 CMD_STATUSES = ("ok", "failed", "expired", "rejected")
 POWER_REASONS = ("manual", "schedule", "exception", "alert")
@@ -178,6 +181,33 @@ class ScreenProvisionArgs(_M):
         return value
 
 
+class DiscoveryScanArgs(_M):
+    """Commande fermée `discovery.scan` (1.5). Aucune cible réseau (périmètre calculé agent)."""
+
+    scan_id: UUID
+    scope: Literal["lan"] = "lan"
+    probe_ports: bool
+
+
+class DiscoveryBatch(_M):
+    """Progression : au plus 16 appareils par trame, au plus 1 trame / 500 ms."""
+
+    scan_id: UUID
+    seq: int = Field(ge=0)
+    devices: list[DiscoveredDevice] = Field(max_length=MAX_BATCH)
+
+
+class DiscoveryResult(_M):
+    """Contenu de `cmd.result.data` pour `discovery.scan`."""
+
+    scan_id: UUID
+    networks: list[IPv4Network] = Field(min_length=1, max_length=2)
+    truncated: bool
+    device_count: int = Field(ge=0, le=MAX_DEVICES)
+    capped: bool
+    duration_ms: int = Field(ge=0)
+
+
 class RevisionArgs(_M):
     revision: str
 
@@ -204,6 +234,7 @@ AGENT_COMMAND_ARGS: dict[str, type[_M]] = {
     "config.updated": ConfigUpdatedArgs,
     "cache.sync": RevisionArgs,
     "screen.provision": ScreenProvisionArgs,
+    "discovery.scan": DiscoveryScanArgs,
 }
 PLAYER_COMMAND_ARGS: dict[str, type[_M]] = {
     "reload": EmptyArgs,

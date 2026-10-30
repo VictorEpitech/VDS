@@ -1,4 +1,4 @@
-"""Catalogue fermé de permissions (contrat 1.0, étendu en 1.2 et 1.3)."""
+"""Catalogue fermé de permissions (contrat 1.0, étendu en 1.2, 1.3 et 1.5)."""
 
 from typing import Literal, get_args
 
@@ -20,5 +20,6 @@ Permission = Literal[
     "power.calendars.write",
     "incidents.read",
     "screens.provision",
+    "network.discover",
 ]
 PERMISSIONS: frozenset[str] = frozenset(get_args(Permission))

@@ -69,7 +69,7 @@ def manifest(**over: Any) -> dict[str, Any]:
 
 
 def test_version_and_permission() -> None:
-    assert CORE_API_VERSION == "1.4.0"
+    assert CORE_API_VERSION == "1.5.0"  # courant ; compat 1.4 testée dans test_compat_14
     assert "screens.provision" in permissions.PERMISSIONS
 
 

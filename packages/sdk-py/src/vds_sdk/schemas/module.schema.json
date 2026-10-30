@@ -223,7 +223,8 @@
         "notifier",
         "auth-provider",
         "theme",
-        "storage"
+        "storage",
+        "discovery"
       ],
       "title": "Kind",
       "type": "string"
@@ -300,7 +301,8 @@
           "power.control",
           "power.calendars.write",
           "incidents.read",
-          "screens.provision"
+          "screens.provision",
+          "network.discover"
         ],
         "type": "string"
       },

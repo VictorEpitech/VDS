@@ -6,6 +6,7 @@ from .errors import ConfigSchemaError
 
 LEVELS = frozenset({"simple", "advanced"})
 SCOPES = frozenset({"organization", "site", "group", "screen"})
+DEVICE_ADDRESSES = frozenset({"ip", "mac"})  # x-vds-device-address (1.5)
 
 
 def _fail(prop: str, code: str) -> ConfigSchemaError:
@@ -41,6 +42,8 @@ def validate_config_schema(schema: dict[str, Any]) -> None:
         env = p.get("x-vds-env")
         if env is not None and (not isinstance(env, str) or not env):
             raise _fail(name, "env_invalid")
+        if "x-vds-device-address" in p and p["x-vds-device-address"] not in DEVICE_ADDRESSES:
+            raise _fail(name, "device_address_invalid")
         secret = p.get("x-vds-secret")
         if secret is not None and not isinstance(secret, bool):
             raise _fail(name, "secret_invalid")

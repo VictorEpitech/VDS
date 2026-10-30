@@ -707,7 +707,8 @@
     "plan.updated",
     "config.updated",
     "cache.sync",
-    "screen.provision"
+    "screen.provision",
+    "discovery.scan"
   ],
   "x-player-commands": [
     "reload",

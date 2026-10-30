@@ -115,3 +115,25 @@ CORE_EVENTS_1_4: frozenset[str] = CORE_EVENTS_1_3 | frozenset(
 )
 
 CRITICAL_EVENTS_1_4: frozenset[str] = CRITICAL_EVENTS_1_3 | {"agent.enrolled"}
+
+# --- vds-core 1.5.0 (additif) : découverte LAN -------------------------------------
+# Bus simple, aucun événement critique. Aucune adresse, MAC ni nom d'appareil dans un payload.
+CORE_EVENT_PAYLOAD_1_5: dict[str, tuple[str, ...]] = {
+    **CORE_EVENT_PAYLOAD_1_4,
+    "discovery.started": ("scan_id", "site_id", "agent_id", "requested_by", "probe_ports"),
+    "discovery.completed": (
+        "scan_id",
+        "site_id",
+        "device_count",
+        "capped",
+        "truncated",
+        "duration_ms",
+    ),
+    "discovery.failed": ("scan_id", "site_id", "code"),
+}
+
+CORE_EVENTS_1_5: frozenset[str] = CORE_EVENTS_1_4 | frozenset(
+    set(CORE_EVENT_PAYLOAD_1_5) - set(CORE_EVENT_PAYLOAD_1_4)
+)
+
+CRITICAL_EVENTS_1_5: frozenset[str] = CRITICAL_EVENTS_1_4
