@@ -200,6 +200,6 @@ Avancement (lot découverte) :
 - [x] D2 — agent : façade `DiscoveryNet` et runtime de scan
 - [x] D3 — module `discovery.lan`
 - [x] D4 — serveur : migration 0010 (0009 prise), service, endpoints, annotations
-- [ ] D5 — admin : bouton, liste en direct, préremplissage
+- [x] D5 — admin : bouton, liste en direct, préremplissage
 - [ ] D6 — E2E réel
 - [ ] D7 — revue sécurité

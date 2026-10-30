@@ -247,6 +247,12 @@
       "apk_unavailable": "The Android app is not available on the server.",
       "address_not_lan": "Use the TV's local IP address (private network).",
       "address_invalid": "Invalid IP address."
+    },
+    "discovery": {
+      "unavailable": "The search is not available for this site.",
+      "busy": "A search is already running on this site.",
+      "cooldown": "A search was just run. Wait {seconds} s before running it again.",
+      "quota": "Too many searches for this site this hour. Try again in {seconds} s."
     }
   },
   "auth": {
@@ -955,5 +961,45 @@
       "title": "Existing screen"
     },
     "reinstall": "Reinstall the app"
+  },
+  "discovery": {
+    "title": "Find TVs on the network",
+    "action": "Find TVs on the network",
+    "again": "Search again",
+    "help": "The site agent scans this site's local network (network announcements and common TV ports). Nothing is sent to the devices.",
+    "help_no_ports": "The site agent listens for network announcements on this site. Port probes are turned off for this site.",
+    "running": "{count, plural, =0 {Searching, this can take up to 30 seconds…} one {Searching: # device found…} other {Searching: # devices found…}}",
+    "found": "{count, plural, one {# device found} other {# devices found}}",
+    "empty": "No TV found. Check that it is on and on the same network as the agent, or enter its address by hand.",
+    "unnamed": "Unnamed device",
+    "drivers": "Suggested drivers: {drivers}",
+    "known": "Already added",
+    "known_link": "View screen",
+    "known_open": "View the screen already added for {name}",
+    "truncated": "Only part of the network was scanned: it is wider than what the agent explores. Some TVs may be missing.",
+    "capped": "The list is limited to 128 devices: others may exist.",
+    "adb_notice": "Some TVs accept ADB debugging over the network. Keep them on a network dedicated to screens (VLAN) and out of reach of staff computers.",
+    "prefilled": "Address and power drivers of {name} were prefilled from the search. You can change them in Power.",
+    "config_failed": "Screen {name} was created, but its address and drivers could not be saved.",
+    "config_open": "Set them in Power",
+    "install_android": "Install the app on this TV",
+    "reason": {
+      "agent_offline": "The site agent is offline: the search is not available right now.",
+      "agent_outdated": "Update the site agent (version 1.5 or later) to find TVs on the network.",
+      "module_disabled": "Enable the \"Local network screen discovery\" module to find TVs on the network.",
+      "agent_missing": "No site agent is installed on this site."
+    },
+    "failed": {
+      "unknown": "The search failed. Try again, or enter the address by hand.",
+      "timeout": "The search timed out. Try again, or enter the address by hand.",
+      "no_provider": "No discovery module is active on the site agent.",
+      "no_private_network": "The site agent found no local network to scan.",
+      "busy": "A search is already running on this site.",
+      "internal": "The search failed because of an agent error. Try again later."
+    },
+    "settings": {
+      "title": "TV network search",
+      "intro": "Settings of the automatic TV search for this site."
+    }
   }
 }

@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ConfirmAction, ErrorAlert, QueryStatus } from "../components/feedback";
 import { Icon } from "../components/Icon";
 import { GroupsPanel } from "../features/sites/GroupsPanel";
+import { SiteDiscoverySettings } from "../features/discovery/SiteDiscoverySettings";
 import { AgentsPanel } from "../features/sites/AgentsPanel";
 import { AttachmentPanel } from "../features/power/AttachmentSection";
 import { useApi } from "../lib/api";
@@ -50,6 +51,7 @@ export function SiteDetail() {
           </p>
           <GroupsPanel siteId={site.id} />
           <AgentsPanel siteId={site.id} />
+          <SiteDiscoverySettings siteId={site.id} />
           <section className="section" aria-labelledby="site-power-h">
             <h2 id="site-power-h">
               <Icon name="power" />

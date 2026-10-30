@@ -5,6 +5,9 @@ import { Link } from "react-router-dom";
 import { ErrorAlert, SuccessAlert } from "../../components/feedback";
 import { Icon } from "../../components/Icon";
 import { useApi } from "../../lib/api";
+import { applyDiscoveredDevice, suggestedName, type DiscoveredDevice } from "../discovery/hooks";
+import { DiscoveryPanel } from "../discovery/DiscoveryPanel";
+import { useProvisioningAvailable } from "../provisioning/hooks";
 import { keys, useAllGroups, useSites, type Screen } from "../../lib/queries";
 
 type Orientation = "landscape" | "portrait";
@@ -22,10 +25,32 @@ export function ScreenCreateForm({ onClose }: { onClose: () => void }) {
   const [groupId, setGroupId] = useState("");
   const [orientation, setOrientation] = useState<Orientation>("landscape");
   const [missingSite, setMissingSite] = useState(false);
+  const [device, setDevice] = useState<DiscoveredDevice | null>(null);
+  const [autoName, setAutoName] = useState(false);
+  const provisionable = useProvisioningAvailable(siteId ? [siteId] : []);
   const create = useMutation({
-    mutationFn: (b: { name: string; site_id: string; group_id: string | null; orientation: Orientation }) => api.post<Screen>("/screens", b),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.screens }),
+    mutationFn: async (b: { name: string; site_id: string; group_id: string | null; orientation: Orientation }) => {
+      const screen = await api.post<Screen>("/screens", b);
+      if (!device) return { screen, configFailed: false };
+      try {
+        await applyDiscoveredDevice(api, screen.id, device);
+        return { screen, configFailed: false };
+      } catch {
+        return { screen, configFailed: true };
+      }
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: keys.screens });
+      await qc.invalidateQueries({ queryKey: ["config"] });
+    },
   });
+  const pick = (d: DiscoveredDevice | null) => {
+    setDevice(d);
+    if (d && (name.trim() === "" || autoName)) {
+      setName(suggestedName(d));
+      setAutoName(true);
+    }
+  };
   const activeSites = (sites.data ?? []).filter((s) => !s.archived_at);
   const siteGroups = (groups.data ?? []).filter((g) => g.site_id === siteId);
 
@@ -37,11 +62,30 @@ export function ScreenCreateForm({ onClose }: { onClose: () => void }) {
   };
 
   if (create.isSuccess) {
+    const { screen, configFailed } = create.data;
+    const android = device && (device.platform === "android" || device.platform === "google_tv") && provisionable;
     return (
       <div className="card inline-form">
-        <SuccessAlert>{t("screens.create.done", { name: create.data.name })}</SuccessAlert>
+        <SuccessAlert>{t("screens.create.done", { name: screen.name })}</SuccessAlert>
+        {device && !configFailed && device.suggested_drivers.length > 0 ? (
+          <p className="meta">{t("discovery.prefilled", { name: screen.name })}</p>
+        ) : null}
+        {configFailed ? (
+          <p className="alert alert-warning" role="alert">
+            <Icon name="warning" />
+            <span>
+              {t("discovery.config_failed", { name: screen.name })} <Link to="/power">{t("discovery.config_open")}</Link>
+            </span>
+          </p>
+        ) : null}
         <div className="actions">
-          <Link className="btn btn-filled" to={`/pairing?screen=${create.data.id}`}>
+          {android ? (
+            <Link className="btn btn-filled" to={`/screens/android?screen=${screen.id}&address=${encodeURIComponent(device.ip)}`}>
+              <Icon name="detect" />
+              {t("discovery.install_android")}
+            </Link>
+          ) : null}
+          <Link className={android ? "btn btn-tonal" : "btn btn-filled"} to={`/pairing?screen=${screen.id}`}>
             <Icon name="pairing" />
             {t("screens.create.pair_now")}
           </Link>
@@ -58,7 +102,7 @@ export function ScreenCreateForm({ onClose }: { onClose: () => void }) {
       <h2>{t("screens.create.title")}</h2>
       <div className="field">
         <label htmlFor={`${uid}-name`}>{t("screens.create.name")}</label>
-        <input id={`${uid}-name`} value={name} maxLength={120} required autoComplete="off" onChange={(e) => setName(e.target.value)} />
+        <input id={`${uid}-name`} value={name} maxLength={120} required autoComplete="off" onChange={(e) => { setName(e.target.value); setAutoName(false); }} />
       </div>
       <div className="field">
         <label htmlFor={`${uid}-site`}>{t("screens.create.site")}</label>
@@ -70,6 +114,7 @@ export function ScreenCreateForm({ onClose }: { onClose: () => void }) {
           onChange={(e) => {
             setSiteId(e.target.value);
             setGroupId("");
+            setDevice(null);
           }}
         >
           <option value="">{t("form.choose")}</option>
@@ -86,6 +131,7 @@ export function ScreenCreateForm({ onClose }: { onClose: () => void }) {
           </p>
         ) : null}
       </div>
+      <DiscoveryPanel siteId={siteId} selected={device?.id ?? null} onSelect={pick} />
       <div className="field">
         <label htmlFor={`${uid}-group`}>{t("screens.create.group")}</label>
         <select id={`${uid}-group`} value={groupId} disabled={!siteId} onChange={(e) => setGroupId(e.target.value)}>

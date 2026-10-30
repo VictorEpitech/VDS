@@ -247,6 +247,12 @@
       "apk_unavailable": "L'application Android n'est pas disponible sur le serveur.",
       "address_not_lan": "Utilisez l'adresse IP locale de la TV (réseau privé).",
       "address_invalid": "Adresse IP invalide."
+    },
+    "discovery": {
+      "unavailable": "La recherche n'est pas disponible pour ce site.",
+      "busy": "Une recherche est déjà en cours sur ce site.",
+      "cooldown": "Une recherche vient d'être faite. Patientez {seconds} s avant de relancer.",
+      "quota": "Trop de recherches pour ce site cette heure. Réessayez dans {seconds} s."
     }
   },
   "auth": {
@@ -955,5 +961,45 @@
       "title": "Écran existant"
     },
     "reinstall": "Réinstaller l'app"
+  },
+  "discovery": {
+    "title": "Rechercher les TV du réseau",
+    "action": "Rechercher les TV du réseau",
+    "again": "Relancer la recherche",
+    "help": "L'agent de site parcourt le réseau local de ce site (annonces réseau et ports courants de TV). Rien n'est envoyé aux appareils.",
+    "help_no_ports": "L'agent de site écoute les annonces réseau de ce site. Les sondes de ports sont désactivées pour ce site.",
+    "running": "{count, plural, =0 {Recherche en cours, cela peut prendre jusqu'à 30 secondes…} one {Recherche en cours : # appareil trouvé…} other {Recherche en cours : # appareils trouvés…}}",
+    "found": "{count, plural, one {# appareil trouvé} other {# appareils trouvés}}",
+    "empty": "Aucune TV trouvée. Vérifiez qu'elle est allumée et sur le même réseau que l'agent, ou saisissez son adresse à la main.",
+    "unnamed": "Appareil sans nom",
+    "drivers": "Pilotes suggérés : {drivers}",
+    "known": "Déjà ajouté",
+    "known_link": "Voir l'écran",
+    "known_open": "Voir l'écran déjà ajouté pour {name}",
+    "truncated": "Seule une partie du réseau a été parcourue : il est plus large que ce que l'agent explore. Des TV peuvent manquer.",
+    "capped": "La liste est limitée à 128 appareils : d'autres peuvent exister.",
+    "adb_notice": "Des TV acceptent le débogage ADB sur le réseau. Réservez-les à un réseau dédié aux écrans (VLAN) et ne les exposez pas aux postes du personnel.",
+    "prefilled": "Adresse et pilotes d'alimentation de {name} préremplis depuis la recherche. Vous pouvez les modifier dans Alimentation.",
+    "config_failed": "L'écran {name} est créé, mais l'adresse et les pilotes n'ont pas pu être enregistrés.",
+    "config_open": "Les renseigner dans Alimentation",
+    "install_android": "Installer l'application sur cette TV",
+    "reason": {
+      "agent_offline": "L'agent de site est hors ligne : la recherche n'est pas disponible pour le moment.",
+      "agent_outdated": "Mettez à jour l'agent de site (version 1.5 ou plus) pour rechercher les TV du réseau.",
+      "module_disabled": "Activez le module « Découverte des écrans du réseau local » pour rechercher les TV du réseau.",
+      "agent_missing": "Aucun agent de site n'est installé sur ce site."
+    },
+    "failed": {
+      "unknown": "La recherche a échoué. Réessayez, ou saisissez l'adresse à la main.",
+      "timeout": "La recherche a dépassé le délai. Réessayez, ou saisissez l'adresse à la main.",
+      "no_provider": "Aucun module de découverte n'est actif sur l'agent de site.",
+      "no_private_network": "L'agent de site n'a trouvé aucun réseau local à parcourir.",
+      "busy": "Une recherche est déjà en cours sur ce site.",
+      "internal": "La recherche a échoué à cause d'une erreur de l'agent. Réessayez plus tard."
+    },
+    "settings": {
+      "title": "Recherche des TV du réseau",
+      "intro": "Réglages de la recherche automatique des TV pour ce site."
+    }
   }
 }

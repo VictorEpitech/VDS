@@ -5,7 +5,7 @@ import { useApi } from "../../lib/api";
 import { useAgents } from "../../lib/queries";
 
 type S = components["schemas"];
-export type Capabilities = S["CapabilitiesOut"];
+export type Capabilities = S["vds_server__provisioning__schemas__CapabilitiesOut"];
 export type Provision = S["ProvisionOut"];
 export type ProvisionCreate = S["ProvisionCreate"];
 export type StepId = S["StepOut"]["step"];

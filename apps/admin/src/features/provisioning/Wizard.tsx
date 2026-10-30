@@ -35,7 +35,8 @@ export function ProvisionWizard() {
   const sites = useSites();
   const groups = useAllGroups();
   const screens = useScreens();
-  const wanted = useSearchParams()[0].get("screen") ?? "";
+  const query = useSearchParams()[0];
+  const wanted = query.get("screen") ?? "";
   const existing = wanted ? screens.data?.find((s) => s.id === wanted && !s.archived_at) : undefined;
   const missingScreen = !!wanted && screens.isSuccess && !existing;
   const knownAddress = useConfig("screen", wanted, "power.adb", !!existing);
@@ -44,7 +45,7 @@ export function ProvisionWizard() {
   const [siteId, setSiteId] = useState("");
   const [groupId, setGroupId] = useState("");
   const [orientation, setOrientation] = useState<Orientation>("landscape");
-  const [address, setAddress] = useState("");
+  const [address, setAddress] = useState(() => (/^[0-9.]{7,15}$/.test(query.get("address") ?? "") ? (query.get("address") ?? "") : ""));
   const [port, setPort] = useState("5555");
   const [deviceOwner, setDeviceOwner] = useState<"try" | "skip">("try");
   const [softKiosk, setSoftKiosk] = useState(true);
