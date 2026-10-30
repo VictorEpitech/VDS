@@ -20,9 +20,9 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from vds_sdk import Event, EventBus
-from vds_sdk.agent.discovery import MAX_BATCH, MAX_DEVICES, DiscoveredDevice
+from vds_sdk.agent.discovery import MAX_BATCH, MAX_DEVICES
 from vds_sdk.versions import Version
-from vds_sdk.wire import DiscoveryResult, DiscoveryScanArgs
+from vds_sdk.wire import DiscoveryBatch, DiscoveryResult, DiscoveryScanArgs
 
 from vds_server.agents.queue import CommandQueue
 from vds_server.agents.service import agent_status
@@ -44,7 +44,6 @@ SCAN_TTL_S = 60  # expires_at de la commande ; sans cmd.result à 60 s : discove
 COOLDOWN_S = 60  # entre deux scans d'un site
 QUOTA_PER_HOUR = 20
 RETENTION = timedelta(hours=24)
-BATCH_EVENT = "discovery.batch"  # trame `event` agent -> serveur portant un DiscoveryBatch
 RFC1918 = tuple(ipaddress.IPv4Network(n) for n in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"))
 _CODE_RE = re.compile(r"[a-z0-9_.]{1,96}")
 
@@ -439,30 +438,21 @@ class DiscoveryService:
 
 
 class DiscoveryEvents:
-    """Abonné du bus : lots d'appareils relayés par l'agent et résultat final de la commande."""
+    """Lots d'appareils remis par le pont (jamais via le bus) et résultat final de la commande."""
 
     def __init__(self, maker: async_sessionmaker[AsyncSession], bus: EventBus) -> None:
         self._maker, self._bus = maker, bus
 
-    def register(self, subscribe: Callable[[str, Any], Any]) -> None:
-        subscribe(BATCH_EVENT, self.on_batch)
-
-    async def on_batch(self, event: Event) -> None:
-        p = event.payload
-        try:
-            scan_id = UUID(str(p["scan_id"]))
-            raw = p["devices"]
-        except (KeyError, ValueError):
-            return
-        if not isinstance(raw, list):
-            return
+    async def on_batch(self, site_id: UUID, batch: DiscoveryBatch) -> None:
+        scan_id = batch.scan_id
+        raw = batch.devices
         async with self._maker() as s:
             row = (
                 await s.execute(
                     select(DiscoveryScan).where(DiscoveryScan.id == scan_id).with_for_update()
                 )
             ).scalar_one_or_none()
-            if row is None or row.status not in ACTIVE or event.origin != f"agent:{row.site_id}":
+            if row is None or row.status not in ACTIVE or row.site_id != site_id:
                 log.warning("discovery.batch_ignored", extra={"scan_id": str(scan_id)})
                 return
             current = (
@@ -484,10 +474,7 @@ class DiscoveryEvents:
                 ).scalars()
             }
             for item in raw[:MAX_BATCH]:
-                try:
-                    dev = DiscoveredDevice.model_validate(item)
-                except ValidationError:
-                    continue
+                dev = item
                 if not _private(dev.ip):
                     continue
                 ip = str(dev.ip)

@@ -27,6 +27,7 @@ from test_auth import (  # noqa: F401
 )
 from test_diffusion import mk_screen
 from vds_sdk import Event
+from vds_sdk.wire import EventData, WireError
 from vds_server.core.runtime import Runtime
 from vds_server.main import create_app
 from vds_server.settings import Settings
@@ -108,13 +109,14 @@ async def batch(
     origin: str | None = None,
 ) -> None:
     rt: Runtime = app.state.runtime
-    await rt.discovery_events.on_batch(
-        Event(
+    await rt.agent_bridge.republish(
+        UUID(origin or site),
+        EventData(
             name="discovery.batch",
+            version=1,
+            occurred_at=datetime.now(UTC),
             payload={"scan_id": scan_id, "seq": 0, "devices": devices},
-            source="agent",
-            origin=origin or f"agent:{site}",
-        )
+        ),
     )
 
 
@@ -234,6 +236,12 @@ async def test_full_flow_and_known_screen(
 
     for name in ("discovery.started", "discovery.completed", "discovery.failed"):
         rt.bus.subscribe(name, spy)
+    leaked: list[Event] = []
+
+    async def leak(event: Event) -> None:
+        leaked.append(event)
+
+    rt.bus.subscribe("discovery.batch", leak)
     # un écran déjà configuré avec la MAC 11:22:33:44:55:66 (pilote WoL, propriété annotée)
     r = await admin.put(
         f"{p}/api/v1/config/screen/{s['screen']}/power.wol/mac",
@@ -290,6 +298,7 @@ async def test_full_flow_and_known_screen(
     )
     latest = (await admin.get(url(p, s, "scans/latest"))).json()
     assert latest["id"] == sid and len(latest["devices"]) == 2
+    assert leaked == []  # discovery.batch ne passe jamais par le bus
     names = [e.name for e in seen]
     assert names == ["discovery.started", "discovery.completed"]
     assert seen[1].payload["device_count"] == 2 and seen[1].payload["duration_ms"] == 1234
@@ -361,14 +370,19 @@ async def test_batch_validation(
     ws = await online(app, p, s)
     sid = await start(admin, p, s)
     # lot d'une autre origine, ou d'un scan inconnu : ignoré
-    await batch(app, s["site"], sid, [dev("192.168.1.5")], origin=f"agent:{uuid4()}")
+    await batch(app, s["site"], sid, [dev("192.168.1.5")], origin=str(uuid4()))
     await batch(app, s["site"], str(uuid4()), [dev("192.168.1.5")])
     assert (await scan(admin, p, s, sid))["devices"] == []
     # adresses hors RFC1918 ou invalides : rejetées
-    bad = [dev("8.8.8.8"), dev("100.64.0.9"), dev("169.254.1.1"), dev("192.168.1.6", mac="zz")]
+    bad = [dev("8.8.8.8"), dev("100.64.0.9"), dev("169.254.1.1")]
     await batch(app, s["site"], sid, [*bad, dev("10.1.2.3")])
     got = await scan(admin, p, s, sid)
     assert [d["ip"] for d in got["devices"]] == ["10.1.2.3"] and got["status"] == "running"
+    # payload invalide (MAC mal formée) : fermeture propre, rien n'est stocké
+    with pytest.raises(WireError):
+        await batch(app, s["site"], sid, [dev("192.168.1.6", mac="zz")])
+    with pytest.raises(WireError):
+        await batch(app, s["site"], sid, [dev("192.168.1.6"), {"ip": "nope"}])
     # agent remplacé (le scan n'appartient plus à l'agent courant) : lot ignoré
     await sql(migrated_db_url, "UPDATE discovery_scan SET agent_id = NULL")
     await batch(app, s["site"], sid, [dev("192.168.1.7")])

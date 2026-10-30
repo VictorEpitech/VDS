@@ -87,7 +87,7 @@ class Runtime:
         self.provision_events = ProvisionEvents(self.maker, self.bus)
         self.provision_events.register(self.bus.subscribe)
         self.discovery_events = DiscoveryEvents(self.maker, self.bus)
-        self.discovery_events.register(self.bus.subscribe)
+        self.agent_bridge.discovery_batch = self.discovery_events.on_batch
         self.supervisor = Supervisor(
             self.maker,
             self.bus,

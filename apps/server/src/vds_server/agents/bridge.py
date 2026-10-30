@@ -4,14 +4,15 @@ Trois contrôles (docs/architecture-lot3.md § 1.2) : nom autorisé (cœur : lis
 déclaré par un module à cible site-agent), forme du payload, appartenance des écrans au site.
 """
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Any
 from uuid import UUID
 
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from vds_sdk import CORE_EVENT_PAYLOAD_1_5, CORE_EVENTS_1_5, Event, EventBus
-from vds_sdk.wire import CLOSE_BAD_MESSAGE, CLOSE_FORBIDDEN, EventData, WireError
+from vds_sdk.wire import CLOSE_BAD_MESSAGE, CLOSE_FORBIDDEN, DiscoveryBatch, EventData, WireError
 
 from vds_server.db.models import Screen
 
@@ -22,11 +23,13 @@ AGENT_CORE_EVENTS = frozenset(
         "power.failed",
         "cache.synced",
         "screen.provision_progressed",
-        "discovery.batch",  # DiscoveryBatch de la découverte LAN (progression)
     }
 )
 # nom d'événement -> id du module (cible site-agent) qui le déclare
 ModuleEvents = Callable[[], dict[str, str]]
+# Transport agent -> serveur réservé au noyau (adresses, MAC) : jamais publié sur le bus.
+DISCOVERY_BATCH = "discovery.batch"
+BatchHandler = Callable[[UUID, DiscoveryBatch], Awaitable[None]]
 
 
 # Cibles qu'un agent ne possède pas : refusées à toute profondeur du payload.
@@ -75,6 +78,7 @@ class EventBridge:
         self._maker = maker
         self._bus = bus
         self._module_events = module_events
+        self.discovery_batch: BatchHandler | None = None
 
     def _source(self, name: str) -> str:
         if name in AGENT_CORE_EVENTS:
@@ -87,6 +91,14 @@ class EventBridge:
         return module_id
 
     async def republish(self, site_id: UUID, data: EventData) -> None:
+        if data.name == DISCOVERY_BATCH:
+            try:
+                batch = DiscoveryBatch.model_validate(data.payload)
+            except ValidationError as exc:
+                raise WireError("invalid_payload", CLOSE_BAD_MESSAGE) from exc
+            if self.discovery_batch is not None:
+                await self.discovery_batch(site_id, batch)
+            return
         source = self._source(data.name)
         required = CORE_EVENT_PAYLOAD_1_5.get(data.name, ())
         if any(k not in data.payload for k in required):

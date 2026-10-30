@@ -164,6 +164,8 @@ Délais : budget agent **30 s** (voisinage 0 s, mDNS 4 s et SSDP 4 s en parallè
 
 Pas d'événement par appareil : la liste vit dans la base, les consommateurs futurs la lisent par l'API. Ajoutés à `CORE_EVENTS_1_5`. Aucune adresse, MAC ni nom d'appareil dans un événement.
 
+`discovery.batch` (agent → serveur, payload DiscoveryBatch) est un message de transport fiable, hors catalogue vds-core : il porte des adresses et des MAC et n'est jamais publié sur le bus. Le pont le remet au service discovery du noyau ; les modules ne voient que `discovery.started/completed/failed`. Le contrat ne change pas (1.5.0).
+
 ## 5. Serveur
 
 ### 5.1 Migration `0009_discovery_scan` (branche `core`, réversible)
