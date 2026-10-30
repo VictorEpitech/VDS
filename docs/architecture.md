@@ -694,3 +694,17 @@ Test manuel (vraie machine, sans TV) : démarrer l'agent avec `VDS_AGENT_CACHE_L
 ### File de commandes d'agent : append-only
 
 La file `remote_command` d'un agent ne perd jamais de ligne : supprimer un écran passe `screen_id` à NULL (et périme les commandes en attente) au lieu de les effacer. Effacer faisait régresser `max(seq)` : le serveur réattribuait des seq déjà vus par l'agent, ignorés comme doublons (provisioning « bloqué » sans erreur). Côté agent, les acks de commandes sont regroupés (ack cumulatif) et l'émission est limitée à 40 trames/s, sous le plafond serveur de 50/s (fermeture 4429).
+
+### Découverte LAN : runtime agent et module `discovery.lan` (D2/D3)
+
+Implémentation : `vds_agent/discovery_net.py` (façade `DiscoveryNet`, périmètre), `vds_agent/discovery.py` (commande `discovery.scan`), `modules/discovery.lan`. Les lots de progression partent en événements fiables `discovery.batch` (payload `DiscoveryBatch`) ; le serveur (D4) doit les accepter.
+
+- Périmètre : interfaces lues par ioctl Linux (IPv4 primaire de chaque interface seulement ; les alias d'adresse secondaires ne sont pas vus). Hors `host` network Docker, l'agent ne voit que le réseau du conteneur : le compose doit donner `network_mode: host` ou un macvlan à l'agent pour scanner le LAN du site, et le multicast mDNS/SSDP ne traverse pas un bridge Docker.
+- Pas de `defusedxml` en dépendance : la description SSDP est refusée dès qu'elle contient `<!DOCTYPE` ou `<!ENTITY` (aucune DTD ni entité n'atteint expat), puis analysée avec `xml.etree`.
+- mDNS : requêtes QU depuis un port éphémère ; l'IP retenue est celle de l'émetteur du paquet (les enregistrements A ne sont pas crus). Un hôte qui ne répond qu'en multicast (réponse non unicast) est manqué ; le balayage de ports le retrouve s'il expose un port de la liste.
+- Une TV en veille profonde ou éteinte ne répond ni mDNS, ni SSDP, ni ports : indétectable, repli « Ajouter une adresse ».
+- Le module ne se fie pas à une table OUI (aucune table embarquée en 0.1.0) : la marque vient du fabricant SSDP, de mots-clés dans SERVER/modèle/nom. Le MAC vient de l'ARP (rempli par les `connect()` du balayage).
+- L'échéance de 30 s coupe le module et conserve les appareils déjà rapportés (résultat `ok` partiel, pas `discovery.timeout`, réservé au délai serveur de 60 s).
+- Captures de test synthétiques (annonces publiques) : à confirmer par la procédure manuelle ci-dessous sur de vraies TV.
+
+Procédure manuelle (vraies TV, TCL Google TV 2023 + Samsung Tizen 2023) : agent sur le LAN du site avec `network_mode: host`, TV allumées ; déclencher `discovery.scan` (admin, D5) ; vérifier que chaque TV apparaît avec marque, modèle et pilotes attendus (`power.adb`/`power.wol` pour TCL, `power.samsung-ws`/`power.wol` pour Samsung), qu'aucune invite « Autoriser le débogage USB » n'apparaît sur la TCL et qu'aucune invite d'autorisation n'apparaît sur la Samsung ; relancer avec `probe_ports=false` et constater que seules les TV annoncées en mDNS/SSDP restent.

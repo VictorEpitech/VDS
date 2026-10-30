@@ -1,0 +1,21 @@
+{
+  "id": "discovery.lan",
+  "version": "0.1.0",
+  "core": ">=1.5 <2.0",
+  "kind": "discovery",
+  "name": { "fr": "Découverte des écrans du réseau local", "en": "Local network screen discovery" },
+  "description": {
+    "fr": "Repère les TV du réseau local du site (voisinage, mDNS, SSDP, ports ouverts) et propose les pilotes d'alimentation adaptés. N'interprète que les réponses : aucune connexion ni authentification.",
+    "en": "Spots TVs on the site local network (neighbours, mDNS, SSDP, open ports) and suggests matching power drivers. Only interprets replies: no connection or authentication."
+  },
+  "targets": ["site-agent"],
+  "entrypoints": { "site-agent": "agent.module:LanDiscoverer" },
+  "requires": {},
+  "capabilities": ["discovery.lan"],
+  "permissions": ["network.discover"],
+  "events": { "listens": [], "emits": [] },
+  "config": { "$ref": "config.schema.json" },
+  "i18n": ["fr", "en"],
+  "author": "V-Tech",
+  "signature": null
+}

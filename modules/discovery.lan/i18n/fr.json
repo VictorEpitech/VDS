@@ -1,0 +1,6 @@
+{
+  "module": { "name": "Découverte des écrans du réseau local", "description": "Repère les TV du réseau local et propose les pilotes adaptés (sans connexion ni authentification)." },
+  "config": { "discovery_lan": {
+    "probe_ports": { "title": "Sonder les ports", "description": "Teste l'ouverture de quelques ports (ADB, Samsung, Cast, webOS) sans rien envoyer. Désactiver pour un réseau sensible : seuls le voisinage, mDNS et SSDP sont utilisés." }
+  } }
+}

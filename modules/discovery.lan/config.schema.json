@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "probe_ports": {
+      "type": "boolean", "default": true,
+      "title": "config.discovery_lan.probe_ports.title", "description": "config.discovery_lan.probe_ports.description",
+      "x-vds-level": "advanced", "x-vds-scopes": ["site"]
+    }
+  }
+}

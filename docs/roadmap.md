@@ -197,8 +197,8 @@ Commande fermée `discovery.scan {scan_id, scope:"lan", probe_ports}` **sans auc
 
 Avancement (lot découverte) :
 - [x] D1 — contrat vds-core 1.5.0 (kind `discovery`, `discovery.lan`, `network.discover`, `x-vds-device-address`, `vds_sdk.agent.discovery`, `discovery.scan` + `DiscoveryScanArgs|Batch|Result`, `CORE_EVENTS_1_5`, `test_compat_15.py`)
-- [ ] D2 — agent : façade `DiscoveryNet` et runtime de scan
-- [ ] D3 — module `discovery.lan`
+- [x] D2 — agent : façade `DiscoveryNet` et runtime de scan
+- [x] D3 — module `discovery.lan`
 - [ ] D4 — serveur : migration 0009, service, endpoints, annotations
 - [ ] D5 — admin : bouton, liste en direct, préremplissage
 - [ ] D6 — E2E réel

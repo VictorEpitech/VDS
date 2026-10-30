@@ -377,3 +377,52 @@ async def test_runner_second_scan_is_busy_and_deadline_cuts() -> None:
 def test_clean_strips_controls_and_truncates() -> None:
     assert dn.clean("a\x07b\n" + "x" * 300) == "ab" + "x" * 126
     assert dn.clean("\x00") is None
+
+
+async def test_agent_loads_discovery_lan_and_routes_scan(tmp_path: Path) -> None:
+    from vds_agent.cascade import Cascade
+    from vds_agent.modules import discover
+    from vds_agent.runtime import Agent
+    from vds_agent.settings import AgentSettings
+    from vds_agent.store import Store
+    from vds_agent.testing import module_dir
+    from vds_sdk.wire import Cmd
+
+    mods = tmp_path / "mods"
+    mods.mkdir()
+    (mods / "discovery.lan").symlink_to(module_dir("discovery.lan"))
+    s = AgentSettings(
+        server_url="https://x.invalid",
+        token="vds_agt_" + "x" * 43,  # noqa: S106
+        data_dir=tmp_path / "d",
+        modules_dir=mods,
+    )
+    agent = Agent(s, Store(s.data_dir), cascade=Cascade(), http=httpx.AsyncClient())
+    agent.discovered = discover(mods)
+    assert agent.discovered and agent.discovered[0].error is None
+    await agent._activate([{"id": "discovery.lan", "version": "0.1.0"}])
+    assert agent._discoverer() is not None
+
+    agent.discovery._ifaces = lambda: [ifc("eth0", "192.168.1.5", 24)]  # type: ignore[assignment]
+    cmd = Cmd.model_validate(
+        {"cmd_id": str(uuid4()), "name": "discovery.scan", "screen_id": None,
+         "args": {"scan_id": str(uuid4()), "probe_ports": False},
+         "expires_at": "2099-01-01T00:00:00Z"}
+    )  # fmt: skip
+    args = cmd.validate_for("agent").model_dump()
+    # réseau entièrement simulé : aucun envoi UDP ni connexion (udp/probe factices dans make_net)
+    agent.discovery._net_factory = lambda p, dl: make_net(udp=_silent_udp, probe=_closed_probe)  # type: ignore[assignment]
+    status, code, data = await agent.dispatch(cmd, args)
+    assert (status, code) == ("ok", None) and data["device_count"] == 0
+    await agent.close()
+
+
+async def _silent_udp(
+    p: list[bytes], dest: tuple[str, int], w: float
+) -> AsyncIterator[tuple[bytes, str]]:
+    return
+    yield
+
+
+async def _closed_probe(ip: IPv4Address, port: int, t: float) -> bool:
+    return False
