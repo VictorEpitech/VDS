@@ -1,6 +1,8 @@
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { components } from "@vds/sdk-ts";
 import { useApi } from "../../lib/api";
+import { useAgents } from "../../lib/queries";
 
 type S = components["schemas"];
 export type Capabilities = S["CapabilitiesOut"];
@@ -78,3 +80,32 @@ export function useProvisionActions(pid: string | null, onCreated: (p: Provision
 
 /** `provision.android.tls_required` -> `tls_required` ; `provision.ticket_expired` -> `ticket_expired`. */
 export const codeKey = (code: string) => code.replace(/^provision\.(android\.)?/, "");
+
+/** Délai sans progression d'une commande en file avant d'alerter. */
+export const STALL_MS = 20_000;
+
+/** Signature de progression : change dès que le statut ou une étape bouge. */
+const progress = (p: Provision) => `${p.status}|${p.steps.map((s) => `${s.step}:${s.status}`).join(",")}`;
+
+/**
+ * Détecte une commande d'agent sans résultat : session `queued` sans progression au-delà de `STALL_MS`,
+ * ou session en cours alors qu'aucun agent du site n'est connecté (API agents existante).
+ */
+export function useAgentStall(p: Provision | undefined, nowMs: () => number = Date.now) {
+  const agents = useAgents(p?.site_id ?? "");
+  const [, tick] = useState(0);
+  const mark = useRef<{ sig: string; at: number } | null>(null);
+  const sig = p ? progress(p) : null;
+  if (sig !== null && mark.current?.sig !== sig) mark.current = { sig, at: nowMs() };
+  const active = !!p && (p.status === "queued" || p.status === "running");
+  useEffect(() => {
+    if (!active) return;
+    const id = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [active]);
+  if (!p || !active) return { stalled: false, notStarted: false };
+  const notStarted = p.status === "queued";
+  const agentDown = agents.isSuccess && !agents.data.some((a) => a.status === "online");
+  const idle = mark.current ? nowMs() - mark.current.at : 0;
+  return { stalled: agentDown || (notStarted && idle >= STALL_MS), notStarted };
+}

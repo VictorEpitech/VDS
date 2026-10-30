@@ -23,21 +23,23 @@ export function useCodeText() {
 }
 
 /** Les 11 étapes avec statut (couleur + icône + libellé) et message d'erreur ou d'avertissement. */
-export function StepList({ steps }: { steps: Provision["steps"] }) {
+export function StepList({ steps, waitingAgent = false }: { steps: Provision["steps"]; waitingAgent?: boolean }) {
   const { t } = useTranslation();
   const codeText = useCodeText();
   const byId = new Map(steps.map((s) => [s.step, s]));
+  const firstPending = waitingAgent ? STEP_ORDER.find((id) => (byId.get(id)?.status ?? "pending") === "pending") : undefined;
   return (
     <ol className="list-reset step-list" aria-label={t("provision.run.steps_label")}>
       {STEP_ORDER.map((id) => {
         const s = byId.get(id);
         const status: StepStatus = s?.status ?? "pending";
-        const { state, icon } = BADGE[status];
+        const waiting = id === firstPending;
+        const { state, icon } = waiting ? { state: "pairing" as ScreenState, icon: "processing" as IconName } : BADGE[status];
         const message = codeText(s?.code ?? null);
         return (
-          <li key={id} className="step-row" data-status={status} aria-current={status === "running" || status === "waiting_user" ? "step" : undefined}>
+          <li key={id} className="step-row" data-status={waiting ? "waiting_agent" : status} aria-current={waiting || status === "running" || status === "waiting_user" ? "step" : undefined}>
             <span className="step-name">{t(`provision.step.${id}`)}</span>
-            <StatusBadge state={state} icon={icon} label={t(`provision.step_status.${status}`)} />
+            <StatusBadge state={state} icon={icon} label={t(`provision.step_status.${waiting ? "waiting_agent" : status}`)} />
             {message && (status === "failed" || status === "skipped" || status === "waiting_user") ? (
               <p className="step-message meta">
                 <Icon name={status === "failed" ? "failed" : "warning"} />

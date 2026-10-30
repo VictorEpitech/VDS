@@ -7,7 +7,7 @@ import { Icon } from "../../components/Icon";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useApi } from "../../lib/api";
 import { keys, useAllGroups, useSites, type Screen } from "../../lib/queries";
-import { isActive, STEP_ORDER, useCapabilities, useProvision, useProvisionActions, type Provision, type StepId } from "./hooks";
+import { isActive, STEP_ORDER, useAgentStall, useCapabilities, useProvision, useProvisionActions, STALL_MS, type Provision, type StepId } from "./hooks";
 import { StepList, useCodeText } from "./StepList";
 import { AgentSetupLink } from "../sites/EnrollPanel";
 import { Tutorial } from "./Tutorial";
@@ -272,6 +272,7 @@ function Run({
   const { t } = useTranslation();
   const codeText = useCodeText();
   const p = session.data;
+  const stall = useAgentStall(p);
   if (!p) return <QueryStatus query={session} />;
   const failedStep: StepId | null = p.steps.find((s) => s.status === "failed")?.step ?? null;
   const resumeAt = failedStep ?? (STEP_ORDER.find((id) => !p.steps.some((s) => s.step === id && (s.status === "ok" || s.status === "skipped"))) ?? null);
@@ -284,6 +285,28 @@ function Run({
     <section className="card" aria-labelledby={stepTitle}>
       <h2 id={stepTitle}>{t(p.status === "waiting_online" || p.status === "done" ? "provision.wizard.5" : "provision.wizard.4")}</h2>
       <div className="live" aria-live="polite">
+        {stall.stalled ? (
+          <div className="alert alert-warning" role="alert">
+            <Icon name="offline" />
+            <div>
+              <p className="alert-text">
+                <strong>{t("provision.agent_stalled.title")}</strong>
+              </p>
+              <p className="meta">{t("provision.agent_stalled.text", { seconds: STALL_MS / 1000 })}</p>
+              <div className="actions">
+                <button type="button" className="btn btn-filled" disabled={busy} onClick={() => retry(resumeAt)}>
+                  <Icon name="rotate" />
+                  {t("provision.agent_stalled.retry")}
+                </button>
+                <Link className="btn btn-text" to={`/sites/${p.site_id}`}>
+                  <Icon name="agent" />
+                  {t("provision.agent_stalled.view_agent")}
+                </Link>
+                <ConfirmAction icon="revoke" label={t("provision.cancel.action")} confirmLabel={t("provision.cancel.confirm")} pending={busy} onConfirm={() => actions.cancel.mutate()} />
+              </div>
+            </div>
+          </div>
+        ) : null}
         {waitingUser ? (
           <div className="alert alert-warning" role="status">
             <Icon name="pairing" />
@@ -335,7 +358,7 @@ function Run({
           <p className="meta">{t("provision.kiosk.device_owner")}</p>
         ) : null}
       </div>
-      <StepList steps={p.steps} />
+      <StepList steps={p.steps} waitingAgent={stall.notStarted} />
       {actions.retry.isError ? <ErrorAlert error={actions.retry.error} /> : null}
       {actions.cancel.isError ? <ErrorAlert error={actions.cancel.error} /> : null}
       {session.isError ? <QueryStatus query={session} /> : null}
@@ -357,7 +380,7 @@ function Run({
             </button>
           </>
         ) : null}
-        {isActive(p.status) && p.status !== "waiting_online" ? (
+        {isActive(p.status) && p.status !== "waiting_online" && !stall.stalled ? (
           <ConfirmAction icon="revoke" label={t("provision.cancel.action")} confirmLabel={t("provision.cancel.confirm")} pending={busy} onConfirm={() => actions.cancel.mutate()} />
         ) : null}
         {p.status === "done" ? (

@@ -886,6 +886,7 @@
       "launch": "Lancement de l'application"
     },
     "step_status": {
+      "waiting_agent": "En attente de l'agent",
       "pending": "À venir",
       "running": "En cours",
       "waiting_user": "Action sur la TV",
@@ -902,6 +903,12 @@
       "procedure": "Procédure de verrouillage complet :",
       "none": "Aucun verrouillage : l'application n'est pas protégée. Ne l'utilisez pas sur un écran public.",
       "device_owner": "Verrouillage complet actif."
+    },
+    "agent_stalled": {
+      "title": "L'agent du site ne répond pas",
+      "text": "La commande est en attente depuis plus de {seconds} s ou l'agent est hors ligne. La TV n'a pas encore été contactée.",
+      "retry": "Réessayer",
+      "view_agent": "Voir l'état de l'agent"
     },
     "retry_here": "Réessayer à cette étape",
     "continue_soft": "Continuer en kiosque doux",

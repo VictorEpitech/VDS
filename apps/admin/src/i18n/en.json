@@ -886,6 +886,7 @@
       "launch": "Starting the app"
     },
     "step_status": {
+      "waiting_agent": "Waiting for the agent",
       "pending": "Upcoming",
       "running": "In progress",
       "waiting_user": "Action on the TV",
@@ -902,6 +903,12 @@
       "procedure": "Full lock procedure:",
       "none": "No lock: the app is not protected. Do not use it on a public screen.",
       "device_owner": "Full lock active."
+    },
+    "agent_stalled": {
+      "title": "The site agent is not responding",
+      "text": "The command has been pending for over {seconds} s or the agent is offline. The TV has not been contacted yet.",
+      "retry": "Retry",
+      "view_agent": "View agent status"
     },
     "retry_here": "Retry from this step",
     "continue_soft": "Continue with the soft kiosk",
