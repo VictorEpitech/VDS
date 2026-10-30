@@ -93,6 +93,26 @@
       "pair_now": "Pair this screen",
       "no_site": "No site available: create a site first.",
       "go_sites": "Go to sites"
+    },
+    "edit": {
+      "action": "Edit",
+      "action_for": "Edit screen {name}",
+      "title": "Edit screen {name}",
+      "archive": "Archive this screen (it leaves the list)",
+      "archive_hint": "An archived screen is no longer scheduled or listed; its history is kept.",
+      "saved": "Screen {name} saved.",
+      "archived": "Screen {name} archived."
+    },
+    "delete": {
+      "action": "Delete",
+      "action_for": "Delete screen {name}",
+      "title": "Delete screen {name}",
+      "warning": "Permanent deletion: the device pairing is revoked and schedule items targeting this screen are removed. This cannot be undone.",
+      "archive_hint": "To keep its history, archive the screen instead of deleting it.",
+      "type_name": "To confirm, retype the name: {name}",
+      "confirm": "Delete permanently",
+      "archive_instead": "Archive instead",
+      "done": "Screen {name} deleted."
     }
   },
   "errors": {
@@ -288,7 +308,10 @@
     }
   },
   "pairing": {
-    "auto": { "action": "Install automatically (Android TV)", "unavailable": "Available when a site agent 1.3 or later handles Android installation for a site." },
+    "auto": {
+      "action": "Install automatically (Android TV)",
+      "unavailable": "Available when a site agent 1.3 or later handles Android installation for a site."
+    },
     "title": "Pair a screen",
     "intro": "Enter the code shown on the screen, then choose the matching screen.",
     "code": {
@@ -463,7 +486,10 @@
       "expired": "The code expired before the agent arrived. Start again.",
       "revoked": "The code was revoked. Start again if needed."
     },
-    "channel": { "local": "This server", "remote": "Another machine" },
+    "channel": {
+      "local": "This server",
+      "remote": "Another machine"
+    },
     "local": {
       "action": "This server",
       "detected": "Agent detected on this server ({host}). One click is enough.",

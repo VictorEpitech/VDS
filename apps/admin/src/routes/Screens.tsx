@@ -6,6 +6,8 @@ import { useSession } from "../auth/session";
 import { KioskControls } from "../features/kiosk/KioskControls";
 import { KioskSetting } from "../features/kiosk/KioskSetting";
 import { ScreenCreateForm } from "../features/screens/ScreenCreateForm";
+import { ScreenDeleteForm } from "../features/screens/ScreenDeleteForm";
+import { ScreenEditForm } from "../features/screens/ScreenEditForm";
 import { ConfirmAction, Empty, ErrorAlert, QueryStatus, SuccessAlert } from "../components/feedback";
 import { Icon } from "../components/Icon";
 import { PresenceBadge } from "../components/StatusBadge";
@@ -23,6 +25,12 @@ export function Screens() {
   const isAdmin = session.data?.role === "admin";
   const [creating, setCreating] = useState(false);
   const [revoked, setRevoked] = useState<string | null>(null);
+  const [panel, setPanel] = useState<{ id: string; kind: "edit" | "delete"; archive?: boolean } | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const done = (message: string) => {
+    setPanel(null);
+    setNotice(message);
+  };
   const revoke = useMutation({
     mutationFn: (s: Screen) => api.delete(`/screens/${s.id}/device`),
     onMutate: () => setRevoked(null),
@@ -63,6 +71,7 @@ export function Screens() {
       <p className="lead">{t("screens.intro")}</p>
       {creating ? <ScreenCreateForm onClose={() => setCreating(false)} /> : null}
       <QueryStatus query={screens} />
+      {notice ? <SuccessAlert>{notice}</SuccessAlert> : null}
       {revoked ? <SuccessAlert>{t("screens.revoked", { name: revoked })}</SuccessAlert> : null}
       {revoke.isError ? (
         <ErrorAlert error={revoke.error} />
@@ -135,7 +144,25 @@ export function Screens() {
                   onConfirm={() => revoke.mutate(s)}
                 />
               ) : null}
+              {isAdmin ? (
+                <>
+                  <button type="button" className="btn btn-text" aria-label={t("screens.edit.action_for", { name: s.name })} onClick={() => { setNotice(null); setPanel({ id: s.id, kind: "edit" }); }}>
+                    <Icon name="maintenance" />
+                    {t("screens.edit.action")}
+                  </button>
+                  <button type="button" className="btn btn-text btn-danger" aria-label={t("screens.delete.action_for", { name: s.name })} onClick={() => { setNotice(null); setPanel({ id: s.id, kind: "delete" }); }}>
+                    <Icon name="delete" />
+                    {t("screens.delete.action")}
+                  </button>
+                </>
+              ) : null}
             </div>
+            {isAdmin && panel?.id === s.id && panel.kind === "edit" ? (
+              <ScreenEditForm screen={s} initialArchived={panel.archive} onClose={() => setPanel(null)} onDone={done} />
+            ) : null}
+            {isAdmin && panel?.id === s.id && panel.kind === "delete" ? (
+              <ScreenDeleteForm screen={s} onClose={() => setPanel(null)} onDone={done} onArchive={() => setPanel({ id: s.id, kind: "edit", archive: true })} />
+            ) : null}
           </li>
         ))}
       </ul>

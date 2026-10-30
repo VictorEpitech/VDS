@@ -93,6 +93,26 @@
       "pair_now": "Appairer cet écran",
       "no_site": "Aucun site disponible : créez d'abord un site.",
       "go_sites": "Aller aux sites"
+    },
+    "edit": {
+      "action": "Modifier",
+      "action_for": "Modifier l'écran {name}",
+      "title": "Modifier l'écran {name}",
+      "archive": "Archiver cet écran (il disparaît de la liste)",
+      "archive_hint": "L'écran archivé n'est plus programmé ni listé ; son historique est conservé.",
+      "saved": "L'écran {name} est enregistré.",
+      "archived": "L'écran {name} est archivé."
+    },
+    "delete": {
+      "action": "Supprimer",
+      "action_for": "Supprimer l'écran {name}",
+      "title": "Supprimer l'écran {name}",
+      "warning": "Suppression définitive : l'appairage de l'appareil est révoqué et les éléments de planning ciblant cet écran sont supprimés. Cette action est irréversible.",
+      "archive_hint": "Pour garder l'historique, archivez l'écran plutôt que le supprimer.",
+      "type_name": "Pour confirmer, retapez le nom : {name}",
+      "confirm": "Supprimer définitivement",
+      "archive_instead": "Archiver à la place",
+      "done": "L'écran {name} est supprimé."
     }
   },
   "errors": {
@@ -288,7 +308,10 @@
     }
   },
   "pairing": {
-    "auto": { "action": "Installer automatiquement (Android TV)", "unavailable": "Disponible quand un agent de site 1.3 ou plus gère l'installation Android sur un site." },
+    "auto": {
+      "action": "Installer automatiquement (Android TV)",
+      "unavailable": "Disponible quand un agent de site 1.3 ou plus gère l'installation Android sur un site."
+    },
     "title": "Appairer un écran",
     "intro": "Saisissez le code affiché sur l'écran, puis choisissez l'écran qui lui correspond.",
     "code": {
@@ -463,7 +486,10 @@
       "expired": "Le code a expiré avant l'arrivée de l'agent. Recommencez.",
       "revoked": "Le code a été révoqué. Recommencez si besoin."
     },
-    "channel": { "local": "Ce serveur", "remote": "Une autre machine" },
+    "channel": {
+      "local": "Ce serveur",
+      "remote": "Une autre machine"
+    },
     "local": {
       "action": "Ce serveur",
       "detected": "Agent détecté sur ce serveur ({host}). Un clic suffit.",
