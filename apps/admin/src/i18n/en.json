@@ -1000,6 +1000,14 @@
     "settings": {
       "title": "TV network search",
       "intro": "Settings of the automatic TV search for this site."
-    }
+    },
+    "no_mac": "MAC unknown",
+    "confidence": {
+      "high": "High confidence",
+      "medium": "Medium confidence",
+      "low": "Low confidence"
+    },
+    "low_warning": "The identity of {name} is not reliable: any device on the network can announce itself under this name. Check the IP address and MAC on the TV before continuing.",
+    "low_confirm": "I checked that the address of {name} is really my TV's"
   }
 }

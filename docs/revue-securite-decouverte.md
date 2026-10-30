@@ -56,7 +56,7 @@ Méthode : lecture seule du code. Aucune connexion réseau, aucun test lancé. `
 
 ### m4. Usurpation d'identité d'une TV et confusion visuelle Unicode
 
-**Statut : corrigé côté agent. `clean()` retire les catégories Unicode Cc et Cf (bidi, largeur nulle, BOM). Test. Reporté côté admin (affichage de la confiance et de la MAC avant préremplissage, pas de présélection `low`) : à voir avec frontend.**
+**Statut : corrigé côté agent. `clean()` retire les catégories Unicode Cc et Cf (bidi, largeur nulle, BOM). Test. Côté admin : corrigé. Confiance (badge couleur + icône + libellé) et MAC affichées pour chaque appareil avant le préremplissage ; un appareil `low` n'est jamais présélectionné et ne préremplit qu'après avertissement et case de confirmation explicite. Noms rendus en texte. Tests vitest aux deux bases.**
 `discovery_net.py:54-62`. `clean()` ne retire que les contrôles ASCII. Les caractères bidi (U+202A-202E, U+2066-2069) et de largeur nulle passent. N'importe quel hôte du LAN peut s'annoncer en mDNS ou SSDP comme « Samsung QM55 – Accueil ». L'admin le sélectionne, le formulaire préremplit l'IP dans la config du pilote, puis le pilote (ADB, Samsung WS) se connecte à l'hôte de l'attaquant. Le jeton d'appairage Samsung ou la clé ADB peuvent alors être présentés à un faux appareil.
 **Correctif** :
 - Retirer les catégories Unicode `Cf` et `Cc` dans `clean()`.
@@ -71,7 +71,7 @@ Méthode : lecture seule du code. Aucune connexion réseau, aucun test lancé. `
 
 ### m6. Écritures déclenchées par des GET non soumis au contrôle de même origine
 
-**Statut : reporté (serveur non touché, hors périmètre de ce correctif). À signaler à backend : sortir `expire_stale` des GET (tâche périodique ou POST seulement) pour garder les lectures sans écriture. Effet limité à une expiration anticipée de quelques secondes.**
+**Statut : corrigé. Les GET sont en lecture seule : `_read` dérive `failed/discovery.timeout` (scan actif de plus de 60 s) sans écrire ni publier ; l'expiration est persistée par le POST de création (`expire_stale`). Test : GET sans écriture ni événement, POST persiste, aux deux VDS_BASE_PATH.**
 `apps/server/src/vds_server/discovery/service.py:366-372`. `GET /scans/latest` et `GET /scans/{id}` exécutent `expire_stale` : mise à jour de `remote_command` et du scan, audit, publication d'événements. Un site tiers peut déclencher ces écritures en GET cross-site, avec le cookie selon son attribut `SameSite`. L'effet se limite à une expiration anticipée de quelques secondes de ce qui aurait expiré de toute façon. Pas d'élévation possible, mais cela entorse la règle 13.
 **Correctif** : faire l'expiration dans une tâche périodique, ou en écriture seulement (POST), et garder les GET en lecture seule.
 

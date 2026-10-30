@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { useErrorText } from "../../auth/error-text";
@@ -34,6 +34,7 @@ export function DiscoveryPanel({ siteId, selected, onSelect }: { siteId: string;
   const uid = useId();
   const caps = useDiscoveryCapabilities(siteId);
   const { start, scan, started, reset } = useDiscoveryScan(siteId);
+  const [lowId, setLowId] = useState<string | null>(null);
   if (!siteId || !caps.data) return null;
   if (!caps.data.available) {
     if (caps.data.reason === "agent_missing" || !caps.data.reason) return null;
@@ -50,6 +51,7 @@ export function DiscoveryPanel({ siteId, selected, onSelect }: { siteId: string;
   const done = data?.status === "completed";
   const launch = () => {
     onSelect(null);
+    setLowId(null);
     reset();
     start.mutate();
   };
@@ -104,10 +106,21 @@ export function DiscoveryPanel({ siteId, selected, onSelect }: { siteId: string;
             {devices.map((d) => {
               const label = d.name || [d.vendor, d.model].filter(Boolean).join(" ") || t("discovery.unnamed");
               const known = d.known_screen_id !== null;
+              const low = d.confidence === "low";
+              const conf = ["high", "medium", "low"].includes(d.confidence) ? d.confidence : "low";
+              const choose = () => {
+                if (low) {
+                  setLowId(d.id);
+                  onSelect(null);
+                } else {
+                  setLowId(null);
+                  onSelect(d);
+                }
+              };
               return (
                 <li key={d.id} className="row-line discovery-device">
                   <label className="discovery-choice">
-                    <input type="radio" name={`${uid}-device`} checked={selected === d.id} disabled={known || running} onChange={() => onSelect(d)} />
+                    <input type="radio" name={`${uid}-device`} checked={selected === d.id || lowId === d.id} disabled={known || running} onChange={choose} />
                     <span>
                       <strong>{label}</strong>
                       {d.vendor || d.model ? <span className="meta"> {[d.vendor, d.model].filter(Boolean).join(" ")}</span> : null}
@@ -115,7 +128,8 @@ export function DiscoveryPanel({ siteId, selected, onSelect }: { siteId: string;
                   </label>
                   <span className="discovery-facts">
                     <span className="mono">{d.ip}</span>
-                    {d.mac ? <span className="mono">{d.mac}</span> : null}
+                    {d.mac ? <span className="mono">{d.mac}</span> : <span className="meta">{t("discovery.no_mac")}</span>}
+                    <StatusBadge state={conf === "high" ? "online" : conf === "medium" ? "pairing" : "power_failed"} icon={conf === "low" ? "warning" : "check"} label={t(`discovery.confidence.${conf}`)} />
                     {d.suggested_drivers.length > 0 ? <span className="meta">{t("discovery.drivers", { drivers: d.suggested_drivers.join(", ") })}</span> : null}
                     {known ? (
                       <>
@@ -126,6 +140,18 @@ export function DiscoveryPanel({ siteId, selected, onSelect }: { siteId: string;
                       </>
                     ) : null}
                   </span>
+                  {lowId === d.id && selected !== d.id ? (
+                    <div className="alert alert-warning" role="alert">
+                      <Icon name="warning" />
+                      <span>
+                        {t("discovery.low_warning", { name: label })}
+                        <label className="discovery-choice">
+                          <input type="checkbox" onChange={(e) => (e.target.checked ? onSelect(d) : onSelect(null))} />
+                          <span>{t("discovery.low_confirm", { name: label })}</span>
+                        </label>
+                      </span>
+                    </div>
+                  ) : null}
                 </li>
               );
             })}

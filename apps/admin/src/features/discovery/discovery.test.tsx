@@ -87,6 +87,24 @@ describe.each(["", "/espace/affichage"])("recherche des TV du réseau, base « %
     expect(calls.some((c) => c.path.endsWith("/power.adb/port"))).toBe(false);
   });
 
+  it("affiche confiance et MAC, et exige une confirmation pour un appareil de confiance faible", async () => {
+    mockApi(base(CAPS, scan([dev({}), dev({ ip: "192.168.1.80", mac: null, name: "Samsung QM55", confidence: "low" })])), b);
+    const user = userEvent.setup();
+    await renderRoutes(routes, "/screens", b);
+    await openForm(user);
+    await user.click(await screen.findByRole("button", { name: "Rechercher les TV du réseau" }));
+    expect(await screen.findByText("Confiance élevée")).toBeInTheDocument();
+    expect(screen.getByText("AA:BB:CC:DD:EE:01")).toBeInTheDocument();
+    expect(screen.getByText("MAC inconnue")).toBeInTheDocument();
+    const radios = screen.getAllByRole("radio");
+    expect(radios.every((r) => !(r as HTMLInputElement).checked)).toBe(true);
+    await user.click(radios[1]!);
+    expect(screen.getByRole("alert")).toHaveTextContent(/n'est pas fiable/);
+    expect(screen.getByLabelText("Nom de l'écran")).not.toHaveValue("Samsung QM55");
+    await user.click(screen.getByRole("checkbox"));
+    expect(screen.getByLabelText("Nom de l'écran")).toHaveValue("Samsung QM55");
+  });
+
   it("affiche l'état vide et la troncature", async () => {
     mockApi(base(CAPS, scan([], { truncated: true })), b);
     const user = userEvent.setup();
