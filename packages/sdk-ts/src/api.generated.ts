@@ -144,6 +144,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/fleet/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fleet Summary */
+        get: operations["fleet_summary_api_v1_fleet_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/groups/{group_id}": {
         parameters: {
             query?: never;
@@ -266,6 +283,57 @@ export interface paths {
         head?: never;
         /** Patch Media */
         patch: operations["patch_media_api_v1_media__media_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/onboarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Onboarding */
+        get: operations["get_onboarding_api_v1_onboarding_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/onboarding/card": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Put Card */
+        put: operations["put_card_api_v1_onboarding_card_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/onboarding/steps/{step}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Put Step */
+        put: operations["put_step_api_v1_onboarding_steps__step__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/organization": {
@@ -1236,6 +1304,15 @@ export interface components {
             /** Token */
             token: string;
         };
+        /** AgentsSummaryOut */
+        AgentsSummaryOut: {
+            /** Offline */
+            offline: number;
+            /** Online */
+            online: number;
+            /** Total */
+            total: number;
+        };
         /** ApkInfo */
         ApkInfo: {
             /** Version Code */
@@ -1308,6 +1385,18 @@ export interface components {
             };
             /** Refreshed At */
             refreshed_at: string | null;
+        };
+        /** CardIn */
+        CardIn: {
+            /** Hidden */
+            hidden: boolean;
+        };
+        /** CardOut */
+        CardOut: {
+            /** Hidden */
+            hidden: boolean;
+            /** Hidden At */
+            hidden_at: string | null;
         };
         /** CommandCreate */
         CommandCreate: {
@@ -1772,6 +1861,20 @@ export interface components {
              */
             state: "on" | "off";
         };
+        /** FleetSummaryOut */
+        FleetSummaryOut: {
+            agents: components["schemas"]["AgentsSummaryOut"];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            incidents: components["schemas"]["IncidentsSummaryOut"];
+            screens: components["schemas"]["ScreensSummaryOut"];
+            /** Site Id */
+            site_id: string | null;
+            to_handle: components["schemas"]["ToHandleOut"];
+        };
         /** GroupCreate */
         GroupCreate: {
             /** Name */
@@ -1883,6 +1986,21 @@ export interface components {
             subject_name: string | null;
             /** Subject Type */
             subject_type: string;
+        };
+        /** IncidentsSummaryOut */
+        IncidentsSummaryOut: {
+            /** By Kind */
+            by_kind: {
+                [key: string]: number;
+            };
+            /** By Severity */
+            by_severity: {
+                [key: string]: number;
+            };
+            /** Open */
+            open: number;
+            /** Unacknowledged */
+            unacknowledged: number;
         };
         /** ItemCreate */
         ItemCreate: {
@@ -2302,6 +2420,17 @@ export interface components {
             /** Start */
             start: string;
         };
+        /** OnboardingOut */
+        OnboardingOut: {
+            card: components["schemas"]["CardOut"];
+            /** Complete */
+            complete: boolean;
+            /** Next Step */
+            next_step: ("account" | "site" | "screen" | "media" | "playlist" | "schedule" | "power") | null;
+            progress: components["schemas"]["ProgressOut"];
+            /** Steps */
+            steps: components["schemas"]["vds_server__onboarding__schemas__StepOut"][];
+        };
         /** OrganizationOut */
         OrganizationOut: {
             /**
@@ -2549,6 +2678,13 @@ export interface components {
             /** Name */
             name?: string | null;
         };
+        /** ProgressOut */
+        ProgressOut: {
+            /** Completed */
+            completed: number;
+            /** Total */
+            total: number;
+        };
         /** ProvisionCreate */
         ProvisionCreate: {
             /** Address */
@@ -2620,7 +2756,7 @@ export interface components {
              */
             status: "queued" | "running" | "waiting_user" | "waiting_online" | "done" | "failed" | "cancelled";
             /** Steps */
-            steps: components["schemas"]["StepOut"][];
+            steps: components["schemas"]["vds_server__provisioning__schemas__StepOut"][];
             /** Ticket Expires At */
             ticket_expires_at: string | null;
         };
@@ -2923,6 +3059,15 @@ export interface components {
              */
             orientation: "landscape" | "portrait";
         };
+        /** ScreensSummaryOut */
+        ScreensSummaryOut: {
+            /** By Status */
+            by_status: {
+                [key: string]: number;
+            };
+            /** Total */
+            total: number;
+        };
         /** SiteCreate */
         SiteCreate: {
             /** Name */
@@ -2973,22 +3118,10 @@ export interface components {
              */
             schedule_id: string;
         };
-        /** StepOut */
-        StepOut: {
-            /** At */
-            at: string | null;
-            /** Code */
-            code: string | null;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "pending" | "running" | "waiting_user" | "ok" | "skipped" | "failed";
-            /**
-             * Step
-             * @enum {string}
-             */
-            step: "connect" | "authorize" | "inspect" | "download" | "verify" | "install" | "device_owner" | "soft_kiosk" | "configure" | "inject" | "launch";
+        /** StepSkipIn */
+        StepSkipIn: {
+            /** Skipped */
+            skipped: boolean;
         };
         /**
          * TicketPair
@@ -2998,6 +3131,15 @@ export interface components {
             device: components["schemas"]["DeviceInfo"];
             /** Pairing Ticket */
             pairing_ticket: string;
+        };
+        /** ToHandleOut */
+        ToHandleOut: {
+            /** By Reason */
+            by_reason: {
+                [key: string]: number;
+            };
+            /** Screens */
+            screens: number;
         };
         /** ValidationError */
         ValidationError: {
@@ -3021,6 +3163,29 @@ export interface components {
             /** Reason */
             reason: ("agent_missing" | "agent_offline" | "agent_outdated" | "module_disabled") | null;
         };
+        /** StepOut */
+        vds_server__onboarding__schemas__StepOut: {
+            /** Count */
+            count: number;
+            /** Details */
+            details: {
+                [key: string]: number | boolean;
+            };
+            /** Optional */
+            optional: boolean;
+            /** Skippable */
+            skippable: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "todo" | "in_progress" | "done" | "skipped";
+            /**
+             * Step
+             * @enum {string}
+             */
+            step: "account" | "site" | "screen" | "media" | "playlist" | "schedule" | "power";
+        };
         /** CapabilitiesOut */
         vds_server__provisioning__schemas__CapabilitiesOut: {
             apk: components["schemas"]["ApkInfo"] | null;
@@ -3030,6 +3195,23 @@ export interface components {
             platforms: string[];
             /** Reason */
             reason: ("agent_offline" | "agent_outdated" | "module_disabled" | "apk_unavailable" | "server_unconfigured") | null;
+        };
+        /** StepOut */
+        vds_server__provisioning__schemas__StepOut: {
+            /** At */
+            at: string | null;
+            /** Code */
+            code: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "running" | "waiting_user" | "ok" | "skipped" | "failed";
+            /**
+             * Step
+             * @enum {string}
+             */
+            step: "connect" | "authorize" | "inspect" | "download" | "verify" | "install" | "device_owner" | "soft_kiosk" | "configure" | "inject" | "launch";
         };
     };
     responses: never;
@@ -3300,6 +3482,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    fleet_summary_api_v1_fleet_summary_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FleetSummaryOut"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -3674,6 +3887,94 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MediaOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_onboarding_api_v1_onboarding_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OnboardingOut"];
+                };
+            };
+        };
+    };
+    put_card_api_v1_onboarding_card_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CardIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OnboardingOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_step_api_v1_onboarding_steps__step__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                step: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StepSkipIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OnboardingOut"];
                 };
             };
             /** @description Validation Error */
@@ -5171,6 +5472,8 @@ export interface operations {
                 site_id?: string | null;
                 group_id?: string | null;
                 include_archived?: boolean;
+                issues?: boolean;
+                status?: ("online" | "offline" | "scheduled_off" | "unseen" | "revoked")[] | null;
             };
             header?: never;
             path?: never;

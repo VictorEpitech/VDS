@@ -15,12 +15,14 @@ from vds_server.api.v1 import (
     diffusion,
     discovery,
     enrollment,
+    fleet,
     health,
     incidents,
     inventory,
     kiosk,
     me,
     media_files,
+    onboarding,
     player,
     power,
     provisioning,
@@ -91,6 +93,8 @@ def create_app(
         inner.include_router(incidents.build_router(runtime))
         inner.include_router(provisioning.build_router(runtime))
         inner.include_router(discovery.build_router(runtime))
+        inner.include_router(onboarding.build_router(runtime))
+        inner.include_router(fleet.build_router(runtime))
         inner.include_router(agent_ws.build_router(runtime))
         inner.include_router(agent_cache.build_router(runtime))
         inner.include_router(agent_plan.build_router(runtime))

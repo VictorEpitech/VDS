@@ -69,6 +69,8 @@ Version du noyau = version du contrat de module : **`vds-core 1.0.0`** au lot 1 
 
 État courant : **`vds-core 1.5.0`** (additif : kind `discovery`, capacité `discovery.lan`, permission `network.discover`, annotation `x-vds-device-address`, commande agent `discovery.scan`, événements `discovery.*@1`). Modules 1.0 à 1.4 chargent inchangés ; un agent 1.4 répond `unknown_command` à `discovery.scan`. Détail : `docs/architecture-découverte.md` §4.
 
+Navigation et accueil : « Premiers pas » (`GET /onboarding`) et résumé de parc (`GET /fleet/summary`, filtre `GET /screens?issues=true`) sont décrits dans `docs/architecture-onboarding.md` (sans bump vds-core ; migration `0011_onboarding_state`).
+
 ## Monorepo (décision lot 1)
 
 Un dépôt, deux espaces de travail : **uv workspace** (Python 3.12) à la racine et **pnpm workspace** (Node 22 LTS, pnpm via corepack, champ `packageManager`).

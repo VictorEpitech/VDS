@@ -1,16 +1,19 @@
 """Routes du parc : organisation, sites, groupes, écrans (écriture admin, lecture éditeur)."""
 
+from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vds_server.core.auth import Principal
 from vds_server.core.runtime import Runtime
+from vds_server.fleet.health import evaluate
 from vds_server.inventory import schemas as sc
 from vds_server.inventory.devices import screens_out
 from vds_server.inventory.service import InventoryService
+from vds_server.supervision.status import ScreenStatus, Thresholds
 
 
 def build_router(rt: Runtime) -> APIRouter:
@@ -86,10 +89,22 @@ def build_router(rt: Runtime) -> APIRouter:
         site_id: UUID | None = None,
         group_id: UUID | None = None,
         include_archived: bool = False,
+        issues: bool = False,
+        status: Annotated[list[ScreenStatus] | None, Query()] = None,
     ) -> list[sc.ScreenOut]:
         rows = await s.list_screens(
             site_id=site_id, group_id=group_id, include_archived=include_archived
         )
+        if issues or status:  # prédicat partagé avec /fleet/summary (écrans non archivés)
+            th = Thresholds.from_config(await rt.core_config())
+            health = await evaluate(session, rows, datetime.now(UTC), th)
+            rows = [
+                r
+                for r in rows
+                if r.id in health
+                and (not issues or health[r.id].to_handle)
+                and (not status or health[r.id].status in status)
+            ]
         return await screens_out(session, rows)
 
     @router.post("/screens", response_model=sc.ScreenOut, status_code=201)

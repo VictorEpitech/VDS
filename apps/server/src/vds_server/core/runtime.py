@@ -88,11 +88,8 @@ class Runtime:
         self.provision_events.register(self.bus.subscribe)
         self.discovery_events = DiscoveryEvents(self.maker, self.bus)
         self.agent_bridge.discovery_batch = self.discovery_events.on_batch
-        self.supervisor = Supervisor(
-            self.maker,
-            self.bus,
-            ModuleConfigReader(self.maker, self.schemas, CORE_NAMESPACE).resolve,
-        )
+        self.core_config = ModuleConfigReader(self.maker, self.schemas, CORE_NAMESPACE).resolve
+        self.supervisor = Supervisor(self.maker, self.bus, self.core_config)
         self.supervisor.register(self.bus.subscribe)
         self.power_state = PowerStateTracker(self.maker, self.schemas)
         self.power_state.register(self.bus.subscribe)
