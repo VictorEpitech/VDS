@@ -78,7 +78,21 @@ export function Schedules() {
       ) : null}
       <QueryStatus query={schedules} />
       {remove.isError ? <ErrorAlert error={remove.error} /> : null}
-      {schedules.isSuccess && schedules.data.length === 0 ? <Empty icon="schedule">{t("schedules.empty")}</Empty> : null}
+      {schedules.isSuccess && schedules.data.length === 0 ? (
+        <Empty
+          icon="schedule"
+          action={
+            form === null ? (
+              <button type="button" className="btn btn-filled" onClick={() => { save.reset(); setForm("new"); }}>
+                <Icon name="add" />
+                {t("schedules.create")}
+              </button>
+            ) : undefined
+          }
+        >
+          {t("schedules.empty")}
+        </Empty>
+      ) : null}
       <ul className="rows list-reset">
         {schedules.data?.map((s) => (
           <li key={s.id} className="row card" aria-labelledby={`sch-${s.id}`}>

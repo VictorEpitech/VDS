@@ -172,7 +172,7 @@ describe.each(["", "/espace/affichage"])("assistant TV Android, base « %s »", 
     mockApi(base({ available: false, reason: "agent_offline", platforms: [], apk: null }), b);
     const user = userEvent.setup();
     await renderRoutes(routes, "/screens/android", b, "en");
-    expect(await screen.findByRole("heading", { name: "Add an Android TV" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Install on Android TV" })).toBeInTheDocument();
     await screen.findByRole("option", { name: "Moulins" });
     await user.selectOptions(screen.getByLabelText("Site"), SITE.id);
     expect(await screen.findByText(/site's agent is offline/)).toBeInTheDocument();
@@ -186,19 +186,19 @@ describe("codes", () => {
   });
 });
 
-describe.each(["", "/espace/affichage"])("bouton d'installation auto sur /pairing, base « %s »", (b) => {
+describe.each(["", "/espace/affichage"])("bouton d'installation auto sur /screens/add, base « %s »", (b) => {
   it("est un lien vers l'assistant quand un agent est disponible", async () => {
     mockApi({ ...base(), "GET /pairings": [] }, b);
-    await renderRoutes(routes, "/pairing", b);
-    const link = await screen.findByRole("link", { name: "Installer automatiquement (Android TV)" });
+    await renderRoutes(routes, "/screens/add", b);
+    const link = await screen.findByRole("link", { name: "Installer sur Android TV (automatique)" });
     expect(link).toHaveAttribute("href", `${b}/screens/android`);
   });
 
   it("est désactivé quand aucun agent n'est disponible", async () => {
     mockApi({ ...base({ available: false, reason: "agent_too_old", platforms: [], apk: null }) }, b);
-    await renderRoutes(routes, "/pairing", b);
-    expect(await screen.findByRole("button", { name: "Installer automatiquement (Android TV)" })).toBeDisabled();
-    expect(screen.queryByRole("link", { name: "Installer automatiquement (Android TV)" })).toBeNull();
+    await renderRoutes(routes, "/screens/add", b);
+    expect(await screen.findByRole("button", { name: "Installer sur Android TV (automatique)" })).toBeDisabled();
+    expect(screen.queryByRole("link", { name: "Installer sur Android TV (automatique)" })).toBeNull();
   });
 
   it("saute l'étape 1 pour un écran existant et préremplit l'adresse connue", async () => {

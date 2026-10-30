@@ -48,7 +48,7 @@ beforeEach(() => {
     "fetch",
     vi.fn((url: string) =>
       Promise.resolve(
-        new Response(JSON.stringify(url.endsWith("/me") ? ME : { status: "ok" }), { status: 200 }),
+        new Response(JSON.stringify(url.endsWith("/me") ? ME : url.includes("/api/v1/") ? [] : { status: "ok" }), { status: 200 }),
       ),
     ),
   );
@@ -111,5 +111,51 @@ describe("readRuntimeConfig", () => {
   });
   it("lit window.__VDS__", () => {
     expect(readRuntimeConfig({ __VDS__: config() }).basePath).toBe("/espace/affichage");
+  });
+});
+
+describe.each(["", "/espace/affichage"])("redirections des anciennes URL, base « %s »", (b) => {
+  const cases: [string, string, string][] = [
+    ["/supervision", "/screens", "?filter=issues"],
+    ["/pairing?screen=abc", "/screens/add", "?screen=abc"],
+    ["/media", "/content/media", ""],
+    ["/playlists", "/content/playlists", ""],
+    ["/playlists/p1", "/content/playlists/p1", ""],
+    ["/schedules", "/playback", ""],
+    ["/content", "/content/media", ""],
+  ];
+  it.each(cases)("%s -> %s", async (from, path, search) => {
+    const cfg = config({ basePath: b, apiBase: `${b}/api/v1` });
+    const i18n = await initI18n("fr", null);
+    const router = createMemoryRouter(routes, { initialEntries: [`${b}${from}`], basename: b || "/" });
+    render(
+      <RuntimeConfigProvider config={cfg}>
+        <I18nextProvider i18n={i18n}>
+          <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+            <RouterProvider router={router} />
+          </QueryClientProvider>
+        </I18nextProvider>
+      </RuntimeConfigProvider>,
+    );
+    await waitFor(() => expect(router.state.location.pathname).toBe(`${b}${path}`));
+    expect(router.state.location.search).toBe(search);
+  });
+
+  it("navigation à 5 entrées, Supervision absente", async () => {
+    const cfg = config({ basePath: b, apiBase: `${b}/api/v1` });
+    const i18n = await initI18n("fr", null);
+    const router = createMemoryRouter(routes, { initialEntries: [`${b}/`], basename: b || "/" });
+    render(
+      <RuntimeConfigProvider config={cfg}>
+        <I18nextProvider i18n={i18n}>
+          <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+            <RouterProvider router={router} />
+          </QueryClientProvider>
+        </I18nextProvider>
+      </RuntimeConfigProvider>,
+    );
+    const nav = await screen.findByRole("navigation", { name: "Navigation principale" });
+    const links = Array.from(nav.querySelectorAll("a")).map((a) => a.textContent);
+    expect(links).toEqual(["Accueil", "Écrans", "Contenus", "Diffusion", "Plus"]);
   });
 });

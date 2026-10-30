@@ -1,7 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { IncidentsList } from "../features/supervision/IncidentsList";
+import { ScreensStatus } from "../features/supervision/ScreensStatus";
 import { useSession } from "../auth/session";
 import { KioskControls } from "../features/kiosk/KioskControls";
 import { KioskSetting } from "../features/kiosk/KioskSetting";
@@ -25,6 +27,9 @@ export function Screens() {
   const session = useSession();
   const isAdmin = session.data?.role === "admin";
   const provisionable = useProvisioningAvailable((sites.data ?? []).map((x) => x.id));
+  const [params, setParams] = useSearchParams();
+  const issues = params.get("filter") === "issues";
+  const setFilter = (f: "all" | "issues") => setParams(f === "issues" ? { filter: "issues" } : {}, { replace: true });
   const [creating, setCreating] = useState(false);
   const [revoked, setRevoked] = useState<string | null>(null);
   const [panel, setPanel] = useState<{ id: string; kind: "edit" | "delete"; archive?: boolean } | null>(null);
@@ -52,25 +57,33 @@ export function Screens() {
       <div className="page-head">
         <h1>{t("screens.title")}</h1>
         <div className="actions">
+          <Link className="btn btn-filled" to="/screens/add">
+            <Icon name="add" />
+            {t("screens.pair")}
+          </Link>
           {isAdmin ? (
-            <button type="button" className="btn btn-filled" onClick={() => setCreating(true)} disabled={creating}>
-              <Icon name="add" />
+            <button type="button" className="btn btn-text" onClick={() => setCreating(true)} disabled={creating}>
               {t("screens.create.action")}
             </button>
           ) : null}
-          {isAdmin ? (
-            <Link className="btn btn-text" to="/screens/android">
-              <Icon name="detect" />
-              {t("provision.action")}
-            </Link>
-          ) : null}
-          <Link className="btn btn-text" to="/pairing">
-            <Icon name="pairing" />
-            {t("screens.pair")}
-          </Link>
         </div>
       </div>
       <p className="lead">{t("screens.intro")}</p>
+      <div className="filter-bar" role="group" aria-label={t("screens.filter.label")}>
+        <button type="button" className="btn btn-text" aria-pressed={!issues} onClick={() => setFilter("all")}>
+          {t("screens.filter.all")}
+        </button>
+        <button type="button" className="btn btn-text" aria-pressed={issues} onClick={() => setFilter("issues")}>
+          <Icon name="incident" />
+          {t("screens.filter.issues")}
+        </button>
+      </div>
+      {issues ? (
+        <>
+          <IncidentsList />
+          <ScreensStatus onlyIssues />
+        </>
+      ) : null}
       {creating ? <ScreenCreateForm onClose={() => setCreating(false)} /> : null}
       <QueryStatus query={screens} />
       {notice ? <SuccessAlert>{notice}</SuccessAlert> : null}
@@ -78,20 +91,20 @@ export function Screens() {
       {revoke.isError ? (
         <ErrorAlert error={revoke.error} />
       ) : null}
-      {screens.isSuccess && active.length === 0 ? (
-        <Empty icon="screen">
+      {!issues && screens.isSuccess && active.length === 0 ? (
+        <Empty
+          icon="screen"
+          action={
+            <Link className="btn btn-filled" to="/screens/add">
+              <Icon name="add" />
+              {t("screens.pair")}
+            </Link>
+          }
+        >
           {t("screens.empty")}
-          {isAdmin && !creating ? (
-            <>
-              {" "}
-              <button type="button" className="btn btn-filled" onClick={() => setCreating(true)}>
-                <Icon name="add" />
-                {t("screens.create.action")}
-              </button>
-            </>
-          ) : null}
         </Empty>
       ) : null}
+      {issues ? null : (
       <ul className="cards list-reset">
         {active.map((s) => (
           <li key={s.id} className="card" aria-labelledby={`screen-${s.id}`}>
@@ -133,7 +146,7 @@ export function Screens() {
             <KioskControls screen={s} />
             {isAdmin ? <KioskSetting level="screen" id={s.id} /> : null}
             <div className="actions">
-              <Link className="btn btn-text" to={`/pairing?screen=${s.id}`}>
+              <Link className="btn btn-text" to={`/screens/add?screen=${s.id}`}>
                 <Icon name="pairing" />
                 {t("screens.pair_this")}
               </Link>
@@ -174,6 +187,7 @@ export function Screens() {
           </li>
         ))}
       </ul>
+      )}
     </>
   );
 }

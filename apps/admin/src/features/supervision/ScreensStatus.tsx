@@ -88,7 +88,10 @@ function ScreenCard({ screen, siteName, state, agent }: { screen: Screen; siteNa
   );
 }
 
-export function ScreensStatus() {
+/** États qui demandent une intervention (filtre « à traiter »). */
+const ISSUE_STATES = new Set(["offline", "power_failed"]);
+
+export function ScreensStatus({ onlyIssues = false }: { onlyIssues?: boolean }) {
   const { t } = useTranslation();
   const api = useApi();
   const screens = useScreens({ refetchInterval: 15_000 });
@@ -100,6 +103,9 @@ export function ScreensStatus() {
     queries: active.map((s) => ({ queryKey: powerKeys.screen(s.id), staleTime: 60_000, queryFn: () => api.get<ScreenPower>(`/power/screens/${s.id}`) })),
   });
   const now = new Date();
+  const rows = active
+    .map((s, i) => ({ s, state: displayState(s, powers[i]?.data, incidents.data ?? [], now) }))
+    .filter((r) => !onlyIssues || ISSUE_STATES.has(r.state));
   return (
     <section className="section" aria-labelledby="park-h">
       <h2 id="park-h">
@@ -109,13 +115,16 @@ export function ScreensStatus() {
       <p className="lead">{t("supervision.park.intro")}</p>
       <QueryStatus query={screens} />
       {screens.isSuccess && active.length === 0 ? <Empty icon="screen">{t("screens.empty")}</Empty> : null}
+      {onlyIssues && screens.isSuccess && active.length > 0 && !rows.length && !powers.some((p) => p.isPending) ? (
+        <Empty icon="check">{t("screens.filter.none_to_handle")}</Empty>
+      ) : null}
       <ul className="cards list-reset">
-        {active.map((s, i) => (
+        {rows.map(({ s, state }) => (
           <ScreenCard
             key={s.id}
             screen={s}
             siteName={sites.data?.find((x) => x.id === s.site_id)?.name ?? ""}
-            state={displayState(s, powers[i]?.data, incidents.data ?? [], now)}
+            state={state}
             agent={(agents.data ?? []).find((a) => a.site_id === s.site_id && a.status !== "revoked")}
           />
         ))}

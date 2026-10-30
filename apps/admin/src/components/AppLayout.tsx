@@ -1,15 +1,26 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { authUiFor } from "../auth/providers";
 import { useSession } from "../auth/session";
 import { useApi } from "../lib/api";
 import { useRuntimeConfig } from "../lib/runtime-config";
-import { Icon } from "./Icon";
+import { Breadcrumbs } from "./Breadcrumbs";
+import { Icon, type IconName } from "./Icon";
 import { LanguageSwitch } from "./LanguageSwitch";
 
+/** 5 entrées orientées intention ; « Plus » regroupe aussi les réglages (sites, alimentation, notifications). */
+const NAV: { to: string; key: string; icon: IconName; also?: string[] }[] = [
+  { to: "/", key: "home", icon: "home" },
+  { to: "/screens", key: "screens", icon: "screen" },
+  { to: "/content", key: "content", icon: "media" },
+  { to: "/playback", key: "playback", icon: "schedule" },
+  { to: "/more", key: "more", icon: "more", also: ["/sites", "/power", "/notifications"] },
+];
+
 export function AppLayout() {
+  const { pathname } = useLocation();
   const { t, i18n } = useTranslation();
   const config = useRuntimeConfig();
   const { auth, version } = config;
@@ -42,41 +53,12 @@ export function AppLayout() {
       <header className="app-header">
         <span className="vds-logo" role="img" aria-label={t("app.name")} />
         <nav className="app-nav" aria-label={t("nav.main")}>
-          <NavLink to="/" end>
-            {t("nav.home")}
-          </NavLink>
-          <NavLink to="/screens">
-            <Icon name="screen" />
-            {t("nav.screens")}
-          </NavLink>
-          <NavLink to="/sites">
-            <Icon name="site" />
-            {t("nav.sites")}
-          </NavLink>
-          <NavLink to="/media">
-            <Icon name="media" />
-            {t("nav.media")}
-          </NavLink>
-          <NavLink to="/playlists">
-            <Icon name="playlist" />
-            {t("nav.playlists")}
-          </NavLink>
-          <NavLink to="/schedules">
-            <Icon name="schedule" />
-            {t("nav.schedules")}
-          </NavLink>
-          <NavLink to="/power">
-            <Icon name="power" />
-            {t("nav.power")}
-          </NavLink>
-          <NavLink to="/supervision">
-            <Icon name="incident" />
-            {t("nav.supervision")}
-          </NavLink>
-          <NavLink to="/notifications">
-            <Icon name="mail" />
-            {t("nav.notifications")}
-          </NavLink>
+          {NAV.map((n) => (
+            <NavLink key={n.to} to={n.to} end={n.to === "/"} className={n.also ? ({ isActive }) => (isActive || n.also?.some((p) => pathname.startsWith(p)) ? "active" : "") : undefined}>
+              <Icon name={n.icon} />
+              <span>{t(`nav.${n.key}`)}</span>
+            </NavLink>
+          ))}
         </nav>
         <div className="app-tools">
           {auth.links.map((l) => (
@@ -106,6 +88,7 @@ export function AppLayout() {
         </div>
       </header>
       <main id="main" className="app-main" tabIndex={-1}>
+        <Breadcrumbs />
         <Outlet />
       </main>
       <footer className="app-footer">

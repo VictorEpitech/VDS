@@ -125,9 +125,10 @@ describe("rattachement avec provenance", () => {
 
 describe("incidents et commandes", () => {
   const incident = { id: "i1", kind: "agent.offline", severity: "critical", subject_type: "agent", subject_id: AGENT.id, subject_name: "Salle technique", site_id: SITE.id, site_name: "Moulins", details: {}, opened_at: "2026-10-24T08:00:00Z", resolved_at: null, acknowledged_at: null, acknowledged_by: null };
-  const common = {
+  const OFFLINE = { ...SCREEN, device: { presence: "offline", last_seen_at: null } };
+const common = {
     "GET /sites": [SITE],
-    "GET /screens": [SCREEN],
+    "GET /screens": [OFFLINE],
     "GET /incidents": [incident],
     [`GET /sites/${SITE.id}/agents`]: [AGENT],
     [`GET /power/screens/${SCREEN.id}`]: { screen_id: SCREEN.id, timezone: "Europe/Paris", plan_id: null, plan_id_origin: origin("default"), calendars: [], calendars_origin: origin("default"), slots: [] },

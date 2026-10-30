@@ -35,7 +35,7 @@ const base = (caps: unknown, result: unknown = scan([])) => ({
   [`PUT ${NEW_CFG}/power.adb/mac`]: null,
 });
 
-async function openForm(user: ReturnType<typeof userEvent.setup>, add = "Ajouter un écran") {
+async function openForm(user: ReturnType<typeof userEvent.setup>, add = "Créer sans code") {
   await user.click(await screen.findByRole("button", { name: add }));
   await screen.findByRole("option", { name: "Moulins" });
   await user.selectOptions(screen.getByLabelText("Site"), SITE.id);
@@ -138,7 +138,7 @@ describe.each(["", "/espace/affichage"])("recherche des TV du réseau, base « %
     mockApi({ ...base(CAPS), [`POST /sites/${SITE.id}/discovery/scans`]: errorResponse(409, "discovery.busy") }, b);
     const user = userEvent.setup();
     await renderRoutes(routes, "/screens", b, "en");
-    await openForm(user, "Add a screen");
+    await openForm(user, "Create without a code");
     await user.click(await screen.findByRole("button", { name: "Find TVs on the network" }));
     expect(await screen.findByText("A search is already running on this site.")).toBeInTheDocument();
   });

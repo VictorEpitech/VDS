@@ -144,7 +144,7 @@ export function ProvisionWizard() {
     <>
       <div className="page-head">
         <h1>{t("provision.title")}</h1>
-        <Link className="btn btn-text" to={screenId ? `/pairing?screen=${screenId}` : "/pairing"}>
+        <Link className="btn btn-text" to={screenId ? `/screens/add?screen=${screenId}` : "/screens/add"}>
           <Icon name="pairing" />
           {t("provision.manual_code")}
         </Link>
@@ -233,7 +233,7 @@ export function ProvisionWizard() {
               <div>
                 <p className="alert-text">{t(`provision.unavailable.${caps.data.reason ?? "unknown"}`)}</p>
                 <AgentSetupLink siteId={siteId} />
-                <Link className="btn btn-text" to={screenId ? `/pairing?screen=${screenId}` : "/pairing"}>
+                <Link className="btn btn-text" to={screenId ? `/screens/add?screen=${screenId}` : "/screens/add"}>
                   <Icon name="pairing" />
                   {t("provision.manual_code")}
                 </Link>
@@ -481,7 +481,7 @@ function Run({
             {t("provision.go_screens")}
           </Link>
         ) : (
-          <Link className="btn btn-text" to={screenId ? `/pairing?screen=${screenId}` : "/pairing"}>
+          <Link className="btn btn-text" to={screenId ? `/screens/add?screen=${screenId}` : "/screens/add"}>
             <Icon name="pairing" />
             {t("provision.manual_code")}
           </Link>

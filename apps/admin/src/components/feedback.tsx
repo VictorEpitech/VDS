@@ -52,12 +52,14 @@ export function QueryStatus({ query }: { query: Pick<UseQueryResult, "isPending"
   return null;
 }
 
-export function Empty({ icon, children }: { icon: IconName; children: ReactNode }) {
+/** État vide : explique et propose l'action suivante (`action` : bouton ou lien). */
+export function Empty({ icon, children, action }: { icon: IconName; children: ReactNode; action?: ReactNode }) {
   return (
-    <p className="empty">
+    <div className="empty">
       <Icon name={icon} />
-      <span>{children}</span>
-    </p>
+      <p>{children}</p>
+      {action ? <div className="actions">{action}</div> : null}
+    </div>
   );
 }
 

@@ -103,7 +103,7 @@ describe.each(["", "/espace/affichage"])("enrôlement d'agent, base « %s »", (
 
   it("renvoie vers le panneau Agent depuis /pairing", async () => {
     mockApi({ "GET /sites": [SITE], "GET /screens": [], [`GET /provisioning/capabilities`]: { available: false, reason: "agent_offline", platforms: [], apk: null } }, b);
-    await renderRoutes(routes, "/pairing", b);
+    await renderRoutes(routes, "/screens/add", b);
     expect(await screen.findByRole("link", { name: "Configurer l'agent du site" })).toHaveAttribute("href", `${b}/sites`);
   });
 });

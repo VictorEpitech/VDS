@@ -85,7 +85,7 @@ export function ScreenCreateForm({ onClose }: { onClose: () => void }) {
               {t("discovery.install_android")}
             </Link>
           ) : null}
-          <Link className={android ? "btn btn-tonal" : "btn btn-filled"} to={`/pairing?screen=${screen.id}`}>
+          <Link className={android ? "btn btn-tonal" : "btn btn-filled"} to={`/screens/add?screen=${screen.id}`}>
             <Icon name="pairing" />
             {t("screens.create.pair_now")}
           </Link>

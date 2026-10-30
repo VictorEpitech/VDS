@@ -16,11 +16,17 @@
     },
     "media": "Médiathèque",
     "playlists": "Playlists",
-    "schedules": "Programmation",
     "sites": "Sites",
     "power": "Alimentation",
-    "supervision": "Supervision",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "content": "Contenus",
+    "playback": "Diffusion",
+    "more": "Plus",
+    "breadcrumb": "Fil d'Ariane",
+    "add_screen": "Ajouter un écran",
+    "install_android": "Installer sur Android TV",
+    "playlist_edit": "Modifier la playlist",
+    "site_detail": "Détail du site"
   },
   "language": {
     "label": "Langue",
@@ -47,16 +53,30 @@
       "online": "Serveur joignable",
       "offline": "Serveur injoignable"
     },
-    "legend": {
-      "title": "États d'un écran"
+    "empty": "Aucun écran pour l'instant. Ajoutez votre premier écran pour commencer.",
+    "stats": {
+      "screens": "Écrans",
+      "screens_action": "Voir les écrans",
+      "online": "{count, plural, =0 {Aucun en ligne} one {# en ligne} other {# en ligne}}",
+      "waiting": "{count, plural, one {# en attente de connexion} other {# en attente de connexion}}",
+      "to_handle": "À traiter",
+      "to_handle_action": "Voir ce qui est à traiter",
+      "to_handle_some": "{count, plural, one {# écran à traiter} other {# écrans à traiter}}",
+      "to_handle_none": "Rien à traiter",
+      "content": "Contenus",
+      "content_action": "Ouvrir les contenus",
+      "playlists": "{count, plural, =0 {Aucune playlist} one {# playlist} other {# playlists}}",
+      "playback": "Diffusion",
+      "playback_action": "Ouvrir la diffusion",
+      "sites": "{count, plural, =0 {Aucun site} one {# site} other {# sites}}"
     }
   },
   "screens": {
     "title": "Écrans",
-    "empty": "Aucun écran pour le moment. Ajoutez votre premier écran, puis appairez-le avec l'appareil.",
-    "intro": "Les écrans de vos sites. Appairez un nouvel écran avec le code affiché sur le téléviseur.",
-    "pair": "Appairer un écran",
-    "pair_this": "Appairer un appareil",
+    "empty": "Aucun écran pour le moment. Ajoutez votre premier écran avec le code affiché sur l'appareil.",
+    "intro": "Les écrans de vos sites. Ajoutez un nouvel écran avec le code affiché sur le téléviseur.",
+    "pair": "Ajouter un écran",
+    "pair_this": "Ajouter un appareil",
     "revoked": "L'appareil de l'écran {name} est révoqué. Il ne peut plus lire de contenu.",
     "revoke": {
       "action": "Révoquer l'appareil",
@@ -81,7 +101,7 @@
       "none": "Aucun appareil appairé."
     },
     "create": {
-      "action": "Ajouter un écran",
+      "action": "Créer sans code",
       "title": "Nouvel écran",
       "name": "Nom de l'écran",
       "site": "Site",
@@ -90,7 +110,7 @@
       "orientation": "Orientation",
       "submit": "Créer l'écran",
       "done": "L'écran {name} est créé. Il reste à l'appairer avec un appareil.",
-      "pair_now": "Appairer cet écran",
+      "pair_now": "Ajouter cet écran",
       "no_site": "Aucun site disponible : créez d'abord un site.",
       "go_sites": "Aller aux sites"
     },
@@ -115,7 +135,13 @@
       "done": "L'écran {name} est supprimé."
     },
     "reinstall": "Réinstaller / Installer l'app",
-    "reinstall_for": "Réinstaller ou installer l'app sur {name}"
+    "reinstall_for": "Réinstaller ou installer l'app sur {name}",
+    "filter": {
+      "label": "Filtrer les écrans",
+      "all": "Tous les écrans",
+      "issues": "À traiter",
+      "none_to_handle": "Aucun écran à traiter."
+    }
   },
   "errors": {
     "not_found": {
@@ -317,10 +343,10 @@
   },
   "pairing": {
     "auto": {
-      "action": "Installer automatiquement (Android TV)",
+      "action": "Installer sur Android TV (automatique)",
       "unavailable": "Disponible quand un agent de site 1.3 ou plus gère l'installation Android sur un site."
     },
-    "title": "Appairer un écran",
+    "title": "Ajouter un écran",
     "intro": "Saisissez le code affiché sur l'écran, puis choisissez l'écran qui lui correspond.",
     "code": {
       "label": "Code affiché sur l'écran",
@@ -329,8 +355,8 @@
     "screen": {
       "label": "Écran à associer"
     },
-    "submit": "Appairer",
-    "done": "Appairage validé pour l'écran {name}. L'appareil démarre dans quelques secondes.",
+    "submit": "Ajouter",
+    "done": "Écran {name} ajouté. L'appareil démarre dans quelques secondes.",
     "back": "Retour aux écrans"
   },
   "media": {
@@ -365,7 +391,8 @@
     },
     "in_use": {
       "detail": "{count, plural, =0 {{title} est encore utilisé.} one {{title} est utilisé dans cette playlist. Retirez-le avant de le supprimer :} other {{title} est utilisé dans ces playlists. Retirez-le avant de le supprimer :}}"
-    }
+    },
+    "empty_action": "Importer un fichier"
   },
   "playlists": {
     "title": "Playlists",
@@ -378,7 +405,8 @@
     "delete": {
       "action": "Supprimer",
       "confirm": "Supprimer {name}"
-    }
+    },
+    "empty_action": "Créer une playlist"
   },
   "playlist": {
     "title": "Playlist",
@@ -481,7 +509,8 @@
     "archive": {
       "action": "Archiver le site",
       "confirm": "Archiver {name}"
-    }
+    },
+    "empty_action": "Créer un site"
   },
   "enroll": {
     "title": "Ajouter un agent",
@@ -669,8 +698,6 @@
     }
   },
   "supervision": {
-    "title": "Supervision",
-    "intro": "État du parc, incidents en cours et commandes à distance.",
     "last_seen": "Dernier signal : {when}",
     "agent_offline": "L'agent du site est hors ligne : les commandes sont indisponibles.",
     "no_agent": "Ce site n'a pas d'agent actif : les commandes sont indisponibles.",
@@ -816,8 +843,8 @@
     }
   },
   "provision": {
-    "title": "Ajouter une TV Android",
-    "action": "Ajouter une TV Android",
+    "title": "Installer sur Android TV",
+    "action": "Installer sur Android TV",
     "intro": "Installez et appairez l'application VDS sur une TV Android depuis cette page. Aucun code à saisir sur la TV.",
     "progress_label": "Étapes de l'assistant",
     "manual_code": "Utiliser le code d'appairage manuel",
@@ -1009,5 +1036,13 @@
     },
     "low_warning": "L'identité de {name} n'est pas fiable : n'importe quel appareil du réseau peut s'annoncer sous ce nom. Vérifiez l'adresse IP et la MAC sur la TV avant de continuer.",
     "low_confirm": "J'ai vérifié que l'adresse de {name} est bien celle de ma TV"
+  },
+  "more": {
+    "title": "Plus",
+    "intro": "Réglages de votre parc : sites et agents, alimentation, notifications.",
+    "open": "Ouvrir",
+    "sites": "Sites, groupes et agents de site.",
+    "power": "Plages d'allumage, exceptions et pilotes d'alimentation.",
+    "notifications": "Alertes par e-mail."
   }
 }

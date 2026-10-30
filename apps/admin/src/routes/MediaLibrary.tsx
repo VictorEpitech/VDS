@@ -139,7 +139,19 @@ export function MediaLibrary() {
             </ul>
           </ErrorAlert>
         ) : null}
-        {media.isSuccess && media.data.length === 0 ? <Empty icon="media">{t("media.empty")}</Empty> : null}
+        {media.isSuccess && media.data.length === 0 ? (
+          <Empty
+            icon="media"
+            action={
+              <button type="button" className="btn btn-filled" onClick={() => inputRef.current?.click()}>
+                <Icon name="upload" />
+                {t("media.empty_action")}
+              </button>
+            }
+          >
+            {t("media.empty")}
+          </Empty>
+        ) : null}
         <ul className="rows list-reset">
           {media.data?.map((m) => (
             <li key={m.id} className="row card" aria-labelledby={`media-${m.id}`}>

@@ -106,7 +106,19 @@ export function Sites() {
         </form>
       ) : null}
       <QueryStatus query={sites} />
-      {sites.isSuccess && active.length === 0 ? <Empty icon="site">{t("sites.empty")}</Empty> : null}
+      {sites.isSuccess && active.length === 0 ? (
+        <Empty
+          icon="site"
+          action={
+            <button type="button" className="btn btn-filled" onClick={() => setOpen(true)}>
+              <Icon name="add" />
+              {t("sites.empty_action")}
+            </button>
+          }
+        >
+          {t("sites.empty")}
+        </Empty>
+      ) : null}
       <ul className="cards list-reset">
         {active.map((s) => {
           const agent = (agents.data ?? []).find((a) => a.site_id === s.id && a.status !== "revoked");

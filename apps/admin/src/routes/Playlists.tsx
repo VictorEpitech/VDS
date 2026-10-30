@@ -20,7 +20,7 @@ export function Playlists() {
     mutationFn: (n: string) => api.post<PlaylistDetail>("/playlists", { name: n }),
     onSuccess: (p) => {
       void qc.invalidateQueries({ queryKey: keys.playlists });
-      navigate(`/playlists/${p.id}`);
+      navigate(`/content/playlists/${p.id}`);
     },
   });
   const remove = useMutation({
@@ -67,13 +67,25 @@ export function Playlists() {
         <h2 id="pl-list">{t("playlists.list")}</h2>
         <QueryStatus query={playlists} />
         {remove.isError ? <ErrorAlert error={remove.error} /> : null}
-        {playlists.isSuccess && playlists.data.length === 0 ? <Empty icon="playlist">{t("playlists.empty")}</Empty> : null}
+        {playlists.isSuccess && playlists.data.length === 0 ? (
+          <Empty
+            icon="playlist"
+            action={
+              <button type="button" className="btn btn-filled" onClick={() => document.getElementById(`${uid}-name`)?.focus()}>
+                <Icon name="add" />
+                {t("playlists.empty_action")}
+              </button>
+            }
+          >
+            {t("playlists.empty")}
+          </Empty>
+        ) : null}
         <ul className="rows list-reset">
           {playlists.data?.map((p) => (
             <li key={p.id} className="row card">
               <div className="row-main">
                 <h3>
-                  <Link to={`/playlists/${p.id}`}>{p.name}</Link>
+                  <Link to={`/content/playlists/${p.id}`}>{p.name}</Link>
                 </h3>
                 <p className="meta">{t("playlists.items", { count: p.item_count })}</p>
               </div>

@@ -330,3 +330,11 @@ code, kbd, samp, .vds-mono { font-family: var(--vds-font-mono); }
   -webkit-mask-image: url("icons/maintenance.svg");
   mask-image: url("icons/maintenance.svg");
 }
+.vds-icon[data-icon="home"] {
+  -webkit-mask-image: url("icons/home.svg");
+  mask-image: url("icons/home.svg");
+}
+.vds-icon[data-icon="more"] {
+  -webkit-mask-image: url("icons/more.svg");
+  mask-image: url("icons/more.svg");
+}
