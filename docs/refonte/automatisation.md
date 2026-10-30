@@ -70,16 +70,26 @@ Le choix du pilote ne change pas : pour chaque hôte coché, le serveur enchaîn
 
 ```python
 # vds_sdk.agent.discovery (vds-core 1.4.0)
-class DiscoveryScope(BaseModel):          # bornes imposées par le runtime, pas par le module
-    cidrs: list[IPv4Network]               # défaut : sous-réseaux privés des interfaces de l'agent, /22 max
-    active_probe: bool                     # config héritée `discovery.active_probe`, x-vds-level site
+class DiscoveryScope(BaseModel):  # bornes imposées par le runtime, pas par le module
+    cidrs: list[IPv4Network]  # défaut : sous-réseaux privés des interfaces de l'agent, /22 max
+    active_probe: bool  # config héritée `discovery.active_probe`, x-vds-level site
     timeout_s: int = 20
+
+
 class DiscoveredDevice(BaseModel):
-    ip: IPvAnyAddress; mac: str | None; vendor: str | None; name: str | None; model: str | None
-    protocols: list[str]                   # "adb", "samsung_ws", "cast", "dial"…
-    hints: dict[str, str] = {}             # ex. {"platform": "android"} ; jamais de secret
+    ip: IPvAnyAddress
+    mac: str | None
+    vendor: str | None
+    name: str | None
+    model: str | None
+    protocols: list[str]  # "adb", "samsung_ws", "cast", "dial"…
+    hints: dict[str, str] = {}  # ex. {"platform": "android"} ; jamais de secret
+
+
 class Discoverer(Protocol):
-    async def discover(self, scope: DiscoveryScope, report: Callable[[DiscoveredDevice], Awaitable[None]]) -> None: ...
+    async def discover(
+        self, scope: DiscoveryScope, report: Callable[[DiscoveredDevice], Awaitable[None]]
+    ) -> None: ...
 ```
 
 Le runtime fusionne par MAC puis IP, borne le débit, refuse toute adresse publique (même contrôle que `screen.provision`) et marque les hôtes déjà connus du site (écran existant de même MAC/IP).

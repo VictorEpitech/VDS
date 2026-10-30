@@ -67,31 +67,37 @@ Une seule inscription en attente par site : en créer une révoque les précéde
 ```python
 ENROLL_CODE_PREFIX = "vds_enr_"
 
-class EnrollRequest(BaseModel):            # extra="forbid"
+
+class EnrollRequest(BaseModel):  # extra="forbid"
     code: constr(pattern=r"^vds_enr_[0-9A-HJKMNP-TV-Z]{26}$")
     hostname: constr(max_length=253, pattern=r"^[A-Za-z0-9._-]+$")
     agent_version: constr(max_length=32)
-    platform: constr(max_length=32)        # "linux/amd64", "linux/arm64"
-    previous_token: SecretStr | None = None   # agent déjà enrôlé qui change de site
+    platform: constr(max_length=32)  # "linux/amd64", "linux/arm64"
+    previous_token: SecretStr | None = None  # agent déjà enrôlé qui change de site
+
 
 class EnrollResponse(BaseModel):
     agent_id: UUID
     site_id: UUID
-    token: SecretStr                       # vds_agt_…, remis une seule fois
+    token: SecretStr  # vds_agt_…, remis une seule fois
     ws_path: Literal["ws/agent"] = "ws/agent"
 
-class LocalHandoff(BaseModel):             # fichier <dir>/enroll.json, écrit par le serveur
+
+class LocalHandoff(BaseModel):  # fichier <dir>/enroll.json, écrit par le serveur
     v: Literal[1] = 1
     code: SecretStr
     enrollment_id: UUID
     expires_at: datetime
 
-class LocalPresence(BaseModel):            # fichier <dir>/presence.json, écrit par l'agent, ≤ 4 Kio
+
+class LocalPresence(BaseModel):  # fichier <dir>/presence.json, écrit par l'agent, ≤ 4 Kio
     v: Literal[1] = 1
-    hostname: str; agent_version: str; platform: str
+    hostname: str
+    agent_version: str
+    platform: str
     state: Literal["dormant", "enrolling", "active", "error"]
     agent_id: UUID | None = None
-    error: str | None = None               # code i18n, jamais un message brut
+    error: str | None = None  # code i18n, jamais un message brut
     ts: datetime
 ```
 
