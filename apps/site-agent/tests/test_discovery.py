@@ -127,7 +127,9 @@ async def test_sweep_yields_only_open_hosts() -> None:
 
 def desc_net(handler: Any) -> LanDiscoveryNet:
     http = httpx.AsyncClient(transport=httpx.MockTransport(handler), follow_redirects=False)
-    return make_net(http=http)
+    net = make_net(http=http)
+    net._seen.update(A(f"192.168.1.{i}") for i in range(2, 100))  # corroborées (M1)
+    return net
 
 
 XML = (
@@ -161,6 +163,9 @@ async def test_ssdp_description_ok_and_sanitized() -> None:
         "http://tv.local:9197/x",  # nom DNS
         "http://127.0.0.1:9197/x",
         "http://192.168.1.20:22/x",  # port privilégié
+        "http://192.168.1.20:8080/x",  # hors liste UPnP
+        "http://192.168.1.20:9197/x?action=reboot",  # query
+        "http://192.168.1.20:9197/" + "a" * 300,  # chemin trop long
         "https://192.168.1.20:9197/x",
         "http://u:p@192.168.1.20:9197/x",
         "file:///etc/passwd",
@@ -345,7 +350,7 @@ async def test_runner_cap_128() -> None:
     assert [p["seq"] for _, p in frames] == list(range(len(frames)))
 
 
-async def test_runner_failures() -> None:
+async def test_runner_failures(caplog: pytest.LogCaptureFixture) -> None:
     frames: list[tuple[str, dict[str, Any]]] = []
     assert (await runner(None, frames).run(ARGS))[1] == "discovery.no_provider"
     pub = [ifc("eth0", "8.8.8.8", 24)]
@@ -360,6 +365,16 @@ async def test_runner_failures() -> None:
             raise RuntimeError("x")
 
     assert (await runner(Boom(), frames).run(ARGS))[1] == "discovery.internal"
+
+    class Leaky:
+        scopes = frozenset({"lan"})
+
+        async def discover(self, scope: Any, net: Any, report: Any) -> None:
+            raise ValueError("192.168.1.20 aa:bb:cc:dd:ee:ff")
+
+    with caplog.at_level("DEBUG"):
+        assert (await runner(Leaky(), frames).run(ARGS))[1] == "discovery.internal"
+    assert "192.168.1.20" not in caplog.text and "aa:bb" not in caplog.text
 
 
 async def test_runner_second_scan_is_busy_and_deadline_cuts() -> None:
@@ -426,3 +441,65 @@ async def _silent_udp(
 
 async def _closed_probe(ip: IPv4Address, port: int, t: float) -> bool:
     return False
+
+
+async def test_ssdp_description_requires_corroboration(tmp_path: Path) -> None:
+    called: list[int] = []
+
+    def h(req: httpx.Request) -> httpx.Response:
+        called.append(1)
+        return httpx.Response(200, content=XML)
+
+    arp = tmp_path / "arp"
+    arp.write_text(
+        "IP address HW type Flags HW address Mask Device\n"
+        "192.168.1.30 0x1 0x2 aa:bb:cc:dd:ee:ff * eth0\n"
+    )
+    http = httpx.AsyncClient(transport=httpx.MockTransport(h), follow_redirects=False)
+    net = make_net(http=http, arp_path=arp)
+    # IP usurpée jamais vue ailleurs : aucun GET
+    assert await net.ssdp_description(reply("http://192.168.1.20:9197/d")) is None
+    assert called == []
+    # vue dans l'ARP : GET autorisé
+    assert await net.ssdp_description(reply("http://192.168.1.30:9197/d", "192.168.1.30"))
+    assert len(called) == 1
+
+
+async def test_ssdp_spoofed_query_off_list_port_no_get() -> None:
+    called: list[int] = []
+
+    def h(req: httpx.Request) -> httpx.Response:
+        called.append(1)
+        return httpx.Response(200, content=XML)
+
+    net = desc_net(h)
+    assert await net.ssdp_description(reply("http://192.168.1.20:8080/cgi?action=x")) is None
+    assert called == []
+
+
+@pytest.mark.parametrize("enc", ["utf-16", "utf-32", "utf-16-le"])
+def test_parse_xml_rejects_non_utf8(enc: str) -> None:
+    doc = '<!DOCTYPE r [<!ENTITY a "bb">]><root><friendlyName>&a;</friendlyName></root>'
+    assert dn._parse_xml(doc.encode(enc)) is None
+    assert dn._parse_xml("<root/>".encode(enc)) is None
+    assert dn._parse_xml(b"<root/>") is not None
+
+
+async def test_facade_respects_probe_ports_false() -> None:
+    probed: list[int] = []
+
+    async def probe(ip: IPv4Address, port: int, t: float) -> bool:
+        probed.append(port)
+        return True
+
+    net = make_net(probe=probe, probe_ports=False)
+    with pytest.raises(DiscoveryScopeError):
+        await net.tcp_open(A("192.168.1.9"), [5555])
+    with pytest.raises(DiscoveryScopeError):
+        async for _ in net.sweep([5555]):
+            pass
+    assert probed == []
+
+
+def test_clean_strips_bidi_and_zero_width() -> None:
+    assert dn.clean("Sam\u202esung\u200b \u2066QM\ufeff55") == "Samsung QM55"

@@ -161,6 +161,8 @@ class DiscoveryRunner:
         t0 = time.monotonic()
         loop = asyncio.get_running_loop()
         net = self._net_factory(perimeter, loop.time() + self._budget)
+        if isinstance(net, LanDiscoveryNet):
+            net.probe_ports = probe_ports  # la façade applique le réglage du site (m2)
         scope = DiscoveryScope(
             networks=perimeter.networks,
             truncated=perimeter.truncated,
@@ -176,8 +178,9 @@ class DiscoveryRunner:
         except DiscoveryScopeError as e:
             log.warning("discovery.scope_error", extra={"code": e.code})
             return self._fail("discovery.internal")
-        except Exception:
-            log.exception("discovery.module_failed")
+        except Exception as exc:
+            # Pas de trace : une ValidationError pydantic embarque IP/MAC/nom (m5).
+            log.error("discovery.module_failed", extra={"error": type(exc).__name__})
             return self._fail("discovery.internal")
         finally:
             pump.cancel()

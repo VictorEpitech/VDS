@@ -12,6 +12,7 @@ import logging
 import re
 import socket
 import struct
+import unicodedata
 import xml.etree.ElementTree as ET  # noqa: S405 - DOCTYPE/ENTITY refusés avant analyse (_parse_xml)
 from collections.abc import (
     AsyncIterator,
@@ -51,6 +52,8 @@ DESC_PER_SCAN = 32
 EXCLUDED_IFACE_PREFIXES = (
     "docker", "br-", "veth", "virbr", "cni", "flannel", "tailscale", "wg", "tun", "tap",
 )  # fmt: skip
+SSDP_DESC_PORTS = frozenset({80, 1400, 7676, 8008, 8060, 9197, 52235})  # UPnP connus (M1)
+SSDP_DESC_PATH_MAX = 256
 _CONTROL = re.compile(r"[\x00-\x1f\x7f]")
 
 
@@ -58,7 +61,9 @@ def clean(value: object, limit: int = 128) -> str | None:
     """Texte hostile -> chaîne sûre (contrôles retirés, 128 caractères)."""
     if value is None:
         return None
-    s = _CONTROL.sub("", str(value)).strip()[:limit]
+    # Cc (contrôles) et Cf (bidi, largeur nulle, BOM) retirés : pas d'usurpation visuelle (m4).
+    kept = (c for c in str(value) if unicodedata.category(c) not in ("Cc", "Cf"))
+    s = "".join(kept).strip()[:limit]
     return s or None
 
 
@@ -261,12 +266,19 @@ def parse_ssdp(data: bytes, ip: IPv4Address) -> SsdpReply | None:
 
 
 def _parse_xml(data: bytes) -> ET.Element | None:
-    """Pas de DTD ni d'entités (équivalent de defusedxml.forbid_dtd/forbid_entities)."""
-    low = data[:DESC_MAX_BYTES].lower()
-    if b"<!doctype" in low or b"<!entity" in low:
+    """Pas de DTD ni d'entités. Tout document non décodable en UTF-8 strict (UTF-16/32, BOM)
+    ou contenant un NUL est refusé avant analyse : le filtre ne peut pas être contourné (m1)."""
+    try:
+        text = data[:DESC_MAX_BYTES].decode("utf-8", "strict")
+    except UnicodeDecodeError:
+        return None
+    if "\x00" in text or text.startswith("\ufeff"):
+        return None
+    low = text.lower()
+    if "<!doctype" in low or "<!entity" in low:
         return None
     try:
-        return ET.fromstring(data)  # noqa: S314
+        return ET.fromstring(text)  # noqa: S314
     except ET.ParseError:
         return None
 
@@ -348,8 +360,11 @@ class LanDiscoveryNet:
         udp: UdpExchange = udp_exchange,
         probe: TcpProbe = tcp_probe,
         monotonic: Callable[[], float] | None = None,
+        probe_ports: bool = True,
     ) -> None:
         self.p = perimeter
+        self.probe_ports = probe_ports
+        self._seen: set[IPv4Address] = set()  # IP vues par mDNS / port ouvert (corroboration)
         self._deadline = deadline
         self._arp = arp_path
         self._http = http or httpx.AsyncClient(follow_redirects=False, trust_env=False)
@@ -403,6 +418,7 @@ class LanDiscoveryNet:
             ip = self._src(src)
             if ip is None:
                 continue
+            self._seen.add(ip)
             for service, inst, host, port, txt in parse_mdns(data):
                 if not port:
                     continue
@@ -450,6 +466,8 @@ class LanDiscoveryNet:
             or reply.ip in self._described
             or self._desc_count >= DESC_PER_SCAN
             or not self.p.contains(reply.ip)
+            # M1 : IP source corroborée par une autre source (ARP, mDNS, port ouvert).
+            or (reply.ip not in self._seen and reply.ip not in self.neighbors())
         ):
             return None
         try:
@@ -460,7 +478,8 @@ class LanDiscoveryNet:
             return None
         if (
             u.scheme != "http" or u.username or u.password or host != reply.ip
-            or not (port == 80 or port >= 1024)
+            or port not in SSDP_DESC_PORTS or u.query or "?" in reply.location
+            or len(u.path) > SSDP_DESC_PATH_MAX
         ):  # fmt: skip
             return None
         self._described.add(reply.ip)
@@ -468,7 +487,7 @@ class LanDiscoveryNet:
         timeout = min(DESC_TIMEOUT_S, self._window(DESC_TIMEOUT_S))
         if timeout <= 0:
             return None
-        url = f"http://{reply.ip}:{port}{u.path or '/'}" + (f"?{u.query}" if u.query else "")
+        url = f"http://{reply.ip}:{port}{u.path or '/'}"
         try:
             async with (
                 asyncio.timeout(timeout),
@@ -495,14 +514,23 @@ class LanDiscoveryNet:
             return await self._probe(ip, port, CONNECT_TIMEOUT_S)
 
     async def tcp_open(self, ip: IPv4Address, ports: Sequence[int]) -> frozenset[int]:
+        self._require_probe()
         ensure_discovery_ports(ports)
         self.p.ensure(ip)
         res = await asyncio.gather(*(self._one(ip, p) for p in ports))
-        return frozenset(p for p, ok in zip(ports, res, strict=True) if ok)
+        found = frozenset(p for p, ok in zip(ports, res, strict=True) if ok)
+        if found:
+            self._seen.add(ip)
+        return found
+
+    def _require_probe(self) -> None:
+        if not self.probe_ports:
+            raise DiscoveryScopeError("discovery.ports_disabled")
 
     async def sweep(
         self, ports: Sequence[int]
     ) -> AsyncIterator[tuple[IPv4Address, frozenset[int]]]:
+        self._require_probe()
         ensure_discovery_ports(ports)
         hosts = []
         for h in self.p.hosts():
