@@ -352,3 +352,31 @@ async def test_seq_state_of_another_identity_is_reset(tmp_path: Path) -> None:
         assert srv.hellos[-1]["last_server_seq"] == 0
         assert srv.hellos[-1]["out_seq"] == 0
         assert await agent.store.kv_get("seq_owner") == FAKE_AGENT_ID
+
+
+async def test_backlog_of_expired_commands_stays_under_server_rate_limit(tmp_path: Path) -> None:
+    """100 commandes périmées : acks regroupés et émission étalée (< 50 trames/s côté serveur)."""
+    import time
+
+    async with FakeServer(tmp_path, ["power.fake"]) as srv:
+        stamps: list[float] = []
+
+        class Timed(list):  # type: ignore[type-arg]
+            def append(self, f: object) -> None:
+                stamps.append(time.monotonic())
+                super().append(f)
+
+        srv.received = Timed()
+        srv.to_send = [cmd_frame(i, "plan.updated", {}, expires_in_s=-5) for i in range(1, 101)]
+        agent = make_agent(tmp_path, srv, plan())
+        task = asyncio.create_task(agent.run())
+        try:
+            await eventually(lambda: len(srv.results()) >= 100, timeout=15)
+        finally:
+            agent.link.stop()
+            await asyncio.wait_for(task, 5)
+        assert srv.connections == 1
+        assert {r["status"] for r in srv.results()} == {"expired"}
+        acks = [f for f in srv.received if f.type == "ack"]
+        assert len(acks) < 20 and acks[-1].ack == 100  # un ack cumulatif, pas un par commande
+        assert max(sum(1 for t in stamps if t0 <= t < t0 + 1.0) for t0 in stamps) <= 40

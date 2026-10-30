@@ -74,7 +74,7 @@ class RemoteCommand(Base):
     target_id: Mapped[UUID] = mapped_column()
     seq: Mapped[int] = mapped_column(BigInteger)
     name: Mapped[str] = mapped_column(Text)
-    screen_id: Mapped[UUID | None] = mapped_column(ForeignKey("screen.id", ondelete="CASCADE"))
+    screen_id: Mapped[UUID | None] = mapped_column(ForeignKey("screen.id", ondelete="SET NULL"))
     args: Mapped[Any] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
     status: Mapped[str] = mapped_column(Text, server_default="queued")
     code: Mapped[str | None] = mapped_column(Text)

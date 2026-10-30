@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from vds_sdk import Event, EventBus
@@ -271,7 +271,8 @@ class InventoryService:
         dropped = await self._drop_schedules("screen", screen_id)
         # Références sans FK (polymorphes) : à nettoyer à la main, le reste part en CASCADE
         # (screen_device, screen_provision, pairing_request, config_override, power_state,
-        # power_action, remote_command.screen_id).
+        # power_action ; remote_command.screen_id passe à NULL : la file d'un agent est append-only,
+        # sinon max(seq) régresse et l'agent ignore les nouvelles commandes comme doublons).
         devices = list(
             (
                 await self._s.execute(
@@ -280,6 +281,14 @@ class InventoryService:
             ).scalars()
         )
         device_ids = [d.id for d in devices]
+        await self._s.execute(  # commandes en attente visant cet écran : périmées, jamais exécutées
+            update(RemoteCommand)
+            .where(
+                RemoteCommand.screen_id == screen_id,
+                RemoteCommand.status.in_(("queued", "sent")),
+            )
+            .values(status="expired", code="screen.deleted", done_at=datetime.now(UTC))
+        )
         for d in devices:
             if d.revoked_at is None:  # le player est déconnecté : son jeton disparaît avec l'écran
                 self._events.append(

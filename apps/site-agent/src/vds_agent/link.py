@@ -4,6 +4,8 @@ import asyncio
 import contextlib
 import logging
 import random
+import time
+from collections import deque
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Any
@@ -32,6 +34,11 @@ log = logging.getLogger("vds.agent.link")
 
 BACKOFF_MIN = 1.0
 BACKOFF_MAX = 60.0
+# Le serveur coupe (4429) au-delà de 50 trames/s : l'agent reste bien en dessous, quelle que soit la
+# rafale (reprise après coupure : centaines de commandes périmées, résultats en attente).
+SEND_BURST = 40
+SEND_WINDOW_S = 1.0
+ACK_DELAY_S = 0.05  # les acks de commandes sont regroupés : un ack cumulatif par fenêtre
 
 
 def next_backoff(current: float, rng: random.Random | None = None) -> float:
@@ -93,6 +100,7 @@ class ServerLink:
         self._stop = asyncio.Event()
         self.connected = asyncio.Event()
         self._ws: ClientConnection | None = None
+        self._sent_at: deque[float] = deque()
         self.welcome: AgentWelcome | None = None
         self.end_reason: str | None = None  # "revoked" | "rotated" | None (arrêt demandé)
 
@@ -119,7 +127,19 @@ class ServerLink:
         )
 
     async def _send(self, ws: ClientConnection, frame: Frame) -> None:
+        await self._pace()
         await ws.send(encode_frame(frame))
+
+    async def _pace(self) -> None:
+        """Fenêtre glissante : au plus SEND_BURST trames par SEND_WINDOW_S (attend au besoin)."""
+        while True:
+            now = time.monotonic()
+            while self._sent_at and now - self._sent_at[0] >= SEND_WINDOW_S:
+                self._sent_at.popleft()
+            if len(self._sent_at) < SEND_BURST:
+                self._sent_at.append(now)
+                return
+            await asyncio.sleep(max(0.005, SEND_WINDOW_S - (now - self._sent_at[0])))
 
     # --- boucle de reconnexion --------------------------------------------------
     async def run(self) -> None:
@@ -204,8 +224,11 @@ class ServerLink:
                 self.connected.set()
                 receiver = SeqReceiver(last_server_seq)
                 sent_upto = welcome.resume_from
+                self._sent_at.clear()
+                ack_ev = asyncio.Event()
                 tasks = [
-                    asyncio.create_task(self._reader(ws, receiver)),
+                    asyncio.create_task(self._reader(ws, receiver, ack_ev)),
+                    asyncio.create_task(self._acker(ws, receiver, ack_ev)),
                     asyncio.create_task(self._pump(ws, sent_upto)),
                     asyncio.create_task(self._heartbeats(ws)),
                 ]
@@ -225,7 +248,19 @@ class ServerLink:
             finally:
                 self._ws = None
 
-    async def _reader(self, ws: ClientConnection, receiver: SeqReceiver) -> None:
+    async def _acker(
+        self, ws: ClientConnection, receiver: SeqReceiver, ack_ev: asyncio.Event
+    ) -> None:
+        """Un seul ack cumulatif pour toute une rafale de commandes."""
+        while True:
+            await ack_ev.wait()
+            await asyncio.sleep(ACK_DELAY_S)
+            ack_ev.clear()
+            await self._send(ws, Frame(type="ack", ack=receiver.last_seq))
+
+    async def _reader(
+        self, ws: ClientConnection, receiver: SeqReceiver, ack_ev: asyncio.Event
+    ) -> None:
         async for raw in ws:
             frame = decode_frame(raw)
             if frame.ack is not None:
@@ -234,7 +269,7 @@ class ServerLink:
                 if receiver.accept(frame):
                     await self.store.kv_set("in_seq", receiver.last_seq)
                     await self._on_cmd(frame)
-                await self._send(ws, Frame(type="ack", ack=receiver.last_seq))
+                ack_ev.set()
 
     async def _pump(self, ws: ClientConnection, sent_upto: int) -> None:
         while True:

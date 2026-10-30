@@ -688,3 +688,7 @@ Test manuel (vraie machine, sans TV) : démarrer l'agent avec `VDS_AGENT_CACHE_L
 - Prérequis TV : Paramètres > Général > Gestionnaire de périphériques externes > Notification d'accès : activée, et l'appareil « VDS » non refusé dans la liste.
 - `detect` doit rester sous `DETECT_TIMEOUT_S` (10 s) : lecture REST 5 s max + attente d'appairage 3 s ; l'appairage continue en arrière-plan (45 s).
 - Journaux de l'agent : les champs `extra` sont rendus en `clé=valeur` (`vds_agent/logsetup.py`, secrets masqués) ; `agent.link_error` porte type, code de fermeture, détail ; les commandes et tentatives de pilote journalisent début/résultat/code/durée.
+
+### File de commandes d'agent : append-only
+
+La file `remote_command` d'un agent ne perd jamais de ligne : supprimer un écran passe `screen_id` à NULL (et périme les commandes en attente) au lieu de les effacer. Effacer faisait régresser `max(seq)` : le serveur réattribuait des seq déjà vus par l'agent, ignorés comme doublons (provisioning « bloqué » sans erreur). Côté agent, les acks de commandes sont regroupés (ack cumulatif) et l'émission est limitée à 40 trames/s, sous le plafond serveur de 50/s (fermeture 4429).

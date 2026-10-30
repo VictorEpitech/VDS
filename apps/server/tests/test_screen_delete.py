@@ -67,6 +67,9 @@ async def test_delete_paired_provisioned_scheduled(
             "INSERT INTO incident (kind, severity, subject_type, subject_id, opened_at)"
             f" VALUES ('screen.offline', 'warning', 'screen', '{screen}', now())",
         )
+        agent_seqs = "SELECT max(seq), count(*) FROM remote_command WHERE target_kind = 'agent'"
+        seq_before = tuple((await sql(migrated_db_url, agent_seqs))[0])
+        assert seq_before[0] >= 1
         before = (await sql(migrated_db_url, PER_SCREEN))[0]
         assert all(n >= 1 for n in before[:5]) and before[6] == before[7] == 1, before
 
@@ -74,6 +77,15 @@ async def test_delete_paired_provisioned_scheduled(
         assert r.status_code == 204, r.text
 
         assert tuple((await sql(migrated_db_url, PER_SCREEN))[0]) == (0, 0, 0, 0, 0, 0, 0, 0)
+        # file append-only : max(seq) ne régresse pas (sinon l'agent ignore les nouvelles commandes)
+        after = tuple((await sql(migrated_db_url, agent_seqs))[0])
+        assert after[0] >= seq_before[0] and after[1] >= seq_before[1]  # (plan.updated en plus)
+        left = await sql(
+            migrated_db_url,
+            "SELECT count(*) FROM remote_command WHERE name = 'screen.provision'"
+            " AND status IN ('queued','sent')",
+        )
+        assert left[0][0] == 0  # plus rien d'exécutable pour l'écran supprimé
         gone = await player.post(hb, json={}, headers=hdr(token))
         assert gone.status_code == 401
         assert (await admin.get(f"{p}/api/v1/screens/{screen}")).status_code == 404

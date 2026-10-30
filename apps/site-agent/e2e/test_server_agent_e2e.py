@@ -896,3 +896,55 @@ async def test_enroll_rate_limit(stack: dict[str, Any]) -> None:
         r = await anon.post("/api/v1/agent/enroll", json=_enroll_body(CODE_UNKNOWN))
         assert r.status_code == 429 and int(r.headers["Retry-After"]) > 0, r.text
     _assert_log_clean(srv)
+
+
+async def test_reconnect_after_expired_backlog(stack: dict[str, Any]) -> None:
+    """100 commandes périmées en file : l'agent reste connecté (pas de 4429), puis exécute."""
+    srv: Server = stack["srv"]
+    async with srv.client() as admin:
+        r = await admin.post(
+            "/api/v1/m/auth.local/login", json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
+        )
+        assert r.status_code == 200, r.text
+        site = (await admin.post("/api/v1/sites", json={"name": "Backlog", "slug": "bk"})).json()[
+            "id"
+        ]
+        made = await admin.post(f"/api/v1/sites/{site}/agents", json={"name": "Pi"})
+        token, agent_id = made.json()["token"], made.json()["agent"]["id"]
+        url = f"/api/v1/sites/{site}/agents/{agent_id}/commands"
+        for _ in range(100):
+            r = await admin.post(url, json={"name": "plan.updated", "args": {"revision": "x"}, "ttl_s": 5})
+            assert r.status_code == 202, r.text
+        await asyncio.sleep(6)  # tout est périmé avant la première connexion de l'agent
+        settings = AgentSettings(
+            server_url=srv.url, token=token, data_dir=stack["tmp"] / "agent-bk",
+            modules_dir=ROOT / "modules", ca_file=srv.ca,
+        )  # fmt: skip
+        agent = Agent(settings, Store(settings.data_dir), heartbeat_s=1.0)
+        task = asyncio.create_task(agent.run())
+        try:
+
+            async def drained() -> Any:
+                rows = await srv.sql(
+                    "SELECT count(*) FILTER (WHERE status = 'expired'), count(*)"
+                    " FROM remote_command WHERE target_id = :a",
+                    a=agent_id,
+                )
+                return rows[0][0] == 100 and not await agent.store.outbox_after(0)
+
+            await poll(drained, "100 périmées traitées et acquittées", 40)
+            await asyncio.sleep(2)  # une coupure 4429 se verrait ici (reconnexion)
+            accepted = srv.log.read_text().count('/ws/agent" [accepted]')
+            assert accepted == 1, f"{accepted} connexions /ws/agent (boucle de reconnexion)"
+            r = await admin.post(url, json={"name": "plan.updated", "args": {"revision": "y"}})
+            cid = r.json()["id"]
+
+            async def ok() -> Any:
+                rows = (await admin.get(url)).json()
+                return next(x for x in rows if x["id"] == cid)["status"] == "ok"
+
+            await poll(ok, "vraie commande exécutée après le lot")
+        finally:
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await asyncio.wait_for(task, 5)
