@@ -185,3 +185,19 @@ describe("codes", () => {
     expect(codeKey("provision.ticket_expired")).toBe("ticket_expired");
   });
 });
+
+describe.each(["", "/espace/affichage"])("bouton d'installation auto sur /pairing, base « %s »", (b) => {
+  it("est un lien vers l'assistant quand un agent est disponible", async () => {
+    mockApi({ ...base(), "GET /pairings": [] }, b);
+    await renderRoutes(routes, "/pairing", b);
+    const link = await screen.findByRole("link", { name: "Installer automatiquement (Android TV)" });
+    expect(link).toHaveAttribute("href", `${b}/screens/android`);
+  });
+
+  it("est désactivé quand aucun agent n'est disponible", async () => {
+    mockApi({ ...base({ available: false, reason: "agent_too_old", platforms: [], apk: null }) }, b);
+    await renderRoutes(routes, "/pairing", b);
+    expect(await screen.findByRole("button", { name: "Installer automatiquement (Android TV)" })).toBeDisabled();
+    expect(screen.queryByRole("link", { name: "Installer automatiquement (Android TV)" })).toBeNull();
+  });
+});

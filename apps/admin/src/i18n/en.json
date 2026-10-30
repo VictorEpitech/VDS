@@ -276,6 +276,7 @@
     }
   },
   "pairing": {
+    "auto": { "action": "Install automatically (Android TV)", "unavailable": "Available when a site agent 1.3 or later handles Android installation for a site." },
     "title": "Pair a screen",
     "intro": "Enter the code shown on the screen, then choose the matching screen.",
     "code": {

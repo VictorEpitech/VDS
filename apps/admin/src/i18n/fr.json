@@ -276,6 +276,7 @@
     }
   },
   "pairing": {
+    "auto": { "action": "Installer automatiquement (Android TV)", "unavailable": "Disponible quand un agent de site 1.3 ou plus gère l'installation Android sur un site." },
     "title": "Appairer un écran",
     "intro": "Saisissez le code affiché sur l'écran, puis choisissez l'écran qui lui correspond.",
     "code": {

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { components } from "@vds/sdk-ts";
 import { useApi } from "../../lib/api";
 
@@ -27,6 +27,18 @@ export function useCapabilities(siteId: string) {
     enabled: siteId !== "",
     queryFn: () => api.get<Capabilities>(`/provisioning/capabilities?site_id=${encodeURIComponent(siteId)}`),
   });
+}
+
+/** Vrai si au moins un site a un agent capable de `provision.android` (même source que l'assistant). */
+export function useProvisioningAvailable(siteIds: readonly string[]) {
+  const api = useApi();
+  const results = useQueries({
+    queries: siteIds.map((siteId) => ({
+      queryKey: provisionKeys.capabilities(siteId),
+      queryFn: () => api.get<Capabilities>(`/provisioning/capabilities?site_id=${encodeURIComponent(siteId)}`),
+    })),
+  });
+  return results.some((r) => r.data?.available === true);
 }
 
 /** Suivi live : interrogation toutes les 2 s tant que la session n'est pas terminée (pas de WS admin en V1). */

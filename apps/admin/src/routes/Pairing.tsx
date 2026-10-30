@@ -5,6 +5,8 @@ import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router-dom";
 import { ErrorAlert, QueryStatus, SuccessAlert } from "../components/feedback";
 import { Icon } from "../components/Icon";
+import { useSession } from "../auth/session";
+import { useProvisioningAvailable } from "../features/provisioning/hooks";
 import { useApi } from "../lib/api";
 import { keys, useScreens, useSites } from "../lib/queries";
 
@@ -19,6 +21,9 @@ export function Pairing() {
   const [params] = useSearchParams();
   const screens = useScreens();
   const sites = useSites();
+  const session = useSession();
+  const isAdmin = session.data?.role === "admin";
+  const provisionable = useProvisioningAvailable((sites.data ?? []).map((x) => x.id));
   const [code, setCode] = useState("");
   const [screenId, setScreenId] = useState(params.get("screen") ?? "");
   const [missing, setMissing] = useState<{ code?: boolean; screen?: boolean }>({});
@@ -47,6 +52,26 @@ export function Pairing() {
     <>
       <h1>{t("pairing.title")}</h1>
       <p className="lead">{t("pairing.intro")}</p>
+      {isAdmin ? (
+        <div className="actions">
+          {provisionable ? (
+            <Link className="btn btn-text" to="/screens/android">
+              <Icon name="detect" />
+              {t("pairing.auto.action")}
+            </Link>
+          ) : (
+            <>
+              <button type="button" className="btn btn-text" disabled aria-describedby="pairing-auto-help">
+                <Icon name="detect" />
+                {t("pairing.auto.action")}
+              </button>
+              <p className="field-help" id="pairing-auto-help">
+                {t("pairing.auto.unavailable")}
+              </p>
+            </>
+          )}
+        </div>
+      ) : null}
       <form className="card form-narrow" onSubmit={submit} noValidate>
         <div className="field">
           <label htmlFor={`${uid}-code`}>{t("pairing.code.label")}</label>
