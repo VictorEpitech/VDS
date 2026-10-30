@@ -469,13 +469,17 @@ async def test_timeout_without_result(
     await sql(migrated_db_url, "UPDATE discovery_scan SET created_at = now() - interval '61 s'")
     got = await scan(admin, p, s, sid)
     assert (got["status"], got["error_code"]) == ("failed", "discovery.timeout")
-    assert [e.payload["code"] for e in seen] == ["discovery.timeout"]
-    cmd = await sql(migrated_db_url, "SELECT status FROM remote_command")
-    assert cmd[0][0] in ("expired", "sent")  # jamais exécutée après l'échéance
+    # lecture dérivée : aucune écriture, aucun événement (règle 13)
+    assert seen == []
+    row = await sql(migrated_db_url, "SELECT status, error_code FROM discovery_scan")
+    assert row[0][0] == "pending" and row[0][1] is None
     # un résultat tardif de l'agent ne ressuscite pas le scan
     await result(app, sid, **ok_data(sid))
     assert (await scan(admin, p, s, sid))["status"] == "failed"
-    await start(admin, p, s)  # le scan échu ne bloque plus le site
+    await start(admin, p, s)  # le scan échu ne bloque plus le site (expiration persistée ici)
+    assert [e.payload["code"] for e in seen] == ["discovery.timeout"]
+    cmd = await sql(migrated_db_url, "SELECT status FROM remote_command ORDER BY created_at")
+    assert cmd[0][0] in ("expired", "sent")  # jamais exécutée après l'échéance
     await ws.close()
 
 
@@ -519,3 +523,51 @@ async def test_generic_command_endpoint_refuses_scan(
         headers=SAME,
     )
     assert (r.status_code, r.json()["code"]) == (422, "agents.command_internal")
+
+
+async def test_probe_ports_false_reaches_command_and_scan(
+    admin: AsyncClient,
+    app: FastAPI,
+    p: str,
+    setup: dict[str, Any],  # noqa: F811
+    migrated_db_url: str,
+) -> None:
+    s = setup
+    r = await admin.put(
+        f"{p}/api/v1/config/site/{s['site']}/discovery.lan/probe_ports",
+        json={"value": False},
+        headers=SAME,
+    )
+    assert r.status_code == 204, r.text
+    ws = await online(app, p, s)
+    assert (await caps(admin, p, s))["probe_ports"] is False
+    sid = await start(admin, p, s)
+    frame = await ws.recv()
+    while frame is not None and frame["data"].get("name") == "plan.updated":
+        frame = await ws.recv()
+    assert frame is not None and frame["data"]["args"]["probe_ports"] is False
+    rows = await sql(
+        migrated_db_url,
+        f"SELECT probe_ports FROM discovery_scan WHERE id = '{sid}'",  # noqa: S608
+    )
+    assert rows[0][0] is False
+    await ws.close()
+
+
+async def test_unique_active_scan_index(
+    setup: dict[str, Any],  # noqa: F811
+    migrated_db_url: str,
+) -> None:
+    site = setup["site"]
+
+    def ins(status: str) -> str:
+        return (
+            "INSERT INTO discovery_scan (site_id, status, probe_ports) "  # noqa: S608
+            f"VALUES ('{site}', '{status}', true)"
+        )
+
+    await sql(migrated_db_url, ins("completed"))
+    await sql(migrated_db_url, ins("failed"))  # les scans terminés ne comptent pas
+    await sql(migrated_db_url, ins("pending"))
+    with pytest.raises(Exception, match="ux_discovery_scan_active"):
+        await sql(migrated_db_url, ins("running"))

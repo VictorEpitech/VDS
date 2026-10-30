@@ -364,12 +364,10 @@ class DiscoveryService:
 
     # --- lecture ----------------------------------------------------------------------
     async def _read(self, stmt: Any) -> sc.ScanOut:
-        row = (await self._s.execute(stmt.with_for_update())).scalar_one_or_none()
+        # Lecture seule (règle 13) : l'expiration est dérivée, persistée par le POST de création.
+        row = (await self._s.execute(stmt)).scalar_one_or_none()
         if row is None:
             raise ApiError("discovery.not_found", 404)
-        events = await expire_stale(self._s, row)
-        await self._s.commit()
-        await _publish(self._bus, events)
         devices = list(
             (
                 await self._s.execute(
@@ -379,7 +377,16 @@ class DiscoveryService:
                 )
             ).scalars()
         )
-        return to_out(row, devices, await self._known(row.site_id, devices))
+        out = to_out(row, devices, await self._known(row.site_id, devices))
+        if row.status in ACTIVE and _now() - row.created_at > timedelta(seconds=SCAN_TTL_S):
+            out = out.model_copy(
+                update={
+                    "status": "failed",
+                    "error_code": "discovery.timeout",
+                    "finished_at": row.created_at + timedelta(seconds=SCAN_TTL_S),
+                }
+            )
+        return out
 
     async def latest(self, site_id: UUID) -> sc.ScanOut:
         await self._site(site_id)
@@ -455,6 +462,11 @@ class DiscoveryEvents:
             if row is None or row.status not in ACTIVE or row.site_id != site_id:
                 log.warning("discovery.batch_ignored", extra={"scan_id": str(scan_id)})
                 return
+            if (late := await expire_stale(s, row)) or row.status not in ACTIVE:
+                await s.commit()
+                await _publish(self._bus, late)
+                log.warning("discovery.batch_ignored", extra={"scan_id": str(scan_id)})
+                return
             current = (
                 await s.execute(
                     select(SiteAgent.id).where(
@@ -517,6 +529,10 @@ class DiscoveryEvents:
             if row is None or row.status not in ACTIVE:
                 return
             events: list[Event]
+            if events := await expire_stale(s, row):  # résultat tardif : l'échéance prime
+                await s.commit()
+                await _publish(self._bus, events)
+                return
             if status == "ok":
                 events = await self._complete(s, row, data)
             else:
