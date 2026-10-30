@@ -18,6 +18,7 @@ import sys
 import time
 from collections.abc import AsyncIterator, Callable, Iterator
 from datetime import UTC, datetime, timedelta
+from ipaddress import IPv4Address
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +27,7 @@ import pytest
 from sqlalchemy import pool, text
 from sqlalchemy.ext.asyncio import create_async_engine
 from vds_agent import runtime as agent_runtime
+from vds_agent.discovery_net import Iface
 from vds_agent.runtime import Agent
 from vds_agent.settings import AgentSettings
 from vds_agent.store import Store
@@ -192,6 +194,20 @@ class Server:
         return rows
 
 
+TAP_SRC = """
+import json, os
+_p = os.environ.get("VDS_E2E_BUS_TAP")
+if _p:
+    from vds_server.events import bus as _bus
+    _orig = _bus.CoreBus.publish
+    async def _publish(self, event):
+        with open(_p, "a", encoding="utf-8") as f:
+            f.write(json.dumps({"name": event.name, "payload": event.payload}, default=str) + "\\n")
+        await _orig(self, event)
+    _bus.CoreBus.publish = _publish
+"""
+
+
 @pytest.fixture(params=COMBOS, ids=[c[0] for c in COMBOS])
 async def stack(
     request: pytest.FixtureRequest, pg: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -204,6 +220,11 @@ async def stack(
     cert = tmp_path / "smtp-ca.pem"
     cert.write_text(smtp.cert_pem)
     (tmp_path / "local-agent").mkdir()
+    # Sonde de bus (test seulement, aucun code de prod) : sitecustomize journalise chaque publish.
+    tap_dir = tmp_path / "tap"
+    tap_dir.mkdir()
+    (tap_dir / "sitecustomize.py").write_text(TAP_SRC, encoding="utf-8")
+    tap_log = tmp_path / "bus.jsonl"
     srv = Server(
         tmp_path, base, port,
         f"postgresql+asyncpg://vds:{pg}@127.0.0.1:{PG_PORT}/{dbname}",
@@ -211,6 +232,10 @@ async def stack(
             **smtp.env(),
             "SSL_CERT_FILE": str(cert),
             "VDS_LOCAL_AGENT_DIR": str(tmp_path / "local-agent"),
+            "VDS_E2E_BUS_TAP": str(tap_log),
+            "PYTHONPATH": os.pathsep.join(
+                [str(tap_dir), *filter(None, [os.environ.get("PYTHONPATH")])]
+            ),
         },
     )  # fmt: skip
     srv.start()
@@ -226,7 +251,7 @@ async def stack(
             assert r.status_code == 200, r.text
             r = await c.put("/api/v1/registry/modules/notify.mail/state", json={"state": "enabled"})
             assert r.status_code == 200 and r.json()["state"] == "enabled", r.text
-        yield {"srv": srv, "smtp": smtp, "tmp": tmp_path}
+        yield {"srv": srv, "smtp": smtp, "tmp": tmp_path, "tap": tap_log}
     finally:
         srv.stop()
         smtp.stop()
@@ -913,7 +938,9 @@ async def test_reconnect_after_expired_backlog(stack: dict[str, Any]) -> None:
         token, agent_id = made.json()["token"], made.json()["agent"]["id"]
         url = f"/api/v1/sites/{site}/agents/{agent_id}/commands"
         for _ in range(100):
-            r = await admin.post(url, json={"name": "plan.updated", "args": {"revision": "x"}, "ttl_s": 5})
+            r = await admin.post(
+                url, json={"name": "plan.updated", "args": {"revision": "x"}, "ttl_s": 5}
+            )
             assert r.status_code == 202, r.text
         await asyncio.sleep(6)  # tout est périmé avant la première connexion de l'agent
         settings = AgentSettings(
@@ -948,3 +975,226 @@ async def test_reconnect_after_expired_backlog(stack: dict[str, Any]) -> None:
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError, Exception):
                 await asyncio.wait_for(task, 5)
+
+
+# --- Découverte LAN (D6) : vrai serveur + vrai agent + réseau factice, aucune connexion réelle -----
+A = IPv4Address
+TCL_IP = "192.168.1.20"
+TCL_MAC = "aa:00:00:00:00:01"
+PUBLIC_IP = "8.8.8.8"
+OTHER_LAN_IP = "10.9.9.9"  # RFC1918 mais hors du périmètre de l'agent (192.168.1.0/24)
+
+
+class FakeLanNet:
+    """Façade `DiscoveryNet` rejouée : une TCL (mDNS + ADB ouvert) et deux intrus hors périmètre."""
+
+    instances: list["FakeLanNet"] = []  # noqa: RUF012
+
+    def __init__(self) -> None:
+        self.sweeps = 0
+        FakeLanNet.instances.append(self)
+
+    def neighbors(self) -> dict[Any, str]:
+        return {A(TCL_IP): TCL_MAC}
+
+    async def mdns_browse(self, services: Any, window_s: float) -> AsyncIterator[Any]:
+        from vds_sdk.agent import MdnsRecord
+
+        for ip in (TCL_IP, PUBLIC_IP, OTHER_LAN_IP):
+            yield MdnsRecord(
+                service="_googlecast._tcp.local", instance="Google-TV-aaa", host="tv.local",
+                ip=A(ip), port=8009, txt={"md": "Google TV", "fn": "TCL Salon"},
+            )  # fmt: skip
+        yield MdnsRecord(
+            service="_androidtvremote2._tcp.local", instance="TCL-Salon", host="tv.local",
+            ip=A(TCL_IP), port=6466,
+        )  # fmt: skip
+
+    async def ssdp_search(self, targets: Any, window_s: float) -> AsyncIterator[Any]:
+        return
+        yield
+
+    async def ssdp_description(self, reply: Any) -> None:
+        return None
+
+    async def tcp_open(self, ip: Any, ports: Any) -> frozenset[int]:
+        raise AssertionError("seul sweep est utilisé")
+
+    async def sweep(self, ports: Any) -> AsyncIterator[tuple[Any, frozenset[int]]]:
+        self.sweeps += 1
+        for ip in (TCL_IP, PUBLIC_IP, OTHER_LAN_IP):
+            yield A(ip), frozenset({5555, 8008, 8009})
+
+    async def aclose(self) -> None:
+        return None
+
+
+def _fake_lan(agent: Agent) -> None:
+    agent.discovery._ifaces = lambda: [Iface("eth0", A("192.168.1.5"), 24)]
+    agent.discovery._net_factory = lambda p, dl: FakeLanNet()  # type: ignore[assignment,return-value]
+
+
+async def _prefill(admin: httpx.AsyncClient, screen: str, d: dict[str, Any]) -> None:
+    """Même algorithme que l'admin (applyDiscoveredDevice) : tout vient du schéma annoté."""
+    r = await admin.put(
+        f"/api/v1/config/screen/{screen}/core/power.cascade", json={"value": d["suggested_drivers"]}
+    )
+    assert r.status_code in (200, 204), r.text
+    for driver in d["suggested_drivers"]:
+        got = await admin.get(f"/api/v1/registry/modules/{driver}/settings")
+        assert got.status_code == 200, got.text
+        for key, field in got.json()["config_schema"].get("properties", {}).items():
+            kind = field.get("x-vds-device-address")
+            scopes = field.get("x-vds-scopes")
+            if isinstance(scopes, list) and "screen" not in scopes:
+                continue
+            value = d["ip"] if kind == "ip" else d["mac"] if kind == "mac" else None
+            if value:
+                r = await admin.put(
+                    f"/api/v1/config/screen/{screen}/{driver}/{key}", json={"value": value}
+                )
+                assert r.status_code in (200, 204), r.text
+
+
+def _bus_events(tap: Path) -> list[dict[str, Any]]:
+    if not tap.exists():
+        return []
+    return [json.loads(line) for line in tap.read_text().splitlines() if line]
+
+
+async def _wait_scan(admin: httpx.AsyncClient, site: str, sid: str) -> dict[str, Any]:
+    async def done() -> Any:
+        r = await admin.get(f"/api/v1/sites/{site}/discovery/scans/{sid}")
+        assert r.status_code == 200, r.text
+        return r.json() if r.json()["status"] in ("completed", "failed") else None
+
+    return dict(await poll(done, "scan terminé", 40))
+
+
+async def test_discovery_lan_scan_to_prefill(stack: dict[str, Any]) -> None:
+    srv: Server = stack["srv"]
+    tmp: Path = stack["tmp"]
+    tap: Path = stack["tap"]
+    FakeLanNet.instances.clear()
+    async with srv.client() as admin:
+        await _login(admin)
+        # discovery.lan est un module facultatif : désactivé, la recherche est « module_disabled ».
+        r = await admin.put(
+            "/api/v1/registry/modules/discovery.lan/state", json={"state": "enabled"}
+        )
+        assert r.status_code == 200 and r.json()["state"] == "enabled", r.text
+        bare = await _mk_site(admin, "sans-agent")
+        site = await _mk_site(admin, "moulins")
+        screen = (
+            await admin.post("/api/v1/screens", json={"site_id": site, "name": "Hall"})
+        ).json()["id"]
+        # mode sans agent : indisponible, même réponse, bouton masqué côté admin
+        r = await admin.get(f"/api/v1/sites/{bare}/discovery/capabilities")
+        assert r.json() == {"available": False, "reason": "agent_missing", "probe_ports": True}
+        r = await admin.post(f"/api/v1/sites/{bare}/discovery/scans", json={})
+        assert (r.status_code, r.json()["code"]) == (409, "discovery.unavailable")
+
+        made = await admin.post(f"/api/v1/sites/{site}/agents", json={"name": "Pi"})
+        settings = AgentSettings(
+            server_url=srv.url, token=made.json()["token"], data_dir=tmp / "agent",
+            modules_dir=ROOT / "modules", ca_file=srv.ca,
+        )  # fmt: skip
+        agent = Agent(settings, Store(settings.data_dir), heartbeat_s=1.0)
+        _fake_lan(agent)
+        task = asyncio.create_task(agent.run())
+        base = f"/api/v1/sites/{site}/discovery"
+        try:
+
+            async def available() -> Any:
+                c = (await admin.get(f"{base}/capabilities")).json()
+                return c if c["available"] else None
+
+            assert (await poll(available, "découverte disponible", 40))["probe_ports"] is True
+
+            async def scan_once() -> dict[str, Any]:
+                r = await admin.post(f"{base}/scans", json={})
+                assert r.status_code == 202, r.text
+                sid = r.json()["scan_id"]
+                busy = await admin.post(f"{base}/scans", json={})
+                # scan déjà fini : seul un cooldown est admissible ; sinon il est occupé
+                assert busy.json()["code"] in ("discovery.busy", "discovery.cooldown")
+                return await _wait_scan(admin, site, sid)
+
+            # --- 1. scan complet, sonde de ports activée
+            done = await scan_once()
+            assert done["status"] == "completed" and done["networks"] == ["192.168.1.0/24"]
+            ips = {d["ip"] for d in done["devices"]}
+            assert ips == {TCL_IP}, ips  # ni 8.8.8.8 ni 10.9.9.9
+            tcl = done["devices"][0]
+            assert tcl["mac"] == TCL_MAC and tcl["name"] == "TCL Salon"
+            assert tcl["suggested_drivers"] == ["power.adb", "power.wol"]
+            assert tcl["known_screen_id"] is None
+            assert FakeLanNet.instances[-1].sweeps == 1
+            r = await admin.post(f"{base}/scans", json={})
+            assert (r.status_code, r.json()["code"]) == (429, "discovery.cooldown")
+            assert 1 <= int(r.headers["Retry-After"]) <= 60
+
+            # --- 2. préremplissage depuis les annotations de schéma
+            await _prefill(admin, screen, tcl)
+            await srv.sql(
+                "UPDATE discovery_scan SET created_at = created_at - interval '2 minutes'"
+            )
+
+            # --- 3. probe_ports=false : pas de balayage, pas d'ADB ; écran désormais reconnu
+            r = await admin.put(
+                f"/api/v1/config/site/{site}/discovery.lan/probe_ports", json={"value": False}
+            )
+            assert r.status_code in (200, 204), r.text
+            caps = (await admin.get(f"{base}/capabilities")).json()
+            assert (caps["available"], caps["probe_ports"]) == (True, False)
+            done2 = await scan_once()
+            assert done2["status"] == "completed"
+            assert FakeLanNet.instances[-1].sweeps == 0
+            d2 = done2["devices"][0]
+            assert d2["ip"] == TCL_IP and "adb" not in d2["protocols"]
+            assert d2["suggested_drivers"] == ["power.wol"]
+            assert d2["known_screen_id"] == screen
+            rows = await srv.sql("SELECT probe_ports FROM discovery_scan ORDER BY created_at")
+            assert [x[0] for x in rows] == [True, False]
+
+            # --- 4. quota horaire (20 scans)
+            await srv.sql("DELETE FROM discovery_scan")
+            for i in range(20):
+                await srv.sql(
+                    "INSERT INTO discovery_scan (site_id, status, probe_ports, created_at, "
+                    "finished_at) VALUES (:s, 'completed', true, now() - make_interval(mins => :m),"
+                    " now())",
+                    s=site, m=2 + i,
+                )  # fmt: skip
+            r = await admin.post(f"{base}/scans", json={})
+            assert (r.status_code, r.json()["code"]) == (429, "discovery.quota")
+
+            # --- 5. index unique : jamais deux scans actifs pour un site
+            await srv.sql("DELETE FROM discovery_scan")
+            ins = (
+                "INSERT INTO discovery_scan (site_id, status, probe_ports) "
+                "VALUES (:s, 'pending', true)"
+            )
+            await srv.sql(ins, s=site)
+            with pytest.raises(Exception, match="ux_discovery_scan_active"):
+                await srv.sql(ins, s=site)
+            await srv.sql("DELETE FROM discovery_scan")
+
+            # --- 6. bus public et base : aucun lot, aucun appareil, aucune adresse hors périmètre
+            events = _bus_events(tap)
+            names = [e["name"] for e in events]
+            assert "discovery.batch" not in names
+            assert {"discovery.started", "discovery.completed"} <= set(names)
+            blob = json.dumps(events)
+            for needle in (TCL_IP, TCL_MAC, PUBLIC_IP, OTHER_LAN_IP, "TCL Salon"):
+                assert needle not in blob, needle
+            audits = await srv.sql(
+                "SELECT details::text FROM audit_log WHERE action LIKE 'site.discovery.%'"
+            )
+            assert audits
+            assert not any(PUBLIC_IP in a[0] or TCL_IP in a[0] for a in audits)
+        finally:
+            agent.link.stop()
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await task

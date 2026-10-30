@@ -203,5 +203,5 @@ Avancement (lot découverte) :
 - [x] D3 — module `discovery.lan`
 - [x] D4 — serveur : migration 0010 (0009 prise), service, endpoints, annotations
 - [x] D5 — admin : bouton, liste en direct, préremplissage
-- [ ] D6 — E2E réel
+- [x] D6 — E2E réel (`test_discovery_lan_scan_to_prefill`, `make e2e-agent`, `/` et `/espace/affichage` ; `docs/demos/decouverte-lan.md`)
 - [x] D7 — revue sécurité (`docs/revue-securite-decouverte.md`) : M1, m1, m2, m4 (agent), m5 corrigés le 30 octobre 2026 ; m3 accepté (modules locaux), m6 reporté à backend (GET sans écriture), reste côté admin : confiance et MAC visibles avant préremplissage (m4)
