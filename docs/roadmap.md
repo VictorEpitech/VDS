@@ -187,3 +187,7 @@ Avancement (lot enrôlement) :
 - [x] E6 — admin : panneau Site › Agent (« Ce serveur », « Une autre machine », suivi 3 s, « Ce n'est pas mon agent », codes en attente)
 - [x] E7 — E2E réel (canal local, canal distant, déplacement, révocation, 429, aux deux bases) + compose vérifié
 - [ ] E8 — revue sécurité
+
+### 30 octobre 2026 — Adresse et pilote d'une TV modifiables depuis l'admin (sans champ dans le noyau Screen)
+- [x] Adresse = config héritée du pilote (`power.adb.host`, `power.samsung-ws.host`, `power.wol.mac`, niveau écran, valeur + provenance) ; pilote et ordre = `core › power.cascade`. Édition par l'API config existante (admin, même origine, validation JSON Schema, audit sans valeur) ; l'agent reçoit `plan.updated` sur `config.changed`.
+- [x] Fin de l'assistant Android : `ScreenProvision.address` est recopiée dans `power.adb.host` de l'écran (écriture système, auditée, événement `config.changed`) ; la config reste la source unique.

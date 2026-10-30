@@ -24,10 +24,11 @@ from vds_sdk.wire import ScreenProvisionArgs
 
 from vds_server.agents.queue import CommandQueue
 from vds_server.agents.service import agent_status
+from vds_server.config.service import upsert_override
 from vds_server.core import audit
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
-from vds_server.db.models import Screen, ScreenDevice
+from vds_server.db.models import ConfigOverride, Screen, ScreenDevice
 from vds_server.db.models_power import SiteAgent
 from vds_server.db.models_provision import ACTIVE, ScreenProvision
 from vds_server.provisioning import schemas as sc
@@ -42,6 +43,9 @@ from vds_server.provisioning.tickets import (
 from vds_server.settings import Settings
 
 log = logging.getLogger("vds.provisioning")
+
+ADOPT_NAMESPACE = "power.adb"  # le pilote qui a servi au provisioning Android
+ADOPT_KEY = "host"
 
 STEP_ORDER: tuple[str, ...] = get_args(ProvisionStepId)
 MIN_CORE = Version(1, 3, 0)
@@ -120,11 +124,49 @@ async def finish(
     base = {"provision_id": str(row.id), "screen_id": str(row.screen_id)}
     if status == "done":
         payload = {**base, "kiosk": kiosk, "version_code": row.apk_version_code}
-        return [Event(name="screen.provisioned", payload=payload, source="core")]
+        events = [Event(name="screen.provisioned", payload=payload, source="core")]
+        return [*(await _adopt_address(session, row)), *events]
     if status == "failed":
         payload = {**base, "step": _failed_step(row), "code": code}
         return [Event(name="screen.provision_failed", payload=payload, source="core")]
     return []
+
+
+async def _adopt_address(session: AsyncSession, row: ScreenProvision) -> list[Event]:
+    """Fin de provisioning : l'adresse saisie devient la config `power.adb.host` de l'écran.
+
+    La config héritée reste la source unique (règle 4) : l'agent la lit via le plan. Une
+    adresse déjà identique n'est pas réécrite (pas de `plan.updated` inutile).
+    """
+    host = str(row.address).split("/")[0]
+    cur = (
+        await session.execute(
+            select(ConfigOverride.value).where(
+                ConfigOverride.scope_id == row.screen_id,
+                ConfigOverride.namespace == ADOPT_NAMESPACE,
+                ConfigOverride.key == ADOPT_KEY,
+            )
+        )
+    ).scalar_one_or_none()
+    if cur == host:
+        return []
+    await upsert_override(session, "screen", row.screen_id, ADOPT_NAMESPACE, ADOPT_KEY, host, None)
+    audit.record(
+        session,
+        actor_kind="system",
+        actor_id=None,
+        action="config.updated",
+        target_type="screen",
+        target_id=str(row.screen_id),
+        details={"namespace": ADOPT_NAMESPACE, "key": ADOPT_KEY, "source": "provision"},
+    )
+    payload = {
+        "namespace": ADOPT_NAMESPACE,
+        "keys": [ADOPT_KEY],
+        "scope_level": "screen",
+        "scope_id": str(row.screen_id),
+    }
+    return [Event(name="config.changed", payload=payload, source="core")]
 
 
 async def _publish(bus: EventBus | None, events: list[Event]) -> None:

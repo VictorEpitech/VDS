@@ -285,6 +285,14 @@ async def test_full_flow_ticket_single_use(
         ).status_code == 200
     got = (await admin.get(f"{p}/api/v1/provisioning/{pid}")).json()
     assert got["status"] == "done" and got["finished_at"] and seen == ["screen.provisioned"]
+    # l'adresse de l'assistant devient la config héritée power.adb.host (provenance écran)
+    url = f"{p}/api/v1/config/screen/{s['screen']}/power.adb"
+    cfg = (await admin.get(url)).json()["values"]["host"]
+    assert cfg["value"] == "192.168.1.50" and cfg["origin"]["level"] == "screen"
+    acts = await sql(
+        migrated_db_url, "SELECT details::text FROM audit_log WHERE action = 'config.updated'"
+    )
+    assert acts and all("192.168.1.50" not in a[0] for a in acts)
     # ticket effacé : de la session et de la commande
     row = await sql(migrated_db_url, "SELECT ticket_hash FROM screen_provision")
     assert row[0][0] is None
