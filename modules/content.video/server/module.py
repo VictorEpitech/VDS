@@ -52,6 +52,10 @@ def _seconds(value: Any) -> float | None:
     return seconds if math.isfinite(seconds) and seconds > 0 else None
 
 
+# Démuxeur imposé (pas d'auto-détection) d'après le type déjà vérifié par les octets d'en-tête.
+INPUT_FORMATS = {"video/mp4": "mov,mp4,m4a,3gp,3g2,mj2", "video/webm": "matroska,webm"}
+
+
 def parse_probe(raw: bytes) -> MediaMeta:
     """Extrait durée et dimensions d'affichage de la sortie JSON de ffprobe."""
     try:
@@ -91,11 +95,13 @@ class ContentVideo(ContentType):
         cfg = await ctx.config.resolve()
         self._timeout_s = int(cfg.get("probe_timeout_s") or DEFAULT_TIMEOUT_S)
 
-    async def _probe(self, path: Path) -> bytes:
+    async def _probe(self, path: Path, fmt: str) -> bytes:
         try:
             proc = await asyncio.create_subprocess_exec(
                 self.ffprobe_bin,
                 "-v", "error",
+                "-protocol_whitelist", "file",
+                "-f", fmt,
                 "-print_format", "json",
                 "-show_format",
                 "-show_streams",
@@ -121,13 +127,15 @@ class ContentVideo(ContentType):
             raise ContractError("content.video.invalid")
         return out
 
-    async def _thumb(self, path: Path, duration_ms: int | None) -> bytes | None:
+    async def _thumb(self, path: Path, duration_ms: int | None, fmt: str) -> bytes | None:
         """Image à 10 % de la durée en WebP (même sandbox que ffprobe). None si indisponible."""
         at = 0.0 if duration_ms is None else duration_ms / 1000 * 0.1
         try:
             proc = await asyncio.create_subprocess_exec(
                 self.ffmpeg_bin,
                 "-v", "error", "-nostdin",
+                "-protocol_whitelist", "file",
+                "-f", fmt,
                 "-ss", f"{at:.3f}",
                 "-i", str(path),
                 "-frames:v", "1",
@@ -160,8 +168,11 @@ class ContentVideo(ContentType):
         try:
             path = tmp / "original"
             await _write(store.read("original"), path)
-            meta = parse_probe(await self._probe(path))
-            thumb = await self._thumb(path, meta.duration_ms)
+            fmt = INPUT_FORMATS.get(media.mime)
+            if fmt is None:
+                raise ContractError("content.video.invalid")
+            meta = parse_probe(await self._probe(path, fmt))
+            thumb = await self._thumb(path, meta.duration_ms, fmt)
             if thumb is not None:  # vignette facultative : absente = icône du kind
                 await store.put_variant("thumb", _once(thumb), mime="image/webp")
             return meta
