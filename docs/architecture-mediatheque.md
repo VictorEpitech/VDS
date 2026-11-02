@@ -77,9 +77,9 @@ Note : la suppression manuelle existante (`DELETE /media/{id}`, 409 si utilisé)
 
 ## 4. Remplacement de fichier
 
-`POST <base>/api/v1/media/{id}/file` (multipart, mêmes règles que l'envoi : `UploadLimitMiddleware`, type par octets, `expected_sha256` optionnel, `If-Match: "<sha256 courant>"` optionnel → 412 si différent).
+`POST <base>/api/v1/media/{id}/file` (multipart, mêmes règles que l'envoi : `UploadLimitMiddleware`, type par octets, `expected_sha256` optionnel, `If-Match: "<sha256 courant>"` facultatif (l'admin ne le pose pas encore ; à rendre obligatoire quand il le fera) → 412 si différent).
 1. `kind` identique obligatoire (422 `media.replace_kind_mismatch`) ; MIME libre dans le kind. sha256 identique au courant → 200 sans effet.
-2. Écriture de l'original sur la clé de révision N+1, `process_media` du module (nouvelles variantes sur clés `-r<N+1>`). Échec de traitement → fichiers N+1 en tombstone `aborted`, **révision courante intacte**, 422 `media.processing_failed`.
+2. Écriture de l'original sur la clé de révision N+1, `process_media` du module (nouvelles variantes sur clés `-r<N+1>-<hex8>`, suffixe aléatoire unique par tentative : une tentative ratée ne peut jamais viser la clé d'une suivante). Échec de traitement → fichiers N+1 en tombstone `aborted`, **révision courante intacte**, 422 `media.processing_failed`.
 3. Transaction : `revision = N+1`, `sha256`, `bytes`, `mime`, dimensions, `original_filename` ; `media_variant` remplacé en bloc ; anciennes clés en tombstone `reason=replaced`, `not_before = now() + core.media.replaced_grace_hours` (défaut 48) pour les téléchargements en cours.
 4. Audit `media.replaced {old_sha256, new_sha256, bytes, revision}`, événement `media.replaced`. `revision_of` change pour chaque écran concerné (sha dans `assets`) : rechargement au heartbeat ou par `schedule.changed`.
 5. Player : clé identique, sha différent → asset manquant, téléchargé et vérifié avant activation de la révision (règle existante) ; l'ancien octet reste jouable jusque-là. Agent : nouveau sha dans le manifeste → nouveau fichier, l'ancien purgé par sa propre règle.
@@ -221,7 +221,10 @@ Ordre : M0 → M1 → {M2, M3, M4, M5} en parallèle → M8 ; M6 et M7 en parall
 - **Droits** : écritures sous cookie = contrôle de même origine existant ; `bulk` borné à 200 ; `usage` passe par `ContentScope` (lot J : pas de fuite inter-sites) ; un appareil n'obtient jamais un média expiré (404).
 - **Remplacement comme vecteur** : un éditeur change ce qu'affichent tous les écrans sans toucher aux playlists ; c'est la fonction, tracée (`media.replaced`, ancien/nouveau sha256). Avec la validation avant diffusion (lot 4 « groupes + validation »), le remplacement devra passer par elle (point d'accroche §11).
 - **Miniatures** : décodage dans les modules sous les bornes existantes (Pillow, ffmpeg rlimits, worker PDF isolé) ; servies avec `nosniff` + CSP `sandbox`.
-- **DoS** : tags ≤ 20 × 32 caractères, `limit` ≤ 200, autocomplétion ≤ 50, `q` échappé.
+- **Filet du balayeur** : `storage.gc` ne supprime jamais une clé encore référencée par `media_variant` ou `media.storage_key` (la tombstone est retirée).
+- **Verrou de ligne** : tenu pendant tout le traitement du remplacement (`process_media` compris) et de `media_reprocess` ; un second remplacement du même média attend. Voulu : médias bornés en taille, traitement sous timeouts.
+- **Expiration en masse** : un `bulk set_expiry` à une date déjà passée rend le média expiré ; la purge le retire alors des playlists. Voulu (même règle qu'une expiration naturelle), tracé en audit.
+- **DoS** : tags ≤ 20 × 32 caractères, `limit` ≤ 200, `offset` ≤ 100000, autocomplétion ≤ 50, `q` échappé.
 
 ## 11. Points d'accroche (non implémentés)
 
