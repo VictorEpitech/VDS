@@ -1,54 +1,62 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueries } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router-dom";
-import { IncidentsList } from "../features/supervision/IncidentsList";
-import { ScreensStatus } from "../features/supervision/ScreensStatus";
 import { useSession } from "../auth/session";
-import { KioskControls } from "../features/kiosk/KioskControls";
-import { KioskSetting } from "../features/kiosk/KioskSetting";
-import { ScreenDeleteForm } from "../features/screens/ScreenDeleteForm";
-import { ScreenEditForm } from "../features/screens/ScreenEditForm";
-import { ConfirmAction, Empty, ErrorAlert, QueryStatus, SuccessAlert } from "../components/feedback";
+import { Empty, QueryStatus, SuccessAlert } from "../components/feedback";
 import { Icon } from "../components/Icon";
-import { PresenceBadge } from "../components/StatusBadge";
-import { useApi } from "../lib/api";
+import { MAX_SELECTION } from "../features/actions/queue";
+import { SelectionBar } from "../features/actions/SelectionBar";
 import { useProvisioningAvailable } from "../features/provisioning/hooks";
-import { keys, useAllGroups, useScreens, useSites, type Screen } from "../lib/queries";
+import { ScreenCard } from "../features/screens/ScreenCard";
+import { IncidentsList } from "../features/supervision/IncidentsList";
+import { displayState, ISSUE_STATES } from "../features/supervision/status";
+import { useApi } from "../lib/api";
+import { powerKeys, useAllAgents, useAllGroups, useIncidents, usePlayback, useScreens, useSites, type Agent, type ScreenPower } from "../lib/queries";
+
+/** Agent qui pilote l'alimentation du site : un agent en ligne de préférence, sinon un agent non révoqué. */
+function agentOf(agents: readonly Agent[], siteId: string): Agent | undefined {
+  const own = agents.filter((a) => a.site_id === siteId && a.status !== "revoked");
+  return own.find((a) => a.status === "online") ?? own[0];
+}
 
 export function Screens() {
-  const { t, i18n } = useTranslation();
-  const screens = useScreens();
+  const { t } = useTranslation();
+  const api = useApi();
+  const screens = useScreens({ refetchInterval: 15_000 });
   const sites = useSites();
   const groups = useAllGroups();
-  const api = useApi();
-  const qc = useQueryClient();
+  const agents = useAllAgents();
+  const incidents = useIncidents("open");
+  const playback = usePlayback();
   const session = useSession();
   const isAdmin = session.data?.role === "admin";
   const provisionable = useProvisioningAvailable((sites.data ?? []).map((x) => x.id));
   const [params, setParams] = useSearchParams();
   const issues = params.get("filter") === "issues";
   const setFilter = (f: "all" | "issues") => setParams(f === "issues" ? { filter: "issues" } : {}, { replace: true });
-  const [revoked, setRevoked] = useState<string | null>(null);
-  const [panel, setPanel] = useState<{ id: string; kind: "edit" | "delete"; archive?: boolean } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const done = (message: string) => {
-    setPanel(null);
-    setNotice(message);
-  };
-  const revoke = useMutation({
-    mutationFn: (s: Screen) => api.delete(`/screens/${s.id}/device`),
-    onMutate: () => setRevoked(null),
-    onSuccess: (_d, s) => {
-      setRevoked(s.name);
-      void qc.invalidateQueries({ queryKey: keys.screens });
-    },
-  });
+  const [selection, setSelection] = useState<ReadonlySet<string>>(new Set());
 
+  const active = (screens.data ?? []).filter((s) => !s.archived_at);
+  const powers = useQueries({
+    queries: active.map((s) => ({ queryKey: powerKeys.screen(s.id), staleTime: 60_000, queryFn: () => api.get<ScreenPower>(`/power/screens/${s.id}`) })),
+  });
+  const now = new Date();
+  const rows = active.map((s, i) => ({ s, power: powers[i]?.data, state: displayState(s, powers[i]?.data, incidents.data ?? [], now) }));
+  const visible = issues ? rows.filter((r) => ISSUE_STATES.has(r.state)) : rows;
+  const chosen = visible.filter((r) => selection.has(r.s.id)).map((r) => r.s);
+  const allChosen = visible.length > 0 && visible.slice(0, MAX_SELECTION).every((r) => selection.has(r.s.id));
   const siteName = (id: string) => sites.data?.find((s) => s.id === id)?.name ?? "";
   const groupName = (id: string | null) => (id ? (groups.data?.find((g) => g.id === id)?.name ?? "") : "");
-  const when = (iso: string) => new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
-  const active = (screens.data ?? []).filter((s) => !s.archived_at);
+  const toggle = (id: string, on: boolean) =>
+    setSelection((cur) => {
+      const next = new Set(cur);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  const toggleAll = (on: boolean) => setSelection(on ? new Set(visible.slice(0, MAX_SELECTION).map((r) => r.s.id)) : new Set());
 
   return (
     <>
@@ -71,18 +79,9 @@ export function Screens() {
           {t("screens.filter.issues")}
         </button>
       </div>
-      {issues ? (
-        <>
-          <IncidentsList />
-          <ScreensStatus onlyIssues />
-        </>
-      ) : null}
+      {issues ? <IncidentsList /> : null}
       <QueryStatus query={screens} />
       {notice ? <SuccessAlert>{notice}</SuccessAlert> : null}
-      {revoked ? <SuccessAlert>{t("screens.revoked", { name: revoked })}</SuccessAlert> : null}
-      {revoke.isError ? (
-        <ErrorAlert error={revoke.error} />
-      ) : null}
       {!issues && screens.isSuccess && active.length === 0 ? (
         <Empty
           icon="screen"
@@ -96,90 +95,35 @@ export function Screens() {
           {t("screens.empty")}
         </Empty>
       ) : null}
-      {issues ? null : (
-      <ul className="cards list-reset">
-        {active.map((s) => (
-          <li key={s.id} className="card" aria-labelledby={`screen-${s.id}`}>
-            <h2 id={`screen-${s.id}`}>
-              <Icon name="screen" />
-              {s.name}
-            </h2>
-            <p className="meta">
-              {[siteName(s.site_id), groupName(s.group_id), t(`screens.orientation.${s.orientation}`)].filter(Boolean).join(" · ")}
-            </p>
-            {s.device ? (
-              <>
-                <p>
-                  <PresenceBadge presence={s.device.presence} />
-                </p>
-                <dl className="device-facts">
-                  <div>
-                    <dt>{t("screens.device.platform")}</dt> <dd className="mono">{[s.device.platform, s.device.model].filter(Boolean).join(" ")}</dd>
-                  </div>
-                  {s.device.app_version ? (
-                    <div>
-                      <dt>{t("screens.device.version")}</dt> <dd className="mono">{s.device.app_version}</dd>
-                    </div>
-                  ) : null}
-                  <div>
-                    <dt>{t("screens.device.last_seen")}</dt>{" "}
-                    <dd>{s.device.last_seen_at ? when(s.device.last_seen_at) : t("screens.device.never_seen")}</dd>
-                  </div>
-                  {s.device.revoked_at ? (
-                    <div>
-                      <dt>{t("screens.device.revoked_at")}</dt> <dd>{when(s.device.revoked_at)}</dd>
-                    </div>
-                  ) : null}
-                </dl>
-              </>
-            ) : (
-              <p className="meta">{t("screens.device.none")}</p>
-            )}
-            <KioskControls screen={s} />
-            {isAdmin ? <KioskSetting level="screen" id={s.id} /> : null}
-            <div className="actions">
-              <Link className="btn btn-text" to={`/screens/add?screen=${s.id}`}>
-                <Icon name="pairing" />
-                {t("screens.pair_this")}
-              </Link>
-              {isAdmin && provisionable ? (
-                <Link className="btn btn-text" to={`/screens/add/android?screen=${s.id}`} aria-label={t("screens.reinstall_for", { name: s.name })}>
-                  <Icon name="detect" />
-                  {t("screens.reinstall")}
-                </Link>
-              ) : null}
-              {s.device && !s.device.revoked_at && s.device.presence !== "revoked" ? (
-                <ConfirmAction
-                  icon="revoke"
-                  label={t("screens.revoke.action")}
-                  confirmLabel={t("screens.revoke.confirm", { name: s.name })}
-                  pending={revoke.isPending}
-                  onConfirm={() => revoke.mutate(s)}
-                />
-              ) : null}
-              {isAdmin ? (
-                <>
-                  <button type="button" className="btn btn-text" aria-label={t("screens.edit.action_for", { name: s.name })} onClick={() => { setNotice(null); setPanel({ id: s.id, kind: "edit" }); }}>
-                    <Icon name="maintenance" />
-                    {t("screens.edit.action")}
-                  </button>
-                  <button type="button" className="btn btn-text btn-danger" aria-label={t("screens.delete.action_for", { name: s.name })} onClick={() => { setNotice(null); setPanel({ id: s.id, kind: "delete" }); }}>
-                    <Icon name="delete" />
-                    {t("screens.delete.action")}
-                  </button>
-                </>
-              ) : null}
-            </div>
-            {isAdmin && panel?.id === s.id && panel.kind === "edit" ? (
-              <ScreenEditForm screen={s} initialArchived={panel.archive} onClose={() => setPanel(null)} onDone={done} />
-            ) : null}
-            {isAdmin && panel?.id === s.id && panel.kind === "delete" ? (
-              <ScreenDeleteForm screen={s} onClose={() => setPanel(null)} onDone={done} onArchive={() => setPanel({ id: s.id, kind: "edit", archive: true })} />
-            ) : null}
-          </li>
+      {issues && screens.isSuccess && active.length > 0 && !visible.length && !powers.some((p) => p.isPending) ? <Empty icon="check">{t("screens.filter.none_to_handle")}</Empty> : null}
+      {isAdmin && visible.length > 0 ? (
+        <label className="select-all">
+          <input type="checkbox" className="select-box" checked={allChosen} onChange={(e) => toggleAll(e.target.checked)} />
+          <span>{t("screens.select.all", { count: visible.length })}</span>
+          {visible.length > MAX_SELECTION ? <span className="meta">{t("actions.bar.cap", { max: MAX_SELECTION })}</span> : null}
+        </label>
+      ) : null}
+      <ul className={`cards list-reset${chosen.length ? " has-selection" : ""}`}>
+        {visible.map(({ s, power, state }) => (
+          <ScreenCard
+            key={s.id}
+            screen={s}
+            siteName={siteName(s.site_id)}
+            groupName={groupName(s.group_id)}
+            state={state}
+            power={power}
+            playback={playback.data?.find((p) => p.screen_id === s.id)}
+            agent={agentOf(agents.data ?? [], s.site_id)}
+            isAdmin={isAdmin}
+            provisionable={provisionable}
+            selected={selection.has(s.id)}
+            selectDisabled={selection.size >= MAX_SELECTION}
+            onSelect={(on) => toggle(s.id, on)}
+            onNotice={setNotice}
+          />
         ))}
       </ul>
-      )}
+      {isAdmin && chosen.length ? <SelectionBar selected={chosen} agents={agents.data ?? []} groups={groups.data ?? []} sites={sites.data ?? []} onClear={() => setSelection(new Set())} /> : null}
     </>
   );
 }

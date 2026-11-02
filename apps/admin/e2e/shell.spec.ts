@@ -46,7 +46,7 @@ test("base href, thème actif, logo et icônes sous le préfixe", async ({ page 
 
   await expect(page.getByText("Serveur joignable")).toBeVisible();
   // Chaque état = icône + libellé.
-  for (const label of ["En ligne", "Hors service prévu", "Hors ligne", "Échec d'alimentation", "Forçage en cours", "Appairage"]) {
+  for (const label of ["en ligne", "Rien à traiter"]) {
     await expect(page.locator(".status-badge", { hasText: label }).locator(".vds-icon")).toBeVisible();
   }
 });
@@ -84,7 +84,7 @@ test("FR/EN : bascule et mémorisation", async ({ page }, info) => {
   await page.goto(home(info));
   await page.getByRole("button", { name: "English" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Dashboard" })).toBeVisible();
-  await expect(page.getByText("Scheduled off")).toBeVisible();
+  await expect(page.getByText("Nothing to handle")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.lang)).toBe("en");
   await page.reload();
   await expect(page.getByRole("heading", { level: 1, name: "Dashboard" })).toBeVisible();

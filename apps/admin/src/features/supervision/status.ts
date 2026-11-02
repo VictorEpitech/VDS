@@ -22,3 +22,12 @@ export function displayState(screen: Screen, power: ScreenPower | undefined, inc
   if (incidents.some((i) => i.kind === "power.failed" && i.subject_id === screen.id && !i.resolved_at)) return "power_failed";
   return d.presence === "online" ? "online" : "offline";
 }
+
+/** États qui demandent une intervention (filtre « à traiter »). */
+export const ISSUE_STATES: ReadonlySet<DisplayState> = new Set<DisplayState>(["offline", "power_failed"]);
+
+/** Créneau d'extinction en cours (pour afficher « éteint jusqu'à … »). */
+export function currentOffSlot(power: ScreenPower | undefined, now: Date) {
+  const t = now.getTime();
+  return (power?.slots ?? []).find((s) => s.state === "off" && new Date(s.from).getTime() <= t && t < new Date(s.to).getTime());
+}

@@ -14,6 +14,7 @@ export type Schedule = S["ScheduleOut"];
 export type Rule = S["RuleIn"];
 export type Onboarding = S["OnboardingOut"];
 export type OnboardingStep = Onboarding["steps"][number];
+export type ScreenPlayback = S["ScreenPlaybackOut"];
 export type FleetSummary = S["FleetSummaryOut"];
 
 export const keys = {
@@ -173,4 +174,10 @@ export function useOnboarding() {
 export function useFleetSummary(opts: { refetchInterval?: number } = {}) {
   const api = useApi();
   return useQuery({ queryKey: keys.fleetSummary, queryFn: () => api.get<FleetSummary>("/fleet/summary"), refetchInterval: opts.refetchInterval });
+}
+
+/** Programmation active de chaque écran (résolue côté serveur, aucune résolution dans le front). */
+export function usePlayback() {
+  const api = useApi();
+  return useQuery({ queryKey: ["fleet", "playback"] as const, queryFn: () => api.get<ScreenPlayback[]>("/fleet/playback"), refetchInterval: 60_000 });
 }

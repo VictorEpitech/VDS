@@ -136,6 +136,19 @@
       "all": "All screens",
       "issues": "Needs attention",
       "none_to_handle": "No screen needs attention."
+    },
+    "card": {
+      "power": "Power",
+      "power_on": "On according to the plan",
+      "power_off_until": "Off by schedule until {when}",
+      "power_no_plan": "No power plan",
+      "schedule": "Schedule",
+      "no_schedule": "No schedule",
+      "until": "until {when}"
+    },
+    "select": {
+      "all": "{count, plural, one {Select the listed screen} other {Select all (# listed screens)}}",
+      "one": "Select {name}"
     }
   },
   "errors": {
@@ -807,10 +820,6 @@
     "last_seen": "Last signal: {when}",
     "agent_offline": "The site agent is offline: commands are unavailable.",
     "no_agent": "This site has no active agent: commands are unavailable.",
-    "park": {
-      "title": "Screen status",
-      "intro": "A screen switched off by the schedule is never an alert."
-    },
     "power": {
       "on": "Turn on",
       "off": "Turn off",
@@ -1217,5 +1226,46 @@
         "action": "Set power"
       }
     }
+  },
+  "actions": {
+    "kind": {
+      "on": "Turn on",
+      "off": "Turn off",
+      "group": "Change group",
+      "delete": "Delete"
+    },
+    "summary": {
+      "on": "Turn on {count, plural, one {# screen} other {# screens}}",
+      "off": "Turn off {count, plural, one {# screen} other {# screens}}",
+      "group": "Change group for {count, plural, one {# screen} other {# screens}}",
+      "delete": "Delete {count, plural, one {# screen} other {# screens}}"
+    },
+    "bar": {
+      "label": "Actions on the selection",
+      "selected": "{count, plural, one {# screen selected} other {# screens selected}}",
+      "cap": "Selection limited to {max} screens.",
+      "no_agent": "{count, plural, one {# screen skipped for Turn on and Turn off: site agent offline or missing} other {# screens skipped for Turn on and Turn off: site agent offline or missing}}",
+      "clear": "Clear selection"
+    },
+    "group": {
+      "label": "New group",
+      "apply": "Move {count, plural, one {# screen} other {# screens}}",
+      "other_site": "{count, plural, one {# screen skipped: the group belongs to another site} other {# screens skipped: the group belongs to another site}}"
+    },
+    "delete": {
+      "title": "Delete {count, plural, one {# screen} other {# screens}}",
+      "warning": "{count, plural, one {This screen will be permanently deleted, with its device and schedule. This cannot be undone.} other {These # screens will be permanently deleted, with their devices and schedules. This cannot be undone.}}",
+      "confirm": "Permanently delete {count, plural, one {# screen} other {# screens}}"
+    },
+    "waiting": "Waiting to send: {summary}. You can still cancel.",
+    "countdown": "Sending in {seconds} s",
+    "unload_hint": "Closing this tab before sending abandons the action.",
+    "cancel": "Cancel the action",
+    "running": "In progress: {summary} ({done} of {total} finished)",
+    "done_all": "Done: {summary}.",
+    "done_partial": "{summary}: {ok, plural, =0 {none succeeded} one {# succeeded} other {# succeeded}}, {failed, plural, one {# failed} other {# failed}}.",
+    "failure_line": "{name}: {reason}",
+    "retry_failed": "Retry {count, plural, one {the failure} other {the # failures}}",
+    "skipped": "{count, plural, one {# screen skipped (site agent offline, missing or other site)} other {# screens skipped (site agent offline, missing or other site)}}"
   }
 }

@@ -22,7 +22,7 @@ test.afterEach(async ({ page }) => {
 const PAGES = [
   { path: "/sites", fr: "Sites", en: "Sites" },
   { path: "/power", fr: "Planning d'alimentation", en: "Power schedule" },
-  { path: "/supervision", fr: "Supervision", en: "Monitoring" },
+  { path: "/screens?filter=issues", fr: "Écrans", en: "Screens" },
   { path: "/notifications", fr: "Notifications par e-mail", en: "Email notifications" },
 ] as const;
 
@@ -102,14 +102,16 @@ test("planning : plan, rattachement hérité et retour à l'héritage au clavier
   await expect(attachment.getByText("Hérité de l'organisation").first()).toBeVisible();
 });
 
-test("supervision : acquittement d'un incident et ordre d'allumage", async ({ page }, info) => {
+test("écrans à traiter : acquittement d'un incident, puis ordre d'allumage d'un écran en ligne", async ({ page }, info) => {
   await page.goto(`${meta(info).base}/supervision`);
+  await expect(page).toHaveURL(/\/screens\?filter=issues$/);
   await expect(page.getByRole("heading", { level: 3, name: "Agent hors ligne" })).toBeVisible();
   await page.getByRole("button", { name: "Acquitter : Agent hors ligne" }).click();
   await expect(page.locator(".status-badge", { hasText: "Acquitté" })).toBeVisible();
 
-  const card = page.getByRole("listitem").filter({ has: page.getByRole("heading", { level: 3, name: "Hall d'accueil" }) });
-  await expect(card.locator('.status-badge:not([data-state^="kiosk-"])')).toBeVisible();
+  await page.getByRole("button", { name: "Tous les écrans" }).click();
+  const card = page.getByRole("listitem").filter({ has: page.getByRole("heading", { level: 2, name: "Hall d'accueil" }) });
+  await expect(card.locator('.status-badge:not([data-state^="kiosk-"])').first()).toBeVisible();
   await card.getByRole("button", { name: "Allumer Hall d'accueil" }).click();
   await expect(card.getByText("Hall d'accueil est allumé.")).toBeVisible();
   await card.getByRole("button", { name: /Détecter le mode de pilotage/ }).click();
@@ -118,8 +120,8 @@ test("supervision : acquittement d'un incident et ordre d'allumage", async ({ pa
 
 test("pilotes : détection, proposition préremplie, enregistrement, cascade au clavier, 375 px", async ({ page }, info) => {
   const { base } = meta(info);
-  await page.goto(`${base}/supervision`);
-  const card = page.getByRole("listitem").filter({ has: page.getByRole("heading", { level: 3, name: "Hall d'accueil" }) });
+  await page.goto(`${base}/screens`);
+  const card = page.getByRole("listitem").filter({ has: page.getByRole("heading", { level: 2, name: "Hall d'accueil" }) });
   await card.getByRole("button", { name: /Détecter le mode de pilotage/ }).click();
   await card.getByRole("button", { name: "Appliquer la proposition du pilote power.wol" }).click();
 
@@ -177,7 +179,7 @@ test("CSP : l'écran se charge sous le préfixe sans erreur de console", async (
   page.on("console", (m) => {
     if (m.type() === "error") errors.push(m.text());
   });
-  await page.goto(`${meta(info).base}/supervision`);
-  await expect(page.getByRole("heading", { level: 1, name: "Supervision" })).toBeVisible();
+  await page.goto(`${meta(info).base}/screens`);
+  await expect(page.getByRole("heading", { level: 1, name: "Écrans" })).toBeVisible();
   expect(errors).toEqual([]);
 });

@@ -136,6 +136,19 @@
       "all": "Tous les écrans",
       "issues": "À traiter",
       "none_to_handle": "Aucun écran à traiter."
+    },
+    "card": {
+      "power": "Alimentation",
+      "power_on": "Allumé selon le plan",
+      "power_off_until": "Éteint par le planning jusqu'à {when}",
+      "power_no_plan": "Aucun plan d'alimentation",
+      "schedule": "Programmation",
+      "no_schedule": "Aucune programmation",
+      "until": "jusqu'à {when}"
+    },
+    "select": {
+      "all": "{count, plural, one {Sélectionner l'écran listé} other {Tout sélectionner (# écrans listés)}}",
+      "one": "Sélectionner {name}"
     }
   },
   "errors": {
@@ -807,10 +820,6 @@
     "last_seen": "Dernier signal : {when}",
     "agent_offline": "L'agent du site est hors ligne : les commandes sont indisponibles.",
     "no_agent": "Ce site n'a pas d'agent actif : les commandes sont indisponibles.",
-    "park": {
-      "title": "État des écrans",
-      "intro": "Un écran éteint par le planning n'est jamais une alerte."
-    },
     "power": {
       "on": "Allumer",
       "off": "Éteindre",
@@ -1217,5 +1226,46 @@
         "action": "Régler l'alimentation"
       }
     }
+  },
+  "actions": {
+    "kind": {
+      "on": "Allumer",
+      "off": "Éteindre",
+      "group": "Changer de groupe",
+      "delete": "Supprimer"
+    },
+    "summary": {
+      "on": "Allumer {count, plural, one {# écran} other {# écrans}}",
+      "off": "Éteindre {count, plural, one {# écran} other {# écrans}}",
+      "group": "Changer de groupe pour {count, plural, one {# écran} other {# écrans}}",
+      "delete": "Supprimer {count, plural, one {# écran} other {# écrans}}"
+    },
+    "bar": {
+      "label": "Actions sur la sélection",
+      "selected": "{count, plural, one {# écran sélectionné} other {# écrans sélectionnés}}",
+      "cap": "Sélection limitée à {max} écrans.",
+      "no_agent": "{count, plural, one {# écran ignoré pour Allumer et Éteindre : agent du site hors ligne ou absent} other {# écrans ignorés pour Allumer et Éteindre : agent du site hors ligne ou absent}}",
+      "clear": "Tout désélectionner"
+    },
+    "group": {
+      "label": "Nouveau groupe",
+      "apply": "Déplacer {count, plural, one {# écran} other {# écrans}}",
+      "other_site": "{count, plural, one {# écran ignoré : le groupe est dans un autre site} other {# écrans ignorés : le groupe est dans un autre site}}"
+    },
+    "delete": {
+      "title": "Supprimer {count, plural, one {# écran} other {# écrans}}",
+      "warning": "{count, plural, one {Cet écran sera supprimé définitivement, avec son appareil et sa programmation. Cette action est irréversible.} other {Ces # écrans seront supprimés définitivement, avec leurs appareils et leur programmation. Cette action est irréversible.}}",
+      "confirm": "Supprimer définitivement {count, plural, one {# écran} other {# écrans}}"
+    },
+    "waiting": "En attente d'envoi : {summary}. Vous pouvez encore annuler.",
+    "countdown": "Envoi dans {seconds} s",
+    "unload_hint": "Fermer cet onglet avant l'envoi abandonne l'action.",
+    "cancel": "Annuler l'action",
+    "running": "En cours : {summary} ({done} sur {total} terminés)",
+    "done_all": "Terminé : {summary}.",
+    "done_partial": "{summary} : {ok, plural, =0 {aucun succès} one {# réussi} other {# réussis}}, {failed, plural, one {# échec} other {# échecs}}.",
+    "failure_line": "{name} : {reason}",
+    "retry_failed": "Réessayer {count, plural, one {l'échec} other {les # échecs}}",
+    "skipped": "{count, plural, one {# écran ignoré (agent du site hors ligne, absent ou autre site)} other {# écrans ignorés (agent du site hors ligne, absent ou autre site)}}"
   }
 }

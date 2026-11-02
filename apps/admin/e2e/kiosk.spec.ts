@@ -23,7 +23,7 @@ test.afterEach(async ({ page }) => {
   expect(failures.get(page)).toEqual([]);
 });
 
-for (const path of ["/screens", "/supervision"] as const) {
+for (const path of ["/screens"] as const) {
   for (const lang of ["fr", "en"] as const) {
     const t = lang === "fr" ? { locked: "Verrouillé", soft: /Kiosque doux/, start: "Mode maintenance", end: "Terminer", until: /^Maintenance jusqu'à/ } : { locked: "Locked", soft: /Soft kiosk/, start: "Maintenance mode", end: "End", until: /^Maintenance until/ };
     test(`${path} : kiosque, maintenance, AA et 375 px en ${lang}`, async ({ page }, info) => {

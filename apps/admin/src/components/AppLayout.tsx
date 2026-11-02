@@ -6,6 +6,7 @@ import { authUiFor } from "../auth/providers";
 import { useSession } from "../auth/session";
 import { useApi } from "../lib/api";
 import { useRuntimeConfig } from "../lib/runtime-config";
+import { ActionQueueProvider } from "../features/actions/ActionQueueProvider";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { Icon, type IconName } from "./Icon";
 import { LanguageSwitch } from "./LanguageSwitch";
@@ -89,7 +90,9 @@ export function AppLayout() {
       </header>
       <main id="main" className="app-main" tabIndex={-1}>
         <Breadcrumbs />
-        <Outlet />
+        <ActionQueueProvider>
+          <Outlet />
+        </ActionQueueProvider>
       </main>
       <footer className="app-footer">
         <span>{t("footer.version")}</span> <code>{version}</code>
