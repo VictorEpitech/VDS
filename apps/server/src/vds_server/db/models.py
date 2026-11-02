@@ -234,6 +234,9 @@ class ScreenDevice(Base, Timestamps):
     platform: Mapped[str] = mapped_column(Text)
     model: Mapped[str | None] = mapped_column(Text)
     app_version: Mapped[str | None] = mapped_column(Text)
+    app_version_code: Mapped[int | None] = mapped_column()  # 1.6 : versionCode de l'APK
+    # versionCode constaté par l'agent (apk.update) ; app_version_code est indicatif
+    agent_version_code: Mapped[int | None] = mapped_column()
     paired_at: Mapped[datetime] = tstz()
     paired_by: Mapped[UUID | None] = mapped_column(
         ForeignKey("user_account.id", ondelete="SET NULL")

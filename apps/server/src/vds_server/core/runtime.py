@@ -38,6 +38,7 @@ from vds_server.player.ratelimit import FailureLimiter
 from vds_server.player.schedule import screen_media_ids
 from vds_server.power.state import PowerStateTracker
 from vds_server.provisioning.apk import ApkCatalog
+from vds_server.provisioning.apk_update import ApkUpdateEvents, host_reader
 from vds_server.provisioning.service import ProvisionEvents
 from vds_server.provisioning.tickets import TicketBox
 from vds_server.registry import ModuleRegistry
@@ -81,10 +82,12 @@ class Runtime:
         self.enroll_gate = asyncio.Semaphore(8)  # requêtes d'échange simultanées par worker
         self.enroll_limiter = FailureLimiter(limit=10, window_s=15 * 60)  # échecs par IP (/64)
         self.ticket_box = TicketBox(settings.secret_key) if settings.secret_key else None
-        self.apk_catalog = ApkCatalog(settings.apk_dir)
+        self.apk_catalog = ApkCatalog(settings.apk_dir, settings.apk_signer_sha256)
         self.command_queue = CommandQueue(self.maker)
         self.agent_bridge = EventBridge(self.maker, self.bus, self.registry.agent_events)
         self.provision_events = ProvisionEvents(self.maker, self.bus)
+        self.apk_update_events = ApkUpdateEvents(self.maker, self.bus)
+        self.apk_update_host = host_reader(self.maker, self.schemas)
         self.provision_events.register(self.bus.subscribe)
         self.discovery_events = DiscoveryEvents(self.maker, self.bus)
         self.agent_bridge.discovery_batch = self.discovery_events.on_batch
@@ -104,6 +107,7 @@ class Runtime:
         """Résultat d'une commande d'agent : chaque suiveur ignore les commandes des autres."""
         await self.provision_events.on_cmd_result(cmd_id, status, code, data)
         await self.discovery_events.on_cmd_result(cmd_id, status, code, data)
+        await self.apk_update_events.on_cmd_result(cmd_id, status, code, data)
 
     async def _modules_changed(self, _event: Event) -> None:
         """Propagé à tous les workers par NOTIFY (chacun ferme ses sessions d'agent)."""

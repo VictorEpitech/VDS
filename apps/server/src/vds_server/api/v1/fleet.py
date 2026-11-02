@@ -16,6 +16,7 @@ from vds_server.core.runtime import Runtime
 from vds_server.db.models import Site
 from vds_server.fleet import playback, service
 from vds_server.fleet.schemas import FleetSummaryOut
+from vds_server.provisioning.apk_update import ApkUpdateService, FleetApkOut
 from vds_server.supervision.status import Thresholds
 
 
@@ -23,6 +24,7 @@ def build_router(rt: Runtime) -> APIRouter:
     router = APIRouter(prefix="/api/v1/fleet", tags=["fleet"])
     Session = Annotated[AsyncSession, Depends(rt.session)]
     Reader = Annotated[Principal, Depends(rt.pipeline.require("editor"))]
+    Admin = Annotated[Principal, Depends(rt.pipeline.require("admin"))]
 
     @router.get("/summary", response_model=FleetSummaryOut)
     async def fleet_summary(
@@ -51,5 +53,18 @@ def build_router(rt: Runtime) -> APIRouter:
             return cfg.get("timezone")
 
         return await playback.fleet_playback(session, site_id, datetime.now(UTC), timezone_of)
+
+    @router.get("/apk", response_model=FleetApkOut)
+    async def fleet_apk(session: Session, actor: Admin, site_id: UUID | None = None) -> FleetApkOut:
+        svc = ApkUpdateService(
+            session,
+            rt.bus,
+            actor,
+            rt.command_queue,
+            rt.apk_catalog,
+            rt.registry.update_modules,
+            rt.apk_update_host,
+        )
+        return await svc.fleet(site_id)
 
     return router

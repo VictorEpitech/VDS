@@ -44,9 +44,7 @@ def build_router(rt: Runtime) -> APIRouter:
     # échecs (404/409/410) par utilisateur, partagé claim + screens/pair ; par processus
     claim_limiter = FailureLimiter(limit=30, window_s=60)
 
-    async def guarded_claim[T](
-        actor: Principal, via: str, call: Callable[[], Awaitable[T]]
-    ) -> T:
+    async def guarded_claim[T](actor: Principal, via: str, call: Callable[[], Awaitable[T]]) -> T:
         res = claim_limiter.reserve(f"user:{actor.actor_id}")
         counted = False
         try:
@@ -169,7 +167,12 @@ def build_router(rt: Runtime) -> APIRouter:
         body: sc.Heartbeat, device: Device, session: Session, b: Builder
     ) -> sc.HeartbeatAck:
         await heartbeat(
-            session, device.device_id, body.model_dump(mode="json"), body.app_version, rt.bus
+            session,
+            device.device_id,
+            body.model_dump(mode="json"),
+            body.app_version,
+            rt.bus,
+            body.app_version_code,
         )
         current = await b.build(device.screen_id)
         return sc.HeartbeatAck(

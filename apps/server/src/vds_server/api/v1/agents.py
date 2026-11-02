@@ -10,6 +10,8 @@ from vds_server.agents import schemas as sc
 from vds_server.agents.service import AgentService, to_out
 from vds_server.core.auth import Principal
 from vds_server.core.runtime import Runtime
+from vds_server.provisioning.apk_update import CMD_NAME as APK_UPDATE
+from vds_server.provisioning.apk_update import ApkUpdateService
 
 
 def build_router(rt: Runtime) -> APIRouter:
@@ -21,6 +23,19 @@ def build_router(rt: Runtime) -> APIRouter:
         return AgentService(session, rt.bus, actor, rt.command_queue)
 
     Svc = Annotated[AgentService, Depends(svc)]
+
+    def apk_svc(session: Session, actor: Admin) -> ApkUpdateService:
+        return ApkUpdateService(
+            session,
+            rt.bus,
+            actor,
+            rt.command_queue,
+            rt.apk_catalog,
+            rt.registry.update_modules,
+            rt.apk_update_host,
+        )
+
+    ApkSvc = Annotated[ApkUpdateService, Depends(apk_svc)]
 
     @router.get("", response_model=list[sc.AgentOut])
     async def list_agents(site_id: UUID, s: Svc) -> list[sc.AgentOut]:
@@ -46,8 +61,11 @@ def build_router(rt: Runtime) -> APIRouter:
 
     @router.post("/{agent_id}/commands", response_model=sc.CommandOut, status_code=202)
     async def send_command(
-        site_id: UUID, agent_id: UUID, body: sc.CommandCreate, s: Svc
+        site_id: UUID, agent_id: UUID, body: sc.CommandCreate, s: Svc, apk: ApkSvc
     ) -> sc.CommandOut:
+        if body.name == APK_UPDATE:  # commande du noyau : éligibilité + ApkRef côté serveur
+            cmd = await apk.request(site_id, agent_id, body.screen_id, body.args)
+            return sc.CommandOut.model_validate(cmd)
         return sc.CommandOut.model_validate(await s.send_command(site_id, agent_id, body))
 
     return router

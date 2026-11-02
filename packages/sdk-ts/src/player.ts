@@ -120,7 +120,7 @@ export interface PlatformBridge {
   /** Absent hors Android ou sur un APK trop ancien : `content.url` retombe sur l'iframe. */
   web?: VdsNativeWeb;
   ping(): void;
-  info(): { platform: string; model: string; app_version: string; os_version: string; insecure_upstream?: boolean };
+  info(): { platform: string; model: string; app_version: string; os_version: string; insecure_upstream?: boolean; app_version_code?: number };
   reload(): void;
   /**
    * Pont CEC (Android) : `action` = probe | on | off | state. Résout un JSON

@@ -10,6 +10,7 @@ class DeviceInfo(BaseModel):
     platform: str = Field(min_length=1, max_length=40)
     model: str | None = Field(default=None, max_length=120)
     app_version: str | None = Field(default=None, max_length=40)
+    app_version_code: int | None = Field(default=None, ge=1, le=2_100_000_000)
     user_agent: str | None = Field(default=None, max_length=400)
     screen_w: int | None = Field(default=None, ge=0, le=20000)
     screen_h: int | None = Field(default=None, ge=0, le=20000)
@@ -80,6 +81,7 @@ class Heartbeat(BaseModel):
     playing: dict[str, Any] | None = None
     cache: CacheState | None = None
     app_version: str | None = Field(default=None, max_length=40)
+    app_version_code: int | None = Field(default=None, ge=1, le=2_100_000_000)
     uptime_s: int | None = Field(default=None, ge=0)
     stale: bool = False
     kiosk: KioskReport | None = None

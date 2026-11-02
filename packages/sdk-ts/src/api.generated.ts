@@ -144,6 +144,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/fleet/apk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fleet Apk */
+        get: operations["fleet_apk_api_v1_fleet_apk_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/fleet/playback": {
         parameters: {
             query?: never;
@@ -1363,6 +1380,18 @@ export interface components {
             /** Sha256 */
             sha256: string | null;
         };
+        /** AvailableApkOut */
+        AvailableApkOut: {
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "image" | "dir";
+            /** Version Code */
+            version_code: number;
+            /** Version Name */
+            version_name: string;
+        };
         /** Body_upload_media_api_v1_media_post */
         Body_upload_media_api_v1_media_post: {
             /** File */
@@ -1601,6 +1630,8 @@ export interface components {
         DeviceInfo: {
             /** App Version */
             app_version?: string | null;
+            /** App Version Code */
+            app_version_code?: number | null;
             /** Model */
             model?: string | null;
             /** Platform */
@@ -1895,6 +1926,12 @@ export interface components {
              */
             state: "on" | "off";
         };
+        /** FleetApkOut */
+        FleetApkOut: {
+            available: components["schemas"]["AvailableApkOut"] | null;
+            /** Screens */
+            screens: components["schemas"]["ScreenApkOut"][];
+        };
         /** FleetSummaryOut */
         FleetSummaryOut: {
             agents: components["schemas"]["AgentsSummaryOut"];
@@ -1948,6 +1985,8 @@ export interface components {
         Heartbeat: {
             /** App Version */
             app_version?: string | null;
+            /** App Version Code */
+            app_version_code?: number | null;
             cache?: components["schemas"]["CacheState"] | null;
             /** Errors */
             errors?: {
@@ -3018,6 +3057,27 @@ export interface components {
             /** Target Type */
             target_type?: ("organization" | "site" | "group" | "screen") | null;
         };
+        /** ScreenApkOut */
+        ScreenApkOut: {
+            /** Installed Version Code */
+            installed_version_code: number | null;
+            /** Installed Version Name */
+            installed_version_name: string | null;
+            /** Reason */
+            reason: ("agent_offline" | "agent_outdated" | "module_disabled" | "no_adb_host" | "apk_unavailable" | "not_android" | "up_to_date" | "update_running") | null;
+            /**
+             * Screen Id
+             * Format: uuid
+             */
+            screen_id: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "up_to_date" | "outdated" | "unknown" | "not_android";
+            /** Updatable */
+            updatable: boolean;
+        };
         /** ScreenCreate */
         ScreenCreate: {
             /** Group Id */
@@ -3580,6 +3640,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    fleet_apk_api_v1_fleet_apk_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FleetApkOut"];
+                };
             };
             /** @description Validation Error */
             422: {

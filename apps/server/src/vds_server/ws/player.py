@@ -185,7 +185,12 @@ def build_router(rt: Runtime) -> APIRouter:
                     last_hb = now
                     async with rt.maker() as s:
                         await heartbeat(
-                            s, device_id, hb.model_dump(mode="json"), hb.app_version, rt.bus
+                            s,
+                            device_id,
+                            hb.model_dump(mode="json"),
+                            hb.app_version,
+                            rt.bus,
+                            hb.app_version_code,
                         )
 
         tasks = [asyncio.create_task(pusher()), asyncio.create_task(reader())]

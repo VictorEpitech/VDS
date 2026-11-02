@@ -5,6 +5,8 @@ import hashlib
 import json
 import logging
 import re
+import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -15,6 +17,8 @@ log = logging.getLogger("vds.apk")
 
 PACKAGE: Literal["app.vds.player"] = "app.vds.player"
 MANIFEST = "apk.json"
+RECHECK_S = 60.0  # relecture de apk.json : au plus un contrôle de mtime par minute
+DEFAULT_DIR = Path("/opt/vds/apk")  # dossier de l'image ; tout autre dossier = VDS_APK_DIR
 _SHA = re.compile(r"^[0-9a-f]{64}$")
 _FILE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 
@@ -45,8 +49,11 @@ def _sha256(path: Path) -> str:
     return h.hexdigest()
 
 
-def _load_entry(root: Path, raw: object) -> ApkEntry | None:
+def _load_entry(root: Path, raw: object, signer: str | None = None) -> ApkEntry | None:
     if not isinstance(raw, dict) or raw.get("package") != PACKAGE:
+        return None
+    if signer is not None and str(raw.get("signer_sha256", "")).lower() != signer:
+        log.warning("apk signer mismatch")
         return None
     code, name = raw.get("version_code"), raw.get("version_name")
     digest, size, file = raw.get("sha256"), raw.get("size"), raw.get("file")
@@ -69,7 +76,7 @@ def _load_entry(root: Path, raw: object) -> ApkEntry | None:
     return ApkEntry(code, name, digest, size, path)
 
 
-def load_entries(directory: Path) -> dict[int, ApkEntry]:
+def load_entries(directory: Path, signer: str | None = None) -> dict[int, ApkEntry]:
     root = directory.resolve()
     manifest = root / MANIFEST
     if not manifest.is_file():
@@ -81,7 +88,7 @@ def load_entries(directory: Path) -> dict[int, ApkEntry]:
         return {}
     out: dict[int, ApkEntry] = {}
     for raw in items if isinstance(items, list) else []:
-        entry = _load_entry(root, raw)
+        entry = _load_entry(root, raw, signer)
         if entry is None:
             log.warning("apk entry rejected")
         elif entry.version_code not in out:
@@ -89,21 +96,62 @@ def load_entries(directory: Path) -> dict[int, ApkEntry]:
     return out
 
 
-class ApkCatalog:
-    """Chargé une fois au démarrage (sha256 recalculé) ; lecture seule ensuite."""
+def _mtime(directory: Path) -> int | None:
+    try:
+        return (directory / MANIFEST).stat().st_mtime_ns
+    except OSError:
+        return None
 
-    def __init__(self, directory: Path | None) -> None:
+
+class ApkCatalog:
+    """Chargé au démarrage (sha256 recalculé), relu quand `apk.json` change (contrôle ≤ 1/min)."""
+
+    def __init__(
+        self,
+        directory: Path | None,
+        signer: str | None = None,
+        *,
+        recheck_s: float = RECHECK_S,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
         self._dir = directory
+        self._signer = signer.lower() if signer else None
+        self._recheck_s, self._clock = recheck_s, clock
         self._entries: dict[int, ApkEntry] | None = None
+        self._mtime: int | None = None
+        self._checked: float | None = None
+
+    @property
+    def source(self) -> Literal["image", "dir"]:
+        return "image" if self._dir is None or self._dir == DEFAULT_DIR else "dir"
 
     async def load(self) -> None:
-        self._entries = (
-            {} if self._dir is None else await asyncio.to_thread(load_entries, self._dir)
-        )
+        if self._dir is None:
+            self._entries = {}
+            return
+        self._mtime = _mtime(self._dir)
+        self._checked = self._clock()
+        self._entries = await asyncio.to_thread(load_entries, self._dir, self._signer)
+        if self._entries and self._signer is None:
+            log.warning("apk catalog present but VDS_APK_SIGNER_SHA256 is not set: no signer pin")
+
+    async def refresh(self) -> None:
+        """Relit `apk.json` si son mtime a changé (mêmes vérifications qu'au démarrage)."""
+        if self._dir is None or self._entries is None:
+            return
+        now = self._clock()
+        if self._checked is not None and now - self._checked < self._recheck_s:
+            return
+        self._checked = now
+        mtime = _mtime(self._dir)
+        if mtime != self._mtime:
+            self._mtime = mtime
+            self._entries = await asyncio.to_thread(load_entries, self._dir, self._signer)
 
     def entries(self) -> dict[int, ApkEntry]:
         if self._entries is None:  # accès avant le démarrage (tests, scripts) : chargement direct
-            self._entries = {} if self._dir is None else load_entries(self._dir)
+            self._entries = {} if self._dir is None else load_entries(self._dir, self._signer)
+            self._mtime = None if self._dir is None else _mtime(self._dir)
         return self._entries
 
     def latest(self) -> ApkEntry | None:

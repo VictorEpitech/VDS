@@ -152,6 +152,7 @@ class PairingService:
             platform=str(info.get("platform") or "unknown"),
             model=info.get("model"),
             app_version=info.get("app_version"),
+            app_version_code=info.get("app_version_code"),
             paired_by=paired_by,
             expires_at=now + DEVICE_TOKEN_TTL,
         )
@@ -299,11 +300,14 @@ async def heartbeat(
     body: dict[str, Any],
     app_version: str | None,
     bus: EventBus | None = None,
+    app_version_code: int | None = None,
 ) -> None:
     now = datetime.now(UTC)
     values: dict[str, Any] = {"last_seen_at": now, "last_heartbeat": body}
     if app_version:
         values["app_version"] = app_version
+    if app_version_code:
+        values["app_version_code"] = app_version_code
     screen_id = (
         await session.execute(
             update(ScreenDevice)

@@ -66,6 +66,7 @@ def build_router(rt: Runtime) -> APIRouter:
         version_code: Annotated[int, Path(ge=1, le=2**31 - 1)],
         _agent: Annotated[AgentPrincipal, Depends(rt.agent_auth)],
     ) -> Response:
+        await rt.apk_catalog.refresh()
         entry = rt.apk_catalog.get(version_code)
         if entry is None:
             raise ApiError("provision.apk_unavailable", 404)
