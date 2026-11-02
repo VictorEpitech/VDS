@@ -1,7 +1,7 @@
 {
   "module": {
     "name": "Web page",
-    "description": "Shows a web page (https) in a sandboxed frame. Needs network: skipped offline."
+    "description": "Shows a web page (https) in a sandboxed frame, or a native view on Android. Needs network: skipped offline."
   },
   "config": {
     "content_url": {

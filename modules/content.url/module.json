@@ -1,6 +1,6 @@
 {
   "id": "content.url",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "core": ">=1.1 <2.0",
   "kind": "content-type",
   "name": {
@@ -8,8 +8,8 @@
     "en": "Web page"
   },
   "description": {
-    "fr": "Affiche une page web (https) dans un cadre isolé. Nécessite le réseau : sautée hors ligne.",
-    "en": "Shows a web page (https) in a sandboxed frame. Needs network: skipped offline."
+    "fr": "Affiche une page web (https) dans un cadre isolé, ou une vue native sur Android. Nécessite le réseau : sautée hors ligne.",
+    "en": "Shows a web page (https) in a sandboxed frame, or a native view on Android. Needs network: skipped offline."
   },
   "targets": [
     "server",

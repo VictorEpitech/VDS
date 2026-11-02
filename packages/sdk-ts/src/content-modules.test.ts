@@ -243,6 +243,78 @@ describe("content.pdf", () => {
   });
 });
 
+describe("content.url (chemin natif)", () => {
+  const url = "https://example.org/page";
+  type Call = [string, ...unknown[]];
+
+  function fake(reply = '{"ok":true}'): { calls: Call[]; ro: { cb: () => void } } {
+    const calls: Call[] = [];
+    const ro = { cb: () => undefined as void };
+    (globalThis as { ResizeObserver?: unknown }).ResizeObserver = class {
+      constructor(cb: () => void) {
+        ro.cb = cb;
+      }
+      observe(): void {}
+      disconnect(): void {}
+    };
+    (window as { VdsNative?: unknown }).VdsNative = {
+      web: {
+        prepare: (...a: unknown[]) => (calls.push(["prepare", ...a]), Promise.resolve(reply)),
+        show: (...a: unknown[]) => void calls.push(["show", ...a]),
+        rect: (...a: unknown[]) => void calls.push(["rect", ...a]),
+        hide: (...a: unknown[]) => void calls.push(["hide", ...a]),
+      },
+    };
+    return { calls, ro };
+  }
+
+  afterEach(() => {
+    delete (window as { VdsNative?: unknown }).VdsNative;
+    delete (globalThis as { ResizeObserver?: unknown }).ResizeObserver;
+  });
+
+  it("prepare/show/rect/hide, sans iframe, bail renouvelé", async () => {
+    vi.useFakeTimers();
+    const { calls, ro } = fake();
+    const el = make("content.url");
+    el.configure({ url }, ctx);
+    await el.prepare();
+    expect(el.querySelector("iframe")).toBeNull();
+    const id = calls[0]?.[1] as string;
+    expect(id).toMatch(/^[A-Za-z0-9_-]{1,32}$/);
+    expect(calls[0]?.slice(2, 3)).toEqual([url]);
+    el.start();
+    expect(calls[1]).toEqual(["show", id]);
+    ro.cb();
+    expect(calls[2]?.[0]).toBe("rect");
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(calls.filter((c) => c[0] === "rect").length).toBe(2);
+    el.stop();
+    expect(calls.at(-1)).toEqual(["hide", id]);
+    vi.useRealTimers();
+  });
+
+  it.each([
+    ['{"ok":false,"code":"url_refused"}', "url_refused"],
+    ['{"ok":false}', "url_native_error"],
+    ["pas du json", "url_native_error"],
+  ])("réponse %s : rejet %s et vue retirée", async (reply, code) => {
+    const { calls } = fake(reply);
+    const el = make("content.url");
+    el.configure({ url }, ctx);
+    await expect(el.prepare()).rejects.toThrow(code);
+    expect(calls.some((c) => c[0] === "hide")).toBe(true);
+  });
+
+  it("refuse http et même origine avant le natif", async () => {
+    const { calls } = fake();
+    const el = make("content.url");
+    el.configure({ url: "http://example.org" }, ctx);
+    await expect(el.prepare()).rejects.toThrow("url_invalid");
+    expect(calls).toEqual([]);
+  });
+});
+
 describe("content.url", () => {
   const url = "https://example.org/page";
 

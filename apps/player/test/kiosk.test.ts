@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { KioskSender } from "../src/kiosk";
-import { KioskController, MAX_MAINTENANCE_MIN, RETRY_MS, UNLOCK_RENEW_MS, claimKioskBridge, lockDown } from "../src/kiosk";
+import { KioskController, MAX_MAINTENANCE_MIN, RETRY_MS, UNLOCK_RENEW_MS, claimKioskBridge, lockDown, trackNativeWeb } from "../src/kiosk";
 
 const T0 = Date.parse("2026-10-24T10:00:00Z");
 const iso = (ms: number): string => new Date(ms).toISOString();
@@ -198,5 +198,26 @@ describe("kiosque : le player applique, ne décide pas", () => {
     expect(sent).toEqual([["unlocked", 0, 0]]);
     claimKioskBridge(); // second appel (ou module tiers) : rien
     expect(claims).toBe(1);
+  });
+});
+
+describe("vues natives content.url", () => {
+  it("cache toutes les vues natives en quittant le mode verrouillé", () => {
+    const hidden: string[] = [];
+    const web = {
+      prepare: () => Promise.resolve('{"ok":true}'),
+      show: () => undefined,
+      rect: () => undefined,
+      hide: (id: string) => void hidden.push(id),
+    };
+    (window as { VdsNative?: unknown }).VdsNative = { web };
+    trackNativeWeb();
+    void window.VdsNative?.web?.prepare("a", "https://x.test", { x: 0, y: 0, w: 1, h: 1 });
+    void window.VdsNative?.web?.prepare("b", "https://y.test", { x: 0, y: 0, w: 1, h: 1 });
+    const { ctl } = setup(false);
+    ctl.apply({ mode: "locked" });
+    expect(hidden).toEqual([]);
+    ctl.apply({ mode: "unlocked" });
+    expect(hidden.sort()).toEqual(["a", "b"]);
   });
 });

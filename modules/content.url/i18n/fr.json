@@ -1,7 +1,7 @@
 {
   "module": {
     "name": "Page web",
-    "description": "Affiche une page web (https) dans un cadre isolé. Nécessite le réseau : sautée hors ligne."
+    "description": "Affiche une page web (https) dans un cadre isolé, ou une vue native sur Android. Nécessite le réseau : sautée hors ligne."
   },
   "config": {
     "content_url": {

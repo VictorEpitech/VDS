@@ -5,6 +5,39 @@ export const MAX_MAINTENANCE_MIN = 240;
 
 let webLocked = true;
 
+const nativeViews = new Set<string>();
+
+/**
+ * Suit les identifiants des vues natives de `VdsNative.web` (enveloppe posée au démarrage) pour pouvoir toutes
+ * les cacher : une vue native couvre l'interface du player, dont celle du déverrouillage admin.
+ */
+export function trackNativeWeb(): void {
+  const web = window.VdsNative?.web;
+  if (!web) return;
+  const { prepare, hide } = web;
+  web.prepare = (id, url, rect) => {
+    nativeViews.add(id);
+    return prepare.call(web, id, url, rect);
+  };
+  web.hide = (id) => {
+    nativeViews.delete(id);
+    hide.call(web, id);
+  };
+}
+
+/** Cache toutes les vues natives connues (avant l'UI de déverrouillage admin). Ne lève jamais. */
+export function hideAllNativeViews(): void {
+  const web = window.VdsNative?.web;
+  for (const id of [...nativeViews]) {
+    nativeViews.delete(id);
+    try {
+      web?.hide(id);
+    } catch {
+      // pont indisponible : le natif détruit ses vues de lui-même (bail)
+    }
+  }
+}
+
 /** Kiosque dans la page : clavier, souris, tactile, navigation, sélection neutralisés tant que le mode est `locked`. */
 export function lockDown(): void {
   const block = (e: Event): void => {
@@ -134,7 +167,9 @@ export class KioskController {
   }
 
   private push(): void {
+    const wasLocked = webLocked;
     webLocked = this.mode === "locked";
+    if (wasLocked && !webLocked) hideAllNativeViews();
     const send = this.sender();
     if (!send || this.inflight) return;
     const key = `${this.mode}:${this.until}`;

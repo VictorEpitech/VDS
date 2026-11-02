@@ -95,7 +95,30 @@ export interface ContentTypeEntry {
   script: string;
 }
 
+/** Rectangle en px CSS ; le natif multiplie par la densité. */
+export interface VdsNativeRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * Vues web natives (Android, optionnel) pour `content.url` : voir docs/architecture-content-url-natif.md.
+ * `id` : `[A-Za-z0-9_-]{1,32}`, au plus 2 vues à la fois.
+ */
+export interface VdsNativeWeb {
+  /** Crée ou recharge la vue `id` cachée ; résout un JSON `{ok:boolean, code?:string}` une fois la page chargée sans erreur. */
+  prepare(id: string, url: string, rect: VdsNativeRect): Promise<string>;
+  show(id: string): void;
+  rect(id: string, rect: VdsNativeRect): void;
+  /** about:blank puis retire la vue. */
+  hide(id: string): void;
+}
+
 export interface PlatformBridge {
+  /** Absent hors Android ou sur un APK trop ancien : `content.url` retombe sur l'iframe. */
+  web?: VdsNativeWeb;
   ping(): void;
   info(): { platform: string; model: string; app_version: string; os_version: string; insecure_upstream?: boolean };
   reload(): void;
