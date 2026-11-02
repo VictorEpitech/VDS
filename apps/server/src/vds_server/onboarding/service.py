@@ -62,6 +62,8 @@ def _covered_screens() -> Any:
 
 
 async def _organization(session: AsyncSession) -> Organization:
+    # Hypothèse : une seule organisation par instance (singleton, cf. docs/architecture.md).
+    # Si le multi-organisation arrive, résoudre l'organisation depuis le Principal, pas ici.
     org = (await session.execute(select(Organization))).scalars().first()
     if org is None:
         raise ApiError("onboarding.organization_missing", 409)
@@ -189,8 +191,22 @@ async def set_step_skipped(
     if skipped and step in NOT_SKIPPABLE:
         raise ApiError("onboarding.step_not_skippable", 409)
     org = await _organization(session)
-    state = await session.get(OnboardingState, org.id)
-    current = [s for s in (state.skipped_steps if state else []) if s in STEPS]
+    # Lecture-modification-écriture atomique : la ligne existe (créée sans effet si absente),
+    # puis verrouillée jusqu'au commit, sinon deux PUT concurrents s'écraseraient.
+    await session.execute(
+        pg_insert(OnboardingState)
+        .values(organization_id=org.id)
+        .on_conflict_do_nothing(index_elements=["organization_id"])
+    )
+    state = (
+        await session.execute(
+            select(OnboardingState)
+            .where(OnboardingState.organization_id == org.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+    ).scalar_one()
+    current = [s for s in state.skipped_steps if s in STEPS]
     wanted = sorted({*current, step} if skipped else set(current) - {step}, key=STEPS.index)
     if wanted != current:
         await _upsert(session, org.id, actor, skipped_steps=wanted)

@@ -1,6 +1,7 @@
 # ruff: noqa: F811  (fixtures pytest importées de test_auth, comme les autres fichiers)
 """Premiers pas et résumé de parc : étapes calculées, écritures admin, filtre issues."""
 
+import asyncio
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -8,6 +9,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.exc import DBAPIError
 from test_auth import (  # noqa: F401
     SAME,
     admin,
@@ -31,6 +33,7 @@ FAR = datetime(2099, 1, 1, tzinfo=UTC)
 async def _tables_clean(migrated_db_url: str) -> AsyncIterator[None]:
     yield
     for t in (
+        "onboarding_state",
         "schedule",
         "playlist",
         "media",
@@ -300,19 +303,38 @@ async def test_complete_by_skipping_and_card(
     assert actions[-2:] == ["onboarding.card_hidden", "onboarding.card_shown"]
 
 
-async def test_unknown_stored_step_ignored(
+async def test_check_rejects_unknown_or_account_step(
     admin: AsyncClient,  # noqa: F811
     p: str,
     migrated_db_url: str,
 ) -> None:
     org = (await sql(migrated_db_url, "SELECT id FROM organization"))[0][0]
+    for bad in ("{legacy,media}", "{account}"):
+        with pytest.raises(DBAPIError):
+            await sql(
+                migrated_db_url,
+                "INSERT INTO onboarding_state (organization_id, skipped_steps) VALUES (:o, :s)",
+                o=org,
+                s=bad,
+            )
     await sql(
         migrated_db_url,
-        "INSERT INTO onboarding_state (organization_id, skipped_steps)"
-        " VALUES (:o, '{legacy,media}')",
+        "INSERT INTO onboarding_state (organization_id, skipped_steps) VALUES (:o, '{media}')",
         o=org,
     )
     assert by_step(await get(admin, p))["media"]["status"] == "skipped"
+
+
+async def test_concurrent_skips_do_not_lose_updates(
+    admin: AsyncClient,  # noqa: F811
+    p: str,
+    migrated_db_url: str,
+) -> None:
+    steps = ["site", "screen", "media", "playlist", "schedule", "power"]
+    rs = await asyncio.gather(*(put(admin, p, f"steps/{s}", {"skipped": True}) for s in steps))
+    assert all(r.status_code == 200 for r in rs)
+    rows = await sql(migrated_db_url, "SELECT skipped_steps FROM onboarding_state")
+    assert rows[0][0] == steps
 
 
 # --- Fleet ----------------------------------------------------------------------------
