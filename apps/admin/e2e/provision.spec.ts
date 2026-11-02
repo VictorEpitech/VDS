@@ -97,7 +97,10 @@ test("thème sombre : assistant sans violation (si le thème le propose)", async
 
 test("l'assistant est atteignable au clavier depuis la liste des écrans", async ({ page }, info) => {
   await page.goto(`${meta(info).base}/screens`);
-  await page.getByRole("link", { name: "Ajouter une TV Android" }).focus();
+  await page.getByRole("link", { name: "Ajouter un écran" }).first().focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("heading", { name: "Ajouter une TV Android" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Ajouter un écran" })).toBeVisible();
+  await page.getByRole("button", { name: "Continuer" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("heading", { name: "Saisissez le code affiché sur la TV" })).toBeFocused();
 });

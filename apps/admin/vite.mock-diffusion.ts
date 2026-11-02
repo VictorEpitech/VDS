@@ -251,6 +251,20 @@ export function createDiffusionMock() {
       devices.set(screen.id, { id: randomUUID(), platform: "android", model: null, app_version: null, paired_at: now(), last_seen_at: null, revoked_at: null });
       return send(200, { screen_id: screen.id }), true;
     }
+    if (route === "/screens/pair" && method === "POST") {
+      const body = await json();
+      const code = String(body.code ?? "").replace(/[\s-]/g, "").toUpperCase();
+      const name = String(body.name ?? "").trim();
+      if (code === "EXPIRE") return fail(410, "errors.pairing_code_expired"), true;
+      if (!/^[A-Z2-9]{6}$/.test(code) || code.startsWith("X")) return fail(404, "errors.pairing_code_invalid"), true;
+      if (claimed.has(code)) return fail(409, "errors.pairing_code_claimed"), true;
+      if (!name || !sites.some((s) => s.id === body.site_id)) return fail(422, "errors.validation"), true;
+      claimed.add(code);
+      const row = { id: randomUUID(), site_id: String(body.site_id), group_id: (body.group_id as string | null) ?? null, name, orientation: body.orientation === "portrait" ? "portrait" : "landscape", archived_at: null };
+      screens.push(row);
+      devices.set(row.id, { id: randomUUID(), platform: "web", model: null, app_version: null, paired_at: now(), last_seen_at: null, revoked_at: null });
+      return send(201, { screen: screenOut(row), pairing: { status: "claimed", expires_at: now() }, replayed: false }), true;
+    }
     const kio = m(/^\/screens\/([^/]+)\/kiosk\/maintenance$/);
     if (kio) {
       if (!screens.some((s) => s.id === kio[1])) return fail(404, "errors.screen_not_found"), true;

@@ -28,15 +28,17 @@ const base = (caps: unknown, result: unknown = scan([])) => ({
   [`GET /sites/${SITE.id}/discovery/scans/${SID}`]: result,
   "GET /provisioning/capabilities": { available: false, reason: "agent_missing", platforms: [], apk: null },
   "GET /screens": [],
-  "POST /screens": NEW,
+  "POST /screens/pair": { screen: NEW, pairing: { status: "claimed", expires_at: "2026-10-30T10:15:00Z" }, replayed: false },
   "GET /registry/modules/power.adb/settings": ADB_SCHEMA,
   [`PUT ${NEW_CFG}/core/power.cascade`]: null,
   [`PUT ${NEW_CFG}/power.adb/host`]: null,
   [`PUT ${NEW_CFG}/power.adb/mac`]: null,
 });
 
-async function openForm(user: ReturnType<typeof userEvent.setup>, add = "Créer sans code") {
-  await user.click(await screen.findByRole("button", { name: add }));
+async function openForm(user: ReturnType<typeof userEvent.setup>, next = "Continuer") {
+  await user.click(await screen.findByRole("button", { name: next }));
+  await user.type(await screen.findByRole("textbox"), "AB3K7P");
+  await user.click(screen.getByRole("button", { name: next }));
   await screen.findByRole("option", { name: "Moulins" });
   await user.selectOptions(screen.getByLabelText("Site"), SITE.id);
 }
@@ -45,7 +47,7 @@ describe.each(["", "/espace/affichage"])("recherche des TV du réseau, base « %
   it("masque le bouton sans agent et ne lance jamais de recherche seul", async () => {
     const calls = mockApi(base({ available: false, reason: "agent_missing", probe_ports: true }), b);
     const user = userEvent.setup();
-    await renderRoutes(routes, "/screens", b);
+    await renderRoutes(routes, "/screens/add", b);
     await openForm(user);
     await waitFor(() => expect(calls.some((c) => c.path.endsWith("/discovery/capabilities"))).toBe(true));
     expect(screen.queryByRole("button", { name: "Rechercher les TV du réseau" })).not.toBeInTheDocument();
@@ -56,7 +58,7 @@ describe.each(["", "/espace/affichage"])("recherche des TV du réseau, base « %
   it("explique un agent trop ancien", async () => {
     mockApi(base({ available: false, reason: "agent_outdated", probe_ports: true }), b);
     const user = userEvent.setup();
-    await renderRoutes(routes, "/screens", b);
+    await renderRoutes(routes, "/screens/add", b);
     await openForm(user);
     expect(await screen.findByText(/Mettez à jour l'agent de site \(version 1\.5/)).toBeInTheDocument();
   });
@@ -65,7 +67,7 @@ describe.each(["", "/espace/affichage"])("recherche des TV du réseau, base « %
     const known = dev({ ip: "192.168.1.60", mac: null, vendor: "LG", model: "OLED", known_screen_id: "30000000-0000-4000-8000-000000000002" });
     const calls = mockApi(base(CAPS, scan([dev({}), dev({ ip: "192.168.1.70", mac: null, name: TRAP, protocols: ["adb"], suggested_drivers: [] }), known])), b);
     const user = userEvent.setup();
-    await renderRoutes(routes, "/screens", b);
+    await renderRoutes(routes, "/screens/add", b);
     await openForm(user);
     await user.click(await screen.findByRole("button", { name: "Rechercher les TV du réseau" }));
     expect(await screen.findByText("3 appareils trouvés")).toBeInTheDocument();
@@ -78,7 +80,7 @@ describe.each(["", "/espace/affichage"])("recherche des TV du réseau, base « %
     expect(radios[2]).toBeDisabled();
     await user.click(radios[0]!);
     expect(screen.getByLabelText("Nom de l'écran")).toHaveValue("TCL S5400");
-    await user.click(screen.getByRole("button", { name: "Créer l'écran" }));
+    await user.click(screen.getByRole("button", { name: "Ajouter l'écran" }));
     expect(await screen.findByText(/préremplis depuis la recherche/)).toBeInTheDocument();
     const put = (p: string) => calls.find((c) => c.method === "PUT" && c.path.endsWith(p));
     expect(put("/core/power.cascade")?.body).toEqual({ value: ["power.adb"] });
@@ -90,7 +92,7 @@ describe.each(["", "/espace/affichage"])("recherche des TV du réseau, base « %
   it("affiche confiance et MAC, et exige une confirmation pour un appareil de confiance faible", async () => {
     mockApi(base(CAPS, scan([dev({}), dev({ ip: "192.168.1.80", mac: null, name: "Samsung QM55", confidence: "low" })])), b);
     const user = userEvent.setup();
-    await renderRoutes(routes, "/screens", b);
+    await renderRoutes(routes, "/screens/add", b);
     await openForm(user);
     await user.click(await screen.findByRole("button", { name: "Rechercher les TV du réseau" }));
     expect(await screen.findByText("Confiance élevée")).toBeInTheDocument();
@@ -108,7 +110,7 @@ describe.each(["", "/espace/affichage"])("recherche des TV du réseau, base « %
   it("affiche l'état vide et la troncature", async () => {
     mockApi(base(CAPS, scan([], { truncated: true })), b);
     const user = userEvent.setup();
-    await renderRoutes(routes, "/screens", b);
+    await renderRoutes(routes, "/screens/add", b);
     await openForm(user);
     await user.click(await screen.findByRole("button", { name: "Rechercher les TV du réseau" }));
     expect(await screen.findByText(/Aucune TV trouvée/)).toBeInTheDocument();
@@ -126,7 +128,7 @@ describe.each(["", "/espace/affichage"])("recherche des TV du réseau, base « %
       b,
     );
     const user = userEvent.setup();
-    await renderRoutes(routes, "/screens", b);
+    await renderRoutes(routes, "/screens/add", b);
     await openForm(user);
     await user.click(await screen.findByRole("button", { name: "Rechercher les TV du réseau" }));
     expect(await screen.findByText(/aucun réseau local/)).toBeInTheDocument();
@@ -137,8 +139,8 @@ describe.each(["", "/espace/affichage"])("recherche des TV du réseau, base « %
   it("traduit l'erreur en anglais", async () => {
     mockApi({ ...base(CAPS), [`POST /sites/${SITE.id}/discovery/scans`]: errorResponse(409, "discovery.busy") }, b);
     const user = userEvent.setup();
-    await renderRoutes(routes, "/screens", b, "en");
-    await openForm(user, "Create without a code");
+    await renderRoutes(routes, "/screens/add", b, "en");
+    await openForm(user, "Continue");
     await user.click(await screen.findByRole("button", { name: "Find TVs on the network" }));
     expect(await screen.findByText("A search is already running on this site.")).toBeInTheDocument();
   });

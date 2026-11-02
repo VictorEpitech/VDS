@@ -101,9 +101,10 @@ describe.each(["", "/espace/affichage"])("enrôlement d'agent, base « %s »", (
     await waitFor(() => expect(calls.some((c) => c.method === "DELETE")).toBe(true));
   });
 
-  it("renvoie vers le panneau Agent depuis /pairing", async () => {
+  it("renvoie vers le panneau Agent depuis l'assistant d'ajout", async () => {
     mockApi({ "GET /sites": [SITE], "GET /screens": [], [`GET /provisioning/capabilities`]: { available: false, reason: "agent_offline", platforms: [], apk: null } }, b);
     await renderRoutes(routes, "/screens/add", b);
+    await userEvent.click(await screen.findByRole("radio", { name: /Android TV/ }));
     expect(await screen.findByRole("link", { name: "Configurer l'agent du site" })).toHaveAttribute("href", `${b}/sites`);
   });
 });

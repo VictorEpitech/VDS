@@ -101,16 +101,11 @@
       "none": "No device paired."
     },
     "create": {
-      "action": "Create without a code",
-      "title": "New screen",
       "name": "Screen name",
       "site": "Site",
       "group": "Group (optional)",
       "no_group": "No group",
       "orientation": "Orientation",
-      "submit": "Create screen",
-      "done": "Screen {name} is created. It still needs to be paired with a device.",
-      "pair_now": "Add this screen",
       "no_site": "No site available: create a site first.",
       "go_sites": "Go to sites"
     },
@@ -279,7 +274,8 @@
       "busy": "A search is already running on this site.",
       "cooldown": "A search was just run. Wait {seconds} s before running it again.",
       "quota": "Too many searches for this site this hour. Try again in {seconds} s."
-    }
+    },
+    "pairing_code_claimed": "This code was already used for another screen."
   },
   "auth": {
     "checking": {
@@ -341,22 +337,132 @@
       "too_many": "At most {max} values."
     }
   },
+  "add": {
+    "title": "Add a screen",
+    "title_replace": "Replace the device of {name}",
+    "intro": "Four steps: the device, the code shown on the TV, the name and location, then a check.",
+    "intro_replace": "Enter the code shown on the new device. This screen's previous device will be revoked.",
+    "progress_label": "Wizard steps",
+    "step_of": "Step {current} of {total}: {name}",
+    "previous": "Back",
+    "next": "Continue",
+    "step": {
+      "device": "Device",
+      "code": "Code",
+      "details": "Name and site",
+      "verify": "Check"
+    },
+    "device": {
+      "title": "Which device will you use?",
+      "legend": "Device type",
+      "browser": {
+        "label": "TV or display with a browser",
+        "help": "Open the player address in the TV browser."
+      },
+      "android": {
+        "label": "Android TV",
+        "help": "VDS app already installed, or install it over the network."
+      },
+      "pi": {
+        "label": "Raspberry Pi",
+        "help": "Browser in kiosk mode on the Pi."
+      },
+      "other": {
+        "label": "Other device",
+        "help": "Any device that can display the web player."
+      },
+      "android_choice": "On Android TV you can enter the code shown, or let VDS install the app over the network.",
+      "android_install": "Install over the network",
+      "have_code": "I have a code on screen"
+    },
+    "code": {
+      "title": "Enter the code shown on the TV",
+      "help": {
+        "browser": "The code appears when the player first starts. It expires after {minutes} minutes: the TV then shows a new one.",
+        "android": "Start the VDS app: the code is displayed. It expires after {minutes} minutes.",
+        "pi": "The code appears when the Pi browser starts. It expires after {minutes} minutes.",
+        "other": "The code appears when the player first starts. It expires after {minutes} minutes."
+      },
+      "state": {
+        "ok": "Code complete.",
+        "short": "{count, plural, one {# character entered of 6} other {# characters entered of 6}}.",
+        "long": "This code is too long: check it on the TV."
+      },
+      "submit_replace": "Replace the device"
+    },
+    "details": {
+      "title": "Name and location",
+      "orientation_auto": "Automatic (from the device)",
+      "orientation_help": "Leave on automatic: orientation is deduced from the screen size.",
+      "submit": "Add the screen"
+    },
+    "inherit": {
+      "title": "Settings applied automatically",
+      "help": "You can change them afterwards from the screen's page.",
+      "kiosk": "Player kiosk",
+      "power": "Power-on attempt order"
+    },
+    "error": {
+      "code_unknown": {
+        "text": "Unknown code. Check the code shown on the TV, or restart the player to get a new one.",
+        "action": "Edit the code"
+      },
+      "code_expired": {
+        "text": "Code expired. The TV shows a new one every {minutes} minutes: enter the new one.",
+        "action": "Enter the new code"
+      },
+      "already_paired": {
+        "text": "This code was already used for another screen. To change the device of an existing screen, open its page.",
+        "action": "See screens"
+      },
+      "too_many_attempts": {
+        "text": "Too many attempts. Wait about {seconds} seconds before trying again.",
+        "action": "Edit the code"
+      }
+    },
+    "verify": {
+      "title": "Checking {name}",
+      "phase": {
+        "waiting": {
+          "label": "Waiting for the TV",
+          "text": "The TV is starting and connecting. This takes a few seconds."
+        },
+        "stale": {
+          "label": "Unstable connection",
+          "text": "The TV is connected but its latest signals are old. Checking again."
+        },
+        "assets": {
+          "label": "Downloading",
+          "text": "{count, plural, one {# media item is still downloading on the TV.} other {# media items are still downloading on the TV.}}"
+        },
+        "ready": {
+          "label": "The screen works",
+          "text": "The TV is online, up to date and ready to play. Now schedule what it should show."
+        }
+      },
+      "stalled": "Still no sign of the TV. Check that it is on, connected to the Internet, and that the player is running.",
+      "replayed": "This screen had just been added with this code.",
+      "schedule": "Schedule playback",
+      "done": "See screens",
+      "another": "Add another screen",
+      "power": {
+        "title": "Power test",
+        "help": "Queries the device through the site agent, without turning it on or off.",
+        "test": "Test power control",
+        "running": "Test running",
+        "ok": "The device responds",
+        "failed": "The device does not respond. Check its address in the power settings.",
+        "settings": "Power settings"
+      }
+    }
+  },
   "pairing": {
     "auto": {
-      "action": "Install on Android TV (automatic)",
       "unavailable": "Available when a site agent 1.3 or later handles Android installation for a site."
     },
-    "title": "Add a screen",
-    "intro": "Enter the code shown on the screen, then choose the matching screen.",
     "code": {
-      "label": "Code shown on the screen",
-      "help": "6 characters. Upper and lower case are accepted. The code expires after 15 minutes."
+      "label": "Code shown on the screen"
     },
-    "screen": {
-      "label": "Screen to link"
-    },
-    "submit": "Add",
-    "done": "Screen {name} added. The device starts in a few seconds.",
     "back": "Back to screens"
   },
   "media": {

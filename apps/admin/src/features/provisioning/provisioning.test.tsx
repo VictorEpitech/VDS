@@ -186,19 +186,21 @@ describe("codes", () => {
   });
 });
 
-describe.each(["", "/espace/affichage"])("bouton d'installation auto sur /screens/add, base « %s »", (b) => {
+describe.each(["", "/espace/affichage"])("installation auto depuis /screens/add, base « %s »", (b) => {
   it("est un lien vers l'assistant quand un agent est disponible", async () => {
     mockApi({ ...base(), "GET /pairings": [] }, b);
     await renderRoutes(routes, "/screens/add", b);
-    const link = await screen.findByRole("link", { name: "Installer sur Android TV (automatique)" });
-    expect(link).toHaveAttribute("href", `${b}/screens/android`);
+    await userEvent.click(await screen.findByRole("radio", { name: /Android TV/ }));
+    const link = await screen.findByRole("link", { name: "Installer depuis le réseau" });
+    expect(link).toHaveAttribute("href", `${b}/screens/add/android`);
   });
 
   it("est désactivé quand aucun agent n'est disponible", async () => {
     mockApi({ ...base({ available: false, reason: "agent_too_old", platforms: [], apk: null }) }, b);
     await renderRoutes(routes, "/screens/add", b);
-    expect(await screen.findByRole("button", { name: "Installer sur Android TV (automatique)" })).toBeDisabled();
-    expect(screen.queryByRole("link", { name: "Installer sur Android TV (automatique)" })).toBeNull();
+    await userEvent.click(await screen.findByRole("radio", { name: /Android TV/ }));
+    expect(await screen.findByRole("button", { name: "Installer depuis le réseau" })).toBeDisabled();
+    expect(screen.queryByRole("link", { name: "Installer depuis le réseau" })).toBeNull();
   });
 
   it("saute l'étape 1 pour un écran existant et préremplit l'adresse connue", async () => {
@@ -224,7 +226,7 @@ describe.each(["", "/espace/affichage"])("bouton d'installation auto sur /screen
     mockApi(base(), b);
     await renderRoutes(routes, "/screens", b);
     const link = await screen.findByRole("link", { name: "Réinstaller ou installer l'app sur Hall TV" });
-    expect(link).toHaveAttribute("href", `${b}/screens/android?screen=${SCREEN.id}`);
+    expect(link).toHaveAttribute("href", `${b}/screens/add/android?screen=${SCREEN.id}`);
   });
 
   it("masque Réinstaller sans agent disponible", async () => {

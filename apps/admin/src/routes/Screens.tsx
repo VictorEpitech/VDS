@@ -7,7 +7,6 @@ import { ScreensStatus } from "../features/supervision/ScreensStatus";
 import { useSession } from "../auth/session";
 import { KioskControls } from "../features/kiosk/KioskControls";
 import { KioskSetting } from "../features/kiosk/KioskSetting";
-import { ScreenCreateForm } from "../features/screens/ScreenCreateForm";
 import { ScreenDeleteForm } from "../features/screens/ScreenDeleteForm";
 import { ScreenEditForm } from "../features/screens/ScreenEditForm";
 import { ConfirmAction, Empty, ErrorAlert, QueryStatus, SuccessAlert } from "../components/feedback";
@@ -30,7 +29,6 @@ export function Screens() {
   const [params, setParams] = useSearchParams();
   const issues = params.get("filter") === "issues";
   const setFilter = (f: "all" | "issues") => setParams(f === "issues" ? { filter: "issues" } : {}, { replace: true });
-  const [creating, setCreating] = useState(false);
   const [revoked, setRevoked] = useState<string | null>(null);
   const [panel, setPanel] = useState<{ id: string; kind: "edit" | "delete"; archive?: boolean } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -61,11 +59,6 @@ export function Screens() {
             <Icon name="add" />
             {t("screens.pair")}
           </Link>
-          {isAdmin ? (
-            <button type="button" className="btn btn-text" onClick={() => setCreating(true)} disabled={creating}>
-              {t("screens.create.action")}
-            </button>
-          ) : null}
         </div>
       </div>
       <p className="lead">{t("screens.intro")}</p>
@@ -84,7 +77,6 @@ export function Screens() {
           <ScreensStatus onlyIssues />
         </>
       ) : null}
-      {creating ? <ScreenCreateForm onClose={() => setCreating(false)} /> : null}
       <QueryStatus query={screens} />
       {notice ? <SuccessAlert>{notice}</SuccessAlert> : null}
       {revoked ? <SuccessAlert>{t("screens.revoked", { name: revoked })}</SuccessAlert> : null}
@@ -151,7 +143,7 @@ export function Screens() {
                 {t("screens.pair_this")}
               </Link>
               {isAdmin && provisionable ? (
-                <Link className="btn btn-text" to={`/screens/android?screen=${s.id}`} aria-label={t("screens.reinstall_for", { name: s.name })}>
+                <Link className="btn btn-text" to={`/screens/add/android?screen=${s.id}`} aria-label={t("screens.reinstall_for", { name: s.name })}>
                   <Icon name="detect" />
                   {t("screens.reinstall")}
                 </Link>

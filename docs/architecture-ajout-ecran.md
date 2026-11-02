@@ -44,7 +44,13 @@ Aucun événement de bus nouveau : `screen.paired` reste publié à la consommat
 
 ### Idempotence (sans table ni en-tête)
 
-Si la demande est `claimed` ou `consumed`, que `claimed_by == actor.user_id` et que l'écran lié n'est pas archivé : `200` avec cet écran et `replayed: true` (double clic, réseau coupé après commit). Sinon `409 errors.pairing_code_claimed`.
+Si la demande est `claimed` ou `consumed`, que `claimed_by == actor.user_id` et que l'écran lié n'est pas archivé : `200` avec cet écran et `replayed: true` (double clic, réseau coupé après commit). Sinon `409 errors.pairing_code_claimed`. Le rejeu exige en plus que `site_id` et `name` de la requête correspondent à l'écran existant (sinon 409) ; il est audité `pairing.replayed`.
+
+### Limiteur et audit des échecs (revue sécurité lot D)
+
+- `FailureLimiter` (30 échecs / 60 s, clé `user:<actor_id>`), partagé `claim` + `screens/pair`. Seuls 404/409/410 comptent ; succès, rejeu et erreurs de forme libèrent la réservation. La limite est **par processus** (mémoire) : avec N workers, le plafond effectif est N x 30 ; acceptable (admins authentifiés, espace de codes borné par l'expiration).
+- Échecs 404/409/410 audités `pairing.claim_failed` (`via`, `status`, `code` d'erreur ; jamais le code d'appairage) dans une session séparée, donc persistés malgré le rollback.
+- Le 409 révèle à un admin qu'un code vient d'être réclamé par un autre admin : fuite acceptée (tous les admins voient le parc).
 
 ### Refactor interne (signatures)
 

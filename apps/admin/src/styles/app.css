@@ -1170,3 +1170,58 @@ fieldset.field > legend {
   gap: var(--vds-space-2);
   margin-block-start: var(--vds-space-2);
 }
+
+/* Lot D : assistant « Ajouter un écran ». */
+.device-choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-2);
+}
+
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--vds-space-3);
+  min-block-size: 2.75rem;
+  padding: var(--vds-space-3);
+  border: 1px solid var(--vds-outline);
+  border-radius: var(--vds-radius-md);
+  cursor: pointer;
+}
+
+.choice:has(input:checked) {
+  border-color: var(--vds-primary);
+}
+
+.choice:has(input:focus-visible) {
+  outline: 2px solid var(--vds-primary);
+  outline-offset: 2px;
+}
+
+.choice > span {
+  display: flex;
+  flex-direction: column;
+}
+
+.inherited {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-2);
+  padding: var(--vds-space-3);
+  border: 1px solid var(--vds-outline);
+  border-radius: var(--vds-radius-md);
+}
+
+.verify-state {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-2);
+}
+
+.state-ok {
+  color: var(--vds-success);
+}
+
+.state-bad {
+  color: var(--vds-error);
+}

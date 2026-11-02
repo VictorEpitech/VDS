@@ -78,7 +78,7 @@ test("parcours éditeur : média, playlist, programmation, appairage et révocat
 
   // Programmation : cible écran, playlist, créneau en semaine.
   await page.goto(url(info, "/schedules"));
-  await page.getByRole("button", { name: "Nouvelle programmation" }).click();
+  await page.getByRole("button", { name: "Nouvelle programmation" }).first().click();
   await page.getByLabel("Nom", { exact: true }).fill(schedule);
   await page.getByRole("combobox", { name: "Écran" }).selectOption({ label: "Hall d'accueil" });
   await expect(page.getByText("1 écran touché")).toBeVisible();
@@ -98,19 +98,21 @@ test("parcours éditeur : média, playlist, programmation, appairage et révocat
   await expect(card("Hall d'accueil").getByText("android Tab A9")).toBeVisible();
   await expect(card("Totem").getByText("Aucun appareil appairé.")).toBeVisible();
   await expect(card("Totem").getByRole("button", { name: "Révoquer l'appareil" })).toHaveCount(0);
-  await page.getByRole("link", { name: "Appairer un écran" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Appairer un écran" })).toBeVisible();
-  await page.getByLabel("Code affiché sur l'écran").fill("ab3 k7p");
-  await page.getByLabel("Écran à associer").selectOption({ label: "Totem" });
-  await page.getByRole("button", { name: "Appairer" }).click();
-  await expect(page.getByText(/Appairage validé pour l'écran Totem/)).toBeVisible();
+  const replaceTotem = async (code: string) => {
+    await card("Totem").getByRole("link", { name: /Ajouter un appareil/ }).click();
+    await expect(page.getByRole("heading", { level: 1, name: /Remplacer l'appareil de Totem/ })).toBeVisible();
+    await page.getByLabel("Code affiché sur l'écran").fill(code);
+    await page.getByRole("button", { name: "Remplacer l'appareil" }).click();
+  };
+  await replaceTotem("ab3 k7p");
+  await expect(page.getByText("En attente de la TV")).toBeVisible();
   // Le même code ne sert qu'une fois.
-  await page.getByLabel("Code affiché sur l'écran").fill("AB3K7P");
-  await page.getByRole("button", { name: "Appairer" }).click();
+  await page.goto(url(info, "/screens"));
+  await replaceTotem("AB3K7P");
   await expect(page.getByRole("alert").filter({ hasText: "Code inconnu" })).toBeVisible();
 
   // Révocation de l'appareil de l'écran.
-  await page.getByRole("link", { name: "Retour aux écrans" }).click();
+  await page.goto(url(info, "/screens"));
   const totem = card("Totem");
   await expect(totem.getByText("Appairé, jamais connecté")).toBeVisible();
   await totem.getByRole("button", { name: "Révoquer l'appareil" }).click();
@@ -170,11 +172,12 @@ test("anglais : médiathèque, programmation et appairage", async ({ page }, inf
   await expect(page.getByRole("heading", { level: 1, name: "Media library" })).toBeVisible();
   await page.goto(url(info, "/schedules"));
   await expect(page.getByRole("heading", { level: 1, name: "Schedule" })).toBeVisible();
-  await page.getByRole("button", { name: "New schedule" }).click();
+  await page.getByRole("button", { name: "New schedule" }).first().click();
   await expect(page.getByRole("radio", { name: "Screen" })).toBeChecked();
   await page.getByRole("button", { name: "Add a slot" }).click();
   await expect(page.getByRole("button", { name: "Saturday" })).toBeVisible();
   await page.goto(url(info, "/pairing"));
+  await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByLabel("Code shown on the screen")).toBeVisible();
 });
 
@@ -187,7 +190,7 @@ for (const lang of ["fr", "en"] as const) {
       if (lang === "en") await page.getByRole("button", { name: "English" }).click();
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       if (p === "/schedules") {
-        await page.getByRole("button", { name: lang === "fr" ? "Nouvelle programmation" : "New schedule" }).click();
+        await page.getByRole("button", { name: lang === "fr" ? "Nouvelle programmation" : "New schedule" }).first().click();
         await page.getByRole("button", { name: lang === "fr" ? "Ajouter un créneau" : "Add a slot" }).click();
         await page.getByText(lang === "fr" ? "Avancé" : "Advanced").click();
       }
@@ -265,12 +268,13 @@ test("créer un groupe puis un écran, et l'appairer (présélectionné)", async
   await expect(page.getByRole("listitem").filter({ hasText: "Couloir" })).toBeVisible();
 
   await page.goto(url(info, "/screens"));
-  await page.getByRole("button", { name: "Ajouter un écran" }).click();
+  await page.getByRole("link", { name: "Ajouter un écran" }).first().click();
+  await page.getByRole("button", { name: "Continuer" }).click();
+  await page.getByLabel("Code affiché sur l'écran").fill("cd4 m8q");
+  await page.getByRole("button", { name: "Continuer" }).click();
   await page.getByLabel("Nom de l'écran").fill("Entrée");
   await page.getByLabel("Site", { exact: true }).selectOption({ label: "Moulins" });
   await page.getByLabel("Groupe (facultatif)").selectOption({ label: "Couloir" });
-  await page.getByRole("button", { name: "Créer l'écran" }).click();
-  await page.getByRole("link", { name: "Appairer cet écran" }).click();
-  await expect(page.getByLabel("Écran à associer")).toHaveValue(/.+/);
-  await expect(page.getByRole("option", { name: "Entrée", selected: true })).toBeAttached();
+  await page.getByRole("button", { name: "Ajouter l'écran" }).click();
+  await expect(page.getByText("En attente de la TV")).toBeVisible();
 });

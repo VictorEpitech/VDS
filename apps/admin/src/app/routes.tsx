@@ -2,6 +2,7 @@ import type { RouteObject } from "react-router-dom";
 import { PublicLayout } from "../auth/PublicLayout";
 import { RequireAuth } from "../auth/RequireAuth";
 import { AppLayout } from "../components/AppLayout";
+import { AddScreen } from "../routes/AddScreen";
 import { ContentLayout } from "../routes/ContentLayout";
 import { More } from "../routes/More";
 import { Redirect } from "./Redirect";
@@ -11,12 +12,10 @@ import { Home } from "../routes/Home";
 import { Login } from "../routes/Login";
 import { MediaLibrary } from "../routes/MediaLibrary";
 import { NotFound } from "../routes/NotFound";
-import { Pairing } from "../routes/Pairing";
 import { Notifications } from "../routes/Notifications";
 import { PlaylistEditor } from "../routes/PlaylistEditor";
 import { Playlists } from "../routes/Playlists";
 import { Power } from "../routes/Power";
-import { ProvisionAndroid } from "../routes/ProvisionAndroid";
 import { Schedules } from "../routes/Schedules";
 import { Screens } from "../routes/Screens";
 import { SiteDetail } from "../routes/SiteDetail";
@@ -39,8 +38,10 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <Home /> },
           { path: "screens", element: <Screens /> },
-          { path: "screens/add", element: <Pairing /> },
-          { path: "screens/android", element: <ProvisionAndroid /> },
+          { path: "screens/add", element: <AddScreen /> },
+          { path: "screens/add/android", element: <AddScreen android /> },
+          // Anciens parcours (création, appairage, Android) fusionnés dans l'assistant ; la requête (?screen=, ?address=) est conservée.
+          { path: "screens/android", element: <Redirect to="/screens/add/android" /> },
           {
             path: "content",
             element: <ContentLayout />,

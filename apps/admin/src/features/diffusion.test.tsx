@@ -108,27 +108,34 @@ describe("règles hebdomadaires", () => {
 });
 
 describe.each(["", "/espace/affichage"])("écrans sous la base « %s »", (b) => {
-  it("appairage : code normalisé, écran choisi, POST sous la base", async () => {
-    const calls = mockApi({ ...base, "POST /pairings/claim": { screen_id: SCREEN.id } }, b);
+  it("ajout : code normalisé, nom et site, POST /screens/pair sous la base", async () => {
+    const paired = { screen: { ...SCREEN, name: "Entrée", group_id: null, device: null }, pairing: { status: "claimed", expires_at: "2026-10-23T10:15:00Z" }, replayed: false };
+    const calls = mockApi({ ...base, "POST /screens/pair": () => new Response(JSON.stringify(paired), { status: 201 }) }, b);
+    const user = userEvent.setup();
     await renderRoutes(routes, "/screens/add", b);
-    await userEvent.type(await screen.findByLabelText("Code affiché sur l'écran"), "ab3 k7p");
-    await screen.findByRole("option", { name: "Hall" });
-    await userEvent.selectOptions(screen.getByLabelText("Écran à associer"), SCREEN.id);
-    await userEvent.click(screen.getByRole("button", { name: "Ajouter" }));
-    expect(await screen.findByText(/Écran Hall ajouté/)).toBeInTheDocument();
-    expect(calls.find((c) => c.path === "/pairings/claim")?.body).toEqual({ code: "AB3K7P", screen_id: SCREEN.id });
+    await user.click(await screen.findByRole("button", { name: "Continuer" }));
+    await user.type(await screen.findByLabelText("Code affiché sur l'écran"), "ab3 k7p");
+    expect(await screen.findByText("Code complet.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Continuer" }));
+    await user.type(await screen.findByLabelText("Nom de l'écran"), "Entrée");
+    await screen.findByRole("option", { name: "Moulins" });
+    await user.selectOptions(screen.getByLabelText("Site"), SITE.id);
+    await user.click(screen.getByRole("button", { name: "Ajouter l'écran" }));
+    expect(await screen.findByRole("heading", { name: "Vérification de Entrée" })).toBeInTheDocument();
+    expect(calls.find((c) => c.path === "/screens/pair")?.body).toEqual({ code: "AB3K7P", name: "Entrée", site_id: SITE.id, group_id: null });
     expect(vi.mocked(fetch).mock.calls.every(([u]) => String(u).startsWith(`${b}/api/v1/`))).toBe(true);
   });
 
-  it("appairage : champs obligatoires signalés, code inconnu traduit", async () => {
-    mockApi({ ...base, "POST /pairings/claim": () => errorResponse(404, "errors.pairing_code_invalid") }, b);
+  it("remplacement d'appareil : code normalisé, /pairings/claim, code inconnu traduit", async () => {
+    const calls = mockApi({ ...base, "POST /pairings/claim": () => errorResponse(404, "errors.pairing_code_invalid") }, b);
+    const user = userEvent.setup();
     await renderRoutes(routes, `/screens/add?screen=${SCREEN.id}`, b);
-    await screen.findByRole("option", { name: "Hall" });
-    await userEvent.click(screen.getByRole("button", { name: "Ajouter" }));
-    expect(screen.getAllByText("Ce champ est obligatoire.")).toHaveLength(1);
-    await userEvent.type(screen.getByLabelText("Code affiché sur l'écran"), "XXXXXX");
-    await userEvent.click(screen.getByRole("button", { name: "Ajouter" }));
+    await user.click(await screen.findByRole("button", { name: "Remplacer l'appareil" }));
+    expect(calls.some((c) => c.path === "/pairings/claim")).toBe(false);
+    await user.type(screen.getByLabelText("Code affiché sur l'écran"), "xxx-xxx");
+    await user.click(screen.getByRole("button", { name: "Remplacer l'appareil" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Code inconnu");
+    expect(calls.find((c) => c.path === "/pairings/claim")?.body).toEqual({ code: "XXXXXX", screen_id: SCREEN.id });
   });
 
   it("état de l'appareil : présence, plateforme, dernière activité ; révocation seulement si actif", async () => {
@@ -313,23 +320,14 @@ describe.each(["", "/espace/affichage"])("écrans sous la base « %s »", (b) =>
 
 describe.each(["", "/espace/affichage"])("création d'écran et de groupe, base « %s »", (b) => {
   const SITE = { id: "10000000-0000-4000-8000-000000000009", name: "Moulins", slug: "moulins", archived_at: null };
-  const NEW = { id: "30000000-0000-4000-8000-000000000009", site_id: SITE.id, group_id: null, name: "Entrée", orientation: "landscape", archived_at: null, device: null };
 
-  it("état vide : appel à l'action, création, lien Ajouter présélectionné", async () => {
-    const calls = mockApi(
-      { "GET /sites": [SITE], "GET /screens": [], [`GET /sites/${SITE.id}/groups`]: [], "POST /screens": () => new Response(JSON.stringify(NEW), { status: 201 }) },
-      b,
-    );
-    const user = userEvent.setup();
+  it("état vide : l'appel à l'action ouvre l'assistant unique", async () => {
+    mockApi({ "GET /sites": [SITE], "GET /screens": [], [`GET /sites/${SITE.id}/groups`]: [] }, b);
     await renderRoutes(routes, "/screens", b);
     await screen.findByText(/Aucun écran pour le moment/);
-    await user.click(await screen.findByRole("button", { name: "Créer sans code" }));
-    await user.type(await screen.findByLabelText("Nom de l'écran"), "Entrée");
-    await user.selectOptions(screen.getByLabelText("Site"), SITE.id);
-    await user.click(screen.getByRole("button", { name: "Créer l'écran" }));
-    const link = await screen.findByRole("link", { name: "Ajouter cet écran" });
-    expect(link).toHaveAttribute("href", `${b}/screens/add?screen=${NEW.id}`);
-    expect(calls.find((c) => c.method === "POST")?.body).toEqual({ name: "Entrée", site_id: SITE.id, group_id: null, orientation: "landscape" });
+    expect(screen.queryByRole("button", { name: "Créer sans code" })).toBeNull();
+    const links = await screen.findAllByRole("link", { name: "Ajouter un écran" });
+    expect(links.every((l) => l.getAttribute("href") === `${b}/screens/add`)).toBe(true);
   });
 
   it("crée un groupe dans le détail du site", async () => {

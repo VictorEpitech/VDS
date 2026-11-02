@@ -101,16 +101,11 @@
       "none": "Aucun appareil appairé."
     },
     "create": {
-      "action": "Créer sans code",
-      "title": "Nouvel écran",
       "name": "Nom de l'écran",
       "site": "Site",
       "group": "Groupe (facultatif)",
       "no_group": "Aucun groupe",
       "orientation": "Orientation",
-      "submit": "Créer l'écran",
-      "done": "L'écran {name} est créé. Il reste à l'appairer avec un appareil.",
-      "pair_now": "Ajouter cet écran",
       "no_site": "Aucun site disponible : créez d'abord un site.",
       "go_sites": "Aller aux sites"
     },
@@ -279,7 +274,8 @@
       "busy": "Une recherche est déjà en cours sur ce site.",
       "cooldown": "Une recherche vient d'être faite. Patientez {seconds} s avant de relancer.",
       "quota": "Trop de recherches pour ce site cette heure. Réessayez dans {seconds} s."
-    }
+    },
+    "pairing_code_claimed": "Ce code a déjà été utilisé pour un autre écran."
   },
   "auth": {
     "checking": {
@@ -341,22 +337,132 @@
       "too_many": "Au maximum {max} valeurs."
     }
   },
+  "add": {
+    "title": "Ajouter un écran",
+    "title_replace": "Remplacer l'appareil de {name}",
+    "intro": "En quatre étapes : l'appareil, le code affiché sur la TV, le nom et l'emplacement, puis la vérification.",
+    "intro_replace": "Saisissez le code affiché sur le nouvel appareil. L'ancien appareil de cet écran sera révoqué.",
+    "progress_label": "Étapes de l'assistant",
+    "step_of": "Étape {current} sur {total} : {name}",
+    "previous": "Retour",
+    "next": "Continuer",
+    "step": {
+      "device": "Appareil",
+      "code": "Code",
+      "details": "Nom et site",
+      "verify": "Vérification"
+    },
+    "device": {
+      "title": "Quel appareil allez-vous utiliser ?",
+      "legend": "Type d'appareil",
+      "browser": {
+        "label": "TV ou écran avec navigateur",
+        "help": "Ouvrez l'adresse du player dans le navigateur de la TV."
+      },
+      "android": {
+        "label": "Android TV",
+        "help": "Application VDS déjà installée, ou installation depuis le réseau."
+      },
+      "pi": {
+        "label": "Raspberry Pi",
+        "help": "Navigateur en mode kiosque sur le Pi."
+      },
+      "other": {
+        "label": "Autre appareil",
+        "help": "Tout appareil capable d'afficher le player web."
+      },
+      "android_choice": "Sur Android TV, vous pouvez saisir le code affiché ou laisser VDS installer l'application depuis le réseau.",
+      "android_install": "Installer depuis le réseau",
+      "have_code": "J'ai un code à l'écran"
+    },
+    "code": {
+      "title": "Saisissez le code affiché sur la TV",
+      "help": {
+        "browser": "Le code apparaît au premier lancement du player. Il expire au bout de {minutes} minutes : la TV en affiche alors un nouveau.",
+        "android": "Lancez l'application VDS : le code s'affiche. Il expire au bout de {minutes} minutes.",
+        "pi": "Le code apparaît au démarrage du navigateur du Pi. Il expire au bout de {minutes} minutes.",
+        "other": "Le code apparaît au premier lancement du player. Il expire au bout de {minutes} minutes."
+      },
+      "state": {
+        "ok": "Code complet.",
+        "short": "{count, plural, one {# caractère saisi sur 6} other {# caractères saisis sur 6}}.",
+        "long": "Ce code est trop long : vérifiez-le sur la TV."
+      },
+      "submit_replace": "Remplacer l'appareil"
+    },
+    "details": {
+      "title": "Nom et emplacement",
+      "orientation_auto": "Automatique (selon l'appareil)",
+      "orientation_help": "Laissez sur automatique : l'orientation est déduite de la taille de l'écran.",
+      "submit": "Ajouter l'écran"
+    },
+    "inherit": {
+      "title": "Réglages repris automatiquement",
+      "help": "Vous pourrez les modifier ensuite depuis la fiche de l'écran.",
+      "kiosk": "Kiosque du player",
+      "power": "Ordre d'essai de l'allumage"
+    },
+    "error": {
+      "code_unknown": {
+        "text": "Code inconnu. Vérifiez le code affiché sur la TV, ou relancez le player pour en obtenir un nouveau.",
+        "action": "Modifier le code"
+      },
+      "code_expired": {
+        "text": "Code expiré. La TV en affiche un nouveau toutes les {minutes} minutes : saisissez le nouveau.",
+        "action": "Saisir le nouveau code"
+      },
+      "already_paired": {
+        "text": "Ce code a déjà été utilisé pour un autre écran. Pour changer l'appareil d'un écran existant, ouvrez sa fiche.",
+        "action": "Voir les écrans"
+      },
+      "too_many_attempts": {
+        "text": "Trop d'essais. Patientez environ {seconds} secondes avant de réessayer.",
+        "action": "Modifier le code"
+      }
+    },
+    "verify": {
+      "title": "Vérification de {name}",
+      "phase": {
+        "waiting": {
+          "label": "En attente de la TV",
+          "text": "La TV démarre et se connecte. Cela prend quelques secondes."
+        },
+        "stale": {
+          "label": "Connexion instable",
+          "text": "La TV est connectée mais ses derniers signaux sont anciens. Nouvelle vérification en cours."
+        },
+        "assets": {
+          "label": "Téléchargement en cours",
+          "text": "{count, plural, one {# média reste à télécharger sur la TV.} other {# médias restent à télécharger sur la TV.}}"
+        },
+        "ready": {
+          "label": "L'écran fonctionne",
+          "text": "La TV est en ligne, à jour et prête à diffuser. Programmez maintenant ce qu'elle doit afficher."
+        }
+      },
+      "stalled": "Toujours aucun signe de la TV. Vérifiez qu'elle est allumée, connectée à Internet, et que le player est lancé.",
+      "replayed": "Cet écran venait déjà d'être ajouté avec ce code.",
+      "schedule": "Programmer la diffusion",
+      "done": "Voir les écrans",
+      "another": "Ajouter un autre écran",
+      "power": {
+        "title": "Test d'allumage",
+        "help": "Interroge l'appareil via l'agent du site, sans l'allumer ni l'éteindre.",
+        "test": "Tester l'allumage",
+        "running": "Test en cours",
+        "ok": "L'appareil répond",
+        "failed": "L'appareil ne répond pas. Vérifiez son adresse dans les réglages d'allumage.",
+        "settings": "Réglages d'allumage"
+      }
+    }
+  },
   "pairing": {
     "auto": {
-      "action": "Installer sur Android TV (automatique)",
       "unavailable": "Disponible quand un agent de site 1.3 ou plus gère l'installation Android sur un site."
     },
-    "title": "Ajouter un écran",
-    "intro": "Saisissez le code affiché sur l'écran, puis choisissez l'écran qui lui correspond.",
     "code": {
-      "label": "Code affiché sur l'écran",
-      "help": "6 caractères. Majuscules et minuscules sont acceptées. Le code expire au bout de 15 minutes."
+      "label": "Code affiché sur l'écran"
     },
-    "screen": {
-      "label": "Écran à associer"
-    },
-    "submit": "Ajouter",
-    "done": "Écran {name} ajouté. L'appareil démarre dans quelques secondes.",
     "back": "Retour aux écrans"
   },
   "media": {
