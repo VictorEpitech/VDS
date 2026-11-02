@@ -6,12 +6,15 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+from vds_sdk import ScopeRef
 
+from vds_server.config.reader import ModuleConfigReader
+from vds_server.config.schemas import CORE_NAMESPACE
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
 from vds_server.core.runtime import Runtime
 from vds_server.db.models import Site
-from vds_server.fleet import service
+from vds_server.fleet import playback, service
 from vds_server.fleet.schemas import FleetSummaryOut
 from vds_server.supervision.status import Thresholds
 
@@ -31,5 +34,22 @@ def build_router(rt: Runtime) -> APIRouter:
                 raise ApiError("site.not_found", 404)
         th = Thresholds.from_config(await rt.core_config())
         return await service.summary(session, site_id, datetime.now(UTC), th)
+
+    @router.get("/playback", response_model=list[playback.ScreenPlaybackOut])
+    async def fleet_playback(
+        session: Session, _: Reader, site_id: UUID | None = None
+    ) -> list[playback.ScreenPlaybackOut]:
+        if site_id is not None:
+            site = await session.get(Site, site_id)
+            if site is None or site.archived_at is not None:
+                raise ApiError("site.not_found", 404)
+
+        async def timezone_of(screen_id: UUID) -> object:
+            cfg = await ModuleConfigReader(rt.maker, rt.schemas, CORE_NAMESPACE).resolve(
+                ScopeRef(level="screen", id=str(screen_id))
+            )
+            return cfg.get("timezone")
+
+        return await playback.fleet_playback(session, site_id, datetime.now(UTC), timezone_of)
 
     return router

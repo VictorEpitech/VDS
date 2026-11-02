@@ -110,6 +110,9 @@ API admin additive du noyau, aucun nouveau module · `GET /api/v1/onboarding` : 
 ### 2 novembre 2026 — Refonte lot D : assistant « Ajouter un écran » (architecte, sans bump vds-core)
 2026-11-02 — Lot D : POST /screens/pair atomique (création écran + claim, une transaction), idempotence par code, nouveau 409 errors.pairing_code_claimed, vérification finale sur l'existant (heartbeat + power.probe), Android et découverte côté front seulement, sans bump vds-core. Voir docs/architecture-ajout-ecran.md.
 
+- 2026-11-02 — Lot E (actions rapides) : sélection multiple par appels unitaires depuis l'admin sur les API existantes (pas de POST /screens/actions), annulation = envoi différé de 8 s côté client, seul ajout serveur GET /api/v1/fleet/playback (lecture, additif), pas de bump vds-core ; forçage et appliquer un planning → lot H, redémarrer et captures → lot I. Voir docs/architecture-actions-rapides.md.
+- 2026-11-02 — Mineur de revue navigation (à traiter) : le périmètre par groupe de l'éditeur n'est pas appliqué sur `/fleet/summary` ni sur `screens?issues` (compteurs et liste « à traiter » portent sur tout le site).
+
 ## Risques
 
 | Risque | Parade |

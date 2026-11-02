@@ -144,6 +144,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/fleet/playback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fleet Playback */
+        get: operations["fleet_playback_api_v1_fleet_playback_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/fleet/summary": {
         parameters: {
             query?: never;
@@ -3082,6 +3099,31 @@ export interface components {
             /** Orientation */
             orientation?: ("landscape" | "portrait") | null;
         };
+        /** ScreenPlaybackOut */
+        ScreenPlaybackOut: {
+            /** Next Change At */
+            next_change_at?: string | null;
+            /** Playlist Id */
+            playlist_id?: string | null;
+            /** Playlist Name */
+            playlist_name?: string | null;
+            /** Schedule Id */
+            schedule_id?: string | null;
+            /** Schedule Name */
+            schedule_name?: string | null;
+            /**
+             * Screen Id
+             * Format: uuid
+             */
+            screen_id: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "schedule" | "none";
+            /** Until */
+            until?: string | null;
+        };
         /** ScreenPowerOut */
         ScreenPowerOut: {
             /** Calendars */
@@ -3538,6 +3580,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    fleet_playback_api_v1_fleet_playback_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenPlaybackOut"][];
+                };
             };
             /** @description Validation Error */
             422: {
