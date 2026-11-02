@@ -103,7 +103,7 @@ class StepReport(BaseModel):
 class ProvisionOutcome(BaseModel):
     ok: bool
     kiosk: Literal["device_owner", "soft", "none"]
-    installed_version_code: int | None = None
+    installed_version_code: int | None = Field(default=None, ge=1, le=2_100_000_000)
     code: str | None = Field(default=None, pattern=r"^[a-z0-9_.]{1,96}$")
 
 
@@ -125,6 +125,38 @@ class ScreenProvisioner(Protocol):
     ) -> ProvisionOutcome: ...
 
 
+class ApkUpdateRequest(BaseModel):
+    """Mise à jour de l'APK player (vds-core 1.6.0). Ni URL, ni adresse : le module résout
+    `host`/`port` de l'écran dans sa propre configuration."""
+
+    request_id: UUID
+    screen_id: UUID
+    platform: str = Field(pattern=r"^[a-z][a-z0-9_-]*$")
+    apk: ApkRef
+
+
+class ApkUpdateOutcome(BaseModel):
+    ok: bool
+    previous_version_code: int | None = Field(default=None, ge=1, le=2_100_000_000)
+    installed_version_code: int | None = Field(default=None, ge=1, le=2_100_000_000)
+    code: str | None = Field(default=None, pattern=r"^[a-z0-9_.]{1,96}$")
+    # update.<platform>.{already_up_to_date (ok=True), downgrade_refused, adb_unreachable,
+    #   adb_unauthorized, apk_unavailable, verify_failed, install_incompatible,
+    #   install_failed, launch_failed, busy}
+
+
+@runtime_checkable
+class ScreenUpdater(Protocol):
+    platforms: ClassVar[frozenset[str]]  # capacité manifeste `update.<platform>`
+
+    async def update(
+        self,
+        req: ApkUpdateRequest,
+        apk: ApkSource,
+        report: Callable[[StepReport], Awaitable[None]],
+    ) -> ApkUpdateOutcome: ...
+
+
 def provision_platforms(capabilities: list[str]) -> frozenset[str]:
     return frozenset(
         c.removeprefix("provision.") for c in capabilities if c.startswith("provision.")
@@ -143,7 +175,28 @@ def check_provisioner(instance: object, capabilities: list[str]) -> None:
         raise ContractError("module.provisioner_platform_mismatch")
 
 
+def update_platforms(capabilities: list[str]) -> frozenset[str]:
+    return frozenset(c.removeprefix("update.") for c in capabilities if c.startswith("update."))
+
+
+def check_updater(instance: object, capabilities: list[str]) -> None:
+    """Au chargement : `update.<p>` déclaré => `ScreenUpdater` couvrant <p>."""
+    declared = update_platforms(capabilities)
+    if not declared:
+        return
+    if not isinstance(instance, ScreenUpdater):
+        raise ContractError("module.updater_missing")
+    platforms = getattr(instance, "platforms", None)
+    if not isinstance(platforms, frozenset) or not declared <= platforms:
+        raise ContractError("module.updater_platform_mismatch")
+
+
 __all__ = [
+    "ApkUpdateOutcome",
+    "ApkUpdateRequest",
+    "ScreenUpdater",
+    "check_updater",
+    "update_platforms",
     "ApkRef",
     "ApkSource",
     "ProvisionOutcome",

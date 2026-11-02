@@ -23,6 +23,7 @@ from vds_sdk.agent import (
     PowerState,
     PowerTarget,
     ScreenProvisioner,
+    ScreenUpdater,
 )
 from vds_sdk.wire import (
     AgentHello,
@@ -34,6 +35,7 @@ from vds_sdk.wire import (
     ModuleRef,
 )
 
+from .apk_update import ApkUpdateRunner
 from .bridge import AgentBus
 from .cache import MediaCache, SyncResult, fetch_manifest
 from .cascade import Cascade, ScreenDrivers, event_for
@@ -132,6 +134,16 @@ class Agent:
             providers=self._provider_for,
             emit=self.link.emit,
             local_addresses=lan_ipv4,
+        )
+        self.apk_updater = ApkUpdateRunner(
+            http=self._http,
+            http_base=settings.http_base,
+            token=settings.token,
+            data_dir=settings.data_dir,
+            updaters=self._updater_for,
+            screen_lock=lambda sid: self._locks.setdefault(sid, asyncio.Lock()),
+            host_lock=self._host_lock,
+            prepare=self._prepare_update,
         )
         self.discovery = DiscoveryRunner(
             provider=self._discoverer,
@@ -500,6 +512,10 @@ class Agent:
             if sid is None:
                 return "rejected", "invalid_args", {}
             return await self.provisioner.run(sid, args)
+        if cmd.name == "apk.update":
+            if sid is None:
+                return "rejected", "invalid_args", {}
+            return await self.apk_updater.run(sid, args)
         if cmd.name == "discovery.scan":
             return await self.discovery.run(args)
         return "failed", "agent.unknown_command", {}
@@ -519,6 +535,32 @@ class Agent:
             ):
                 return ld.driver
         return None
+
+    def _updater_for(self, platform: str) -> ScreenUpdater | None:
+        """Module actif déclarant `update.<platform>` et implémentant `ScreenUpdater`."""
+        for ld in self.drivers.values():
+            if f"update.{platform}" in ld.manifest.capabilities and isinstance(
+                ld.driver, ScreenUpdater
+            ):
+                return ld.driver
+        return None
+
+    def _host_lock(self, screen_id: str) -> asyncio.Lock:
+        """Verrou d'installation par `host:port` ADB (deux écrans sur un même hôte : en série)."""
+        key = f"screen:{screen_id}"
+        for cfg in (self.screen_entry(screen_id) or {}).get("drivers", {}).values():
+            if cfg.get("host"):
+                key = f"adb:{str(cfg['host']).lower()}:{int(cfg.get('port', 5555))}"
+                break
+        return self._locks.setdefault(key, asyncio.Lock())
+
+    def _prepare_update(self, screen_id: str) -> bool:
+        """Écran enregistré dans le plan : rafraîchit sa config pilote (`power.adb.host`)."""
+        entry = self.screen_entry(screen_id)
+        if entry is None:
+            return False
+        self.build_screen(entry)
+        return True
 
     # --- cache média ------------------------------------------------------------------
     async def _load_cache_key(self) -> None:

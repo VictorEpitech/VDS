@@ -40,6 +40,18 @@ export function insecureUpstream(): boolean {
   }
 }
 
+/** Code de version de l'APK (pont Android) ; absent sur une APK ancienne ou hors Android. Entier borné, sinon omis. */
+export function appVersionCode(): number | undefined {
+  try {
+    const raw: unknown = getPlatformBridge().info();
+    const info = (typeof raw === "string" ? JSON.parse(raw) : raw) as { app_version_code?: unknown } | null;
+    const v = info?.app_version_code;
+    return typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= 2_100_000_000 ? v : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function insecureContext(): boolean {
   return typeof window !== "undefined" && window.isSecureContext === false;
 }
@@ -64,6 +76,7 @@ export async function beat(deps: HeartbeatDeps): Promise<number> {
     playing: deps.engine.playing(),
     cache: { bytes: est?.bytes ?? 0, quota: est?.quota ?? 0, missing: missing.slice(0, 500) },
     app_version: __PLAYER_VERSION__,
+    ...(appVersionCode() !== undefined ? { app_version_code: appVersionCode() } : {}),
     uptime_s: Math.floor(performance.now() / 1000),
     stale: deps.engine.stale,
     errors: sentErrors,

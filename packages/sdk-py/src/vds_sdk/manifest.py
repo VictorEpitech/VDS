@@ -1,4 +1,4 @@
-"""Modèles Pydantic du manifeste `module.json` (contrat vds-core 1.5.0)."""
+"""Modèles Pydantic du manifeste `module.json` (contrat vds-core 1.6.0)."""
 
 import json
 import re
@@ -26,6 +26,7 @@ Kind = Literal[
 ]
 Target = Literal["server", "site-agent", "admin", "player"]
 PROVISION_CAPABILITY_RE = re.compile(r"^provision\.[a-z][a-z0-9_-]*$")
+UPDATE_CAPABILITY_RE = re.compile(r"^update\.[a-z][a-z0-9_-]*$")
 DISCOVERY_CAPABILITIES = frozenset({"discovery.lan"})  # 1.5
 POWER_CAPABILITIES = frozenset({"power.on", "power.off", "power.state", "power.input"})
 PYTHON_TARGETS = frozenset({"server", "site-agent"})
@@ -215,22 +216,32 @@ class ModuleManifest(_Strict):
                 if t in PYTHON_TARGETS and t not in self.entrypoints:
                     raise ValueError("module.entrypoint_missing")
         if self.kind in ("power-driver", "notifier"):
-            if not any(satisfies(v, self.core) for v in ("1.2.0", "1.3.0", "1.4.0", "1.5.0")) or (
-                satisfies("1.1.0", self.core)
-            ):
+            if not any(
+                satisfies(v, self.core) for v in ("1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0")
+            ) or (satisfies("1.1.0", self.core)):
                 raise ValueError("contract.kind_requires_1_2")
         if self.kind == "power-driver":
             if not set(self.targets) <= {"site-agent", "player"}:
                 raise ValueError("module.power_driver_target_invalid")
             provision = [c for c in self.capabilities if c.startswith("provision.")]
-            if not set(self.capabilities) - set(provision) <= POWER_CAPABILITIES:
+            update = [c for c in self.capabilities if c.startswith("update.")]
+            if not set(self.capabilities) - set(provision) - set(update) <= POWER_CAPABILITIES:
                 raise ValueError("module.power_driver_capability_invalid")
+            if update:
+                if not all(UPDATE_CAPABILITY_RE.match(c) for c in update):
+                    raise ValueError("module.update_capability_invalid")
+                if not satisfies("1.6.0", self.core) or satisfies("1.5.0", self.core):
+                    raise ValueError("contract.update_requires_1_6")
+                if "screens.provision" not in self.permissions:
+                    raise ValueError("module.provision_permission_missing")
+                if "site-agent" not in self.targets:
+                    raise ValueError("module.provision_target_invalid")
             if provision:
                 if not all(PROVISION_CAPABILITY_RE.match(c) for c in provision):
                     raise ValueError("module.provision_capability_invalid")
-                if not any(satisfies(v, self.core) for v in ("1.3.0", "1.4.0", "1.5.0")) or (
-                    satisfies("1.2.0", self.core)
-                ):
+                if not any(
+                    satisfies(v, self.core) for v in ("1.3.0", "1.4.0", "1.5.0", "1.6.0")
+                ) or (satisfies("1.2.0", self.core)):
                     raise ValueError("contract.provision_requires_1_3")
                 if "screens.provision" not in self.permissions:
                     raise ValueError("module.provision_permission_missing")

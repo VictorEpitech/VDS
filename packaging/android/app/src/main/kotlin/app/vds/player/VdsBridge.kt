@@ -67,6 +67,7 @@ class VdsBridge(
             .put("platform", "android")
             .put("model", Build.MODEL ?: "")
             .put("app_version", BuildConfig.VERSION_NAME)
+            .put("app_version_code", BuildConfig.VERSION_CODE)
             .put("os_version", Build.VERSION.RELEASE ?: "")
             .put("insecure_upstream", insecureUpstream)
             .toString()

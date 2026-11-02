@@ -2,6 +2,7 @@ import { getPlatformBridge } from "@vds/sdk-ts";
 import { NetworkError, request } from "./api";
 import { mark } from "./alive";
 import { driftFrom, setDrift } from "./clock";
+import { appVersionCode } from "./heartbeat";
 import { kvDel, kvGet, kvSet } from "./db";
 import { KV } from "./shared";
 import type { Screens } from "./screens";
@@ -37,6 +38,7 @@ function deviceInfo(): Record<string, unknown> {
     platform: info.platform || "web",
     model: info.model || undefined,
     app_version: info.app_version || __PLAYER_VERSION__,
+    app_version_code: appVersionCode(),
     user_agent: navigator.userAgent.slice(0, 400),
     screen_w: window.screen?.width || undefined,
     screen_h: window.screen?.height || undefined,

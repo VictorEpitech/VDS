@@ -28,6 +28,23 @@
       "accept_on_tv": "Accept the debugging key on the TV (tick \"Always allow\")."
     }
   },
+  "update": {
+    "android": {
+      "already_up_to_date": "Player already up to date.",
+      "downgrade_refused": "Installed version is newer: downgrade refused.",
+      "adb_unreachable": "TV unreachable over network ADB.",
+      "adb_unauthorized": "ADB not authorized: run the screen setup wizard again.",
+      "apk_unavailable": "Application unavailable on the server.",
+      "verify_failed": "Application file is corrupted.",
+      "install_incompatible": "Signature differs from the installed version: update refused (no automatic uninstall).",
+      "install_failed": "Installation refused by the TV.",
+      "launch_failed": "Could not restart the application.",
+      "busy": "Another operation is already running on this screen.",
+      "no_adb_host": "No ADB address configured for this screen.",
+      "not_installed": "The player is not installed: use the setup wizard.",
+      "address_not_lan": "ADB address is outside the local network."
+    }
+  },
   "provision": {
     "android": {
       "unreachable": "TV unreachable: enable network debugging and check the IP address.",

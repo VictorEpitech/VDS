@@ -48,7 +48,13 @@ class ApkDownloader:
     """`ApkSource` du runtime : téléchargement authentifié, sha256 et taille vérifiés."""
 
     def __init__(
-        self, http: httpx.AsyncClient, http_base: str, token: str, cache_dir: Path, platform: str
+        self,
+        http: httpx.AsyncClient,
+        http_base: str,
+        token: str,
+        cache_dir: Path,
+        platform: str,
+        code_prefix: str = "provision",
     ) -> None:
         if not _PLATFORM_RE.match(platform):
             raise ValueError("provision.platform_invalid")
@@ -57,9 +63,10 @@ class ApkDownloader:
         self._token = token
         self._dir = cache_dir
         self._platform = platform
+        self._prefix = code_prefix  # `provision` ou `update`
 
     def _err(self, reason: str) -> ApkError:
-        return ApkError(f"provision.{self._platform}.{reason}")
+        return ApkError(f"{self._prefix}.{self._platform}.{reason}")
 
     async def fetch(self, apk: ApkRef) -> Path:
         self._dir.mkdir(parents=True, exist_ok=True)

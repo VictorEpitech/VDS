@@ -7,6 +7,8 @@ from typing import Any, ClassVar, Literal
 from vds_sdk import Health, ModuleContext
 from vds_sdk.agent import (
     ApkSource,
+    ApkUpdateOutcome,
+    ApkUpdateRequest,
     Capability,
     DetectHint,
     DetectResult,
@@ -17,11 +19,13 @@ from vds_sdk.agent import (
     ProvisionOutcome,
     ProvisionRequest,
     ScreenProvisioner,
+    ScreenUpdater,
     StepReport,
 )
 
 from .adb import AdbError, AdbProvisionTransport, AdbTransport, TcpAdbTransport, generate_key_pem
 from .provision_android import AndroidProvisioner
+from .update_android import AndroidUpdater
 
 KEY_STATE = "adb_private_key"
 _WAKE_RE = re.compile(r"mWakefulness=(\w+)")
@@ -39,7 +43,7 @@ def parse_state(dumpsys: str) -> PowerState:
     return "unknown"
 
 
-class AdbDriver(PowerDriver, ScreenProvisioner):
+class AdbDriver(PowerDriver, ScreenProvisioner, ScreenUpdater):
     capabilities: ClassVar[frozenset[Capability]] = frozenset(
         {"power.on", "power.off", "power.state"}
     )
@@ -141,3 +145,21 @@ class AdbDriver(PowerDriver, ScreenProvisioner):
             return ProvisionOutcome(ok=False, kiosk="none", code="provision.no_provider")
         transport: AdbProvisionTransport = self._transport  # type: ignore[assignment]
         return await AndroidProvisioner(transport).provision(req, apk, report)
+
+    async def update(
+        self,
+        req: ApkUpdateRequest,
+        apk: ApkSource,
+        report: Callable[[StepReport], Awaitable[None]],
+    ) -> ApkUpdateOutcome:
+        """`update.android` : adresse uniquement depuis `power.adb.host` de l'écran enregistré."""
+        if req.platform != "android" or self._transport is None or self._ctx is None:
+            return ApkUpdateOutcome(ok=False, code="update.no_provider")
+        cfg: dict[str, Any] = getattr(self._ctx, "screen_configs", {}).get(str(req.screen_id), {})
+        host = str(cfg.get("host") or "")
+        if not host:
+            return ApkUpdateOutcome(ok=False, code="update.android.no_adb_host")
+        transport: AdbProvisionTransport = self._transport  # type: ignore[assignment]
+        return await AndroidUpdater(transport).update(
+            req, host, int(cfg.get("port", 5555)), apk, report
+        )

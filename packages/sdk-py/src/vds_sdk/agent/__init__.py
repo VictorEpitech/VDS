@@ -38,11 +38,15 @@ from .power import (
 from .provision import (
     ApkRef,
     ApkSource,
+    ApkUpdateOutcome,
+    ApkUpdateRequest,
     ProvisionOutcome,
     ProvisionRequest,
     ScreenProvisioner,
+    ScreenUpdater,
     StepReport,
     check_provisioner,
+    check_updater,
 )
 from .state import StateStore
 
@@ -76,6 +80,10 @@ __all__ = [
     "AgentModuleContext",
     "ApkRef",
     "ApkSource",
+    "ApkUpdateOutcome",
+    "ApkUpdateRequest",
+    "ScreenUpdater",
+    "check_updater",
     "Capability",
     "DetectHint",
     "DetectResult",

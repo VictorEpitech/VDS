@@ -28,6 +28,23 @@
       "accept_on_tv": "Acceptez la clé de débogage sur la TV (cochez « Toujours autoriser »)."
     }
   },
+  "update": {
+    "android": {
+      "already_up_to_date": "Player déjà à jour.",
+      "downgrade_refused": "Version installée plus récente : retour en arrière refusé.",
+      "adb_unreachable": "TV injoignable en ADB réseau.",
+      "adb_unauthorized": "ADB non autorisé : relancez l'assistant d'ajout de l'écran.",
+      "apk_unavailable": "Application indisponible sur le serveur.",
+      "verify_failed": "Fichier d'application corrompu.",
+      "install_incompatible": "Signature différente de la version installée : mise à jour refusée (aucune désinstallation automatique).",
+      "install_failed": "Installation refusée par la TV.",
+      "launch_failed": "Impossible de relancer l'application.",
+      "busy": "Une opération est déjà en cours sur cet écran.",
+      "no_adb_host": "Aucune adresse ADB configurée pour cet écran.",
+      "not_installed": "Le player n'est pas installé : utilisez l'assistant d'ajout.",
+      "address_not_lan": "Adresse ADB hors réseau local."
+    }
+  },
   "provision": {
     "android": {
       "unreachable": "TV injoignable : activez le débogage réseau et vérifiez l'adresse IP.",

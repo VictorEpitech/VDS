@@ -137,3 +137,17 @@ CORE_EVENTS_1_5: frozenset[str] = CORE_EVENTS_1_4 | frozenset(
 )
 
 CRITICAL_EVENTS_1_5: frozenset[str] = CRITICAL_EVENTS_1_4
+
+# --- vds-core 1.6.0 (additif) : mise à jour de l'APK player ------------------------
+# Émis par le noyau ; aucun abonné en V1 (point d'accroche notifier). Aucun événement critique.
+CORE_EVENT_PAYLOAD_1_6: dict[str, tuple[str, ...]] = {
+    **CORE_EVENT_PAYLOAD_1_5,
+    "screen.apk_updated": ("request_id", "screen_id", "previous_version_code", "version_code"),
+    "screen.apk_update_failed": ("request_id", "screen_id", "version_code", "code"),
+}
+
+CORE_EVENTS_1_6: frozenset[str] = CORE_EVENTS_1_5 | frozenset(
+    set(CORE_EVENT_PAYLOAD_1_6) - set(CORE_EVENT_PAYLOAD_1_5)
+)
+
+CRITICAL_EVENTS_1_6: frozenset[str] = CRITICAL_EVENTS_1_5

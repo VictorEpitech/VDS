@@ -1,4 +1,5 @@
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -347,3 +348,148 @@ async def test_shell_output_is_bounded() -> None:
         with pytest.raises(Exception) as exc:  # noqa: PT011 - AdbError chargé dynamiquement
             await d._transport.shell("127.0.0.1", tv.port, "flood", 5.0)  # M3
         assert getattr(exc.value, "code", "") == "power.adb.protocol"
+
+
+# --- mise à jour Android (capacité update.android) ---
+
+from vds_sdk.agent import ApkUpdateRequest  # noqa: E402
+
+
+def upd_req(**over: object) -> ApkUpdateRequest:
+    raw: dict[str, object] = {
+        "request_id": str(uuid4()),
+        "screen_id": SID,
+        "platform": "android",
+        "apk": {
+            "package": "app.vds.player",
+            "version_code": 7,
+            "version_name": "1.0.7",
+            "sha256": hashlib.sha256(APK).hexdigest(),
+            "size": len(APK),
+        },
+    }
+    raw.update(over)
+    return ApkUpdateRequest.model_validate(raw)
+
+
+async def run_upd(
+    tv, tmp_path: Path, monkeypatch, host: str | None = "127.0.0.1", prime: bool = True, **over
+):  # type: ignore[no-untyped-def]
+    mod = next(m for n, m in sys.modules.items() if n.endswith("update_android"))
+    monkeypatch.setattr(mod, "ensure_lan_address", lambda ip: ip)  # le fake écoute en boucle locale
+    d = await make_driver()
+    if prime:  # clé déjà autorisée sur la TV (cas normal d'un écran provisionné)
+        await d.get_state(target(tv.port))
+        tv.commands.clear()
+    cfg: dict[str, object] = {"port": tv.port}
+    if host:
+        cfg["host"] = host
+    d._ctx.screen_configs[SID] = cfg
+    reports: list[StepReport] = []
+
+    async def report(r: StepReport) -> None:
+        reports.append(r)
+
+    src = FakeApkSource(apk_file(tmp_path))
+    out = await d.update(upd_req(**over), src, report)
+    return out, reports, src
+
+
+async def test_manifest_declares_update() -> None:
+    m = load_manifest(Path(__file__).parents[1] / "module.json")
+    assert "update.android" in m.capabilities and m.version == "0.3.0"
+
+
+async def test_update_happy_path(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    async with fakes.FakeAdbTv("auth") as tv:
+        tv.version_code = 5
+        out, reports, src = await run_upd(tv, tmp_path, monkeypatch)
+    assert out.ok and out.previous_version_code == 5 and out.installed_version_code == 7
+    assert src.calls == 1 and bytes(tv.received_apk) == APK
+    assert any("install -r" in c for c in tv.commands) and any(
+        c.startswith("shell:am start") for c in tv.commands
+    )
+    assert not any("uninstall" in c or "set-device-owner" in c for c in tv.commands)
+    assert status(reports, "launch").status == "ok"
+
+
+async def test_update_already_up_to_date_skips_install(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    async with fakes.FakeAdbTv("auth") as tv:
+        tv.version_code = 7
+        out, _, src = await run_upd(tv, tmp_path, monkeypatch)
+    assert out.ok and out.code == "update.android.already_up_to_date"
+    assert src.calls == 0 and not tv.received_apk
+
+
+async def test_update_downgrade_refused(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    async with fakes.FakeAdbTv("auth") as tv:
+        tv.version_code = 9
+        out, _, src = await run_upd(tv, tmp_path, monkeypatch)
+    assert not out.ok and out.code == "update.android.downgrade_refused"
+    assert src.calls == 0 and not tv.received_apk
+
+
+async def test_update_incompatible_signature_no_uninstall(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    async with fakes.FakeAdbTv("auth") as tv:
+        tv.version_code = 5
+        tv.install_output = "Failure [INSTALL_FAILED_UPDATE_INCOMPATIBLE: x]\n"
+        out, _, _ = await run_upd(tv, tmp_path, monkeypatch)
+    assert out.code == "update.android.install_incompatible" and not out.ok
+    assert not any("uninstall" in c for c in tv.commands)
+
+
+async def test_update_install_failed_and_version_unchanged(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    async with fakes.FakeAdbTv("auth") as tv:
+        tv.version_code = 5
+        tv.install_output = "Failure [INSTALL_FAILED_INSUFFICIENT_STORAGE]\n"
+        out, _, _ = await run_upd(tv, tmp_path, monkeypatch)
+    assert out.code == "update.android.install_failed"
+
+
+async def test_update_unauthorized_fails_fast(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    async with fakes.FakeAdbTv("prompt") as tv:
+        loop = asyncio.get_running_loop()
+        t0 = loop.time()
+        out, reports, src = await run_upd(tv, tmp_path, monkeypatch, prime=False)
+        tv.accept_event.set()  # libère le fake (sinon sa fermeture attend l'utilisateur)
+    assert out.code == "update.android.adb_unauthorized" and loop.time() - t0 < 3
+    assert src.calls == 0 and status(reports, "connect").status == "failed"
+
+
+async def test_update_unreachable(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    async with fakes.FakeAdbTv("auth") as tv:
+        port = tv.port
+    tv.port = port
+    out, _, _ = await run_upd(tv, tmp_path, monkeypatch)
+    assert out.code == "update.android.adb_unreachable"
+
+
+async def test_update_apk_unavailable_and_mismatch(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    async with fakes.FakeAdbTv("auth") as tv:
+        tv.version_code = 5
+        d_out, _, _ = await run_upd(
+            tv,
+            tmp_path,
+            monkeypatch,
+            apk={
+                "package": "app.vds.player",
+                "version_code": 7,
+                "version_name": "x",
+                "sha256": "0" * 64,
+                "size": len(APK),
+            },
+        )  # fichier local != sha annoncé
+    assert d_out.code == "update.android.verify_failed"
+
+
+async def test_update_no_host_never_connects(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    async with fakes.FakeAdbTv("auth") as tv:
+        out, _, _ = await run_upd(tv, tmp_path, monkeypatch, host=None)
+        assert out.code == "update.android.no_adb_host" and tv.commands == []
+
+
+async def test_update_refuses_public_address(tmp_path: Path) -> None:
+    d = await make_driver()
+    d._ctx.screen_configs[SID] = {"host": "8.8.8.8"}
+    out = await d.update(upd_req(), FakeApkSource(apk_file(tmp_path)), lambda r: asyncio.sleep(0))
+    assert out.code == "update.android.address_not_lan"

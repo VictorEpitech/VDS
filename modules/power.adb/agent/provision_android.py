@@ -11,6 +11,7 @@ import re
 import shlex
 from collections.abc import Awaitable, Callable
 from pathlib import Path
+from typing import Literal
 
 from vds_sdk.agent import (
     ApkSource,
@@ -79,6 +80,24 @@ def _check_file(path: Path, sha256: str, size: int) -> bool:
         return True
     path.unlink(missing_ok=True)  # fichier suspect retiré du cache
     return False
+
+
+async def install_package(
+    transport: AdbProvisionTransport,
+    host: str,
+    port: int,
+    path: Path,
+    size: int,
+    timeout: float,
+) -> Literal["ok", "incompatible", "failed"]:
+    """`cmd package install -r` en flux (partagé provisioning / mise à jour). Jamais de
+    désinstallation : une signature incompatible est refusée telle quelle."""
+    cmd = f"cmd package install -r -S {int(size)}"
+    out = await transport.exec_stream(host, port, cmd, path, timeout)
+    if "Success" in out:
+        return "ok"
+    m = _FAILURE_RE.search(out)
+    return "incompatible" if m and m.group(1) in _INCOMPATIBLE else "failed"
 
 
 class _Stop(Exception):  # noqa: N818 - fin anticipée d'une étape bloquante
@@ -241,12 +260,12 @@ class AndroidProvisioner:
             await rep("install", "skipped", P + "already_installed")
             return req.apk.version_code
         await rep("install", "running")
-        cmd = f"cmd package install -r -S {int(req.apk.size)}"
-        out = await self._t.exec_stream(str(req.address), req.port, cmd, path, INSTALL_TIMEOUT)
-        if "Success" not in out:
-            m = _FAILURE_RE.search(out)
-            if m and m.group(1) in _INCOMPATIBLE:
-                raise _Stop("install", P + "install_incompatible")
+        result = await install_package(
+            self._t, str(req.address), req.port, path, req.apk.size, INSTALL_TIMEOUT
+        )
+        if result == "incompatible":
+            raise _Stop("install", P + "install_incompatible")
+        if result == "failed":
             raise _Stop("install", P + "install_failed")
         await rep("install", "ok", None, version_code=req.apk.version_code)
         return req.apk.version_code

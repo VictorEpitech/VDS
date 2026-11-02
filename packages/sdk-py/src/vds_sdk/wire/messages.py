@@ -27,6 +27,7 @@ AGENT_COMMANDS = (
     *AGENT_COMMANDS_1_2,
     "screen.provision",  # 1.3 : un agent 1.2 répond unknown_command
     "discovery.scan",  # 1.5 : un agent 1.4 répond unknown_command
+    "apk.update",  # 1.6 : un agent 1.5 répond unknown_command
 )
 PLAYER_COMMANDS = ("reload", "identify", "screenshot", "power.set", "power.probe")
 CMD_STATUSES = ("ok", "failed", "expired", "rejected")
@@ -181,6 +182,15 @@ class ScreenProvisionArgs(_M):
         return value
 
 
+class ApkUpdateArgs(_M):
+    """Commande fermée `apk.update` (1.6) : `screen_id` vient de la trame, jamais d'adresse."""
+
+    request_id: UUID
+    platform: str = Field(pattern=r"^[a-z][a-z0-9_-]*$")
+    apk: ApkRef
+    screen_id: UUID | None = None
+
+
 class DiscoveryScanArgs(_M):
     """Commande fermée `discovery.scan` (1.5). Aucune cible réseau (périmètre calculé agent)."""
 
@@ -235,6 +245,7 @@ AGENT_COMMAND_ARGS: dict[str, type[_M]] = {
     "cache.sync": RevisionArgs,
     "screen.provision": ScreenProvisionArgs,
     "discovery.scan": DiscoveryScanArgs,
+    "apk.update": ApkUpdateArgs,
 }
 PLAYER_COMMAND_ARGS: dict[str, type[_M]] = {
     "reload": EmptyArgs,

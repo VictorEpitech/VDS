@@ -708,7 +708,8 @@
     "config.updated",
     "cache.sync",
     "screen.provision",
-    "discovery.scan"
+    "discovery.scan",
+    "apk.update"
   ],
   "x-player-commands": [
     "reload",
