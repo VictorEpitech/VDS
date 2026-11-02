@@ -363,6 +363,8 @@ Résolution par écran : override actif > alternance des schedules actifs > hors
 
 ## Diffusion et player (décision lot 2, vds-core 1.1.0)
 
+> Forçage (override) avec fin automatique : décision du 2026-11-02, vds-core 1.7.0 additif, voir `docs/architecture-forcage.md`. Entité `PlaybackOverride` (ne pas confondre avec `ConfigOverride`), insérée dans le résolveur unique `diffusion/resolver.py` ; elle gagne toujours sur la programmation, sa fin est jouée hors ligne par le player.
+
 Jalon : un écran TCL réel joue une playlist. Tout ce qui suit est identique dans les deux modes ; toutes les URL échangées avec le player sont **relatives à l'URL serveur stockée par l'appareil** (préfixe compris), jamais absolues. Tests d'API et Playwright paramétrés sur `VDS_BASE_PATH=/` et `/espace/affichage`.
 
 ### Compatibilité vds-core 1.1.0 (mineure, additive)

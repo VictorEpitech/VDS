@@ -84,6 +84,8 @@ Ce lot peut être avancé avant le lot 3 si le Studio est le premier déploiemen
 
 ## Décisions
 
+- 2026-11-02 — Refonte « écarts Xibo » arbitrée (`docs/refonte/xibo-ecarts.md` §5) : médiathèque grille + tableau sans dossiers (tags légers) ; droits par site/groupe, pas par objet ; forçage avant les mises en page ; pas de campagnes en V1 ; priorité en 3 niveaux (normal, important, forçage), numérique en Avancé ; expiration sur médias et playlists avec purge base + stockage. Lot 1 = forçage avec fin automatique, conçu dans `docs/architecture-forcage.md` (`PlaybackOverride`, gagne toujours sur la programmation, fin obligatoire jouée hors ligne, vds-core 1.7.0 additif).
+
 - 2026-11-02 — Mise à jour APK Android depuis l'admin : commande agent `apk.update` via `power.adb` (ADB `install -r`, hôte = config de l'écran, aucun scan), version remontée par le heartbeat (`app_version_code`), APK = `apk.json` (CI ou `VDS_APK_DIR`, relu à chaud), pas de téléversement UI, fan-out file lot E sans annulation, vds-core 1.6.0 additif, `power.adb` 0.3.0. Voir `architecture-apk-update.md`. (22–23 octobre 2026)
 
 Système maison (pas Xibo) · une instance Docker par client · perso, potentiellement commercial · noyau + modules, intégrés et à chaud, un format · FastAPI + React · player web unique 4 empaquetages · agent par site · alimentation en cascade · import de fichiers + grille/calques · alternance + override sur créneau · kiosque obligatoire · admin/éditeur + validation par groupe · FR/EN · notifications mail · pas de suivi conso · charte V-Tech (MD3) · nom de travail VDS.
