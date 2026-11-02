@@ -16,6 +16,7 @@ export function ActionQueueProvider({ children }: { children: ReactNode }) {
       new ActionQueue(api, () => {
         void qc.invalidateQueries({ queryKey: keys.screens });
         void qc.invalidateQueries({ queryKey: ["power", "screen"] });
+        void qc.invalidateQueries({ queryKey: ["fleet", "apk"] });
       }),
     [api, qc],
   );

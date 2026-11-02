@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Icon } from "../../components/Icon";
-import type { Agent, Group, Screen, Site } from "../../lib/queries";
+import type { Agent, FleetApk, Group, Screen, Site } from "../../lib/queries";
+import { ApkUpdateConfirm, planApkUpdate } from "./apk";
 import { useActionQueue } from "./ActionQueueProvider";
 import { MAX_SELECTION, type BatchKind, type Target } from "./queue";
 
@@ -10,17 +11,18 @@ interface Props {
   agents: readonly Agent[];
   groups: readonly Group[];
   sites: readonly Site[];
+  apk?: FleetApk;
   onClear: () => void;
 }
 
 const onlineAgent = (agents: readonly Agent[], siteId: string) => agents.find((a) => a.site_id === siteId && a.status === "online");
 
 /** Barre d'actions de la sélection : tonale, sans ombre ; feuille basse à 375 px. Admin seulement (le parent la masque sinon). */
-export function SelectionBar({ selected, agents, groups, sites, onClear }: Props) {
+export function SelectionBar({ selected, agents, groups, sites, apk, onClear }: Props) {
   const { t } = useTranslation();
   const { queue } = useActionQueue();
   const uid = useId();
-  const [mode, setMode] = useState<"group" | "delete" | null>(null);
+  const [mode, setMode] = useState<"group" | "delete" | "apk" | null>(null);
   const [groupId, setGroupId] = useState("");
   const confirmRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -30,6 +32,15 @@ export function SelectionBar({ selected, agents, groups, sites, onClear }: Props
   const target = (s: Screen): Target => ({ screenId: s.id, name: s.name, siteId: s.site_id, agentId: onlineAgent(agents, s.site_id)?.id });
   const powered = selected.filter((s) => onlineAgent(agents, s.site_id));
   const groupTargets = selected.filter((s) => !groupId || groups.find((g) => g.id === groupId)?.site_id === s.site_id);
+
+  const apkPlan = planApkUpdate(selected, apk, agents);
+  const apkVersion = apk?.available ? `${apk.available.version_name} (${apk.available.version_code})` : "";
+  const startApk = () => {
+    if (!apkPlan.eligible.length) return;
+    queue.enqueue("apk_update", apkPlan.eligible.map(target), { skipped: apkPlan.excluded.length });
+    setMode(null);
+    onClear();
+  };
 
   const submit = (kind: BatchKind, list: Screen[], extra: { groupId?: string | null } = {}) => {
     if (!list.length) return;
@@ -57,6 +68,12 @@ export function SelectionBar({ selected, agents, groups, sites, onClear }: Props
           <Icon name="site" />
           {t("actions.kind.group")}
         </button>
+        {apk ? (
+          <button type="button" className="btn btn-text" aria-expanded={mode === "apk"} onClick={() => setMode(mode === "apk" ? null : "apk")}>
+            <Icon name="upload" />
+            {t("actions.kind.apk_update")}
+          </button>
+        ) : null}
         <button type="button" className="btn btn-text btn-danger" aria-expanded={mode === "delete"} onClick={() => setMode(mode === "delete" ? null : "delete")}>
           <Icon name="delete" />
           {t("actions.kind.delete")}
@@ -97,6 +114,7 @@ export function SelectionBar({ selected, agents, groups, sites, onClear }: Props
           </div>
         </div>
       ) : null}
+      {mode === "apk" ? <ApkUpdateConfirm plan={apkPlan} version={apkVersion} onConfirm={startApk} onCancel={() => setMode(null)} /> : null}
       {mode === "delete" ? (
         <div className="selection-panel" role="alertdialog" aria-label={t("actions.delete.title", { count: selected.length })}>
           <p role="alert">

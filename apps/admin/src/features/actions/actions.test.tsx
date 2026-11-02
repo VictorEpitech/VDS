@@ -104,6 +104,42 @@ describe("file d'actions", () => {
     expect(seen[2]).not.toBe(seen[1]);
   });
 
+  it("apk_update : envoi immédiat sans délai d'annulation, commande apk.update avec request_id seul, sondage jusqu'à 300 s", async () => {
+    vi.useFakeTimers();
+    const f = fakeApi();
+    const q = new ActionQueue(f.api);
+    const id = q.enqueue("apk_update", [target(1)]);
+    expect(q.getSnapshot()[0]!.phase).toBe("running");
+    expect(q.cancel(id)).toBe(false);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(f.posts[0]!.body).toMatchObject({ name: "apk.update", screen_id: "s1", args: { request_id: expect.any(String) } });
+    expect(Object.keys(f.posts[0]!.body.args)).toEqual(["request_id"]);
+    await vi.advanceTimersByTimeAsync(200_000);
+    expect(q.getSnapshot()[0]!.phase).toBe("running");
+    for (const [cid, c] of f.statuses) f.statuses.set(cid, { ...c, status: "ok" });
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(q.getSnapshot()[0]!.phase).toBe("done");
+  });
+
+  it("apk_update : un 409 est un échec par écran et Réessayer ne renvoie que les échecs", async () => {
+    vi.useFakeTimers();
+    const f = fakeApi();
+    const first = f.api.post.getMockImplementation()!;
+    f.api.post.mockImplementation((path: string, body: { args: { request_id: string }; screen_id: string }) => (body.screen_id === "s2" ? Promise.reject(new ApiError(409, "errors.update_running")) : first(path, body)));
+    const q = new ActionQueue(f.api);
+    const id = q.enqueue("apk_update", [target(1), target(2)]);
+    await vi.advanceTimersByTimeAsync(0);
+    for (const [cid, c] of f.statuses) f.statuses.set(cid, { ...c, status: "ok" });
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(q.getSnapshot()[0]!.results.s2?.status).toBe("failed");
+    f.api.post.mockImplementation(first);
+    expect(q.retryFailed(id)).not.toBeNull();
+    expect(q.getSnapshot()[0]!.phase).toBe("running");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(f.posts).toHaveLength(2);
+    expect(f.posts[1]!.body).toMatchObject({ name: "apk.update", screen_id: "s2" });
+  });
+
   it("dispose() résout les sondages en attente en « expired »", async () => {
     vi.useFakeTimers();
     const f = fakeApi();
@@ -218,5 +254,78 @@ describe.each(["", "/espace/affichage"])("liste des écrans : actions, base « %
     expect(await screen.findByText(/1 échec/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Réessayer l'échec" })).toBeInTheDocument();
     expect(calls.filter((x) => x.method === "DELETE")).toHaveLength(2);
+  });
+});
+
+describe.each(["", "/espace/affichage"])("liste des écrans : mise à jour de l'application, base « %s »", (b) => {
+  const apkRow = (s: { id: string }, extra: Record<string, unknown>) => ({ screen_id: s.id, installed_version_code: 10, installed_version_name: "1.0.10", state: "outdated", updatable: true, reason: null, ...extra });
+  const fleet = (screens: unknown[]) => ({ available: { version_code: 12, version_name: "1.0.12", source: "image" }, screens });
+  const setup = (rows: Record<string, unknown>[], list: ReturnType<typeof mkScreen>[], extra: Record<string, unknown> = {}) =>
+    mockApi(
+      {
+        "GET /sites": [SITE],
+        "GET /screens": list,
+        "GET /incidents": [],
+        "GET /fleet/playback": [],
+        "GET /fleet/apk": fleet(rows),
+        [`GET /sites/${SITE.id}/groups`]: [],
+        [`GET /sites/${SITE.id}/agents`]: [AGENT],
+        ...Object.fromEntries(list.map((s) => [`GET /power/screens/${s.id}`, { screen_id: s.id, timezone: "Europe/Paris", plan_id: null, plan_id_origin: { level: "default", id: null, name: null }, calendars: [], calendars_origin: { level: "default", id: null, name: null }, slots: [] }])),
+        ...extra,
+      },
+      b,
+    );
+
+  it("affiche la version installée et la pastille, demande confirmation, puis envoie apk.update sans délai", async () => {
+    const [a, c] = [mkScreen(1), mkScreen(2)];
+    const calls = setup([apkRow(a, {}), apkRow(c, { state: "up_to_date", installed_version_code: 12, installed_version_name: "1.0.12", updatable: false, reason: "up_to_date" })], [a, c], {
+      [`POST /sites/${SITE.id}/agents/${AGENT.id}/commands`]: cmd("c1", "ok", { name: "apk.update" }),
+    });
+    const user = userEvent.setup();
+    await renderRoutes(routes, "/screens", b);
+    expect(await screen.findByText("1.0.10 (10)")).toBeInTheDocument();
+    expect(screen.getAllByText("Mise à jour disponible")).toHaveLength(1);
+    await user.click(await screen.findByRole("button", { name: "Mettre à jour le player de Écran 1" }));
+    expect(calls.some((x) => x.method === "POST")).toBe(false);
+    expect(screen.getByText(/30 à 90 secondes/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Mettre à jour 1 écran" }));
+    expect(await screen.findByText("Terminé : Mettre à jour le player de 1 écran.")).toBeInTheDocument();
+    const post = calls.find((x) => x.method === "POST");
+    expect(post?.body).toMatchObject({ name: "apk.update", screen_id: a.id, args: { request_id: expect.any(String) } });
+    // L'écran déjà à jour n'a pas de bouton.
+    expect(screen.queryByRole("button", { name: "Mettre à jour le player de Écran 2" })).not.toBeInTheDocument();
+  });
+
+  it("la sélection exclut les écrans non éligibles en donnant la raison, et tout un site se met à jour depuis le panneau", async () => {
+    const [a, c] = [mkScreen(1), mkScreen(2)];
+    setup([apkRow(a, {}), apkRow(c, { updatable: false, reason: "no_adb_host" })], [a, c]);
+    const user = userEvent.setup();
+    await renderRoutes(routes, "/screens", b);
+    await user.click(await screen.findByRole("checkbox", { name: /Tout sélectionner/ }));
+    const bar = await screen.findByRole("region", { name: "Actions sur la sélection" });
+    await user.click(within(bar).getByRole("button", { name: "Mettre à jour le player" }));
+    const dialog = within(bar).getByRole("alertdialog");
+    expect(within(dialog).getByText(/Écran 2 : adresse ADB de l'écran non renseignée/)).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Mettre à jour 1 écran" })).toBeInTheDocument();
+    await user.click(within(bar).getByRole("button", { name: "Annuler" }));
+    await user.click(within(bar).getByRole("button", { name: "Tout désélectionner" }));
+    await user.click(screen.getByRole("button", { name: "Mettre à jour les écrans du site Moulins" }));
+    expect(screen.getByText(/Écran 2 : adresse ADB/)).toBeInTheDocument();
+  });
+
+  it("sans application disponible : aide affichée et boutons désactivés", async () => {
+    const a = mkScreen(1);
+    mockApi(
+      {
+        "GET /sites": [SITE], "GET /screens": [a], "GET /incidents": [], "GET /fleet/playback": [],
+        "GET /fleet/apk": { available: null, screens: [apkRow(a, { updatable: false, reason: "apk_unavailable" })] },
+        [`GET /sites/${SITE.id}/groups`]: [], [`GET /sites/${SITE.id}/agents`]: [AGENT],
+        [`GET /power/screens/${a.id}`]: { screen_id: a.id, timezone: "Europe/Paris", plan_id: null, plan_id_origin: { level: "default", id: null, name: null }, calendars: [], calendars_origin: { level: "default", id: null, name: null }, slots: [] },
+      },
+      b,
+    );
+    await renderRoutes(routes, "/screens", b);
+    expect(await screen.findByText(/VDS_APK_DIR/)).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Mettre à jour le player de Écran 1" })).toBeDisabled();
   });
 });

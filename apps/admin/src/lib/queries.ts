@@ -16,6 +16,8 @@ export type Onboarding = S["OnboardingOut"];
 export type OnboardingStep = Onboarding["steps"][number];
 export type ScreenPlayback = S["ScreenPlaybackOut"];
 export type FleetSummary = S["FleetSummaryOut"];
+export type FleetApk = S["FleetApkOut"];
+export type ScreenApk = S["ScreenApkOut"];
 
 export const keys = {
   screens: ["screens"] as const,
@@ -180,4 +182,10 @@ export function useFleetSummary(opts: { refetchInterval?: number } = {}) {
 export function usePlayback() {
   const api = useApi();
   return useQuery({ queryKey: ["fleet", "playback"] as const, queryFn: () => api.get<ScreenPlayback[]>("/fleet/playback"), refetchInterval: 60_000 });
+}
+
+/** Version d'application disponible et état de chaque écran (administrateur seulement). */
+export function useFleetApk(enabled: boolean) {
+  const api = useApi();
+  return useQuery({ queryKey: ["fleet", "apk"] as const, queryFn: () => api.get<FleetApk>("/fleet/apk"), enabled, refetchInterval: 30_000, retry: false });
 }

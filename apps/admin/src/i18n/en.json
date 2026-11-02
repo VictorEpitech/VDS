@@ -288,7 +288,15 @@
       "cooldown": "A search was just run. Wait {seconds} s before running it again.",
       "quota": "Too many searches for this site this hour. Try again in {seconds} s."
     },
-    "pairing_code_claimed": "This code was already used for another screen."
+    "pairing_code_claimed": "This code was already used for another screen.",
+    "update_running": "An update is already running for this screen.",
+    "up_to_date": "This screen is already up to date.",
+    "apk_unavailable": "No app is available on the server.",
+    "agent_offline": "Site agent offline.",
+    "agent_outdated": "Site agent too old for this update.",
+    "module_disabled": "The ADB power driver is not active.",
+    "no_adb_host": "The screen's ADB address is not set.",
+    "not_android": "This screen is not an Android device."
   },
   "auth": {
     "checking": {
@@ -837,6 +845,30 @@
         "expired": "the agent did not answer in time",
         "rejected": "the agent rejected the command",
         "unknown": "unknown cause"
+      },
+      "codes": {
+        "update": {
+          "android": {
+            "already_up_to_date": "already up to date",
+            "downgrade_refused": "downgrade refused",
+            "adb_unreachable": "TV unreachable over network ADB",
+            "adb_unauthorized": "ADB not authorised: run the install wizard again",
+            "apk_unavailable": "app unavailable",
+            "verify_failed": "invalid app file",
+            "install_incompatible": "an app signed differently is already installed (no automatic uninstall)",
+            "install_failed": "installation refused by the TV",
+            "launch_failed": "could not launch after install",
+            "busy": "device busy, try again",
+            "no_adb_host": "screen ADB address not set",
+            "not_installed": "player not installed: use the add-screen wizard",
+            "address_not_lan": "ADB address outside the local network"
+          },
+          "no_provider": "no update module on the site agent",
+          "unknown_screen": "screen unknown to the site agent",
+          "timeout": "the update took too long",
+          "module_error": "driver module error",
+          "failed": "update failed"
+        }
       }
     },
     "detect": {
@@ -1232,13 +1264,15 @@
       "on": "Turn on",
       "off": "Turn off",
       "group": "Change group",
-      "delete": "Delete"
+      "delete": "Delete",
+      "apk_update": "Update player"
     },
     "summary": {
       "on": "Turn on {count, plural, one {# screen} other {# screens}}",
       "off": "Turn off {count, plural, one {# screen} other {# screens}}",
       "group": "Change group for {count, plural, one {# screen} other {# screens}}",
-      "delete": "Delete {count, plural, one {# screen} other {# screens}}"
+      "delete": "Delete {count, plural, one {# screen} other {# screens}}",
+      "apk_update": "Update the player on {count, plural, one {# screen} other {# screens}}"
     },
     "bar": {
       "label": "Actions on the selection",
@@ -1267,5 +1301,42 @@
     "failure_line": "{name}: {reason}",
     "retry_failed": "Retry {count, plural, one {the failure} other {the # failures}}",
     "skipped": "{count, plural, one {# screen skipped (site agent offline, missing or other site)} other {# screens skipped (site agent offline, missing or other site)}}"
+  },
+  "apk": {
+    "installed": "App",
+    "unknown_version": "Unknown version",
+    "badge": "Update available",
+    "action": "Update",
+    "action_for": "Update the player on {name}",
+    "site_action": "Update site",
+    "site_action_for": "Update the screens of site {site}",
+    "source": {
+      "image": "shipped with the server",
+      "dir": "instance folder"
+    },
+    "panel": {
+      "title": "Android screens app",
+      "available": "Available version:",
+      "all_current": "All known Android screens are up to date.",
+      "site_line": "{site}: {count, plural, one {# screen to update} other {# screens to update}}",
+      "none": "No app available. It comes from the server image release, or from a read-only mounted folder (VDS_APK_DIR) containing apk.json. Uploading from the interface is not supported."
+    },
+    "confirm": {
+      "title": "Update {count, plural, one {# screen} other {# screens}}",
+      "warning": "{count, plural, =0 {No eligible screen.} one {# screen will restart its display for 30 to 90 seconds to move to version {version}. This cannot be cancelled.} other {# screens will restart their display for 30 to 90 seconds to move to version {version}. This cannot be cancelled.}}",
+      "excluded": "{count, plural, one {# screen excluded:} other {# screens excluded:}}",
+      "action": "Update {count, plural, one {# screen} other {# screens}}"
+    },
+    "reason": {
+      "agent_offline": "site agent offline",
+      "agent_outdated": "site agent too old",
+      "module_disabled": "ADB power driver inactive",
+      "no_adb_host": "screen ADB address not set",
+      "apk_unavailable": "no app available on the server",
+      "not_android": "not an Android screen",
+      "up_to_date": "already up to date",
+      "update_running": "update already running",
+      "unknown": "not eligible"
+    }
   }
 }

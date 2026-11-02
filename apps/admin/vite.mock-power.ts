@@ -157,6 +157,10 @@ export function createPowerMock(world: World) {
       c.status = "failed";
       c.code = "power.adb.unreachable";
       c.result = {};
+    } else if (c.name === "apk.update" && screen?.name === "Totem") {
+      c.status = "failed";
+      c.code = "update.android.adb_unreachable";
+      c.result = {};
     } else if (c.name === "power.detect") {
       c.status = "ok";
       c.result = { results: [{ driver: "power.wol", confidence: 0.9, capabilities: ["power.on"], proposed_config: { mac: "aa:bb:cc:dd:ee:ff" }, requires_user_action: null }] };

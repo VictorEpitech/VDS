@@ -6,13 +6,14 @@ import { useSession } from "../auth/session";
 import { Empty, QueryStatus, SuccessAlert } from "../components/feedback";
 import { Icon } from "../components/Icon";
 import { MAX_SELECTION } from "../features/actions/queue";
+import { ApkPanel } from "../features/actions/ApkPanel";
 import { SelectionBar } from "../features/actions/SelectionBar";
 import { useProvisioningAvailable } from "../features/provisioning/hooks";
 import { ScreenCard } from "../features/screens/ScreenCard";
 import { IncidentsList } from "../features/supervision/IncidentsList";
 import { displayState, ISSUE_STATES } from "../features/supervision/status";
 import { useApi } from "../lib/api";
-import { powerKeys, useAllAgents, useAllGroups, useIncidents, usePlayback, useScreens, useSites, type Agent, type ScreenPower } from "../lib/queries";
+import { powerKeys, useAllAgents, useAllGroups, useFleetApk, useIncidents, usePlayback, useScreens, useSites, type Agent, type ScreenPower } from "../lib/queries";
 
 /** Agent qui pilote l'alimentation du site : un agent en ligne de préférence, sinon un agent non révoqué. */
 function agentOf(agents: readonly Agent[], siteId: string): Agent | undefined {
@@ -31,6 +32,8 @@ export function Screens() {
   const playback = usePlayback();
   const session = useSession();
   const isAdmin = session.data?.role === "admin";
+  const fleetApk = useFleetApk(isAdmin);
+  const apk = fleetApk.data;
   const provisionable = useProvisioningAvailable((sites.data ?? []).map((x) => x.id));
   const [params, setParams] = useSearchParams();
   const issues = params.get("filter") === "issues";
@@ -81,6 +84,7 @@ export function Screens() {
       </div>
       {issues ? <IncidentsList /> : null}
       <QueryStatus query={screens} />
+      {isAdmin && apk ? <ApkPanel apk={apk} screens={active} sites={sites.data ?? []} agents={agents.data ?? []} /> : null}
       {notice ? <SuccessAlert>{notice}</SuccessAlert> : null}
       {!issues && screens.isSuccess && active.length === 0 ? (
         <Empty
@@ -113,6 +117,8 @@ export function Screens() {
             state={state}
             power={power}
             playback={playback.data?.find((p) => p.screen_id === s.id)}
+            apk={apk?.screens.find((x) => x.screen_id === s.id)}
+            availableApk={apk?.available ?? null}
             agent={agentOf(agents.data ?? [], s.site_id)}
             isAdmin={isAdmin}
             provisionable={provisionable}
@@ -123,7 +129,7 @@ export function Screens() {
           />
         ))}
       </ul>
-      {isAdmin && chosen.length ? <SelectionBar selected={chosen} agents={agents.data ?? []} groups={groups.data ?? []} sites={sites.data ?? []} onClear={() => setSelection(new Set())} /> : null}
+      {isAdmin && chosen.length ? <SelectionBar selected={chosen} agents={agents.data ?? []} groups={groups.data ?? []} sites={sites.data ?? []} apk={apk} onClear={() => setSelection(new Set())} /> : null}
     </>
   );
 }

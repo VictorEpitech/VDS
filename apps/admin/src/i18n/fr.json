@@ -288,7 +288,15 @@
       "cooldown": "Une recherche vient d'être faite. Patientez {seconds} s avant de relancer.",
       "quota": "Trop de recherches pour ce site cette heure. Réessayez dans {seconds} s."
     },
-    "pairing_code_claimed": "Ce code a déjà été utilisé pour un autre écran."
+    "pairing_code_claimed": "Ce code a déjà été utilisé pour un autre écran.",
+    "update_running": "Une mise à jour est déjà en cours pour cet écran.",
+    "up_to_date": "Cet écran est déjà à jour.",
+    "apk_unavailable": "Aucune application n'est disponible sur le serveur.",
+    "agent_offline": "Agent du site hors ligne.",
+    "agent_outdated": "Agent du site trop ancien pour cette mise à jour.",
+    "module_disabled": "Le pilote d'alimentation ADB n'est pas actif.",
+    "no_adb_host": "L'adresse ADB de l'écran n'est pas renseignée.",
+    "not_android": "Cet écran n'est pas un appareil Android."
   },
   "auth": {
     "checking": {
@@ -837,6 +845,30 @@
         "expired": "l'agent n'a pas répondu à temps",
         "rejected": "l'agent a refusé l'ordre",
         "unknown": "cause inconnue"
+      },
+      "codes": {
+        "update": {
+          "android": {
+            "already_up_to_date": "déjà à jour",
+            "downgrade_refused": "rétrogradation refusée",
+            "adb_unreachable": "TV injoignable en ADB réseau",
+            "adb_unauthorized": "ADB non autorisé : rejouez l'assistant d'installation",
+            "apk_unavailable": "application indisponible",
+            "verify_failed": "fichier d'application invalide",
+            "install_incompatible": "version signée autrement déjà installée (aucune désinstallation automatique)",
+            "install_failed": "installation refusée par la TV",
+            "launch_failed": "lancement impossible après installation",
+            "busy": "appareil occupé, réessayez",
+            "no_adb_host": "adresse ADB de l'écran non renseignée",
+            "not_installed": "player non installé : utilisez l'assistant d'ajout",
+            "address_not_lan": "adresse ADB hors réseau local"
+          },
+          "no_provider": "aucun module de mise à jour sur l'agent de site",
+          "unknown_screen": "écran inconnu de l'agent de site",
+          "timeout": "la mise à jour a pris trop de temps",
+          "module_error": "erreur du module de pilotage",
+          "failed": "mise à jour échouée"
+        }
       }
     },
     "detect": {
@@ -1232,13 +1264,15 @@
       "on": "Allumer",
       "off": "Éteindre",
       "group": "Changer de groupe",
-      "delete": "Supprimer"
+      "delete": "Supprimer",
+      "apk_update": "Mettre à jour le player"
     },
     "summary": {
       "on": "Allumer {count, plural, one {# écran} other {# écrans}}",
       "off": "Éteindre {count, plural, one {# écran} other {# écrans}}",
       "group": "Changer de groupe pour {count, plural, one {# écran} other {# écrans}}",
-      "delete": "Supprimer {count, plural, one {# écran} other {# écrans}}"
+      "delete": "Supprimer {count, plural, one {# écran} other {# écrans}}",
+      "apk_update": "Mettre à jour le player de {count, plural, one {# écran} other {# écrans}}"
     },
     "bar": {
       "label": "Actions sur la sélection",
@@ -1267,5 +1301,42 @@
     "failure_line": "{name} : {reason}",
     "retry_failed": "Réessayer {count, plural, one {l'échec} other {les # échecs}}",
     "skipped": "{count, plural, one {# écran ignoré (agent du site hors ligne, absent ou autre site)} other {# écrans ignorés (agent du site hors ligne, absent ou autre site)}}"
+  },
+  "apk": {
+    "installed": "Application",
+    "unknown_version": "Version inconnue",
+    "badge": "Mise à jour disponible",
+    "action": "Mettre à jour",
+    "action_for": "Mettre à jour le player de {name}",
+    "site_action": "Mettre à jour le site",
+    "site_action_for": "Mettre à jour les écrans du site {site}",
+    "source": {
+      "image": "fournie avec le serveur",
+      "dir": "dossier de l'instance"
+    },
+    "panel": {
+      "title": "Application des écrans Android",
+      "available": "Version disponible :",
+      "all_current": "Tous les écrans Android connus sont à jour.",
+      "site_line": "{site} : {count, plural, one {# écran à mettre à jour} other {# écrans à mettre à jour}}",
+      "none": "Aucune application disponible. Elle est fournie par la publication de l'image du serveur, ou par un dossier monté en lecture seule (VDS_APK_DIR) contenant apk.json. Le téléversement depuis l'interface n'existe pas."
+    },
+    "confirm": {
+      "title": "Mettre à jour {count, plural, one {# écran} other {# écrans}}",
+      "warning": "{count, plural, =0 {Aucun écran éligible.} one {# écran va redémarrer son affichage pendant 30 à 90 secondes pour passer à la version {version}. L'action ne peut pas être annulée.} other {# écrans vont redémarrer leur affichage pendant 30 à 90 secondes pour passer à la version {version}. L'action ne peut pas être annulée.}}",
+      "excluded": "{count, plural, one {# écran exclu :} other {# écrans exclus :}}",
+      "action": "Mettre à jour {count, plural, one {# écran} other {# écrans}}"
+    },
+    "reason": {
+      "agent_offline": "agent du site hors ligne",
+      "agent_outdated": "agent du site trop ancien",
+      "module_disabled": "pilote d'alimentation ADB inactif",
+      "no_adb_host": "adresse ADB de l'écran non renseignée",
+      "apk_unavailable": "aucune application disponible sur le serveur",
+      "not_android": "écran non Android",
+      "up_to_date": "déjà à jour",
+      "update_running": "mise à jour déjà en cours",
+      "unknown": "non éligible"
+    }
   }
 }

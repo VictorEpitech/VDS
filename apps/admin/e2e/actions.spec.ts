@@ -85,3 +85,39 @@ test("suppression en lot : confirmation explicite, puis suppression des écrans 
   await expect(page.getByRole("heading", { level: 2, name: `${tag} A` })).toHaveCount(0);
   await expect(page.getByRole("heading", { level: 2, name: "Hall d'accueil" })).toBeVisible();
 });
+
+test("mise à jour du player : pastille, confirmation, résultat par écran, réessai des échecs", async ({ page }, info) => {
+  const { base } = meta(info);
+  await page.goto(`${base}/screens`);
+  const card = page.getByRole("listitem").filter({ has: page.getByRole("heading", { level: 2, name: "Hall d'accueil" }) });
+  await expect(card.getByText("1.0.10 (10)")).toBeVisible();
+  await expect(card.getByText("Mise à jour disponible")).toBeVisible();
+  await expect(page.getByText("1.0.12 (12)").first()).toBeVisible();
+
+  await page.getByRole("checkbox", { name: "Sélectionner Hall d'accueil" }).check();
+  await page.getByRole("checkbox", { name: "Sélectionner Totem" }).check();
+  const bar = page.getByRole("region", { name: "Actions sur la sélection" });
+  await bar.getByRole("button", { name: "Mettre à jour le player" }).click();
+  const dialog = bar.getByRole("alertdialog");
+  await expect(dialog.getByText(/30 à 90 secondes/)).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Mettre à jour 2 écrans" })).toBeFocused();
+  // Confirmation obligatoire : rien n'est parti, et aucun délai d'annulation ensuite.
+  expect(sent(page, "POST", /\/commands$/)).toHaveLength(0);
+  await dialog.getByRole("button", { name: "Mettre à jour 2 écrans" }).click();
+  await expect(page.getByText(/En attente d'envoi/)).toHaveCount(0);
+
+  await expect(page.getByText(/Totem : TV injoignable en ADB réseau/)).toBeVisible({ timeout: 10_000 });
+  expect(sent(page, "POST", /\/commands$/)).toHaveLength(2);
+  await page.getByRole("button", { name: "Réessayer l'échec" }).click();
+  await expect(page.getByText(/Totem : TV injoignable en ADB réseau/)).toBeVisible({ timeout: 10_000 });
+  expect(sent(page, "POST", /\/commands$/)).toHaveLength(3);
+});
+
+test("mise à jour du player à 375 px : le volet de confirmation reste dans l'écran", async ({ page }, info) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.goto(`${meta(info).base}/screens`);
+  await page.getByRole("button", { name: "Mettre à jour les écrans du site Moulins" }).click();
+  await expect(page.getByRole("alertdialog")).toBeVisible();
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+  expect(overflow).toBe(false);
+});

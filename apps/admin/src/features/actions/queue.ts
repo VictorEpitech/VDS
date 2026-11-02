@@ -7,8 +7,10 @@ export const MAX_PARALLEL = 4;
 export const MAX_SELECTION = 200;
 /** Même bornes que la commande unitaire (120 relevés de 700 ms). */
 const COMMAND_TIMEOUT_MS = 120 * POLL_MS;
+/** Mise à jour de l'application : délai de commande de l'agent 300 s, plus une marge. */
+const APK_TIMEOUT_MS = 330_000;
 
-export type BatchKind = "on" | "off" | "group" | "delete";
+export type BatchKind = "on" | "off" | "group" | "delete" | "apk_update";
 export type Phase = "waiting" | "running" | "done";
 
 export interface Target {
@@ -38,7 +40,7 @@ export interface Batch {
 export interface EnqueueOptions {
   groupId?: string | null;
   skipped?: number;
-  /** 0 = envoi immédiat (suppression confirmée, nouvel essai). */
+  /** 0 = envoi immédiat (suppression et mise à jour confirmées, nouvel essai). */
   delayMs?: number;
 }
 
@@ -87,7 +89,7 @@ export class ActionQueue {
   }
 
   enqueue(kind: BatchKind, targets: Target[], opts: EnqueueOptions = {}): number {
-    const delay = opts.delayMs ?? (kind === "delete" ? 0 : DELAY_MS);
+    const delay = opts.delayMs ?? (kind === "delete" || kind === "apk_update" ? 0 : DELAY_MS);
     const id = ++this.seq;
     const batch: Batch = {
       id,
@@ -149,7 +151,7 @@ export class ActionQueue {
       batch.targets.map(async (t) => {
         const requestId = t.requestId ?? newRequestId();
         const settled = await this.slot(() => this.send(batch, t, requestId)).then(
-          (sent) => ("status" in sent ? sent : this.settle(t, sent.command)),
+          (sent) => ("status" in sent ? sent : this.settle(batch, t, sent.command)),
           (error: unknown): Promise<Outcome> => Promise.resolve({ status: "failed", error, ...(error instanceof ApiError ? {} : { requestId }) }),
         );
         const outcome = await settled;
@@ -171,6 +173,10 @@ export class ActionQueue {
       return { status: "ok" };
     }
     if (!t.agentId) return { status: "failed" };
+    if (batch.kind === "apk_update") {
+      const command = await this.api.post<Command>(`/sites/${t.siteId}/agents/${t.agentId}/commands`, { name: "apk.update", screen_id: t.screenId, args: { request_id: requestId } });
+      return { command };
+    }
     const command = await this.api.post<Command>(`/sites/${t.siteId}/agents/${t.agentId}/commands`, {
       name: "power.set",
       screen_id: t.screenId,
@@ -180,8 +186,9 @@ export class ActionQueue {
     return { command };
   }
 
-  private async settle(t: Target, sent: Command): Promise<Outcome> {
-    const done = isFinal(sent) || !t.agentId ? sent : await this.poll(t.siteId, t.agentId, sent);
+  private async settle(batch: Batch, t: Target, sent: Command): Promise<Outcome> {
+    const timeout = batch.kind === "apk_update" ? APK_TIMEOUT_MS : COMMAND_TIMEOUT_MS;
+    const done = isFinal(sent) || !t.agentId ? sent : await this.poll(t.siteId, t.agentId, sent, timeout);
     return done.status === "ok" ? { status: "ok" } : { status: "failed", command: done };
   }
 
@@ -197,7 +204,7 @@ export class ActionQueue {
   }
 
   /** Un seul `GET .../commands` par agent et par tour pour toutes ses commandes en attente. */
-  private poll(siteId: string, agentId: string, sent: Command): Promise<Command> {
+  private poll(siteId: string, agentId: string, sent: Command, timeoutMs: number): Promise<Command> {
     const key = `${siteId}/${agentId}`;
     let p = this.pollers.get(key);
     if (!p) {
@@ -206,7 +213,7 @@ export class ActionQueue {
     }
     const poller = p;
     return new Promise<Command>((resolve) => {
-      poller.waiters.set(sent.id, { resolve: (c) => resolve(c ?? { ...sent, status: "expired" }), deadline: Date.now() + COMMAND_TIMEOUT_MS });
+      poller.waiters.set(sent.id, { resolve: (c) => resolve(c ?? { ...sent, status: "expired" }), deadline: Date.now() + timeoutMs });
       if (!poller.timer) poller.timer = setTimeout(() => void this.tick(key), POLL_MS);
     });
   }

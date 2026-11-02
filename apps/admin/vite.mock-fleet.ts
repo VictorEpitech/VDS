@@ -43,6 +43,19 @@ export function createFleetMock(world: World) {
         ),
       ), true;
     }
+    if (route === "/fleet/apk" && method === "GET") {
+      return send(200, {
+        available: { version_code: 12, version_name: "1.0.12", source: "image" },
+        screens: world.screens.map((s, i) => ({
+          screen_id: s.id,
+          installed_version_code: i < 2 ? 10 : null,
+          installed_version_name: i < 2 ? "1.0.10" : null,
+          state: i < 2 ? "outdated" : "not_android",
+          updatable: i < 2,
+          reason: i < 2 ? null : "not_android",
+        })),
+      }), true;
+    }
     if (route === "/agent/local" && method === "GET") return send(200, { available: false, detected: null, site_id: null }), true;
     if (/^\/sites\/[^/]+\/agent\/enrollments$/.test(route) && method === "GET") return send(200, []), true;
     const del = /^\/screens\/([^/]+)$/.exec(route);

@@ -5,8 +5,10 @@ import { ConfirmAction, ErrorAlert, SuccessAlert } from "../../components/feedba
 import { Icon } from "../../components/Icon";
 import { PresenceBadge, StatusBadge } from "../../components/StatusBadge";
 import { useApi } from "../../lib/api";
-import { keys, type Agent, type Command, type Screen, type ScreenPlayback, type ScreenPower } from "../../lib/queries";
+import { keys, type Agent, type Command, type Screen, type ScreenApk, type FleetApk, type ScreenPlayback, type ScreenPower } from "../../lib/queries";
 import { Link } from "react-router-dom";
+import { ApkUpdateConfirm, needsUpdate, planApkUpdate } from "../actions/apk";
+import { useActionQueue } from "../actions/ActionQueueProvider";
 import { KioskControls } from "../kiosk/KioskControls";
 import { KioskSetting } from "../kiosk/KioskSetting";
 import { powerSetArgs, useRemoteCommand } from "../supervision/commands";
@@ -24,6 +26,9 @@ interface Props {
   state: DisplayState;
   power: ScreenPower | undefined;
   playback: ScreenPlayback | undefined;
+  /** Version de l'application installée et éligibilité à la mise à jour (administrateur seulement). */
+  apk?: ScreenApk;
+  availableApk?: FleetApk["available"];
   /** Agent du site (en ligne de préférence) ; les commandes d'alimentation passent par lui. */
   agent: Agent | undefined;
   isAdmin: boolean;
@@ -35,12 +40,14 @@ interface Props {
 }
 
 /** Carte écran unique, utilisée sous tous les filtres : état, alimentation, programmation active, actions. */
-export function ScreenCard({ screen, siteName, groupName, state, power, playback, agent, isAdmin, provisionable, selected, selectDisabled, onSelect, onNotice }: Props) {
+export function ScreenCard({ screen, siteName, groupName, state, power, playback, apk, availableApk, agent, isAdmin, provisionable, selected, selectDisabled, onSelect, onNotice }: Props) {
   const { t, i18n } = useTranslation();
   const api = useApi();
   const qc = useQueryClient();
   const cmd = useRemoteCommand();
   const [last, setLast] = useState<{ kind: Kind; command: Command } | null>(null);
+  const { queue } = useActionQueue();
+  const [confirmApk, setConfirmApk] = useState(false);
   const [showDetect, setShowDetect] = useState(false);
   const [panel, setPanel] = useState<{ kind: "edit" | "delete"; archive?: boolean } | null>(null);
   const revoke = useMutation({
@@ -69,6 +76,14 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
         },
       },
     );
+  };
+  const updatable = isAdmin && needsUpdate(apk);
+  const apkPlan = planApkUpdate([screen], apk && availableApk !== undefined ? { available: availableApk, screens: [apk] } : undefined, agent ? [agent] : []);
+  const apkVersion = availableApk ? `${availableApk.version_name} (${availableApk.version_code})` : "";
+  const apkReason = apkPlan.excluded[0]?.reason;
+  const startApk = () => {
+    setConfirmApk(false);
+    queue.enqueue("apk_update", [{ screenId: screen.id, name: screen.name, siteId: screen.site_id, agentId: agent?.id }]);
   };
   const result = last && last.kind !== "detect" ? last : null;
   const offSlot = currentOffSlot(power, new Date());
@@ -120,6 +135,19 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
       ) : (
         <p className="meta">{t("screens.device.none")}</p>
       )}
+      {isAdmin && apk && apk.state !== "not_android" ? (
+        <dl className="device-facts">
+          <div>
+            <dt>{t("apk.installed")}</dt>{" "}
+            <dd className="mono">{apk.installed_version_code != null ? [apk.installed_version_name, `(${apk.installed_version_code})`].filter(Boolean).join(" ") : <span className="meta">{t("apk.unknown_version")}</span>}</dd>
+          </div>
+        </dl>
+      ) : null}
+      {isAdmin && apk?.state === "outdated" ? (
+        <p>
+          <StatusBadge state="pairing" icon="upload" label={t("apk.badge")} />
+        </p>
+      ) : null}
       <dl className="device-facts">
         {powerLine ? (
           <div>
@@ -149,7 +177,19 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
             {t("supervision.detect.run")}
           </button>
         ) : null}
+        {updatable ? (
+          <button type="button" className="btn btn-text" disabled={!!apkReason || confirmApk} aria-describedby={apkReason ? `apk-${screen.id}` : undefined} aria-expanded={confirmApk} onClick={() => setConfirmApk(true)} aria-label={t("apk.action_for", { name: screen.name })}>
+            <Icon name="upload" />
+            {t("apk.action")}
+          </button>
+        ) : null}
       </div>
+      {updatable && apkReason ? (
+        <p className="meta" id={`apk-${screen.id}`}>
+          {t(`apk.reason.${apkReason}`, { defaultValue: t("apk.reason.unknown") })}
+        </p>
+      ) : null}
+      {confirmApk && updatable ? <ApkUpdateConfirm plan={apkPlan} version={apkVersion} onConfirm={startApk} onCancel={() => setConfirmApk(false)} /> : null}
       {isAdmin && !ready ? (
         <p className="meta" id={hintId}>
           {agent ? t("supervision.agent_offline") : t("supervision.no_agent")}
