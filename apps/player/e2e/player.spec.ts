@@ -385,3 +385,47 @@ test("pont natif : verrouillage non confirmé (ok:false) = rapporté tel quel et
     .poll(() => page.evaluate(() => (window as unknown as { __kioskCalls: unknown[] }).__kioskCalls.length), { timeout: 15_000 })
     .toBeGreaterThanOrEqual(2);
 });
+
+test("until : l'élément expiré est arrêté et sauté, y compris hors ligne", async ({ page, context }, info) => {
+  const until = new Date(Date.now() + 8000).toISOString();
+  await ctl(info, "set", {
+    items: [
+      { id: "it_red", media: "red", ms: 2000, until },
+      { id: "it_blue", media: "blue", ms: 2000 },
+    ],
+  });
+  await pairAndPlay(page, info);
+  expect([...(await seenMedia(page, 3500))].sort()).toEqual(["blue", "red"]);
+  await ctl(info, "set", { down: true });
+  await context.setOffline(true);
+  await page.waitForTimeout(Math.max(0, Date.parse(until) - Date.now()) + 2500);
+  expect([...(await seenMedia(page, 6000))]).toEqual(["blue"]);
+  await context.setOffline(false);
+  await ctl(info, "set", { down: false });
+});
+
+test("playlist dont tous les éléments ont expiré : écran noir, aucune information", async ({ page }, info) => {
+  const until = new Date(Date.now() + 6000).toISOString();
+  await ctl(info, "set", { items: [{ id: "it_red", media: "red", ms: 2000, until }] });
+  await pairAndPlay(page, info);
+  await expect(page.locator(".system-black")).toBeVisible({ timeout: 15_000 });
+  expect((await page.locator("#app").innerText()).trim()).toBe("");
+});
+
+test("remplacement de fichier : même clé, autre sha256, nouvelle image sans réappairage", async ({ page }, info) => {
+  await pairAndPlay(page, info);
+  const cachedSame = (): Promise<boolean> =>
+    page.evaluate(async () => {
+      const c = await caches.open("vds-media-v1");
+      const get = async (k: string): Promise<string> => {
+        const r = await c.match(new URL(`media/${k}/original`, document.baseURI.replace(/player\/.*$/, "")).href);
+        return r ? btoa(String.fromCharCode(...new Uint8Array(await r.arrayBuffer()))) : "";
+      };
+      return (await get("red")) !== "" && (await get("red")) === (await get("blue"));
+    });
+  expect(await cachedSame()).toBe(false);
+  await ctl(info, "set", { alias: { red: "blue" } });
+  await expect.poll(cachedSame, { timeout: 20_000 }).toBe(true);
+  await expect(page.getByTestId("pairing-code")).toHaveCount(0);
+  await expect(img(page)).toBeVisible();
+});

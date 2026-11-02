@@ -60,7 +60,7 @@ export function insecureContext(): boolean {
 export async function beat(deps: HeartbeatDeps): Promise<number> {
   const doc = deps.getActive();
   const keys = doc ? (deps.assets.lazy ? slotAssets(doc, neededSlots(doc, now())) : allAssets(doc)) : [];
-  const missing = deps.assets.missing(keys);
+  const missing = deps.assets.missing(keys, doc?.assets);
   const est = await storageEstimate();
   const errors = deps.engine.takeErrors();
   // Sans contexte sécurisé : ni Service Worker ni cache, rien à jouer hors ligne. Signalé à l'admin, jamais au public.

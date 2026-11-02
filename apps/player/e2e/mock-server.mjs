@@ -69,6 +69,7 @@ const sha = (buf) => createHash("sha256").update(buf).digest("hex");
 for (const m of Object.values(MEDIA)) m.sha = sha(m.buf);
 /** Le clip vidéo est fabriqué par le globalSetup, après le démarrage du serveur : chargement paresseux. */
 function mediaOf(id) {
+  id = S.alias?.[id] ?? id; // remplacement de fichier simulé : la clé `id` sert les octets de `alias[id]`
   if (id === "clip" && !MEDIA.clip && VIDEO && fs.existsSync(VIDEO)) {
     const buf = fs.readFileSync(VIDEO);
     MEDIA.clip = { buf, mime: "video/webm", sha: sha(buf) };
@@ -87,6 +88,7 @@ const fresh = () => ({
     { id: "it_red", media: "red", ms: 2000 },
     { id: "it_blue", media: "blue", ms: 2000 },
   ],
+  alias: null, // { red: "blue" } : même clé média, autres octets (donc autre sha256)
   kiosk: null, // { mode, until? } servi dans la programmation (champ additif) ; null = champ absent (vieux serveur)
   power: null, // [[h0, h1, "on"|"off"]] depuis minuit UTC du jour simulé ; null = pas de plan
   pollS: 2, // poll_interval_s renvoyé au heartbeat
@@ -133,6 +135,7 @@ function schedule() {
           props: { src: `media/${i.media}/original` },
           assets: [`media/${i.media}/original`],
           requires_network: false,
+          ...(i.until ? { until: i.until } : {}),
         })),
       },
     },
@@ -207,6 +210,7 @@ async function control(req, res, url) {
       if ("kiosk" in body) S.kiosk = body.kiosk;
       if ("pollS" in body) S.pollS = Number(body.pollS);
       if ("wsBlocked" in body) S.wsBlocked = Boolean(body.wsBlocked);
+      if ("alias" in body) S.alias = body.alias;
       if ("items" in body) S.items = body.items;
       if ("clock" in body) S.clock = body.clock ? { base: Date.parse(body.clock), at: Date.now() } : null;
       return json(res, 200, {});

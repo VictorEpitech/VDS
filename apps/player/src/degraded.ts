@@ -50,16 +50,23 @@ export class MemoryAssetCache implements AssetStore {
     return this.entries.has(key);
   }
 
-  hasAll(keys: readonly string[]): boolean {
-    return keys.every((k) => this.entries.has(k));
+  hasAll(keys: readonly string[], refs?: Readonly<Record<string, AssetRef>>): boolean {
+    return keys.every((k) => this.matches(k, refs));
+  }
+
+  private matches(key: string, refs?: Readonly<Record<string, AssetRef>>): boolean {
+    const e = this.entries.get(key);
+    if (!e) return false;
+    const ref = refs?.[key];
+    return !ref || ref.sha256 === e.sha;
   }
 
   keys(): string[] {
     return [...this.entries.keys()];
   }
 
-  missing(keys: readonly string[]): string[] {
-    return keys.filter((k) => !this.entries.has(k));
+  missing(keys: readonly string[], refs?: Readonly<Record<string, AssetRef>>): string[] {
+    return keys.filter((k) => !this.matches(k, refs));
   }
 
   bytes(): number {
@@ -76,7 +83,7 @@ export class MemoryAssetCache implements AssetStore {
   }
 
   ensure(key: string, ref: AssetRef, signal?: AbortSignal): Promise<void> {
-    if (this.entries.has(key)) {
+    if (this.matches(key, { [key]: ref })) {
       this.urlFor(key);
       return Promise.resolve();
     }
@@ -114,6 +121,7 @@ export class MemoryAssetCache implements AssetStore {
     if ((await sha256Stream(new Response(blob).body as ReadableStream<Uint8Array>)) !== ref.sha256) {
       throw new AssetError("asset_hash", key);
     }
+    this.drop(key); // même clé, autre sha256 : l'ancien octet n'est libéré qu'une fois le nouveau vérifié
     this.makeRoom(blob.size);
     // Le type MIME du serveur (ou du descripteur) permet à <img>/<video> de décoder le blob.
     const typed = blob.type ? blob : blob.slice(0, blob.size, ref.mime);

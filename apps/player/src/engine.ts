@@ -33,6 +33,18 @@ interface Prepared {
   item: PlaylistItem;
 }
 
+/** Instant `until` de l'élément (ms), null si absent ; valeur illisible = ignorée (jamais de saut à tort). */
+export function untilMs(item: PlaylistItem): number | null {
+  if (!item.until) return null;
+  const t = Date.parse(item.until);
+  return Number.isNaN(t) ? null : t;
+}
+
+export function expired(item: PlaylistItem, at: number): boolean {
+  const u = untilMs(item);
+  return u !== null && at >= u;
+}
+
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve) => {
     if (signal.aborted) return resolve();
@@ -71,6 +83,8 @@ class ZoneRunner {
   private ctl = new AbortController();
   private readonly root: HTMLElement;
   current: { item: PlaylistItem; since: number } | null = null;
+  /** Interrompt l'attente de l'élément courant (fin de validité atteinte). */
+  private cut: (() => void) | null = null;
 
   constructor(
     readonly key: string,
@@ -99,6 +113,12 @@ class ZoneRunner {
     this.root.remove();
   }
 
+  /** Contrôle à chaque tick : l'élément courant dont `until` est dépassé s'arrête immédiatement. */
+  checkExpiry(at: number): void {
+    const cur = this.current;
+    if (cur && expired(cur.item, at)) this.cut?.();
+  }
+
   private context(): ContentContext {
     return {
       locale: this.deps.locale,
@@ -111,12 +131,13 @@ class ZoneRunner {
   /** Prépare un élément hors écran ; null = élément sauté (jamais de lecture en flux). */
   private async prepare(item: PlaylistItem): Promise<Prepared | null> {
     if (this.ctl.signal.aborted) return null;
+    if (expired(item, now())) return null; // expiré : sauté sans bruit (état attendu, pas une erreur)
     if (item.requires_network && !this.deps.isOnline()) {
       this.report("offline_skipped", item.id);
       return null;
     }
     const { assets } = this.deps;
-    if (assets.lazy && !assets.hasAll(item.assets)) {
+    if (assets.lazy && !assets.hasAll(item.assets, this.doc.assets)) {
       // Mode dégradé : téléchargement de l'item (le suivant est préparé pendant que le courant joue).
       try {
         for (const k of item.assets) {
@@ -128,7 +149,7 @@ class ZoneRunner {
       }
       if (this.ctl.signal.aborted) return null;
     }
-    if (!assets.hasAll(item.assets)) {
+    if (!assets.hasAll(item.assets, this.doc.assets)) {
       this.report("asset_missing", item.id);
       return null;
     }
@@ -178,6 +199,7 @@ class ZoneRunner {
       this.report("playback_error", item.id);
       local.abort();
     };
+    if (expired(item, now())) return false; // expiré pendant la préparation
     this.ctl.signal.addEventListener("abort", stopWaiting, { once: true });
     el.addEventListener("vds-error", onError);
     if (item.duration_ms === null) el.addEventListener("vds-ended", stopWaiting);
@@ -185,8 +207,10 @@ class ZoneRunner {
       el.start();
       this.current = { item, since: now() };
       const ms = item.duration_ms === null ? MAX_UNBOUNDED_MS : Math.max(item.duration_ms, MIN_ITEM_MS);
+      this.cut = stopWaiting;
       await sleep(ms, local.signal);
     } finally {
+      this.cut = null;
       el.removeEventListener("vds-error", onError);
       el.removeEventListener("vds-ended", stopWaiting);
       this.ctl.signal.removeEventListener("abort", stopWaiting);
@@ -223,7 +247,7 @@ class ZoneRunner {
         next = serial ? Promise.resolve(null) : this.prepare(items[nextIdx]!);
         const ok = await this.play(p);
         if (ok) playedInPass++;
-        if (!ok || serial) {
+        if (!ok || serial || expired(p.item, now())) {
           this.discard(p.el);
           shown = null;
         }
@@ -380,6 +404,10 @@ export class Engine {
         this.runners.set(key, new ZoneRunner(key, w.zone, w.items, doc, this.deps, this.report, screens.stage));
       }
     }
-    screens.show(wanted.size > 0 && [...wanted.values()].some((w) => w.items.length > 0) ? "none" : "idle");
+    const at = now();
+    for (const r of this.runners.values()) r.checkExpiry(at);
+    // Aucun élément actif (playlist vide ou tous `until` dépassés) : noir, jamais de logo ni d'erreur.
+    const active = [...wanted.values()].some((w) => w.items.some((i) => !expired(i, at)));
+    screens.show(active ? "none" : "black");
   }
 }

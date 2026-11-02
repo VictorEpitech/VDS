@@ -47,10 +47,29 @@ describe("mode dégradé", () => {
     await c.ensure("media/a/original", ref(served["media/a/original"]!));
     expect(auth).toEqual(["Bearer tok"]);
     expect(c.urlFor("media/a/original")).toMatch(/^blob:/);
-    await expect(c.ensure("media/a/original", ref(media(3, 9)))).resolves.toBeUndefined(); // déjà présent
+    await expect(c.ensure("media/a/original", ref(served["media/a/original"]!))).resolves.toBeUndefined(); // déjà présent
     served["media/b/original"] = media(10, 2);
     await expect(c.ensure("media/b/original", ref(media(10, 3)))).rejects.toMatchObject({ code: "asset_hash" });
     expect(c.has("media/b/original")).toBe(false);
+  });
+
+  it("identité (clé, sha256) : autre sha256 = absent, ancien octet gardé jusqu'à la vérification", async () => {
+    const k = "media/r/original";
+    const v1 = media(50, 1);
+    const v2 = media(60, 2);
+    served[k] = v1;
+    const c = new MemoryAssetCache("http://s/", () => "t");
+    await c.ensure(k, ref(v1));
+    expect(c.hasAll([k], { [k]: ref(v2) })).toBe(false);
+    expect(c.missing([k], { [k]: ref(v2) })).toEqual([k]);
+    expect(c.hasAll([k], { [k]: ref(v1) })).toBe(true);
+    // Téléchargement corrompu : l'ancienne révision reste jouable.
+    await expect(c.ensure(k, ref(v2))).rejects.toMatchObject({ code: "asset_hash" });
+    expect(c.hasAll([k], { [k]: ref(v1) })).toBe(true);
+    served[k] = v2;
+    await c.ensure(k, ref(v2));
+    expect(c.hasAll([k], { [k]: ref(v2) })).toBe(true);
+    expect(c.bytes()).toBe(60);
   });
 
   it("LRU borné : évince hors programmation d'abord, puis le plus ancien", async () => {
