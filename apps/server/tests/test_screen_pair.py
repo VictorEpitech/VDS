@@ -168,3 +168,51 @@ async def test_shared_rate_limit(admin: AsyncClient, p: str) -> None:
         r = await pair(admin, p, f"ZZ{i:04d}"[:6], site)
         codes.append(r.status_code)
     assert codes[:30] == [404] * 30 and codes[30] == 429
+
+
+async def test_validation_and_unknown_site(admin: AsyncClient, app: FastAPI, p: str) -> None:
+    site = await site_of(admin, p)
+    async with new_client(app) as player:
+        st = await start(player, p)
+        r = await pair(admin, p, st["code"], "00000000-0000-4000-8000-000000000000")
+        assert r.status_code == 404 and r.json()["code"] == "site.not_found"
+        assert (await pair(admin, p, "AB", site)).status_code == 422
+        assert (await pair(admin, p, "A" * 13, site)).status_code == 422
+        assert (await pair(admin, p, st["code"], site, orientation="diagonal")).status_code == 422
+        assert (await pair(admin, p, st["code"], site, name="")).status_code == 422
+        # toujours réclamable après ces échecs
+        ok = await pair(admin, p, st["code"], site, orientation="portrait")
+        assert ok.status_code == 201 and ok.json()["screen"]["orientation"] == "portrait"
+
+
+async def test_replay_refused_when_screen_archived(
+    admin: AsyncClient, app: FastAPI, p: str, migrated_db_url: str
+) -> None:
+    site = await site_of(admin, p)
+    async with new_client(app) as player:
+        st = await start(player, p)
+        assert (await pair(admin, p, st["code"], site)).status_code == 201
+        await sql(migrated_db_url, "UPDATE screen SET archived_at = now()")
+        r = await pair(admin, p, st["code"], site)
+        assert r.status_code == 409 and r.json()["code"] == "errors.pairing_code_claimed"
+        assert await count(migrated_db_url) == 1
+
+
+async def test_audit_failures_and_replay_mismatch(
+    admin: AsyncClient, app: FastAPI, p: str, migrated_db_url: str
+) -> None:
+    site = await site_of(admin, p)
+    assert (await pair(admin, p, "ZZZ-ZZZ", site)).status_code == 404
+    async with new_client(app) as player:
+        st = await start(player, p)
+        assert (await pair(admin, p, st["code"], site)).status_code == 201
+        ok = await pair(admin, p, st["code"], site)
+        assert ok.status_code == 200
+        bad = await pair(admin, p, st["code"], site, name="Autre")
+        assert bad.status_code == 409
+        rows = await sql(migrated_db_url, "SELECT action, details::text FROM audit_log")
+        actions = [r[0] for r in rows]
+        assert actions.count("pairing.claim_failed") == 2
+        assert actions.count("pairing.replayed") == 1
+        assert all("ZZZ" not in r[1] and st["code"] not in r[1] for r in rows)
+        assert await count(migrated_db_url) == 1

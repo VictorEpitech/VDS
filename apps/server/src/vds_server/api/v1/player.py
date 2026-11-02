@@ -1,5 +1,6 @@
 """Appairage, révocation et heartbeat des appareils."""
 
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
@@ -8,6 +9,7 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from vds_server.core import audit
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
 from vds_server.core.runtime import Runtime
@@ -17,7 +19,7 @@ from vds_server.player import schemas as sc
 from vds_server.player.device_auth import DevicePrincipal, bearer
 from vds_server.player.enroll import pair_new_screen
 from vds_server.player.factory import schedule_builder
-from vds_server.player.ratelimit import RateLimiter
+from vds_server.player.ratelimit import FailureLimiter, RateLimiter
 from vds_server.player.schedule import SCHEDULE_FORMAT, ScheduleBuilder
 from vds_server.player.service import (
     HEARTBEAT_INTERVAL_S,
@@ -28,6 +30,8 @@ from vds_server.player.service import (
 )
 from vds_server.security.client_ip import client_ip
 
+CLAIM_FAILURES = frozenset({404, 409, 410})
+
 
 def build_router(rt: Runtime) -> APIRouter:
     router = APIRouter(prefix="/api/v1", tags=["player"])
@@ -37,7 +41,33 @@ def build_router(rt: Runtime) -> APIRouter:
     start_limiter = RateLimiter(limit=10, window_s=60)
     ticket_limiter = RateLimiter(limit=10, window_s=60)
     poll_limiter = RateLimiter(limit=40, window_s=60)
-    claim_limiter = RateLimiter(limit=30, window_s=60)  # partagé claim + screens/pair
+    # échecs (404/409/410) par utilisateur, partagé claim + screens/pair ; par processus
+    claim_limiter = FailureLimiter(limit=30, window_s=60)
+
+    async def guarded_claim[T](
+        actor: Principal, via: str, call: Callable[[], Awaitable[T]]
+    ) -> T:
+        res = claim_limiter.reserve(f"user:{actor.actor_id}")
+        counted = False
+        try:
+            return await call()
+        except ApiError as exc:
+            counted = exc.status in CLAIM_FAILURES
+            if counted:  # session séparée : persiste malgré le rollback ; jamais le code
+                async with rt.maker() as audit_session:
+                    audit.record(
+                        audit_session,
+                        actor_kind="user",
+                        actor_id=actor.actor_id,
+                        action="pairing.claim_failed",
+                        target_type="pairing",
+                        details={"via": via, "status": exc.status, "code": exc.code},
+                    )
+                    await audit_session.commit()
+            raise
+        finally:
+            if not counted:
+                claim_limiter.release(res)
 
     def svc(session: Session) -> PairingService:
         return PairingService(session, rt.bus)
@@ -99,8 +129,10 @@ def build_router(rt: Runtime) -> APIRouter:
 
     @router.post("/pairings/claim", response_model=sc.PairingClaimed)
     async def claim(body: sc.PairingClaim, actor: Admin, s: Pairing) -> sc.PairingClaimed:
-        claim_limiter.check(f"user:{actor.actor_id}")
-        return sc.PairingClaimed(screen_id=await s.claim(actor, body.code, body.screen_id))
+        screen_id = await guarded_claim(
+            actor, "pairings.claim", lambda: s.claim(actor, body.code, body.screen_id)
+        )
+        return sc.PairingClaimed(screen_id=screen_id)
 
     @router.post(
         "/screens/pair",
@@ -112,8 +144,9 @@ def build_router(rt: Runtime) -> APIRouter:
     async def pair_screen(
         body: isc.ScreenPair, actor: Admin, session: Session, response: Response
     ) -> isc.ScreenPaired:
-        claim_limiter.check(f"user:{actor.actor_id}")
-        screen, row, replayed = await pair_new_screen(session, rt.bus, actor, body)
+        screen, row, replayed = await guarded_claim(
+            actor, "screens.pair", lambda: pair_new_screen(session, rt.bus, actor, body)
+        )
         if replayed:
             response.status_code = 200
         out = (await screens_out(session, [screen]))[0]

@@ -3,6 +3,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from vds_sdk import EventBus
 
+from vds_server.core import audit
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
 from vds_server.db.models import PairingRequest, Screen
@@ -27,8 +28,19 @@ async def pair_new_screen(
     locked = await pairing.lock_code(body.code, actor)
     if isinstance(locked, ScreenReplay):
         screen = await session.get(Screen, locked.row.screen_id)
-        if screen is None:  # défensif : lock_code a déjà vérifié l'écran
+        # défensif sur None ; le rejeu doit viser le même site et le même nom
+        if screen is None or screen.site_id != body.site_id or screen.name != body.name:
             raise ApiError("errors.pairing_code_claimed", 409)
+        audit.record(
+            session,
+            actor_kind="user",
+            actor_id=actor.actor_id,
+            action="pairing.replayed",
+            target_type="screen",
+            target_id=str(screen.id),
+            details={"pairing_id": str(locked.row.id)},
+        )
+        await session.commit()
         return screen, locked.row, True
     inventory = InventoryService(session, bus, actor)
     try:
