@@ -23,7 +23,7 @@ function onboarding(statuses: Status[], hidden = false) {
   const next = req.find((s) => s.status !== "done" && s.status !== "skipped")?.step ?? null;
   return { steps, progress: { completed, total: req.length }, next_step: next, complete: completed === req.length, card: { hidden, hidden_at: hidden ? "x" : null } };
 }
-const base = { "GET /sites": [], "GET /media": [], "GET /playlists": [], "GET /schedules": [], "GET /fleet/summary": FLEET };
+const base = { "GET /sites": [], "GET /media": { items: [], total: 0 }, "GET /playlists": { items: [], total: 0 }, "GET /schedules": [], "GET /fleet/summary": FLEET };
 const THREE: Status[] = ["done", "done", "done", "todo"];
 
 describe.each(["", "/espace/affichage"])("Premiers pas, base « %s »", (b) => {

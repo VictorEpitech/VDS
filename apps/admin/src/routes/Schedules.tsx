@@ -71,7 +71,7 @@ export function Schedules() {
           screens={screens.data ?? []}
           groups={groups.data ?? []}
           sites={sites.data ?? []}
-          playlists={playlists.data ?? []}
+          playlists={playlists.data?.items ?? []}
           pending={save.isPending}
           error={save.error}
           onSubmit={(d) => save.mutate(d)}
@@ -101,7 +101,7 @@ export function Schedules() {
             <div className="row-main">
               <h2 id={`sch-${s.id}`}>{s.name}</h2>
               <p className="meta">
-                {t(`schedules.target.${s.target_type}`)} : {targetName(s)} · {playlists.data?.find((p) => p.id === s.playlist_id)?.name ?? ""}
+                {t(`schedules.target.${s.target_type}`)} : {targetName(s)} · {playlists.data?.items.find((p) => p.id === s.playlist_id)?.name ?? ""}
               </p>
               <p className="meta">
                 {rulesText(s)} · {t("schedules.priority.short", { priority: s.priority })}

@@ -109,8 +109,8 @@ export function Home() {
             )
           ) : null}
         </Stat>
-        <Stat icon="media" title={t("home.stats.content")} value={media.isSuccess ? media.data.length : undefined} to="/content/media" action={t("home.stats.content_action")}>
-          <p className="meta">{t("home.stats.playlists", { count: playlists.data?.length ?? 0 })}</p>
+        <Stat icon="media" title={t("home.stats.content")} value={media.isSuccess ? media.data.total : undefined} to="/content/media" action={t("home.stats.content_action")}>
+          <p className="meta">{t("home.stats.playlists", { count: playlists.data?.total ?? 0 })}</p>
         </Stat>
         <Stat icon="schedule" title={t("home.stats.playback")} value={schedules.isSuccess ? schedules.data.length : undefined} to="/playback" action={t("home.stats.playback_action")}>
           <p className="meta">{t("home.stats.sites", { count: sites.data?.length ?? 0 })}</p>

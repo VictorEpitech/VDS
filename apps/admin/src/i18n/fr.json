@@ -193,7 +193,12 @@
       "storage_unavailable": "Le stockage est indisponible. Réessayez.",
       "too_large": "Ce fichier est trop volumineux.",
       "type_invalid": "Ce type de fichier n'est pas accepté.",
-      "type_mismatch": "Le contenu du fichier ne correspond pas à son type."
+      "type_mismatch": "Le contenu du fichier ne correspond pas à son type.",
+      "expired": "Ce média est expiré.",
+      "replace_kind_mismatch": "Le nouveau fichier doit être du même type que l'original.",
+      "processing_failed": "Le nouveau fichier n'a pas pu être traité. L'original est conservé.",
+      "conflict": "Ce média a changé entre-temps. Rechargez la page.",
+      "forbidden": "Vous ne pouvez pas modifier ce média."
     },
     "playlist": {
       "content_type_unknown": "Ce type de contenu n'est pas installé.",
@@ -204,7 +209,10 @@
       "media_not_found": "Ce média n'existe plus.",
       "media_ref_invalid": "La référence du média n'est pas valide.",
       "not_found": "Cette playlist n'existe plus.",
-      "order_mismatch": "L'ordre proposé ne correspond pas aux éléments. Rechargez la page."
+      "order_mismatch": "L'ordre proposé ne correspond pas aux éléments. Rechargez la page.",
+      "expired": "Cette playlist est expirée.",
+      "conflict": "Cette playlist a changé entre-temps. Rechargez la page.",
+      "forbidden": "Vous ne pouvez pas modifier cette playlist."
     },
     "schedule": {
       "not_found": "Cette programmation n'existe plus.",
@@ -307,6 +315,10 @@
       "too_many_active": "Il y a déjà trop de forçages actifs sur cette cible. Arrêtez-en un avant d'en créer un autre.",
       "start_too_far": "Le début du forçage est trop éloigné. Choisissez une date plus proche.",
       "already_ended": "Ce forçage est déjà terminé."
+    },
+    "tags": {
+      "too_many": "Au maximum {max} tags.",
+      "invalid": "Ce tag n'est pas valide."
     }
   },
   "auth": {
@@ -530,7 +542,110 @@
     "in_use": {
       "detail": "{count, plural, =0 {{title} est encore utilisé.} one {{title} est utilisé dans cette playlist. Retirez-le avant de le supprimer :} other {{title} est utilisé dans ces playlists. Retirez-le avant de le supprimer :}}"
     },
-    "empty_action": "Importer un fichier"
+    "empty_action": "Importer un fichier",
+    "select": "Sélectionner {title}",
+    "select_page": "Sélectionner la page",
+    "no_match": "Aucun média ne correspond à ces filtres.",
+    "no_preview": "Pas d'aperçu",
+    "usage_count": "{count, plural, =0 {Aucune playlist} one {# playlist} other {# playlists}}",
+    "view": {
+      "label": "Affichage",
+      "grid": "Grille",
+      "table": "Tableau"
+    },
+    "filters": {
+      "label": "Filtrer les médias",
+      "search": "Rechercher",
+      "kind": "Type",
+      "all_kinds": "Tous les types",
+      "state": "État",
+      "sort": "Tri",
+      "unused": "Seulement les médias inutilisés",
+      "tags": "Filtrer par tags",
+      "states": {
+        "all": "Tous",
+        "active": "Actifs",
+        "expiring": "Bientôt expirés",
+        "expired": "Expirés"
+      },
+      "sorts": {
+        "-created_at": "Plus récents",
+        "created_at": "Plus anciens",
+        "title": "Titre (A-Z)",
+        "-title": "Titre (Z-A)",
+        "-bytes": "Plus volumineux",
+        "expires_at": "Expiration proche",
+        "-updated_at": "Modifiés récemment"
+      }
+    },
+    "col": {
+      "select": "Sélection",
+      "title": "Titre",
+      "kind": "Type",
+      "size": "Taille",
+      "state": "État",
+      "usage": "Utilisation",
+      "actions": "Actions"
+    },
+    "pager": {
+      "label": "Pagination",
+      "previous": "Précédent",
+      "next": "Suivant",
+      "page": "Page {page} sur {pages} ({total, plural, one {# résultat} other {# résultats}})"
+    },
+    "bulk": {
+      "label": "Actions groupées",
+      "selected": "{count, plural, one {# média sélectionné} other {# médias sélectionnés}}",
+      "expiry": "Définir l'expiration",
+      "add_tags": "Ajouter des tags",
+      "remove_tags": "Retirer des tags",
+      "delete": "Supprimer la sélection",
+      "delete_confirm": "Supprimer {count, plural, one {# média} other {# médias}}",
+      "clear": "Tout désélectionner",
+      "too_many": "Sélectionnez 200 médias au maximum pour une action groupée.",
+      "tags_to_add": "Tags à ajouter",
+      "tags_to_remove": "Tags à retirer",
+      "apply": "Appliquer",
+      "result": "{done, plural, =0 {Aucun média modifié} one {# média modifié} other {# médias modifiés}}{failed, plural, =0 {.} one {, # échec :} other {, # échecs :}}",
+      "failed_item": "{title} : {reason}"
+    },
+    "detail": {
+      "title": "Détail du média",
+      "close": "Fermer le détail",
+      "kind": "Type",
+      "size": "Taille",
+      "mime": "Format",
+      "dimensions": "Dimensions",
+      "duration": "Durée",
+      "pages": "Pages",
+      "added": "Ajouté le",
+      "options": "Expiration et tags",
+      "filename": "Fichier d'origine",
+      "revision": "Révision",
+      "sha256": "Empreinte SHA-256",
+      "seconds": "{count, plural, one {# seconde} other {# secondes}}"
+    },
+    "usage": {
+      "title": "Où est-il utilisé",
+      "none": "Ce média n'est utilisé nulle part.",
+      "schedules": "Programmations concernées",
+      "schedule": "{name} sur {target}",
+      "overrides": "Forçages en cours",
+      "override": "{name}, jusqu'au {date}",
+      "screens_now": "{count, plural, =0 {Aucun écran ne l'affiche en ce moment.} one {Jusqu'à # écran l'affiche en ce moment.} other {Jusqu'à # écrans l'affichent en ce moment.}}"
+    },
+    "replace": {
+      "title": "Remplacer le fichier",
+      "action": "Remplacer le fichier",
+      "impact": "Cette opération touche {playlists, plural, one {# playlist} other {# playlists}}, {screens, plural, one {# écran} other {# écrans}}.",
+      "help": "Le nouveau fichier doit être de type : {kind}. Les écrans passent au nouveau fichier automatiquement.",
+      "input": "Nouveau fichier",
+      "choose": "Choisir le nouveau fichier",
+      "change": "Fichier choisi : {name}",
+      "confirm": "Remplacer maintenant",
+      "progress": "Envoi du nouveau fichier",
+      "done": "Le fichier est remplacé. Les écrans le recevront au prochain rafraîchissement."
+    }
   },
   "playlists": {
     "title": "Playlists",
@@ -544,7 +659,14 @@
       "action": "Supprimer",
       "confirm": "Supprimer {name}"
     },
-    "empty_action": "Créer une playlist"
+    "empty_action": "Créer une playlist",
+    "no_match": "Aucune playlist ne correspond à ces filtres.",
+    "filters": {
+      "label": "Filtrer les playlists",
+      "search": "Rechercher",
+      "state": "État",
+      "tags": "Filtrer par tags"
+    }
   },
   "playlist": {
     "title": "Playlist",
@@ -568,7 +690,13 @@
       "delete": {
         "action": "Retirer",
         "confirm": "Confirmer le retrait"
-      }
+      },
+      "expired": "Expiré"
+    },
+    "options": "Expiration et tags",
+    "usage": {
+      "title": "Où est-elle utilisée",
+      "none": "Cette playlist n'est ni programmée ni forcée."
     }
   },
   "schedules": {
@@ -1445,5 +1573,24 @@
       "scheduled": "Forçage prévu",
       "active": "Forçage en cours"
     }
+  },
+  "expiry": {
+    "label": "Expiration",
+    "date": "Date",
+    "time": "Heure",
+    "clear": "Retirer l'expiration",
+    "help": "Après cette échéance, le contenu n'est plus diffusé.",
+    "expires": "Expire le {date}",
+    "expired": "Expiré",
+    "unused": "Inutilisé"
+  },
+  "tags": {
+    "label": "Tags",
+    "current": "Tags actuels",
+    "remove": "Retirer le tag {tag}",
+    "none": "Aucun tag.",
+    "add": "Ajouter le tag",
+    "help": "Lettres, chiffres, espaces, tirets ; 32 caractères au maximum.",
+    "list": "Tags : {tags}"
   }
 }

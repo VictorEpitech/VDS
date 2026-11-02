@@ -1372,3 +1372,236 @@ fieldset.field > legend {
   min-inline-size: 0;
   max-inline-size: 100%;
 }
+
+/* Médiathèque : filtres, grille, tableau, panneau de détail, tags. */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--vds-space-3) var(--vds-space-4);
+  margin-block-end: var(--vds-space-4);
+}
+
+.filters > .field {
+  flex: 1 1 12rem;
+}
+
+.filters-advanced {
+  flex: 1 1 100%;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vds-space-2);
+}
+
+.media-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--vds-space-4);
+}
+
+.media-main {
+  min-inline-size: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-3);
+}
+
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 12rem), 1fr));
+  gap: var(--vds-space-3);
+}
+
+.media-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--vds-space-2);
+  min-inline-size: 0;
+}
+
+.media-card[data-selected],
+.media-table tr[data-selected] {
+  outline: 2px solid var(--vds-primary);
+}
+
+.media-card-head {
+  position: relative;
+  inline-size: 100%;
+}
+
+.media-card-head .media-check {
+  position: absolute;
+  inset-block-start: var(--vds-space-2);
+  inset-inline-start: var(--vds-space-2);
+  z-index: 1;
+}
+
+.media-check {
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+}
+
+.media-thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--vds-radius-md);
+  background: var(--vds-surface-3);
+  color: var(--vds-on-surface-variant);
+}
+
+.media-thumb img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.media-thumb[data-size="small"] {
+  inline-size: 4rem;
+  flex: none;
+}
+
+.media-thumb[data-size="large"] {
+  max-inline-size: 24rem;
+}
+
+.media-title {
+  min-block-size: var(--vds-touch-target);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--vds-primary);
+  font: inherit;
+  font-weight: 600;
+  text-align: start;
+  text-decoration: underline;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.table-scroll {
+  position: relative;
+  overflow-x: auto;
+}
+
+.media-table {
+  inline-size: 100%;
+  border-collapse: collapse;
+}
+
+.media-table th,
+.media-table td {
+  padding: var(--vds-space-2) var(--vds-space-3);
+  border-block-end: 1px solid var(--vds-outline);
+  text-align: start;
+  vertical-align: middle;
+}
+
+.media-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--vds-space-3);
+  min-inline-size: 12rem;
+}
+
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vds-space-3);
+}
+
+.media-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-3);
+  min-inline-size: 0;
+}
+
+.media-detail h2:focus {
+  outline: none;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--vds-space-1) var(--vds-space-4);
+  margin: 0;
+}
+
+.facts dt {
+  color: var(--vds-on-surface-variant);
+}
+
+.facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.usage-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-2);
+}
+
+.expiry-field {
+  border: 0;
+  padding: 0;
+}
+
+.expiry-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vds-space-3);
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vds-space-2);
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding-inline-start: var(--vds-space-3);
+  border: 1px solid var(--vds-outline);
+  border-radius: var(--vds-radius-pill);
+}
+
+.bulk-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-3);
+  margin-block-end: var(--vds-space-3);
+}
+
+.bulk-count {
+  margin: 0;
+  font-weight: 600;
+}
+
+.replace-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-3);
+}
+
+.item-expired {
+  text-decoration: line-through;
+}
+
+@media (min-width: 64rem) {
+  .media-layout-open {
+    grid-template-columns: minmax(0, 1fr) 24rem;
+    align-items: start;
+  }
+}

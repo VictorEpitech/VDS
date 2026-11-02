@@ -193,7 +193,12 @@
       "storage_unavailable": "Storage is unavailable. Try again.",
       "too_large": "This file is too large.",
       "type_invalid": "This file type is not accepted.",
-      "type_mismatch": "The file content does not match its type."
+      "type_mismatch": "The file content does not match its type.",
+      "expired": "This media has expired.",
+      "replace_kind_mismatch": "The new file must be of the same type as the original.",
+      "processing_failed": "The new file could not be processed. The original is kept.",
+      "conflict": "This media changed in the meantime. Reload the page.",
+      "forbidden": "You cannot edit this media."
     },
     "playlist": {
       "content_type_unknown": "This content type is not installed.",
@@ -204,7 +209,10 @@
       "media_not_found": "This media no longer exists.",
       "media_ref_invalid": "The media reference is not valid.",
       "not_found": "This playlist no longer exists.",
-      "order_mismatch": "The proposed order does not match the items. Reload the page."
+      "order_mismatch": "The proposed order does not match the items. Reload the page.",
+      "expired": "This playlist has expired.",
+      "conflict": "This playlist changed in the meantime. Reload the page.",
+      "forbidden": "You cannot edit this playlist."
     },
     "schedule": {
       "not_found": "This schedule no longer exists.",
@@ -307,6 +315,10 @@
       "too_many_active": "There are already too many active overrides on this target. Stop one before creating another.",
       "start_too_far": "The override start is too far away. Pick a closer date.",
       "already_ended": "This override has already ended."
+    },
+    "tags": {
+      "too_many": "At most {max} tags.",
+      "invalid": "This tag is not valid."
     }
   },
   "auth": {
@@ -530,7 +542,110 @@
     "in_use": {
       "detail": "{count, plural, =0 {{title} is still in use.} one {{title} is used in this playlist. Remove it before deleting:} other {{title} is used in these playlists. Remove it before deleting:}}"
     },
-    "empty_action": "Upload a file"
+    "empty_action": "Upload a file",
+    "select": "Select {title}",
+    "select_page": "Select the page",
+    "no_match": "No media matches these filters.",
+    "no_preview": "No preview",
+    "usage_count": "{count, plural, =0 {No playlist} one {# playlist} other {# playlists}}",
+    "view": {
+      "label": "View",
+      "grid": "Grid",
+      "table": "Table"
+    },
+    "filters": {
+      "label": "Filter media",
+      "search": "Search",
+      "kind": "Type",
+      "all_kinds": "All types",
+      "state": "State",
+      "sort": "Sort",
+      "unused": "Unused media only",
+      "tags": "Filter by tags",
+      "states": {
+        "all": "All",
+        "active": "Active",
+        "expiring": "Expiring soon",
+        "expired": "Expired"
+      },
+      "sorts": {
+        "-created_at": "Newest",
+        "created_at": "Oldest",
+        "title": "Title (A-Z)",
+        "-title": "Title (Z-A)",
+        "-bytes": "Largest",
+        "expires_at": "Expiring soonest",
+        "-updated_at": "Recently modified"
+      }
+    },
+    "col": {
+      "select": "Selection",
+      "title": "Title",
+      "kind": "Type",
+      "size": "Size",
+      "state": "State",
+      "usage": "Usage",
+      "actions": "Actions"
+    },
+    "pager": {
+      "label": "Pagination",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {page} of {pages} ({total, plural, one {# result} other {# results}})"
+    },
+    "bulk": {
+      "label": "Bulk actions",
+      "selected": "{count, plural, one {# media selected} other {# media selected}}",
+      "expiry": "Set expiry",
+      "add_tags": "Add tags",
+      "remove_tags": "Remove tags",
+      "delete": "Delete selection",
+      "delete_confirm": "Delete {count, plural, one {# media} other {# media}}",
+      "clear": "Clear selection",
+      "too_many": "Select at most 200 media for a bulk action.",
+      "tags_to_add": "Tags to add",
+      "tags_to_remove": "Tags to remove",
+      "apply": "Apply",
+      "result": "{done, plural, =0 {No media changed} one {# media changed} other {# media changed}}{failed, plural, =0 {.} one {, # failure:} other {, # failures:}}",
+      "failed_item": "{title}: {reason}"
+    },
+    "detail": {
+      "title": "Media details",
+      "close": "Close details",
+      "kind": "Type",
+      "size": "Size",
+      "mime": "Format",
+      "dimensions": "Dimensions",
+      "duration": "Duration",
+      "pages": "Pages",
+      "added": "Added on",
+      "options": "Expiry and tags",
+      "filename": "Original file",
+      "revision": "Revision",
+      "sha256": "SHA-256 fingerprint",
+      "seconds": "{count, plural, one {# second} other {# seconds}}"
+    },
+    "usage": {
+      "title": "Where it is used",
+      "none": "This media is not used anywhere.",
+      "schedules": "Related schedules",
+      "schedule": "{name} on {target}",
+      "overrides": "Active overrides",
+      "override": "{name}, until {date}",
+      "screens_now": "{count, plural, =0 {No screen is showing it right now.} one {Up to # screen is showing it right now.} other {Up to # screens are showing it right now.}}"
+    },
+    "replace": {
+      "title": "Replace the file",
+      "action": "Replace the file",
+      "impact": "This affects {playlists, plural, one {# playlist} other {# playlists}}, {screens, plural, one {# screen} other {# screens}}.",
+      "help": "The new file must be of type: {kind}. Screens switch to the new file automatically.",
+      "input": "New file",
+      "choose": "Choose the new file",
+      "change": "Chosen file: {name}",
+      "confirm": "Replace now",
+      "progress": "Uploading the new file",
+      "done": "The file is replaced. Screens will receive it on their next refresh."
+    }
   },
   "playlists": {
     "title": "Playlists",
@@ -544,7 +659,14 @@
       "action": "Delete",
       "confirm": "Delete {name}"
     },
-    "empty_action": "Create a playlist"
+    "empty_action": "Create a playlist",
+    "no_match": "No playlist matches these filters.",
+    "filters": {
+      "label": "Filter playlists",
+      "search": "Search",
+      "state": "State",
+      "tags": "Filter by tags"
+    }
   },
   "playlist": {
     "title": "Playlist",
@@ -568,7 +690,13 @@
       "delete": {
         "action": "Remove",
         "confirm": "Confirm removal"
-      }
+      },
+      "expired": "Expired"
+    },
+    "options": "Expiry and tags",
+    "usage": {
+      "title": "Where it is used",
+      "none": "This playlist is neither scheduled nor overridden."
     }
   },
   "schedules": {
@@ -1445,5 +1573,24 @@
       "scheduled": "Override scheduled",
       "active": "Override running"
     }
+  },
+  "expiry": {
+    "label": "Expiry",
+    "date": "Date",
+    "time": "Time",
+    "clear": "Remove expiry",
+    "help": "After this time the content is no longer played.",
+    "expires": "Expires {date}",
+    "expired": "Expired",
+    "unused": "Unused"
+  },
+  "tags": {
+    "label": "Tags",
+    "current": "Current tags",
+    "remove": "Remove tag {tag}",
+    "none": "No tags.",
+    "add": "Add tag",
+    "help": "Letters, digits, spaces, dashes; 32 characters at most.",
+    "list": "Tags: {tags}"
   }
 }

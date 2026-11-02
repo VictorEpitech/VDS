@@ -25,8 +25,8 @@ const DEVICE = {
 };
 const SCREEN = { id: "30000000-0000-4000-8000-000000000001", site_id: SITE.id, group_id: GROUP.id, name: "Hall", orientation: "landscape", archived_at: null, device: DEVICE };
 const itemSchema = (id: string) => contentTypesFixture().find((c) => c.id === id)!.item_schema as never;
-const IMG = { id: "40000000-0000-4000-8000-000000000001", title: "Affiche", kind: "image", mime: "image/png", bytes: 2048, status: "ready", error: null };
-const PL = { id: "50000000-0000-4000-8000-000000000001", name: "Accueil boucle", description: null, item_count: 0, created_at: "", updated_at: "" };
+const IMG = { id: "40000000-0000-4000-8000-000000000001", title: "Affiche", kind: "image", mime: "image/png", bytes: 2048, status: "ready", error: null, expires_at: null, expired: false, tags: [], thumb: null, usage_count: 1, revision: 1 };
+const PL = { id: "50000000-0000-4000-8000-000000000001", name: "Accueil boucle", description: null, item_count: 0, created_at: "", updated_at: "", expires_at: null, expired: false, tags: [] };
 const base = { "GET /sites": [SITE], [`GET /sites/${SITE.id}/groups`]: [GROUP], "GET /screens": [SCREEN] };
 
 function Harness({ type }: { type: string }) {
@@ -54,7 +54,7 @@ function Form({ type: ct }: { type: NonNullable<ReturnType<ReturnType<typeof use
 
 describe("types de contenu et formulaire généré", () => {
   it.each(["", "/espace/affichage"])("lit les types depuis le registre de l'API sous la base « %s »", async (b) => {
-    mockApi({ "GET /media": [] }, b);
+    mockApi({ "GET /media": { items: [], total: 0 } }, b);
     await renderRoutes(routes, "/content/media", b);
     expect(await screen.findByText(/Types acceptés.*Image.*PDF.*Page web.*Vidéo/s)).toBeInTheDocument();
     const urls = vi.mocked(fetch).mock.calls.map((c) => String(c[0]));
@@ -180,17 +180,16 @@ describe.each(["", "/espace/affichage"])("écrans sous la base « %s »", (b) =>
     const failed = { ...IMG, id: "40000000-0000-4000-8000-000000000002", title: "Cassé", status: "failed", error: "media.type_mismatch" };
     mockApi(
       {
-        "GET /media": [IMG, failed],
-        "GET /playlists": [PL],
+        "GET /media": { items: [IMG, failed], total: 2 },
+        "GET /playlists": { items: [PL], total: 1 },
         [`DELETE /media/${IMG.id}`]: () => errorResponse(409, "media.in_use", { playlists: [PL.id] }),
       },
       b,
     );
     await renderRoutes(routes, "/content/media", b);
-    expect(await screen.findByText("Prêt")).toBeInTheDocument();
-    expect(screen.getByText("Échec")).toBeInTheDocument();
+    expect(await screen.findByText("Échec")).toBeInTheDocument();
     expect(screen.getByText("Le contenu du fichier ne correspond pas à son type.")).toBeInTheDocument();
-    const row = screen.getByRole("heading", { name: "Affiche" }).closest("li")!;
+    const row = screen.getByRole("button", { name: "Affiche" }).closest("li")!;
     await userEvent.click(within(row).getByRole("button", { name: "Supprimer" }));
     await userEvent.click(within(row).getByRole("button", { name: "Supprimer Affiche" }));
     const alert = await screen.findByRole("alert");
@@ -223,7 +222,7 @@ describe.each(["", "/espace/affichage"])("écrans sous la base « %s »", (b) =>
       }
     }
     vi.stubGlobal("XMLHttpRequest", FakeXhr);
-    mockApi({ "GET /media": [], "GET /playlists": [] }, b);
+    mockApi({ "GET /media": { items: [], total: 0 }, "GET /playlists": { items: [], total: 0 } }, b);
     await renderRoutes(routes, "/content/media", b);
     const input = await screen.findByLabelText("Fichiers à envoyer");
     await userEvent.upload(input, new File(["x"], "affiche.png", { type: "image/png" }), { applyAccept: false });
@@ -244,7 +243,7 @@ describe.each(["", "/espace/affichage"])("écrans sous la base « %s »", (b) =>
       media_ids: [],
     }));
     const detail = { ...PL, item_count: 2, items };
-    const calls = mockApi({ [`GET /playlists/${PL.id}`]: detail, "GET /media": [], [`PUT /playlists/${PL.id}/items/order`]: detail }, b);
+    const calls = mockApi({ [`GET /playlists/${PL.id}`]: detail, "GET /media": { items: [], total: 0 }, [`PUT /playlists/${PL.id}/items/order`]: detail }, b);
     await renderRoutes(routes, `/playlists/${PL.id}`, b);
     await screen.findByText("Page web - https://A.test");
     expect(screen.getByRole("button", { name: "Monter Page web - https://A.test" })).toBeDisabled();
@@ -253,7 +252,7 @@ describe.each(["", "/espace/affichage"])("écrans sous la base « %s »", (b) =>
   });
 
   it("playlist : ajout d'un élément avec le formulaire généré (média, durée)", async () => {
-    const calls = mockApi({ [`GET /playlists/${PL.id}`]: { ...PL, items: [] }, "GET /media": [IMG], [`POST /playlists/${PL.id}/items`]: {} }, b);
+    const calls = mockApi({ [`GET /playlists/${PL.id}`]: { ...PL, items: [] }, "GET /media": { items: [IMG], total: 1 }, [`POST /playlists/${PL.id}/items`]: {} }, b);
     await renderRoutes(routes, `/playlists/${PL.id}`, b);
     await userEvent.click(await screen.findByRole("button", { name: "Ajouter un élément" }));
     await userEvent.click(screen.getByRole("button", { name: "Ajouter" }));
@@ -271,7 +270,7 @@ describe.each(["", "/espace/affichage"])("écrans sous la base « %s »", (b) =>
   });
 
   it("programmation : cible, playlist, créneau hebdomadaire et priorité envoyés", async () => {
-    const calls = mockApi({ ...base, "GET /schedules": [], "GET /playlists": [PL], "POST /schedules": {} }, b);
+    const calls = mockApi({ ...base, "GET /schedules": [], "GET /playlists": { items: [PL], total: 1 }, "POST /schedules": {} }, b);
     await renderRoutes(routes, "/playback", b);
     await userEvent.click(await screen.findByRole("button", { name: "Nouvelle programmation" }));
     await userEvent.type(screen.getByLabelText("Nom"), "Semaine");
@@ -301,7 +300,7 @@ describe.each(["", "/espace/affichage"])("écrans sous la base « %s »", (b) =>
   });
 
   it("programmation : créneau à l'envers refusé avant l'envoi", async () => {
-    const calls = mockApi({ ...base, "GET /schedules": [], "GET /playlists": [PL], "POST /schedules": {} }, b);
+    const calls = mockApi({ ...base, "GET /schedules": [], "GET /playlists": { items: [PL], total: 1 }, "POST /schedules": {} }, b);
     await renderRoutes(routes, "/playback", b);
     await userEvent.click(await screen.findByRole("button", { name: "Nouvelle programmation" }));
     await userEvent.type(screen.getByLabelText("Nom"), "X");

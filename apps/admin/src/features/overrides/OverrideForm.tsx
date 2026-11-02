@@ -96,15 +96,15 @@ export function OverrideForm({ screens, groups, sites, initial, isAdmin, onClose
   }, [cfgPresets, defaultMinutes]);
   const choice = durChoice ?? String(defaultMinutes);
 
-  const playlistList = (playlists.data ?? []).filter((p) => !search.trim() || p.name.toLowerCase().includes(search.trim().toLowerCase()) || what === `p:${p.id}`);
-  const mediaList = (media.data ?? []).filter((m) => m.status === "ready" && (!search.trim() || m.title.toLowerCase().includes(search.trim().toLowerCase()) || what === `m:${m.id}`));
+  const playlistList = (playlists.data?.items ?? []).filter((p) => !search.trim() || p.name.toLowerCase().includes(search.trim().toLowerCase()) || what === `p:${p.id}`);
+  const mediaList = (media.data?.items ?? []).filter((m) => m.status === "ready" && !m.expired && (!search.trim() || m.title.toLowerCase().includes(search.trim().toLowerCase()) || what === `m:${m.id}`));
 
   const build = (target: Target, withRequestId: boolean): OverrideCreate | null => {
     const body: OverrideCreate = { target_type: target.type, target_id: target.id, kind: off ? "off" : "playlist", priority: 0 };
     if (!off) {
       if (what.startsWith("p:")) body.playlist_id = what.slice(2);
       else if (what.startsWith("m:")) {
-        const m = media.data?.find((x) => x.id === what.slice(2));
+        const m = media.data?.items.find((x) => x.id === what.slice(2));
         if (!m) return null;
         body.content = mediaContent(m);
       } else return null;

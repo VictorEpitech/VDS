@@ -7,7 +7,12 @@ export type Screen = S["ScreenOut"];
 export type Site = S["SiteOut"];
 export type Group = S["GroupOut"];
 export type Media = S["MediaOut"];
+export type MediaPage = S["MediaPage"];
+export type MediaUsage = S["MediaUsageOut"];
+export type MediaBulkResult = S["MediaBulkOut"];
 export type Playlist = S["PlaylistOut"];
+export type PlaylistPage = S["PlaylistPage"];
+export type PlaylistUsage = S["PlaylistUsageOut"];
 export type PlaylistDetail = S["PlaylistDetailOut"];
 export type PlaylistItem = S["ItemOut"];
 export type Schedule = S["ScheduleOut"];
@@ -52,19 +57,89 @@ export function useAllGroups() {
   });
 }
 
-/** Médiathèque ; interroge à intervalle tant qu'un média est en traitement. */
-export function useMedia() {
+/** Paramètres de liste partagés par la médiathèque et les playlists (mêmes noms que l'API). */
+export interface ListParams {
+  q?: string;
+  kind?: string;
+  state?: string;
+  tags?: string[];
+  unused?: boolean;
+  sort?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export function listQuery(p: ListParams): string {
+  const qs = new URLSearchParams();
+  if (p.q?.trim()) qs.set("q", p.q.trim());
+  if (p.kind) qs.set("kind", p.kind);
+  if (p.state) qs.set("state", p.state);
+  for (const tag of p.tags ?? []) qs.append("tags", tag);
+  if (p.unused) qs.set("unused", "true");
+  if (p.sort) qs.set("sort", p.sort);
+  qs.set("limit", String(p.limit ?? 50));
+  if (p.offset) qs.set("offset", String(p.offset));
+  return qs.toString();
+}
+
+/** Une page de la médiathèque ; interroge à intervalle tant qu'un média est en traitement. */
+export function useMediaPage(params: ListParams) {
   const api = useApi();
   return useQuery({
-    queryKey: keys.media,
-    queryFn: () => api.get<Media[]>("/media?limit=200"),
-    refetchInterval: (q) => (q.state.data?.some((m) => m.status === "processing") ? 1500 : false),
+    queryKey: [...keys.media, "page", params] as const,
+    queryFn: () => api.get<MediaPage>(`/media?${listQuery(params)}`),
+    placeholderData: (prev) => prev,
+    refetchInterval: (q) => (q.state.data?.items.some((m) => m.status === "processing") ? 1500 : false),
   });
 }
 
+/** Les 200 médias les plus récents, pour les sélecteurs (élément de playlist, forçage) : état inclus. */
+export function useMedia() {
+  const api = useApi();
+  return useQuery({
+    queryKey: [...keys.media, "all"] as const,
+    queryFn: () => api.get<MediaPage>(`/media?state=all&limit=200`),
+    refetchInterval: (q) => (q.state.data?.items.some((m) => m.status === "processing") ? 1500 : false),
+  });
+}
+
+export function useMediaUsage(id: string | null) {
+  const api = useApi();
+  return useQuery({
+    queryKey: [...keys.media, "usage", id] as const,
+    enabled: id !== null,
+    queryFn: () => api.get<MediaUsage>(`/media/${id}/usage`),
+  });
+}
+
+/** Autocomplétion des tags (≤ 50) ; `scope` = collection concernée. */
+export function useTagSuggestions(scope: "media" | "playlists", prefix: string) {
+  const api = useApi();
+  return useQuery({
+    queryKey: ["tags", scope, prefix] as const,
+    queryFn: () => api.get<string[]>(`/${scope}/tags?prefix=${encodeURIComponent(prefix)}`),
+    staleTime: 30_000,
+  });
+}
+
+export function usePlaylistPage(params: ListParams) {
+  const api = useApi();
+  return useQuery({
+    queryKey: [...keys.playlists, "page", params] as const,
+    queryFn: () => api.get<PlaylistPage>(`/playlists?${listQuery(params)}`),
+    placeholderData: (prev) => prev,
+  });
+}
+
+/** Les 200 premières playlists, pour les sélecteurs (programmation, forçage). */
 export function usePlaylists() {
   const api = useApi();
-  return useQuery({ queryKey: keys.playlists, queryFn: () => api.get<Playlist[]>("/playlists") });
+  return useQuery({ queryKey: [...keys.playlists, "all"] as const, queryFn: () => api.get<PlaylistPage>("/playlists?state=all&limit=200") });
+}
+
+export function usePlaylistUsage(id: string) {
+  const api = useApi();
+  return useQuery({ queryKey: [...keys.playlists, id, "usage"] as const, queryFn: () => api.get<PlaylistUsage>(`/playlists/${id}/usage`) });
 }
 
 export function usePlaylist(id: string) {

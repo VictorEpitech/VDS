@@ -38,6 +38,9 @@ interface MediaRow {
   original_filename: string;
   created: number;
   broken: boolean;
+  expires_at: string | null;
+  tags: string[];
+  revision: number;
 }
 interface ItemRow {
   id: string;
@@ -52,6 +55,8 @@ interface PlaylistRow {
   description: string | null;
   items: ItemRow[];
   created: string;
+  expires_at: string | null;
+  tags: string[];
 }
 interface ScheduleRow extends Json {
   id: string;
@@ -181,6 +186,12 @@ export function createDiffusionMock() {
       duration_ms: null,
       page_count: null,
       sha256: null,
+      expires_at: m.expires_at,
+      expired: m.expires_at !== null && new Date(m.expires_at).getTime() <= Date.now(),
+      revision: m.revision,
+      tags: m.tags,
+      thumb: null,
+      usage_count: mediaUsedBy(m.id).length,
       created_at: new Date(m.created).toISOString(),
       updated_at: new Date(m.created).toISOString(),
     };
@@ -190,9 +201,32 @@ export function createDiffusionMock() {
     const mid = field ? it.props[field] : undefined;
     return { id: it.id, content_type: it.content_type, duration_ms: it.duration_ms, enabled: it.enabled, position, props: it.props, media_ids: typeof mid === "string" ? [mid] : [] };
   };
-  const playlistOut = (p: PlaylistRow) => ({ id: p.id, name: p.name, description: p.description, item_count: p.items.length, created_at: p.created, updated_at: p.created });
+  const playlistOut = (p: PlaylistRow) => ({
+    id: p.id,
+    name: p.name,
+    description: p.description,
+    item_count: p.items.length,
+    created_at: p.created,
+    updated_at: p.created,
+    expires_at: p.expires_at,
+    expired: p.expires_at !== null && new Date(p.expires_at).getTime() <= Date.now(),
+    tags: p.tags,
+  });
   const playlistDetail = (p: PlaylistRow) => ({ ...playlistOut(p), items: p.items.map(itemOut) });
   const mediaUsedBy = (id: string) => playlists.filter((p) => p.items.some((i) => itemOut(i, 0).media_ids.includes(id))).map((p) => p.id);
+
+  const page = <T,>(rows: T[], query: URLSearchParams, map: (x: T) => Json) => {
+    const limit = Math.min(200, Math.max(1, Number(query.get("limit") ?? 50)));
+    const offset = Math.max(0, Number(query.get("offset") ?? 0));
+    const sort = query.get("sort") ?? "-created_at";
+    const key = sort.replace(/^-/, "");
+    const dir = sort.startsWith("-") ? -1 : 1;
+    const sorted = [...rows].map(map).sort((a, b) => {
+      const av = String(a[key] ?? a.created_at ?? ""), bv = String(b[key] ?? b.created_at ?? "");
+      return av === bv ? 0 : (av < bv ? -1 : 1) * dir;
+    });
+    return { items: sorted.slice(offset, offset + limit), total: sorted.length };
+  };
 
   /** Retourne true si la route a été traitée ; `route` est relatif à /api/v1. */
   const handle = async function handle(req: IncomingMessage, res: ServerResponse, route: string, query: URLSearchParams): Promise<Handled> {
@@ -290,7 +324,47 @@ export function createDiffusionMock() {
     // --- médias ----------------------------------------------------------
     if (route === "/media" && method === "GET") {
       const kind = query.get("kind");
-      return send(200, media.filter((x) => !kind || x.kind === kind).map(mediaOut).reverse()), true;
+      const q = (query.get("q") ?? "").toLowerCase();
+      const state = query.get("state") ?? "active";
+      const tags = query.getAll("tags");
+      const unused = query.get("unused") === "true";
+      const soon = Date.now() + 7 * 86_400_000;
+      const rows = media
+        .map(mediaOut)
+        .filter((x) => (!kind || x.kind === kind) && (!q || x.title.toLowerCase().includes(q)) && tags.every((t) => x.tags.includes(t)) && (!unused || x.usage_count === 0))
+        .filter((x) => state === "all" || (state === "expired" ? x.expired : state === "expiring" ? !x.expired && x.expires_at !== null && new Date(x.expires_at).getTime() <= soon : !x.expired));
+      return send(200, page(rows, query, (x) => x as Json)), true;
+    }
+    if (route === "/media/tags" && method === "GET") {
+      const prefix = (query.get("prefix") ?? "").toLowerCase();
+      return send(200, [...new Set(media.flatMap((x) => x.tags))].filter((t) => t.startsWith(prefix)).sort()), true;
+    }
+    if (route === "/playlists/tags" && method === "GET") {
+      const prefix = (query.get("prefix") ?? "").toLowerCase();
+      return send(200, [...new Set(playlists.flatMap((x) => x.tags))].filter((t) => t.startsWith(prefix)).sort()), true;
+    }
+    if (route === "/media/bulk" && method === "POST") {
+      const body = await json();
+      const done: string[] = [];
+      const failed: { id: string; code: string }[] = [];
+      for (const id of (body.ids ?? []) as string[]) {
+        const row = media.find((x) => x.id === id);
+        if (!row) {
+          failed.push({ id, code: "media.not_found" });
+        } else if (body.action === "delete") {
+          if (mediaUsedBy(id).length > 0) failed.push({ id, code: "media.in_use" });
+          else {
+            media.splice(media.indexOf(row), 1);
+            done.push(id);
+          }
+        } else {
+          if (body.action === "set_expiry") row.expires_at = (body.expires_at as string | null) ?? null;
+          if (body.action === "add_tags") row.tags = [...new Set([...row.tags, ...((body.tags ?? []) as string[])])].sort();
+          if (body.action === "remove_tags") row.tags = row.tags.filter((t) => !((body.tags ?? []) as string[]).includes(t));
+          done.push(id);
+        }
+      }
+      return send(200, { done, failed }), true;
     }
     if (route === "/media" && method === "POST") {
       const parsed = parseMultipart(await readRaw(req), String(req.headers["content-type"] ?? ""));
@@ -306,15 +380,46 @@ export function createDiffusionMock() {
         original_filename: parsed.file.name,
         created: Date.now(),
         broken: /broken/i.test(parsed.file.name),
+        expires_at: null,
+        tags: [],
+        revision: 1,
       };
       media.push(row);
       return send(201, mediaOut(row)), true;
+    }
+    const medUsage = m(/^\/media\/([^/]+)\/usage$/);
+    if (medUsage && method === "GET") {
+      if (!media.some((x) => x.id === medUsage[1])) return fail(404, "media.not_found"), true;
+      const used = playlists.filter((p) => mediaUsedBy(medUsage[1]!).includes(p.id));
+      return send(200, {
+        playlists: used.map((p) => ({ id: p.id, name: p.name, expires_at: p.expires_at, expired: playlistOut(p).expired })),
+        schedules: schedules.filter((s) => used.some((p) => p.id === s.playlist_id)).map((s) => ({ id: s.id, name: String(s.name ?? ""), playlist_id: s.playlist_id, target_type: s.target_type, target_id: s.target_id, target_name: String(s.target_type ?? ""), active: true })),
+        overrides: [],
+        screens_now: used.length > 0 ? 1 : 0,
+      }), true;
+    }
+    const medFile = m(/^\/media\/([^/]+)\/file$/);
+    if (medFile && method === "POST") {
+      const row = media.find((x) => x.id === medFile[1]);
+      if (!row) return fail(404, "media.not_found"), true;
+      const parsed = parseMultipart(await readRaw(req), String(req.headers["content-type"] ?? ""));
+      if (!parsed.file || parsed.file.bytes === 0) return fail(422, "media.empty"), true;
+      if (ACCEPT[parsed.file.mime] !== row.kind) return fail(422, "media.replace_kind_mismatch"), true;
+      Object.assign(row, { mime: parsed.file.mime, bytes: parsed.file.bytes, original_filename: parsed.file.name, revision: row.revision + 1 });
+      return send(200, mediaOut(row)), true;
     }
     const med = m(/^\/media\/([^/]+)$/);
     if (med) {
       const row = media.find((x) => x.id === med[1]);
       if (!row) return fail(404, "media.not_found"), true;
       if (method === "GET") return send(200, { ...mediaOut(row), variants: [], used_by: mediaUsedBy(row.id) }), true;
+      if (method === "PATCH") {
+        const body = await json();
+        if ("expires_at" in body) row.expires_at = (body.expires_at as string | null) ?? null;
+        if (Array.isArray(body.tags)) row.tags = body.tags as string[];
+        if (typeof body.title === "string") row.title = body.title;
+        return send(200, mediaOut(row)), true;
+      }
       if (method === "DELETE") {
         const used = mediaUsedBy(row.id);
         if (used.length > 0) return fail(409, "media.in_use", { playlists: used }), true;
@@ -324,10 +429,22 @@ export function createDiffusionMock() {
     }
 
     // --- playlists -------------------------------------------------------
-    if (route === "/playlists" && method === "GET") return send(200, playlists.map(playlistOut)), true;
+    if (route === "/playlists" && method === "GET") {
+      const q = (query.get("q") ?? "").toLowerCase();
+      const tags = query.getAll("tags");
+      const state = query.get("state") ?? "active";
+      const rows = playlists
+        .map(playlistOut)
+        .filter((x) => (!q || x.name.toLowerCase().includes(q)) && tags.every((t) => x.tags.includes(t)) && (state === "all" || (state === "expired") === x.expired || (state === "expiring" && !x.expired && x.expires_at !== null)));
+      return send(200, page(rows, query, (x) => x as Json)), true;
+    }
+    const plUsage = m(/^\/playlists\/([^/]+)\/usage$/);
+    if (plUsage && method === "GET") {
+      return send(200, { schedules: schedules.filter((s) => s.playlist_id === plUsage[1]).map((s) => ({ id: s.id, name: String(s.name ?? ""), playlist_id: s.playlist_id, target_type: s.target_type, target_id: s.target_id, target_name: String(s.target_type ?? ""), active: true })), overrides: [] }), true;
+    }
     if (route === "/playlists" && method === "POST") {
       const body = await json();
-      const row: PlaylistRow = { id: randomUUID(), name: String(body.name ?? "").trim(), description: null, items: [], created: now() };
+      const row: PlaylistRow = { id: randomUUID(), name: String(body.name ?? "").trim(), description: null, items: [], created: now(), expires_at: null, tags: [] };
       if (!row.name) return fail(422, "errors.validation"), true;
       playlists.push(row);
       return send(201, playlistDetail(row)), true;
@@ -341,6 +458,8 @@ export function createDiffusionMock() {
         if (method === "PATCH") {
           const body = await json();
           if (typeof body.name === "string" && body.name.trim()) row.name = body.name.trim();
+          if ("expires_at" in body) row.expires_at = (body.expires_at as string | null) ?? null;
+          if (Array.isArray(body.tags)) row.tags = body.tags as string[];
           return send(200, playlistDetail(row)), true;
         }
         if (method === "DELETE") {

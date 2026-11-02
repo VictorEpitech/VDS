@@ -55,7 +55,9 @@ beforeEach(() => {
                 ? { steps: [], progress: { completed: 0, total: 6 }, next_step: null, complete: false, card: { hidden: true, hidden_at: "x" } }
                 : url.endsWith("/fleet/summary")
                   ? { screens: { total: 0, by_status: {} }, to_handle: { screens: 0, by_reason: {} } }
-                  : url.includes("/api/v1/")
+                  : /\/api\/v1\/(media|playlists)\?/.test(url)
+                    ? { items: [], total: 0 }
+                    : url.includes("/api/v1/")
                     ? []
                     : { status: "ok" },
           ), { status: 200 }),

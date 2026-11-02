@@ -31,8 +31,8 @@ async function upload(page: Page, name: string) {
 async function createMedia(page: Page, info: TestInfo, title: string) {
   await page.goto(url(info, "/media"));
   await upload(page, `${title}.png`);
-  const row = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: title }) });
-  await expect(row.getByText("Prêt")).toBeVisible();
+  const row = page.getByRole("listitem").filter({ has: page.getByRole("button", { name: title, exact: true }) });
+  await expect(row.getByText("Inutilisé")).toBeVisible();
   return row;
 }
 
@@ -54,8 +54,8 @@ test("parcours éditeur : média, playlist, programmation, appairage et révocat
   await upload(page, `${title}.png`);
   await expect(page.getByText(`${title}.png`)).toBeVisible();
   await expect(page.getByText("Envoyé")).toBeVisible();
-  const row = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: title }) });
-  await expect(row.getByText("Prêt")).toBeVisible();
+  const row = page.getByRole("listitem").filter({ has: page.getByRole("button", { name: title, exact: true }) });
+  await expect(row.getByText("Inutilisé")).toBeVisible();
 
   // Playlist : élément image généré depuis le schéma, avancé replié.
   await createPlaylist(page, info, playlist);
@@ -69,7 +69,7 @@ test("parcours éditeur : média, playlist, programmation, appairage et révocat
 
   // Le média utilisé ne peut plus être supprimé (409).
   await page.goto(url(info, "/media"));
-  const used = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: title }) });
+  const used = page.getByRole("listitem").filter({ has: page.getByRole("button", { name: title, exact: true }) });
   await used.getByRole("button", { name: "Supprimer", exact: true }).click();
   await used.getByRole("button", { name: `Supprimer ${title}` }).click();
   const alert = page.getByRole("alert").filter({ hasText: "ne peut pas être supprimé" });
@@ -161,7 +161,7 @@ test("médiathèque : un média en échec affiche icône, libellé et cause", as
   const title = uniq(info, "broken");
   await page.goto(url(info, "/media"));
   await upload(page, `${title}.png`);
-  const row = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: title }) });
+  const row = page.getByRole("listitem").filter({ has: page.getByRole("button", { name: title, exact: true }) });
   await expect(row.locator(".status-badge", { hasText: "Échec" }).locator(".vds-icon")).toBeVisible();
   await expect(row.getByText("Le contenu du fichier ne correspond pas à son type.")).toBeVisible();
 });

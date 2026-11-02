@@ -2,12 +2,16 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
+import { ExpiryBadge } from "../components/ContentBadges";
 import { ConfirmAction, Empty, ErrorAlert, QueryStatus } from "../components/feedback";
 import { Icon } from "../components/Icon";
+import { ExpiryField } from "../features/media/ExpiryField";
+import { TagEditor } from "../features/media/TagEditor";
 import { ItemForm, type ItemDraft } from "../features/playlist/ItemForm";
 import { useApi } from "../lib/api";
 import { useContentTypes } from "../lib/content-types";
-import { keys, useMedia, usePlaylist, type PlaylistDetail, type PlaylistItem } from "../lib/queries";
+import { formatDateTime } from "../lib/media-view";
+import { keys, useMedia, usePlaylist, usePlaylistUsage, type PlaylistDetail, type PlaylistItem } from "../lib/queries";
 
 export function PlaylistEditor() {
   const { id = "" } = useParams();
@@ -16,6 +20,7 @@ export function PlaylistEditor() {
   const qc = useQueryClient();
   const playlist = usePlaylist(id);
   const media = useMedia();
+  const usage = usePlaylistUsage(id);
   const contentTypes = useContentTypes();
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
@@ -28,6 +33,10 @@ export function PlaylistEditor() {
 
   const rename = useMutation({
     mutationFn: (name: string) => api.patch(`/playlists/${id}`, { name }),
+    onSuccess: refresh,
+  });
+  const options = useMutation({
+    mutationFn: (body: { expires_at?: string | null; tags?: string[] }) => api.patch(`/playlists/${id}`, body),
     onSuccess: refresh,
   });
   const add = useMutation({
@@ -84,7 +93,9 @@ export function PlaylistEditor() {
     focusAfter.current = null;
   }, [order]);
 
-  const mediaTitle = (mid: string) => media.data?.find((m) => m.id === mid)?.title ?? "";
+  const mediaTitle = (mid: string) => media.data?.items.find((m) => m.id === mid)?.title ?? "";
+  /** Un élément dont un média est expiré n'est plus diffusé : barré dans la liste. */
+  const itemExpired = (item: PlaylistItem) => item.media_ids.some((mid) => media.data?.items.find((m) => m.id === mid)?.expired);
   const summary = (item: PlaylistItem): string => {
     const type = contentTypes.byId(item.content_type);
     for (const [name, field] of Object.entries(type?.schema.properties ?? {})) {
@@ -127,6 +138,16 @@ export function PlaylistEditor() {
             </button>
           </form>
           {rename.isError ? <ErrorAlert error={rename.error} /> : null}
+          <ExpiryBadge item={playlist.data} />
+
+          <details className="advanced section" open={playlist.data.expires_at !== null || playlist.data.tags.length > 0 ? true : undefined}>
+            <summary>{t("playlist.options")}</summary>
+            <div className="advanced-body">
+              <ExpiryField key={playlist.data.expires_at ?? ""} value={playlist.data.expires_at} pending={options.isPending} onSave={(iso) => options.mutate({ expires_at: iso })} />
+              <TagEditor scope="playlists" tags={playlist.data.tags} pending={options.isPending} onChange={(tags) => options.mutate({ tags })} />
+              {options.isError ? <ErrorAlert error={options.error} /> : null}
+            </div>
+          </details>
 
           <section className="section" aria-labelledby="items-title">
             <div className="page-head">
@@ -152,7 +173,13 @@ export function PlaylistEditor() {
                       {index + 1}
                     </span>
                     <div className="row-main">
-                      <h3>{label(item)}</h3>
+                      <h3 className={itemExpired(item) ? "item-expired" : undefined}>{label(item)}</h3>
+                      {itemExpired(item) ? (
+                        <span className="status-badge" data-state="offline">
+                          <Icon name="failed" />
+                          <span>{t("playlist.item.expired")}</span>
+                        </span>
+                      ) : null}
                       <p className="meta">
                         {item.duration_ms ? t("playlist.item.seconds", { count: item.duration_ms / 1000 }) : t("playlist.item.duration_default")}
                         {item.enabled ? null : ` · ${t("playlist.item.disabled")}`}
@@ -193,7 +220,7 @@ export function PlaylistEditor() {
                   {editing === item.id ? (
                     <ItemForm
                       item={item}
-                      media={media.data ?? []}
+                      media={media.data?.items ?? []}
                       pending={edit.isPending}
                       error={edit.error}
                       onSubmit={(d) => edit.mutate({ item, d })}
@@ -204,7 +231,29 @@ export function PlaylistEditor() {
               ))}
             </ol>
             {adding ? (
-              <ItemForm media={media.data ?? []} pending={add.isPending} error={add.error} onSubmit={(d) => add.mutate(d)} onCancel={() => setAdding(false)} />
+              <ItemForm media={media.data?.items ?? []} pending={add.isPending} error={add.error} onSubmit={(d) => add.mutate(d)} onCancel={() => setAdding(false)} />
+            ) : null}
+          </section>
+
+          <section className="section" aria-labelledby="usage-title">
+            <h2 id="usage-title">{t("playlist.usage.title")}</h2>
+            <QueryStatus query={usage} />
+            {usage.data && usage.data.schedules.length === 0 && usage.data.overrides.length === 0 ? <p className="meta">{t("playlist.usage.none")}</p> : null}
+            {usage.data && usage.data.schedules.length > 0 ? (
+              <ul className="list-reset usage-list">
+                {usage.data.schedules.map((s) => (
+                  <li key={s.id}>
+                    <Link to="/playback">{t("media.usage.schedule", { name: s.name, target: s.target_name })}</Link>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {usage.data && usage.data.overrides.length > 0 ? (
+              <ul className="list-reset usage-list">
+                {usage.data.overrides.map((o) => (
+                  <li key={o.id}>{t("media.usage.override", { name: o.name, date: formatDateTime(o.ends_at, i18n.language) })}</li>
+                ))}
+              </ul>
             ) : null}
           </section>
         </>

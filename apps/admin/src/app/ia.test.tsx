@@ -31,8 +31,8 @@ describe.each(["", "/espace/affichage"])("Accueil et fil d'Ariane, base « %s »
         "GET /sites": [SITE],
         "GET /fleet/summary": FLEET,
         "GET /onboarding": { ...ONB, card: { hidden: true, hidden_at: "x" } },
-        "GET /media": [{ id: "m1" }],
-        "GET /playlists": [],
+        "GET /media": { items: [{ id: "m1" }], total: 1 },
+        "GET /playlists": { items: [], total: 0 },
         "GET /schedules": [],
       },
       b,
@@ -46,7 +46,7 @@ describe.each(["", "/espace/affichage"])("Accueil et fil d'Ariane, base « %s »
   });
 
   it("Accueil sans écran : état vide avec action", async () => {
-    mockApi({ "GET /sites": [], "GET /fleet/summary": { ...FLEET, screens: { total: 0, by_status: {} }, to_handle: { screens: 0, by_reason: {} } }, "GET /onboarding": ONB, "GET /media": [], "GET /playlists": [], "GET /schedules": [] }, b);
+    mockApi({ "GET /sites": [], "GET /fleet/summary": { ...FLEET, screens: { total: 0, by_status: {} }, to_handle: { screens: 0, by_reason: {} } }, "GET /onboarding": ONB, "GET /media": { items: [], total: 0 }, "GET /playlists": { items: [], total: 0 }, "GET /schedules": [] }, b);
     await renderRoutes(routes, "/", b);
     expect(await screen.findByText(/Aucun écran pour l'instant/)).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Ajouter un écran" })[0]).toHaveAttribute("href", `${b}/screens/add`);
