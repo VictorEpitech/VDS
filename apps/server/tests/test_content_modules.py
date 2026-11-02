@@ -139,7 +139,7 @@ async def test_image_process_and_player() -> None:
     meta = await module.process_media(_ref("image", "image/png"), store)
     assert (meta.width, meta.height) == (400, 200)
     thumb, mime = store.variants["thumb"]
-    assert mime == "image/jpeg" and Image.open(io.BytesIO(thumb)).size == (100, 50)
+    assert mime == "image/webp" and Image.open(io.BytesIO(thumb)).size == (100, 50)
 
     media_id = uuid4()
     spec = await module.to_player(
@@ -150,6 +150,32 @@ async def test_image_process_and_player() -> None:
     assert spec.duration_ms is None
     with pytest.raises(ContractError):
         await module.to_player({"media": str(uuid4())}, {})
+
+
+async def test_image_thumb_default_size_format_and_budget() -> None:
+    _, module = _load("content.image")
+    await _setup(module)
+    noise = Image.effect_noise((1600, 900), 80).convert("RGB")
+    buf = io.BytesIO()
+    noise.save(buf, "JPEG")
+    store = FakeStore(buf.getvalue())
+    await module.process_media(_ref("image", "image/jpeg"), store)
+    data, mime = store.variants["thumb"]
+    img = Image.open(io.BytesIO(data))
+    assert mime == "image/webp" and img.format == "WEBP"
+    assert img.size == (320, 180) and len(data) <= 30 * 1024
+
+
+async def test_image_decompression_bomb_refused() -> None:
+    _, module = _load("content.image")
+    buf = io.BytesIO()
+    Image.new("1", (12000, 12000)).save(buf, "PNG")  # 144 Mpx, quelques Kio
+    assert len(buf.getvalue()) < 1_000_000
+    store = FakeStore(buf.getvalue())
+    with pytest.raises(ContractError) as err:
+        await module.process_media(_ref("image", "image/png"), store)
+    assert err.value.code in {"content.image.too_large", "content.image.invalid"}
+    assert not store.variants
 
 
 async def test_image_rejects_garbage() -> None:
@@ -264,7 +290,11 @@ async def test_pdf_pages_rendered_and_player() -> None:
     store = FakeStore(_pdf(3))
     meta = await module.process_media(_ref("document", "application/pdf"), store)
     assert meta.page_count == 3 and meta.width == 1280 and meta.height == 1920
-    assert sorted(store.variants) == ["page-1", "page-2", "page-3"]
+    assert sorted(store.variants) == ["page-1", "page-2", "page-3", "thumb"]
+    tdata, tmime = store.variants["thumb"]
+    assert tmime == "image/webp" and len(tdata) <= 30 * 1024
+    timg = Image.open(io.BytesIO(tdata))
+    assert timg.format == "WEBP" and max(timg.size) == 320
     data, mime = store.variants["page-2"]
     assert mime == "image/jpeg" and Image.open(io.BytesIO(data)).size == (1280, 1920)
 
@@ -369,6 +399,7 @@ async def test_pdf_runs_in_subprocess_without_secrets(
         "import os, sys, json\n"
         "assert not [k for k in os.environ if k.startswith('VDS_')], dict(os.environ)\n"
         "open(sys.argv[2] + '/page-1.jpg', 'wb').write(b'x')\n"
+        "open(sys.argv[2] + '/thumb.webp', 'wb').write(b'y')\n"
         "print(json.dumps({'count': 1, 'width': 2, 'height': 3}))\n"
     )
     monkeypatch.setattr(_worker_module(module), "WORKER", worker)
@@ -432,3 +463,55 @@ async def test_video_ffprobe_env_is_minimal(
     module.ffprobe_bin = str(script)  # type: ignore[attr-defined]
     meta = await module.process_media(_ref("video", "video/mp4"), FakeStore(b"data"))
     assert meta.width == 1080
+
+
+# --- miniatures (M6) ------------------------------------------------------------
+
+
+def _fake_ffmpeg(tmp_path: Path, body: str) -> str:
+    script = tmp_path / "ffmpeg"
+    script.write_text(f"#!/bin/sh\n{body}\n")
+    script.chmod(script.stat().st_mode | stat.S_IXUSR)
+    return str(script)
+
+
+async def test_video_thumb_variant(tmp_path: Path) -> None:
+    _, module = _load("content.video")
+    module.ffprobe_bin = _fake_ffprobe(tmp_path, PROBE)  # type: ignore[attr-defined]
+    module.ffmpeg_bin = _fake_ffmpeg(tmp_path, "printf 'RIFFxxxxWEBP'")  # type: ignore[attr-defined]
+    store = FakeStore(b"video")
+    await module.process_media(_ref("video", "video/mp4"), store)
+    assert store.variants["thumb"] == (b"RIFFxxxxWEBP", "image/webp")
+
+
+async def test_video_thumb_failure_is_not_fatal(tmp_path: Path) -> None:
+    _, module = _load("content.video")
+    module.ffprobe_bin = _fake_ffprobe(tmp_path, PROBE)  # type: ignore[attr-defined]
+    module.ffmpeg_bin = _fake_ffmpeg(tmp_path, "exit 1")  # type: ignore[attr-defined]
+    store = FakeStore(b"video")
+    meta = await module.process_media(_ref("video", "video/mp4"), store)
+    assert meta.width == 1080 and "thumb" not in store.variants
+
+
+async def test_pdf_trap_has_no_effect_outside_worker(tmp_path: Path) -> None:
+    """PDF piégé (JavaScript, lancement, fichier externe) : rendu seul, rien ne s'exécute."""
+    marker = tmp_path / "pwned"
+    doc = pdfium.PdfDocument.new()
+    doc.new_page(200, 300)
+    out = io.BytesIO()
+    doc.save(out)
+    trap = (
+        out.getvalue()
+        + b"\n1 0 obj << /Type /Catalog /OpenAction << /S /JavaScript /JS (app.launchURL\\(\\"
+        + str(marker).encode()
+        + b"\\)) >> /AA << /O << /S /Launch /F (touch "
+        + str(marker).encode()
+        + b") >> >> >> endobj\n"
+    )
+    _, module = _load("content.pdf")
+    store = FakeStore(trap)
+    try:
+        await module.process_media(_ref("document", "application/pdf"), store)
+    except ContractError as exc:  # rejeté proprement est aussi acceptable
+        assert exc.code.startswith("content.pdf.")
+    assert not marker.exists()

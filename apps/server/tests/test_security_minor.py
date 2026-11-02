@@ -47,6 +47,11 @@ async def small(sbase: str, tmp_path: Path) -> AsyncIterator[AsyncClient]:
     async def adm() -> dict[str, bool]:
         return {"ok": True}
 
+    @router.post("/media/{mid}/file")
+    async def media_file(mid: str) -> dict[str, int]:
+        seen["media"] += 1
+        return {"media": seen["media"]}
+
     @router.post("/media")
     async def media() -> dict[str, int]:
         seen["media"] += 1
@@ -115,6 +120,16 @@ async def test_multipart_size_checked_before_read(small: AsyncClient, sbase: str
     assert r.status_code == 413 and r.json()["code"] == "media.too_large"
     ok = await small.post(url, files={"file": ("a.bin", b"x" * 100)}, headers=SAME)
     assert ok.status_code == 200 and ok.json() == {"media": 1}  # seul l'envoi valide arrive
+
+
+async def test_replace_file_size_checked_before_read(small: AsyncClient, sbase: str) -> None:
+    url = f"{pre(sbase)}/api/v1/media/{'0' * 8}-0000-0000-0000-{'0' * 12}/file"
+    r = await small.post(
+        url, files={"file": ("a.bin", b"x" * (1000 + OVERHEAD + 10))}, headers=SAME
+    )
+    assert r.status_code == 413 and r.json()["code"] == "media.too_large"
+    ok = await small.post(url, files={"file": ("a.bin", b"x" * 100)}, headers=SAME)
+    assert ok.status_code == 200 and ok.json() == {"media": 1}
 
 
 async def test_multipart_without_length_refused(small: AsyncClient, sbase: str) -> None:

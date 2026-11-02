@@ -17,6 +17,7 @@ from vds_server.core.errors import ApiError
 from vds_server.db.models import Organization, Playlist, Screen, ScreenGroup, Site
 from vds_server.db.models_override import PlaybackOverride
 from vds_server.diffusion.base import ServiceBase
+from vds_server.diffusion.expiry import is_expired
 from vds_server.diffusion.playlists import ItemSchemaLookup, PlaylistService
 from vds_server.diffusion.resolver import wall_to_instant
 from vds_server.diffusion.schedules import TARGET_MODELS
@@ -204,6 +205,8 @@ class OverrideService(ServiceBase):
                 pl = await self._s.get(Playlist, body.playlist_id)
                 if pl is None or pl.owner_override_id is not None:
                     raise ApiError("override.playlist_not_found", 422)
+                if is_expired(pl, self._clock()):
+                    raise ApiError("playlist.expired", 422)
         return name
 
     async def create(self, body: sc.OverrideCreate, *, module: str | None = None) -> sc.OverrideOut:

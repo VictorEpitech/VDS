@@ -147,6 +147,7 @@ class PlayerItem(BaseModel):
     props: dict[str, Any]
     assets: list[str]
     requires_network: bool
+    until: datetime | None = None  # vds-core 1.8.0 : fin de diffusion (média expirant)
 
 
 class PlayerPlaylist(BaseModel):

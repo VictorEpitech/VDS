@@ -11,6 +11,7 @@ de l'écran l'emporte sur la programmation, quelle que soit la spécificité de 
 forçages : extinction d'abord (un `off` bat toute playlist), puis `priority` décroissante,
 puis le plus récent (`created_at`), puis l'id. Un forçage
 `respect_scheduled_off` ne s'applique pas là où la programmation est hors plage (`off`).
+Une programmation avec `until` (expiration de sa playlist) est inactive à partir de cet instant.
 Un forçage sans playlist (`playlist_id is None`) force l'extinction.
 """
 
@@ -44,6 +45,7 @@ class ScheduleSpec:
     ends_on: date | None = None
     enabled: bool = True
     rules: tuple[Rule, ...] = ()
+    until: datetime | None = None  # UTC : expiration de la playlist, point de découpe
 
 
 @dataclass(frozen=True)
@@ -149,6 +151,8 @@ def resolve(
                 if rule.weekdays & (1 << d.weekday()):
                     start = wall_to_instant(tz, d, rule.start_minute)
                     end = wall_to_instant(tz, d, rule.end_minute)
+                    if spec.until is not None:
+                        end = min(end, spec.until)
                     if start < end:
                         intervals.append((max(start, lo), min(end, hi), spec))
     mine = [

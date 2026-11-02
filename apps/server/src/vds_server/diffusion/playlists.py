@@ -6,15 +6,25 @@ from typing import Any
 from uuid import UUID
 
 from jsonschema import Draft202012Validator
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, func, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 from vds_sdk import EventBus
 
+from vds_server.config.schemas import ConfigSchemaProvider
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
 from vds_server.db.models import Media, Playlist, PlaylistItem, PlaylistItemMedia, Schedule
 from vds_server.diffusion import schemas as sc
 from vds_server.diffusion.base import ServiceBase
+from vds_server.diffusion.expiry import (
+    apply_expiry,
+    aware,
+    expiring_soon_days,
+    is_expired,
+    state_clause,
+)
+from vds_server.diffusion.scope import ContentScope, OrganizationScope
+from vds_server.diffusion.tags import AUTOCOMPLETE_MAX, escape_like, normalize_tag, normalize_tags
 
 ItemSchemaLookup = Callable[[str], dict[str, Any] | None]
 
@@ -34,6 +44,30 @@ def media_refs(schema: dict[str, Any], props: dict[str, Any]) -> list[tuple[str,
     return refs
 
 
+_SORTS: dict[str, tuple[Any, bool]] = {
+    "name": (Playlist.name, False),
+    "-name": (Playlist.name, True),
+    "-created_at": (Playlist.created_at, True),
+    "created_at": (Playlist.created_at, False),
+    "expires_at": (Playlist.expires_at, False),
+    "-updated_at": (Playlist.updated_at, True),
+}
+
+
+def to_out(p: Playlist, item_count: int, now: datetime) -> sc.PlaylistOut:
+    return sc.PlaylistOut(
+        id=p.id,
+        name=p.name,
+        description=p.description,
+        item_count=item_count,
+        created_at=p.created_at,
+        updated_at=p.updated_at,
+        expires_at=p.expires_at,
+        expired=is_expired(p, now),
+        tags=list(p.tags or []),
+    )
+
+
 class PlaylistService(ServiceBase):
     def __init__(
         self,
@@ -41,21 +75,85 @@ class PlaylistService(ServiceBase):
         bus: EventBus | None,
         actor: Principal,
         item_schema: ItemSchemaLookup,
+        schemas: ConfigSchemaProvider | None = None,
+        scope: ContentScope | None = None,
     ) -> None:
         super().__init__(session, bus, actor)
         self._item_schema = item_schema
+        self._schemas = schemas
+        self._scope: ContentScope = scope or OrganizationScope()
 
     # --- playlists -------------------------------------------------------
-    async def list_all(self) -> list[tuple[Playlist, int]]:
+    async def list_page(
+        self,
+        *,
+        search: str | None,
+        tags: list[str],
+        state: str,
+        sort: str,
+        limit: int,
+        offset: int,
+    ) -> sc.PlaylistPage:
+        now = datetime.now(UTC)
+        where: list[ColumnElement[bool]] = [
+            Playlist.owner_override_id.is_(None),
+            self._scope.playlist_filter(self._actor),
+        ]
+        if search:
+            where.append(Playlist.name.ilike(f"%{escape_like(search)}%", escape="\\"))
+        if tags:
+            where.append(Playlist.tags.contains(normalize_tags(tags)))
+        if state != "all":
+            where.append(
+                state_clause(Playlist, state, now, await expiring_soon_days(self._s, self._schemas))
+            )
+        column, desc = _SORTS[sort]
+        order = column.desc() if desc else column.asc()
+        if sort == "expires_at":
+            order = column.asc().nulls_last()
         count = func.count(PlaylistItem.id)
         q = (
             select(Playlist, count)
             .outerjoin(PlaylistItem, PlaylistItem.playlist_id == Playlist.id)
-            .where(Playlist.owner_override_id.is_(None))
+            .where(*where)
             .group_by(Playlist.id)
-            .order_by(Playlist.name, Playlist.id)
+            .order_by(order, Playlist.id)
+            .limit(limit)
+            .offset(offset)
         )
-        return [(p, int(n)) for p, n in (await self._s.execute(q)).all()]
+        rows = (await self._s.execute(q)).all()
+        total = await self._s.scalar(select(func.count()).select_from(Playlist).where(*where))
+        return sc.PlaylistPage(
+            items=[to_out(p, int(n), now) for p, n in rows], total=int(total or 0)
+        )
+
+    async def tag_suggestions(self, prefix: str) -> list[str]:
+        try:
+            needle = normalize_tag(prefix) if prefix.strip() else ""
+        except ApiError:
+            return []
+        unnested = func.unnest(Playlist.tags).table_valued("tag").render_derived(name="u")
+        tag = unnested.c.tag
+        q = (
+            select(tag)
+            .select_from(Playlist)
+            .join(unnested, true())
+            .where(
+                self._scope.playlist_filter(self._actor),
+                Playlist.owner_override_id.is_(None),
+                tag.like(f"{escape_like(needle)}%", escape="\\"),
+            )
+            .distinct()
+            .order_by(tag)
+            .limit(AUTOCOMPLETE_MAX)
+        )
+        return list((await self._s.execute(q)).scalars())
+
+    async def _writable(self, playlist_id: UUID) -> Playlist:
+        playlist = await self.get(playlist_id)
+        if not await self._scope.can_write_playlist(self._actor, playlist_id):
+            raise ApiError("playlist.forbidden", 403)
+        return playlist
 
     async def get(self, playlist_id: UUID) -> Playlist:
         row = await self._s.get(Playlist, playlist_id)
@@ -119,11 +217,19 @@ class PlaylistService(ServiceBase):
         playlist.updated_by = self._actor.user_id
 
     async def update(self, playlist_id: UUID, body: sc.PlaylistPatch) -> Playlist:
-        playlist = await self.get(playlist_id)
+        playlist = await self._writable(playlist_id)
         if body.name is not None:
             playlist.name = body.name
         if "description" in body.model_fields_set:
             playlist.description = body.description
+        if body.tags is not None:
+            playlist.tags = normalize_tags(body.tags)
+        restored = False
+        if "expires_at" in body.model_fields_set:
+            new = aware(body.expires_at)
+            if new is not None and playlist.owner_override_id is not None:
+                raise ApiError("playlist.expiry_unsupported", 422)
+            restored = apply_expiry(playlist, new, datetime.now(UTC))
         self._touch(playlist)
         self._audit(
             "playlist.updated",
@@ -132,11 +238,13 @@ class PlaylistService(ServiceBase):
             "playlist_id",
             fields=sorted(body.model_fields_set),
         )
+        if restored:
+            self._audit("playlist.restored", "playlist", playlist.id, "playlist_id")
         await self._commit("playlist.conflict")
         return playlist
 
     async def delete(self, playlist_id: UUID) -> None:
-        playlist = await self.get(playlist_id)
+        playlist = await self._writable(playlist_id)
         schedules = (
             await self._s.execute(
                 select(Schedule.id).where(Schedule.playlist_id == playlist_id).order_by(Schedule.id)
@@ -150,7 +258,10 @@ class PlaylistService(ServiceBase):
         await self._commit("playlist.in_use")
 
     # --- éléments --------------------------------------------------------
-    async def _validate_props(self, content_type: str, props: dict[str, Any]) -> list[UUID]:
+    async def _validate_props(
+        self, content_type: str, props: dict[str, Any], keep: frozenset[UUID] = frozenset()
+    ) -> list[UUID]:
+        """`keep` : médias déjà présents dans l'élément (un média expiré y reste toléré)."""
         schema = self._item_schema(content_type)
         if schema is None:
             raise ApiError("playlist.content_type_unknown", 422, content_type=content_type)
@@ -172,6 +283,8 @@ class PlaylistService(ServiceBase):
                 raise ApiError("playlist.media_not_found", 422, field=name)
             if media.kind != kind:
                 raise ApiError("playlist.media_kind_mismatch", 422, field=name, expected=kind)
+            if media_id not in keep and is_expired(media, datetime.now(UTC)):
+                raise ApiError("media.expired", 422, field=name)
             if media_id not in ids:
                 ids.append(media_id)
         return ids
@@ -222,7 +335,7 @@ class PlaylistService(ServiceBase):
         return item
 
     async def add_item(self, playlist_id: UUID, body: sc.ItemCreate) -> sc.ItemOut:
-        playlist = await self.get(playlist_id)
+        playlist = await self._writable(playlist_id)
         media_ids = await self._validate_props(body.content_type, body.props)
         items = await self.items(playlist_id)
         item = PlaylistItem(
@@ -252,10 +365,11 @@ class PlaylistService(ServiceBase):
         return self._out(item, sorted(media_ids))
 
     async def update_item(self, playlist_id: UUID, item_id: UUID, body: sc.ItemPatch) -> sc.ItemOut:
-        playlist = await self.get(playlist_id)
+        playlist = await self._writable(playlist_id)
         item = await self._item(playlist_id, item_id)
         if body.props is not None:
-            media_ids = await self._validate_props(item.content_type, body.props)
+            current = frozenset((await self.media_ids([item_id]))[item_id])
+            media_ids = await self._validate_props(item.content_type, body.props, current)
             item.props = body.props
             await self._set_media(item.id, media_ids)
         if "duration_ms" in body.model_fields_set:
@@ -277,7 +391,7 @@ class PlaylistService(ServiceBase):
         return self._out(item, media[item_id])
 
     async def delete_item(self, playlist_id: UUID, item_id: UUID) -> None:
-        playlist = await self.get(playlist_id)
+        playlist = await self._writable(playlist_id)
         item = await self._item(playlist_id, item_id)
         await self._s.delete(item)
         await self._s.flush()
@@ -294,7 +408,7 @@ class PlaylistService(ServiceBase):
         await self._commit("playlist.conflict")
 
     async def reorder(self, playlist_id: UUID, body: sc.ItemOrder) -> None:
-        playlist = await self.get(playlist_id)
+        playlist = await self._writable(playlist_id)
         items = await self.items(playlist_id)
         by_id = {i.id: i for i in items}
         if len(body.item_ids) != len(by_id) or set(body.item_ids) != set(by_id):

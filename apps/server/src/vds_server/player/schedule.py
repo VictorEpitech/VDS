@@ -18,6 +18,7 @@ from vds_server.core.errors import ApiError
 from vds_server.db.models import (
     Media,
     MediaVariant,
+    Playlist,
     PlaylistItem,
     PlaylistItemMedia,
     Schedule,
@@ -27,6 +28,7 @@ from vds_server.db.models import (
 )
 from vds_server.db.models_override import PlaybackOverride
 from vds_server.diffusion import resolver
+from vds_server.diffusion.expiry import is_expired
 from vds_server.diffusion.resolver import OverrideSpec, ScheduleSpec, Slot
 
 SCHEDULE_FORMAT = 1
@@ -54,11 +56,15 @@ async def load_specs(session: AsyncSession, chain: dict[str, UUID]) -> list[Sche
         (Schedule.target_type == level) & (Schedule.target_id == target)
         for level, target in chain.items()
     ]
-    rows = list(
-        (
-            await session.execute(select(Schedule).where(Schedule.enabled.is_(True), or_(*conds)))
-        ).scalars()
-    )
+    found_rows = (
+        await session.execute(
+            select(Schedule, Playlist.expires_at)
+            .join(Playlist, Playlist.id == Schedule.playlist_id)
+            .where(Schedule.enabled.is_(True), or_(*conds))
+        )
+    ).all()
+    rows = [r for r, _ in found_rows]
+    until = {r.id: exp for r, exp in found_rows}
     rules: dict[UUID, list[resolver.Rule]] = {r.id: [] for r in rows}
     if rows:
         found = await session.execute(
@@ -80,6 +86,7 @@ async def load_specs(session: AsyncSession, chain: dict[str, UUID]) -> list[Sche
             ends_on=r.ends_on,
             enabled=r.enabled,
             rules=tuple(rules[r.id]),
+            until=until[r.id],
         )
         for r in rows
     ]
@@ -88,9 +95,15 @@ async def load_specs(session: AsyncSession, chain: dict[str, UUID]) -> list[Sche
 OVERRIDE_LOOKBACK = timedelta(days=2)
 
 
-def override_spec(row: PlaybackOverride, respect: bool) -> OverrideSpec | None:
-    """Spec résolveur ; `ends_at` tronqué à l'arrêt manuel. None si le forçage n'a jamais joué."""
+def override_spec(
+    row: PlaybackOverride, respect: bool, playlist_expires_at: datetime | None = None
+) -> OverrideSpec | None:
+    """Spec résolveur ; `ends_at` tronqué à l'arrêt manuel et à l'expiration de la playlist.
+
+    None si le forçage n'a jamais joué."""
     ends = row.ends_at if row.ended_at is None else min(row.ends_at, row.ended_at)
+    if playlist_expires_at is not None:
+        ends = min(ends, playlist_expires_at)
     if ends <= row.starts_at:
         return None
     return OverrideSpec(
@@ -121,29 +134,40 @@ async def load_overrides(
     ]
     rows = (
         await session.execute(
-            select(PlaybackOverride).where(
-                PlaybackOverride.ends_at > now - OVERRIDE_LOOKBACK, or_(*conds)
-            )
+            select(PlaybackOverride, Playlist.expires_at)
+            .outerjoin(Playlist, Playlist.id == PlaybackOverride.playlist_id)
+            .where(PlaybackOverride.ends_at > now - OVERRIDE_LOOKBACK, or_(*conds))
         )
-    ).scalars()
+    ).all()
     specs = (
         override_spec(
-            r, respect_default if r.respect_scheduled_off is None else r.respect_scheduled_off
+            r,
+            respect_default if r.respect_scheduled_off is None else r.respect_scheduled_off,
+            expires_at,
         )
-        for r in rows
+        for r, expires_at in rows
     )
     return [s for s in specs if s is not None]
 
 
-async def screen_media_ids(session: AsyncSession, screen_id: UUID) -> set[UUID]:
-    """Médias référencés par les programmations actives de l'écran (autorisation de lecture)."""
+async def screen_media_ids(
+    session: AsyncSession, screen_id: UUID, *, include_expired: bool = False
+) -> set[UUID]:
+    """Médias référencés par les programmations actives de l'écran (autorisation de lecture).
+
+    Médias et playlists expirés exclus (sauf `include_expired`, pour distinguer 404 et 403)."""
     screen = await session.get(Screen, screen_id)
     if screen is None or screen.archived_at is not None:
         return set()
     specs = await load_specs(session, await screen_chain(session, screen))
-    horizon = datetime.now(UTC).date() - timedelta(days=1)
-    playlists = {s.playlist_id for s in specs if s.ends_on is None or s.ends_on >= horizon}
     now = datetime.now(UTC)
+    horizon = now.date() - timedelta(days=1)
+    playlists = {
+        s.playlist_id
+        for s in specs
+        if (s.ends_on is None or s.ends_on >= horizon)
+        and (include_expired or s.until is None or s.until > now)
+    }
     playlists |= {
         o.playlist_id
         for o in await load_overrides(session, await screen_chain(session, screen), now)
@@ -156,6 +180,10 @@ async def screen_media_ids(session: AsyncSession, screen_id: UUID) -> set[UUID]:
         .join(PlaylistItem, PlaylistItem.id == PlaylistItemMedia.item_id)
         .where(PlaylistItem.playlist_id.in_(playlists), PlaylistItem.enabled.is_(True))
     )
+    if not include_expired:
+        q = q.join(Media, Media.id == PlaylistItemMedia.media_id).where(
+            Media.expired_at.is_(None), or_(Media.expires_at.is_(None), Media.expires_at > now)
+        )
     return set((await session.execute(q)).scalars())
 
 
@@ -200,7 +228,7 @@ class ScheduleBuilder:
         )
         slots = resolver.resolve(chain, await load_specs(self._s, chain), tz, day, overrides)
         playlists, assets, types = await self._playlists(
-            {s.playlist_id for s in slots if s.playlist_id}
+            {s.playlist_id for s in slots if s.playlist_id}, now
         )
         body: dict[str, Any] = {
             "format": SCHEDULE_FORMAT,
@@ -231,7 +259,7 @@ class ScheduleBuilder:
         return bool(await self._respect_of(screen_id))
 
     async def _playlists(
-        self, ids: set[UUID]
+        self, ids: set[UUID], now: datetime
     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
         playlists: dict[str, Any] = {}
         assets: dict[str, Any] = {}
@@ -244,7 +272,7 @@ class ScheduleBuilder:
             )
             out: list[dict[str, Any]] = []
             for item in (await self._s.execute(items_q)).scalars():
-                built = await self._item(item)
+                built = await self._item(item, now)
                 if built is None:
                     continue
                 entry, item_assets = built
@@ -256,13 +284,25 @@ class ScheduleBuilder:
             playlists[_pl(pid)] = {"items": out}
         return playlists, assets, types
 
-    async def _item(self, item: PlaylistItem) -> tuple[dict[str, Any], dict[str, Any]] | None:
+    async def _item(
+        self, item: PlaylistItem, now: datetime
+    ) -> tuple[dict[str, Any], dict[str, Any]] | None:
         schema = self._item_schema(item.content_type)
         if schema is None:  # content-type absent ou inactif : élément ignoré
             return None
         props = dict(item.props or {})
         refs: list[str] = []
         found: dict[str, Any] = {}
+        until: datetime | None = None
+        for name, spec in (schema.get("properties") or {}).items():
+            if isinstance(spec, dict) and spec.get("x-vds-media") and props.get(name) is not None:
+                media = await self._s.get(Media, UUID(str(props[name])))
+                if media is None:
+                    continue
+                if is_expired(media, now):  # expiré : l'élément n'est plus diffusé
+                    return None
+                if media.expires_at is not None:
+                    until = media.expires_at if until is None else min(until, media.expires_at)
         for name, spec in (schema.get("properties") or {}).items():
             if not (isinstance(spec, dict) and spec.get("x-vds-media")) or props.get(name) is None:
                 continue
@@ -291,6 +331,8 @@ class ScheduleBuilder:
             "assets": refs,
             "requires_network": bool(info.get("requires_network", False)),
         }
+        if until is not None:
+            entry["until"] = until.astimezone(UTC).isoformat().replace("+00:00", "Z")
         return entry, found
 
     async def _to_player(

@@ -3,7 +3,7 @@
 import re
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, Request, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, Request, Response, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +16,7 @@ from vds_server.core.errors import ApiError
 from vds_server.core.runtime import Runtime
 from vds_server.db.models import MediaVariant
 from vds_server.diffusion import schemas as sc
+from vds_server.diffusion.media import MediaService
 from vds_server.diffusion.media_files import (
     ByteRange,
     MediaUploadService,
@@ -65,7 +66,36 @@ def build_router(rt: Runtime) -> APIRouter:
                 expected_sha256=sha256,
             )
         )
-        return sc.MediaOut.model_validate(media)
+        return await MediaService(session, rt.bus, actor, rt.schemas).out(media)
+
+    @router.post("/api/v1/media/{media_id}/file", response_model=sc.MediaOut)
+    async def replace_media_file(
+        media_id: str,
+        session: Session,
+        actor: Editor,
+        backend: Storage,
+        file: Annotated[UploadFile, File()],
+        sha256: Annotated[str | None, Form(max_length=64)] = None,
+        if_match: Annotated[str | None, Header()] = None,
+    ) -> sc.MediaOut:
+        cfg = await ModuleConfigReader(rt.maker, rt.schemas, CORE_NAMESPACE).resolve()
+        max_bytes = int(cfg.get("media_max_upload_mb", 2048)) * 1024 * 1024
+        grace = int(cfg.get("media.replaced_grace_hours", 48))
+        svc = MediaUploadService(
+            session, rt.bus, actor, backend, max_bytes, rt.registry.content_processor, grace
+        )
+        media = await svc.replace(
+            media_uuid(media_id),
+            Upload(
+                file=file,
+                filename=file.filename,
+                declared_mime=file.content_type,
+                title=None,
+                expected_sha256=sha256,
+            ),
+            if_match,
+        )
+        return await MediaService(session, rt.bus, actor, rt.schemas).out(media)
 
     @router.head("/media/{media_id}/{variant}", include_in_schema=False)
     @router.get("/media/{media_id}/{variant}")

@@ -49,7 +49,9 @@ def cache_info(secret: str | None, row: SiteAgent) -> CacheInfo:
     return CacheInfo(enabled=True, key_id=key_id, key=key)
 
 
-async def site_media_ids(session: AsyncSession, site_id: UUID) -> set[UUID]:
+async def site_media_ids(
+    session: AsyncSession, site_id: UUID, *, include_expired: bool = False
+) -> set[UUID]:
     ids = (
         await session.execute(
             select(Screen.id).where(Screen.site_id == site_id, Screen.archived_at.is_(None))
@@ -57,7 +59,7 @@ async def site_media_ids(session: AsyncSession, site_id: UUID) -> set[UUID]:
     ).scalars()
     out: set[UUID] = set()
     for sid in list(ids):
-        out |= await screen_media_ids(session, sid)
+        out |= await screen_media_ids(session, sid, include_expired=include_expired)
     return out
 
 

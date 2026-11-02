@@ -116,13 +116,13 @@ async def test_anonymous_and_origin(anon: AsyncClient, admin: AsyncClient, p: st
 async def test_media_crud(editor: AsyncClient, p: str, migrated_db_url: str) -> None:
     img = await make_media(migrated_db_url, "image", "Logo campus")
     await make_media(migrated_db_url, "video", "Film")
-    rows = (await editor.get(f"{p}/api/v1/media")).json()
+    rows = (await editor.get(f"{p}/api/v1/media")).json()["items"]
     assert len(rows) == 2
-    assert [m["title"] for m in (await editor.get(f"{p}/api/v1/media?kind=video")).json()] == [
-        "Film"
-    ]
-    assert len((await editor.get(f"{p}/api/v1/media?q=logo")).json()) == 1
-    assert (await editor.get(f"{p}/api/v1/media?q=%25")).json() == []
+    assert [
+        m["title"] for m in (await editor.get(f"{p}/api/v1/media?kind=video")).json()["items"]
+    ] == ["Film"]
+    assert len((await editor.get(f"{p}/api/v1/media?q=logo")).json()["items"]) == 1
+    assert (await editor.get(f"{p}/api/v1/media?q=%25")).json()["items"] == []
     detail = (await editor.get(f"{p}/api/v1/media/{img}")).json()
     assert detail["variants"][0]["name"] == "original" and detail["used_by"] == []
     r = await editor.patch(f"{p}/api/v1/media/{img}", json={"title": "Nouveau"}, headers=SAME)
@@ -198,7 +198,7 @@ async def test_playlist_items_and_media_refs(
     other = await mk_playlist(editor, p, "Autre")
     r = await editor.delete(f"{p}/api/v1/playlists/{other}/items/{ids[1]}", headers=SAME)
     assert r.status_code == 404 and r.json()["code"] == "playlist.item_not_found"
-    assert len((await editor.get(f"{p}/api/v1/playlists")).json()) == 2
+    assert len((await editor.get(f"{p}/api/v1/playlists")).json()["items"]) == 2
 
 
 async def test_playlist_crud_and_in_use(editor: AsyncClient, p: str, migrated_db_url: str) -> None:

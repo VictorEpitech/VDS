@@ -4,10 +4,12 @@ import asyncio
 import re
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Protocol
 from uuid import UUID, uuid4
 
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from vds_sdk import ContractError, Event, EventBus, Module
 from vds_sdk.server.content import ContentType, MediaMeta, MediaRef
@@ -17,6 +19,7 @@ from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
 from vds_server.db.models import Media, MediaVariant
 from vds_server.diffusion.base import ServiceBase
+from vds_server.diffusion.tombstones import add_tombstones
 
 CHUNK = 1024 * 1024
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -58,8 +61,9 @@ VARIANT_EXT = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
 class _VariantStore:
     """MediaStore confié au module : écrit les variantes à côté de l'original."""
 
-    def __init__(self, storage: StorageBackend, key: str) -> None:
+    def __init__(self, storage: StorageBackend, key: str, revision: int = 1) -> None:
         self._storage = storage
+        self._suffix = f"-r{revision}" if revision >= 2 else ""
         self._dir = key.rsplit("/", 1)[0]
         self._original = key
         self.created: dict[str, StoredObject] = {}
@@ -69,7 +73,7 @@ class _VariantStore:
     ) -> StoredObject:
         if not re.fullmatch(r"[a-z0-9-]{1,40}", name) or name == "original":
             raise ContractError("media.variant_invalid", name)
-        key = f"{self._dir}/{name}.{VARIANT_EXT.get(mime, 'bin')}"
+        key = f"{self._dir}/{name}{self._suffix}.{VARIANT_EXT.get(mime, 'bin')}"
         stored = await self._storage.put(key, chunks, mime=mime)
         self.created[name] = stored
         return stored
@@ -105,11 +109,13 @@ class MediaUploadService(ServiceBase):
         storage: StorageBackend,
         max_bytes: int,
         processor: Callable[[str], tuple[str, Module] | None] | None = None,
+        replaced_grace_hours: int = 48,
     ) -> None:
         super().__init__(session, bus, actor)
         self._processor = processor
         self._storage = storage
         self._max = max_bytes
+        self._grace = replaced_grace_hours
 
     async def upload(self, up: Upload) -> Media:
         expected = (up.expected_sha256 or "").lower() or None
@@ -225,6 +231,175 @@ class MediaUploadService(ServiceBase):
             Event(
                 name="media.ready" if status == "ready" else "media.failed",
                 payload={"media_id": str(media_id)} | ({"error": error} if error else {}),
+                source="core",
+            )
+        )
+        try:
+            await self._commit("media.conflict")
+        except ApiError:
+            for v in store.created.values():
+                await self._storage.delete(v.key)
+            await self._storage.delete(key)
+            raise
+        await self._s.refresh(media)
+        return media
+
+    async def replace(self, media_id: UUID, up: Upload, if_match: str | None = None) -> Media:
+        """Remplacement du fichier : même `media_id`, révision N+1, clés physiques distinctes."""
+        expected = (up.expected_sha256 or "").lower() or None
+        if expected is not None and not SHA256_RE.match(expected):
+            raise ApiError("media.sha256_invalid", 422)
+        media = (
+            await self._s.execute(select(Media).where(Media.id == media_id).with_for_update())
+        ).scalar_one_or_none()
+        if media is None:
+            raise ApiError("media.not_found", 404)
+        if if_match is not None:
+            wanted = if_match.strip().removeprefix("W/").strip('"').lower()
+            if wanted != (media.sha256 or ""):
+                raise ApiError("media.precondition_failed", 412)
+        head = await up.file.read(CHUNK)
+        if not head:
+            raise ApiError("media.empty", 422)
+        mime = sniff(head)
+        if mime is None or mime not in ALLOWED:
+            raise ApiError("media.type_invalid", 415)
+        declared = (up.declared_mime or "").split(";")[0].strip().lower()
+        if declared and declared not in ("application/octet-stream", mime):
+            raise ApiError("media.type_mismatch", 415)
+        kind, ext = ALLOWED[mime]
+        if kind != media.kind:
+            raise ApiError("media.replace_kind_mismatch", 422)
+        revision = media.revision + 1
+        key = f"{media_id.hex[:2]}/{media_id}/original-r{revision}.{ext}"
+
+        async def chunks() -> AsyncIterator[bytes]:
+            total = len(head)
+            if total > self._max:
+                raise ApiError("media.too_large", 413)
+            yield head
+            while block := await up.file.read(CHUNK):
+                total += len(block)
+                if total > self._max:
+                    raise ApiError("media.too_large", 413)
+                yield block
+
+        try:
+            stored = await self._storage.put(key, chunks(), mime=mime)
+        except ApiError:
+            await self._storage.delete(key)
+            raise
+        if expected is not None and stored.sha256 != expected:
+            await self._storage.delete(key)
+            raise ApiError("media.sha256_mismatch", 422)
+        if stored.sha256 == media.sha256:  # même contenu : aucun effet
+            await self._storage.delete(key)
+            await self._s.rollback()
+            await self._s.refresh(media)
+            return media
+        backend = self._storage_id()
+        store = _VariantStore(self._storage, key, revision)
+        meta = MediaMeta()
+        failure: str | None = None
+        found = self._processor(mime) if self._processor else None
+        if found is not None and isinstance(found[1], ContentType):
+            ref = MediaRef(
+                id=media_id,
+                kind=kind,  # type: ignore[arg-type]
+                mime=mime,
+                bytes=stored.bytes,
+                sha256=stored.sha256,
+                storage_key=key,
+            )
+            try:
+                meta = await found[1].process_media(ref, store)
+            except ContractError as exc:
+                failure = exc.code
+            except Exception:
+                failure = "media.processing_failed"
+        if failure is not None:
+            await add_tombstones(
+                self._s,
+                backend,
+                [key, *(v.key for v in store.created.values())],
+                reason="aborted",
+                media_id=media_id,
+            )
+            await self._s.commit()  # libère le verrou ; la révision courante est intacte
+            raise ApiError("media.processing_failed", 422, reason=failure)
+        now = datetime.now(UTC)
+        old_keys = list(
+            (
+                await self._s.scalars(
+                    select(MediaVariant.storage_key).where(MediaVariant.media_id == media_id)
+                )
+            ).all()
+        )
+        if media.storage_key:
+            old_keys.append(media.storage_key)
+        old_backend = media.storage_backend or backend
+        previous = media.sha256 or ""
+        await self._s.execute(delete(MediaVariant).where(MediaVariant.media_id == media_id))
+        self._s.add(
+            MediaVariant(
+                media_id=media_id,
+                name="original",
+                mime=mime,
+                bytes=stored.bytes,
+                sha256=stored.sha256,
+                storage_key=key,
+            )
+        )
+        for name, obj in store.created.items():
+            self._s.add(
+                MediaVariant(
+                    media_id=media_id,
+                    name=name,
+                    mime=obj.mime,
+                    bytes=obj.bytes,
+                    sha256=obj.sha256,
+                    storage_key=obj.key,
+                )
+            )
+        media.revision = revision
+        media.sha256 = stored.sha256
+        media.bytes = stored.bytes
+        media.mime = mime
+        media.width, media.height = meta.width, meta.height
+        media.duration_ms, media.page_count = meta.duration_ms, meta.page_count
+        media.storage_backend, media.storage_key = backend, key
+        media.status, media.error = "ready", None
+        if up.filename:
+            media.original_filename = Path(up.filename).name[:255]
+        media.updated_at = now
+        await add_tombstones(
+            self._s,
+            old_backend,
+            old_keys,
+            reason="replaced",
+            media_id=media_id,
+            not_before=now + timedelta(hours=self._grace),
+        )
+        self._audit(
+            "media.replaced",
+            "media",
+            media_id,
+            "media_id",
+            emit=False,
+            old_sha256=previous,
+            new_sha256=stored.sha256,
+            bytes=stored.bytes,
+            revision=revision,
+        )
+        self._events.append(
+            Event(
+                name="media.replaced",
+                payload={
+                    "media_id": str(media_id),
+                    "revision": revision,
+                    "sha256": stored.sha256,
+                    "previous_sha256": previous,
+                },
                 source="core",
             )
         )

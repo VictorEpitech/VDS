@@ -30,6 +30,7 @@ from vds_server.core.mux import ModuleMux
 from vds_server.db.base import make_engine, make_sessionmaker
 from vds_server.db.models import Organization
 from vds_server.diffusion.access import MediaAccess
+from vds_server.diffusion.sweeper import ContentSweeper
 from vds_server.discovery.service import DiscoveryEvents
 from vds_server.enrollment.local import LocalChannel
 from vds_server.events import CoreBus
@@ -98,6 +99,9 @@ class Runtime:
         self.power_state = PowerStateTracker(self.maker, self.schemas)
         self.power_state.register(self.bus.subscribe)
         self.override_sweeper = OverrideSweeper(self.maker, self.bus, self.schemas)
+        self.content_sweeper = ContentSweeper(
+            self.maker, self.bus, self.schemas, self._storage_by_id
+        )
         self.plan_pusher = PlanPusher(self.maker, self.schemas, self.command_queue)
         self.plan_pusher.register(self.bus.subscribe)
         for name in ("module.enabled", "module.disabled", "module.quarantined"):
@@ -135,6 +139,10 @@ class Runtime:
             raise ApiError("media.not_found", 404) from exc
         async with self.maker() as session:
             if media_id not in await screen_media_ids(session, device.screen_id):
+                if media_id in await screen_media_ids(
+                    session, device.screen_id, include_expired=True
+                ):
+                    raise ApiError("media.not_found", 404)  # média expiré : plus servi
                 raise ApiError("media.forbidden", 403)
         return True
 
@@ -153,6 +161,10 @@ class Runtime:
             raise ApiError("media.not_found", 404) from exc
         async with self.maker() as session:
             if media_id not in await site_media_ids(session, principal.site_id):
+                if media_id in await site_media_ids(
+                    session, principal.site_id, include_expired=True
+                ):
+                    raise ApiError("media.not_found", 404)  # média expiré : plus servi
                 raise ApiError("media.forbidden", 403)
         return True
 
@@ -161,6 +173,10 @@ class Runtime:
 
     def _config_for(self, manifest: ModuleManifest) -> ModuleConfigReader:
         return ModuleConfigReader(self.maker, self.schemas, manifest.id)
+
+    def _storage_by_id(self, module_id: str) -> StorageBackend | None:
+        instance: Module | None = self.registry.instance(module_id)
+        return instance if isinstance(instance, StorageBackend) else None
 
     def storage_backend(self) -> StorageBackend | None:
         instance: Module | None = self.registry.instance(self.settings.storage)
@@ -202,6 +218,7 @@ class Runtime:
             while True:
                 await asyncio.sleep(SWEEP_INTERVAL_S)
                 await self.override_sweeper.run_once()
+                await self.content_sweeper.run_once()
 
         task = asyncio.create_task(pump())
         sweep_task = asyncio.create_task(sweep())

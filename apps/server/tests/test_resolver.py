@@ -188,3 +188,35 @@ def test_override_next_day_changes_slots_only_on_that_day() -> None:
     slots = resolve(CHAIN, [base, over], PARIS, day)
     assert_contiguous(slots, day)
     assert [x.schedule_id for x in slots].count(over.id) == 2  # J et J+1
+
+
+def test_until_cuts_slot_and_next_winner_takes_over() -> None:
+    day = date(2026, 6, 10)
+    cut = datetime(2026, 6, 10, 12, 0, tzinfo=PARIS)
+    expiring = spec("screen", priority=5, until=cut.astimezone(UTC))
+    fallback = spec("site")
+    slots = resolve(CHAIN, [expiring, fallback], PARIS, day)
+    assert_contiguous(slots, day)
+    assert [s.schedule_id for s in slots] == [expiring.id, fallback.id]
+    assert slots[0].end == cut and slots[1].start == cut
+
+
+def test_until_without_fallback_goes_off_and_before_window_is_inactive() -> None:
+    day = date(2026, 6, 10)
+    cut = datetime(2026, 6, 10, 12, 0, tzinfo=PARIS)
+    only = spec("screen", until=cut.astimezone(UTC))
+    slots = resolve(CHAIN, [only], PARIS, day)
+    assert [s.source for s in slots] == ["schedule", "off"]
+    past = spec("screen", until=datetime(2026, 6, 9, 0, 0, tzinfo=PARIS).astimezone(UTC))
+    gone = resolve(CHAIN, [past], PARIS, day)
+    assert [s.source for s in gone] == ["off"]
+    assert_contiguous(gone, day)
+
+
+def test_until_inside_a_rule_keeps_rule_start() -> None:
+    day = date(2026, 6, 10)
+    cut = datetime(2026, 6, 10, 10, 30, tzinfo=PARIS)
+    s = spec("screen", rules=(hours(9, 18),), until=cut.astimezone(UTC))
+    slots = resolve(CHAIN, [s], PARIS, day)
+    assert [x.source for x in slots] == ["off", "schedule", "off"]
+    assert slots[1].start == datetime(2026, 6, 10, 9, 0, tzinfo=PARIS) and slots[1].end == cut

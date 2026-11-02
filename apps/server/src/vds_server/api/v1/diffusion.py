@@ -1,5 +1,6 @@
 """Routes médias (métadonnées), playlists, programmation : lecture et écriture éditeur."""
 
+from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -10,8 +11,10 @@ from vds_server.core.auth import Principal
 from vds_server.core.runtime import Runtime
 from vds_server.diffusion import schemas as sc
 from vds_server.diffusion.media import MediaService
-from vds_server.diffusion.playlists import PlaylistService
+from vds_server.diffusion.playlists import PlaylistService, to_out
 from vds_server.diffusion.schedules import ScheduleService
+from vds_server.diffusion.tags import MAX_TAG_LEN, normalize_tags
+from vds_server.diffusion.usage import UsageService
 
 
 def build_router(rt: Runtime) -> APIRouter:
@@ -20,43 +23,74 @@ def build_router(rt: Runtime) -> APIRouter:
     Editor = Annotated[Principal, Depends(rt.pipeline.require("editor"))]
 
     def media_svc(session: Session, actor: Editor) -> MediaService:
-        return MediaService(session, rt.bus, actor)
+        return MediaService(session, rt.bus, actor, rt.schemas)
 
     def playlist_svc(session: Session, actor: Editor) -> PlaylistService:
-        return PlaylistService(session, rt.bus, actor, rt.registry.content_item_schema)
+        return PlaylistService(session, rt.bus, actor, rt.registry.content_item_schema, rt.schemas)
 
     def schedule_svc(session: Session, actor: Editor) -> ScheduleService:
         return ScheduleService(session, rt.bus, actor)
 
+    def usage_svc(session: Session, actor: Editor) -> UsageService:
+        return UsageService(session, actor)
+
+    Usage = Annotated[UsageService, Depends(usage_svc)]
     Media = Annotated[MediaService, Depends(media_svc)]
     Playlists = Annotated[PlaylistService, Depends(playlist_svc)]
     Schedules = Annotated[ScheduleService, Depends(schedule_svc)]
 
     # --- médias ----------------------------------------------------------
-    @router.get("/media", response_model=list[sc.MediaOut])
+    @router.get("/media", response_model=sc.MediaPage)
     async def list_media(
         s: Media,
         kind: sc.MediaKind | None = None,
         status: sc.MediaStatus | None = None,
         q: Annotated[str | None, Query(max_length=120)] = None,
+        tags: Annotated[list[str] | None, Query(max_length=20)] = None,
+        state: sc.MediaState = "all",
+        unused: bool | None = None,
+        sort: sc.MediaSort = "-created_at",
         limit: Annotated[int, Query(ge=1, le=200)] = 50,
         offset: Annotated[int, Query(ge=0)] = 0,
-    ) -> list[sc.MediaOut]:
-        rows = await s.list_all(kind=kind, status=status, search=q, limit=limit, offset=offset)
-        return [sc.MediaOut.model_validate(r) for r in rows]
+    ) -> sc.MediaPage:
+        return await s.list_page(
+            kind=kind,
+            status=status,
+            search=q,
+            tags=_split_tags(tags),
+            state=state,
+            unused=unused,
+            sort=sort,
+            limit=limit,
+            offset=offset,
+        )
+
+    @router.get("/media/tags", response_model=list[str])
+    async def media_tags(
+        s: Media, prefix: Annotated[str, Query(max_length=MAX_TAG_LEN)] = ""
+    ) -> list[str]:
+        return await s.tag_suggestions(prefix)
+
+    @router.post("/media/bulk", response_model=sc.MediaBulkOut)
+    async def bulk_media(body: sc.MediaBulkIn, s: Media) -> sc.MediaBulkOut:
+        return await s.bulk(body)
 
     @router.get("/media/{media_id}", response_model=sc.MediaDetailOut)
     async def get_media(media_id: UUID, s: Media) -> sc.MediaDetailOut:
         row = await s.get(media_id)
         return sc.MediaDetailOut(
-            **sc.MediaOut.model_validate(row).model_dump(),
+            **(await s.out(row)).model_dump(),
             variants=[sc.MediaVariantOut.model_validate(v) for v in await s.variants(media_id)],
             used_by=await s.used_by(media_id),
         )
 
     @router.patch("/media/{media_id}", response_model=sc.MediaOut)
     async def patch_media(media_id: UUID, body: sc.MediaPatch, s: Media) -> sc.MediaOut:
-        return sc.MediaOut.model_validate(await s.rename(media_id, body.title))
+        return await s.out(await s.patch(media_id, body))
+
+    @router.get("/media/{media_id}/usage", response_model=sc.MediaUsageOut)
+    async def media_usage(media_id: UUID, u: Usage) -> sc.MediaUsageOut:
+        return await u.media(media_id)
 
     @router.delete("/media/{media_id}", status_code=204)
     async def delete_media(media_id: UUID, s: Media) -> Response:
@@ -64,10 +98,29 @@ def build_router(rt: Runtime) -> APIRouter:
         return Response(status_code=204)
 
     # --- playlists -------------------------------------------------------
-    @router.get("/playlists", response_model=list[sc.PlaylistOut])
-    async def list_playlists(s: Playlists) -> list[sc.PlaylistOut]:
-        rows = await s.list_all()
-        return [sc.PlaylistOut.model_validate({**_attrs(p), "item_count": n}) for p, n in rows]
+    @router.get("/playlists", response_model=sc.PlaylistPage)
+    async def list_playlists(
+        s: Playlists,
+        q: Annotated[str | None, Query(max_length=120)] = None,
+        tags: Annotated[list[str] | None, Query(max_length=20)] = None,
+        state: sc.MediaState = "all",
+        sort: sc.PlaylistSort = "name",
+        limit: Annotated[int, Query(ge=1, le=200)] = 50,
+        offset: Annotated[int, Query(ge=0)] = 0,
+    ) -> sc.PlaylistPage:
+        return await s.list_page(
+            search=q, tags=_split_tags(tags), state=state, sort=sort, limit=limit, offset=offset
+        )
+
+    @router.get("/playlists/tags", response_model=list[str])
+    async def playlist_tags(
+        s: Playlists, prefix: Annotated[str, Query(max_length=MAX_TAG_LEN)] = ""
+    ) -> list[str]:
+        return await s.tag_suggestions(prefix)
+
+    @router.get("/playlists/{playlist_id}/usage", response_model=sc.PlaylistUsageOut)
+    async def playlist_usage(playlist_id: UUID, u: Usage) -> sc.PlaylistUsageOut:
+        return await u.playlist(playlist_id)
 
     @router.post("/playlists", response_model=sc.PlaylistDetailOut, status_code=201)
     async def create_playlist(body: sc.PlaylistCreate, s: Playlists) -> sc.PlaylistDetailOut:
@@ -146,12 +199,14 @@ def build_router(rt: Runtime) -> APIRouter:
     return router
 
 
-def _attrs(p: object) -> dict[str, object]:
-    return {k: getattr(p, k) for k in ("id", "name", "description", "created_at", "updated_at")}
+def _split_tags(raw: list[str] | None) -> list[str]:
+    """`tags=a,b` ou `tags=a&tags=b` ; la normalisation et les bornes sont celles du service."""
+    parts = [t for value in raw or [] for t in value.split(",") if t.strip()]
+    return normalize_tags(parts) if parts else []
 
 
 async def _detail(s: PlaylistService, playlist_id: UUID) -> sc.PlaylistDetailOut:
     playlist, items = await s.detail(playlist_id)
-    return sc.PlaylistDetailOut.model_validate(
-        {**_attrs(playlist), "item_count": len(items), "items": items}
+    return sc.PlaylistDetailOut(
+        **to_out(playlist, len(items), datetime.now(UTC)).model_dump(), items=items
     )

@@ -250,7 +250,7 @@ async def test_content_override_uses_ephemeral_playlist(
     assert r.status_code == 201, r.text
     ov = r.json()
     assert ov["ephemeral"] is True and ov["playlist_id"]
-    names = [x["id"] for x in (await admin.get(f"{p}/api/v1/playlists")).json()]
+    names = [x["id"] for x in (await admin.get(f"{p}/api/v1/playlists")).json()["items"]]
     assert ov["playlist_id"] not in names and w["pl_force"] in names  # masquée des listes
     rt = app.state.runtime
 

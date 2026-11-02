@@ -5,6 +5,8 @@ from uuid import UUID
 
 from fastapi import FastAPI
 from httpx import AsyncClient
+from sqlalchemy import pool, text
+from sqlalchemy.ext.asyncio import create_async_engine
 from test_agents import _queue_clean, auth, connect, setup  # noqa: F401
 from test_auth import admin, anon, app, base, clean, new_client, p  # noqa: F401
 from test_diffusion_media_files import PNG, upload
@@ -64,3 +66,26 @@ async def test_welcome_cache_key(
         cache_key("s3cret", UUID(setup["agent"]), None)[1]
         != cache_key("autre", UUID(setup["agent"]), None)[1]
     )
+
+
+async def test_manifest_drops_expired_media_and_agent_gets_404(
+    app: FastAPI,
+    admin: AsyncClient,
+    p: str,
+    setup: dict[str, Any],
+    migrated_db_url: str,  # noqa: F811
+) -> None:
+    _, mine = await upload(admin, p)
+    await schedule_media_sql(migrated_db_url, setup["screen"], UUID(str(mine["id"])))
+    h = auth(setup["token"])
+    async with new_client(app) as agent:
+        r = await agent.get(f"{p}/api/v1/agent/cache/manifest", headers=h)
+        assert r.json()["items"]
+        engine = create_async_engine(migrated_db_url, poolclass=pool.NullPool)
+        async with engine.begin() as c:
+            await c.execute(text("UPDATE media SET expires_at = now() - interval '1 minute'"))
+        await engine.dispose()
+        r = await agent.get(f"{p}/api/v1/agent/cache/manifest", headers=h)
+        assert r.json()["items"] == []
+        gone = await agent.get(f"{p}/media/{mine['id']}/original", headers=h)
+        assert (gone.status_code, gone.json()["code"]) == (404, "media.not_found")

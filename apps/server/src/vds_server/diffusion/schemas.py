@@ -9,6 +9,13 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 MediaKind = Literal["image", "video", "document"]
 MediaStatus = Literal["processing", "ready", "failed"]
+MediaState = Literal[
+    "active", "expiring", "expired", "all"
+]  # expiring = core.media.expiring_soon_days
+MediaSort = Literal[
+    "-created_at", "created_at", "title", "-title", "-bytes", "expires_at", "-updated_at"
+]
+PlaylistSort = Literal["name", "-name", "-created_at", "created_at", "expires_at", "-updated_at"]
 TargetType = Literal["organization", "site", "group", "screen"]
 NAME = Field(min_length=1, max_length=120)
 TIME_RE = re.compile(r"^([01][0-9]|2[0-3]):[0-5][0-9]$|^24:00$")
@@ -48,6 +55,12 @@ class MediaOut(_Out):
     error: str | None
     created_at: datetime
     updated_at: datetime
+    expires_at: datetime | None
+    expired: bool  # expiration constatée ou échue (le balayeur peut avoir jusqu'à 60 s de retard)
+    revision: int
+    tags: list[str]
+    thumb: str | None  # clé relative "media/<id>/thumb" si la variante existe, sinon None
+    usage_count: int  # nombre de playlists qui le référencent
 
 
 class MediaDetailOut(MediaOut):
@@ -55,8 +68,85 @@ class MediaDetailOut(MediaOut):
     used_by: list[UUID]  # playlists qui référencent ce média
 
 
+class MediaPage(_Out):
+    items: list[MediaOut]
+    total: int
+
+
 class MediaPatch(_In):
-    title: str = NAME
+    title: str | None = Field(default=None, min_length=1, max_length=120)
+    tags: list[str] | None = Field(default=None, max_length=100)  # bornes exactes : service
+    expires_at: datetime | None = None  # présent (même null) = modifier ; null = jamais
+
+    @model_validator(mode="after")
+    def _not_empty(self) -> "MediaPatch":
+        if not self.model_fields_set:
+            raise ValueError("media.patch_empty")
+        if "title" in self.model_fields_set and self.title is None:
+            raise ValueError("media.title_null")
+        if "tags" in self.model_fields_set and self.tags is None:
+            raise ValueError("media.tags_null")
+        return self
+
+
+class UsagePlaylist(_Out):
+    id: UUID
+    name: str
+    expires_at: datetime | None
+    expired: bool
+
+
+class UsageSchedule(_Out):
+    id: UUID
+    name: str
+    playlist_id: UUID
+    target_type: str
+    target_id: UUID
+    target_name: str
+    active: bool
+
+
+class UsageOverride(_Out):
+    id: UUID
+    name: str
+    playlist_id: UUID
+    ends_at: datetime
+    active: bool
+
+
+class MediaUsageOut(_Out):
+    playlists: list[UsagePlaylist]
+    schedules: list[UsageSchedule]
+    overrides: list[UsageOverride]
+    screens_now: int  # borne supérieure, indicative
+
+
+class PlaylistUsageOut(_Out):
+    schedules: list[UsageSchedule]
+    overrides: list[UsageOverride]
+
+
+BulkAction = Literal["set_expiry", "add_tags", "remove_tags", "delete"]
+
+
+class MediaBulkIn(_In):
+    ids: list[UUID] = Field(min_length=1, max_length=200)
+    action: BulkAction
+    expires_at: datetime | None = None  # set_expiry : null = jamais
+    tags: list[str] = Field(default_factory=list, max_length=20)
+
+    @model_validator(mode="after")
+    def _coherent(self) -> "MediaBulkIn":
+        if self.action == "set_expiry" and "expires_at" not in self.model_fields_set:
+            raise ValueError("media.bulk_expiry_missing")
+        if self.action in ("add_tags", "remove_tags") and not self.tags:
+            raise ValueError("media.bulk_tags_missing")
+        return self
+
+
+class MediaBulkOut(_Out):
+    done: list[UUID]
+    failed: list[dict[str, str]]  # {id, code}
 
 
 # --- playlists ---------------------------------------------------------------
@@ -68,6 +158,8 @@ class PlaylistCreate(_In):
 class PlaylistPatch(_In):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=2000)
+    tags: list[str] | None = Field(default=None, max_length=100)  # bornes exactes : service
+    expires_at: datetime | None = None  # présent (même null) = modifier ; null = jamais
 
 
 class ItemCreate(_In):
@@ -105,6 +197,14 @@ class PlaylistOut(_Out):
     item_count: int
     created_at: datetime
     updated_at: datetime
+    expires_at: datetime | None
+    expired: bool
+    tags: list[str]
+
+
+class PlaylistPage(_Out):
+    items: list[PlaylistOut]
+    total: int
 
 
 class PlaylistDetailOut(PlaylistOut):

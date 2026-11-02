@@ -5,6 +5,7 @@ réellement reçus sont aussi comptés. La limite précise (fichier seul) reste 
 """
 
 import json
+import re
 import time
 from collections.abc import Awaitable, Callable
 
@@ -43,6 +44,7 @@ class UploadLimitMiddleware:
     ) -> None:
         self.app = app
         self.path = f"{settings.prefix}/api/v1/media"
+        self._replace = re.compile(rf"^{re.escape(self.path)}/[0-9a-fA-F-]{{36}}/file$")
         self._fetch = limit
         self._cached: tuple[float, int] | None = None
 
@@ -54,7 +56,11 @@ class UploadLimitMiddleware:
         return self._cached[1]
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http" or scope["method"] != "POST" or scope["path"] != self.path:
+        if (
+            scope["type"] != "http"
+            or scope["method"] != "POST"
+            or (scope["path"] != self.path and not self._replace.match(scope["path"]))
+        ):
             await self.app(scope, receive, send)
             return
         maximum = await self.limit() + OVERHEAD

@@ -18,6 +18,7 @@ from vds_server.db.models import (
 )
 from vds_server.diffusion import schemas as sc
 from vds_server.diffusion.base import ServiceBase
+from vds_server.diffusion.expiry import is_expired
 
 TARGET_MODELS: dict[str, Any] = {
     "organization": Organization,
@@ -33,8 +34,11 @@ class ScheduleService(ServiceBase):
             raise ApiError("schedule.target_not_found", 422, target_type=target_type)
 
     async def _playlist_exists(self, playlist_id: UUID) -> None:
-        if await self._s.get(Playlist, playlist_id) is None:
+        playlist = await self._s.get(Playlist, playlist_id)
+        if playlist is None:
             raise ApiError("schedule.playlist_not_found", 422)
+        if is_expired(playlist, datetime.now(UTC)):
+            raise ApiError("playlist.expired", 422)
 
     async def _rules(self, ids: list[UUID]) -> dict[UUID, list[sc.RuleOut]]:
         out: dict[UUID, list[sc.RuleOut]] = {i: [] for i in ids}
@@ -138,7 +142,8 @@ class ScheduleService(ServiceBase):
         row = await self._get(schedule_id)
         fields = body.model_fields_set
         if body.playlist_id is not None:
-            await self._playlist_exists(body.playlist_id)
+            if body.playlist_id != row.playlist_id:
+                await self._playlist_exists(body.playlist_id)
             row.playlist_id = body.playlist_id
         if body.target_type is not None or body.target_id is not None:
             if body.target_type is None or body.target_id is None:

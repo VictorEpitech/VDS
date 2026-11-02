@@ -133,7 +133,7 @@ async def test_sha256_mismatch_rejected_and_nothing_kept(
     status, body = await upload(admin, p, sha256="zz")
     assert (status, body["code"]) == (422, "media.sha256_invalid")
     assert stored_files(media_dir) == []
-    assert (await admin.get(f"{p}/api/v1/media")).json() == []
+    assert (await admin.get(f"{p}/api/v1/media")).json()["items"] == []
 
 
 @pytest.mark.parametrize(
@@ -276,7 +276,7 @@ async def test_image_processed_by_module(content_modules: None, admin: AsyncClie
     assert {v["name"] for v in r.json()["variants"]} == {"original", "thumb"}
     t = await admin.get(f"{p}/media/{body['id']}/thumb")
     assert t.status_code == 200
-    assert t.headers["content-type"] == "image/jpeg"
+    assert t.headers["content-type"] == "image/webp"
 
 
 async def test_pdf_pages_processed_by_module(
@@ -287,7 +287,7 @@ async def test_pdf_pages_processed_by_module(
     assert body["status"] == "ready"
     assert body["page_count"] == 2
     r = await admin.get(f"{p}/api/v1/media/{body['id']}")
-    assert {v["name"] for v in r.json()["variants"]} == {"original", "page-1", "page-2"}
+    assert {v["name"] for v in r.json()["variants"]} == {"original", "page-1", "page-2", "thumb"}
 
 
 async def test_processing_failure_marks_failed(
