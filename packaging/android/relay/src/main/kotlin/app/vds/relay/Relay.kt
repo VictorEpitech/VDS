@@ -99,6 +99,13 @@ class Relay(
         val uri = call.request.uri
         val path = uri.substringBefore('?')
         if (path == PURGE_PATH && call.request.httpMethod == HttpMethod.Get) {
+            call.response.headers.append("X-Frame-Options", "DENY")
+            val site = call.request.headers["Sec-Fetch-Site"]
+            val dest = call.request.headers["Sec-Fetch-Dest"]
+            if ((site != null && site != "none" && site != "same-origin") || (dest != null && dest != "document")) {
+                call.respond(HttpStatusCode.Forbidden)
+                return
+            }
             call.respond(purgePage())
             return
         }

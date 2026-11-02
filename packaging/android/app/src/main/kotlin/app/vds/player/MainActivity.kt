@@ -12,6 +12,8 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.view.WindowManager
 import android.webkit.CookieManager
 import android.webkit.RenderProcessGoneDetail
@@ -25,7 +27,11 @@ import android.content.RestrictionsManager
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import app.vds.relay.CecDispatcher
+import app.vds.relay.Enforcement
+import app.vds.relay.KioskActuator
 import app.vds.relay.KioskDispatcher
+import app.vds.relay.KioskMode
+import app.vds.relay.WebDispatcher
 import app.vds.relay.Relay
 import app.vds.relay.RelayConfig
 import kotlin.concurrent.thread
@@ -51,7 +57,13 @@ class MainActivity : Activity() {
     private val kioskToken = ByteArray(24).also { java.security.SecureRandom().nextBytes(it) }
         .joinToString("") { "%02x".format(it) }
     private val kiosk = AndroidKiosk(this, BuildConfig.KIOSK_RELAXED) { if (!hasWindowFocus()) ui.post(relaunch) }
-    private val kioskDispatcher = KioskDispatcher(kiosk, HandlerKioskTimer(ui), kioskToken, SystemClock::elapsedRealtime)
+    private val overlay = WebOverlay(this, ui)
+
+    // Les vues natives de content.url masqueraient l'interface de déverrouillage : cachées hors du mode verrouillé.
+    private val overlayAwareKiosk = object : KioskActuator {
+        override fun apply(mode: KioskMode): Enforcement = kiosk.apply(mode).also { overlay.setSuppressed(mode != KioskMode.LOCKED) }
+    }
+    private val kioskDispatcher = KioskDispatcher(overlayAwareKiosk, HandlerKioskTimer(ui), kioskToken, SystemClock::elapsedRealtime)
 
     private val ticketVault = PairingTickets.vault { this }
 
@@ -60,6 +72,7 @@ class MainActivity : Activity() {
         onReload = { runOnUiThread { reloadPlayer() } },
         cec = CecDispatcher(AndroidCec(this)),
         kiosk = kioskDispatcher,
+        web = WebDispatcher(overlay),
         tickets = ticketVault,
         serverUrl = { cfg?.url },
     )
@@ -118,6 +131,7 @@ class MainActivity : Activity() {
             return
         }
         cfg = c
+        overlay.attach(null)
         enterKiosk()
         setContentView(Ui.column(this).apply { addView(Ui.text(this@MainActivity, getString(R.string.loading))) })
         web = null
@@ -139,6 +153,7 @@ class MainActivity : Activity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun showWeb(c: RelayConfig) {
+        overlay.attach(null)
         web?.destroy()
         val view = WebView(this)
         web = view
@@ -166,7 +181,11 @@ class MainActivity : Activity() {
             installBridge(this, c)
             webViewClient = KioskClient(c)
         }
-        setContentView(view)
+        val root = FrameLayout(this).apply {
+            addView(view, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        }
+        setContentView(root)
+        overlay.attach(root)
         bridge.resetPing()
         if (prefs.needsPurge(c)) {
             // Même origine locale pour toute URL serveur : on efface le stockage de l'ancienne.
@@ -190,7 +209,7 @@ class MainActivity : Activity() {
         WebViewCompat.addWebMessageListener(view, VdsBridge.LISTENER_NAME, rules) { _, message, _, isMainFrame, replyProxy ->
             bridge.onMessage(isMainFrame, message.data) { replyProxy.postMessage(it) }
         }
-        WebViewCompat.addDocumentStartJavaScript(view, VdsBridge.script(VdsBridge.infoJson(c.insecureUpstream), kioskToken), rules)
+        WebViewCompat.addDocumentStartJavaScript(view, VdsBridge.script(VdsBridge.infoJson(c.insecureUpstream), kioskToken, webSupported = true), rules)
         bridgeInstalled = true
     }
 
@@ -219,6 +238,7 @@ class MainActivity : Activity() {
                 prefs.webStorageFor = c.url
             }
             bridge.resetPing()
+            overlay.destroyAll()
         }
 
         override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
@@ -229,7 +249,10 @@ class MainActivity : Activity() {
         }
 
         override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
-            if (web === view) showWeb(c)
+            if (web === view) {
+                overlay.destroyAll()
+                showWeb(c)
+            }
             return true
         }
     }
@@ -269,10 +292,12 @@ class MainActivity : Activity() {
     /** Kiosque doux : si l'app quitte le premier plan (sans que ce soit l'écran de saisie), on la ramène. */
     override fun onStop() {
         super.onStop()
+        overlay.destroyAll()
         if (!isFinishing && kiosk.locked && prefs.config() != null) ui.postDelayed(relaunch, RELAUNCH_MS)
     }
 
     override fun onDestroy() {
+        overlay.attach(null)
         ui.removeCallbacksAndMessages(null)
         web?.destroy()
         web = null

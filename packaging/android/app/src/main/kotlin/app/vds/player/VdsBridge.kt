@@ -6,6 +6,7 @@ import app.vds.relay.BridgeRouter
 import app.vds.relay.CecDispatcher
 import app.vds.relay.KioskDispatcher
 import app.vds.relay.PairingTicketVault
+import app.vds.relay.WebDispatcher
 import org.json.JSONObject
 import java.util.concurrent.Executors
 
@@ -26,6 +27,7 @@ class VdsBridge(
     cec: CecDispatcher = CecDispatcher(null),
     kiosk: KioskDispatcher? = null,
     tickets: PairingTicketVault? = null,
+    web: WebDispatcher? = null,
     serverUrl: () -> String? = { null },
 ) {
     // Les ordres CEC peuvent bloquer (attente de la réponse du bus) : jamais sur le thread UI.
@@ -42,6 +44,7 @@ class VdsBridge(
         cec = cec,
         kiosk = kiosk,
         tickets = tickets,
+        web = web,
         serverUrl = serverUrl,
         background = { cecExecutor.execute(it) },
     )
@@ -68,8 +71,18 @@ class VdsBridge(
             .put("insecure_upstream", insecureUpstream)
             .toString()
 
+        /** `VdsNative.web` : vues natives (content.url). Les ordres sans réponse partent avec la requête 0. */
+        private const val WEB_API = """{
+                prepare:function(i,u,r){
+                  return req("web","prepare:"+i+":"+JSON.stringify({url:u,rect:r}),'{"ok":false,"code":"url_timeout"}');
+                },
+                show:function(i){t.postMessage("web:0:show:"+i)},
+                rect:function(i,r){t.postMessage("web:0:rect:"+i+":"+JSON.stringify(r))},
+                hide:function(i){t.postMessage("web:0:hide:"+i)}
+              }"""
+
         /** Script exécuté au début de chaque document des origines autorisées. */
-        fun script(infoJson: String, kioskToken: String = ""): String = """
+        fun script(infoJson: String, kioskToken: String = "", webSupported: Boolean = false): String = """
             (function(){
               var t=window.$LISTENER_NAME;
               if(!t)return;
@@ -83,6 +96,7 @@ class VdsBridge(
                 });
               }
               var kioskToken=${JSONObject.quote(kioskToken)},claimed=false;
+              var web=${if (webSupported) WEB_API else "null"};
               window.VdsNative={
                 ping:function(){t.postMessage("$MSG_PING")},
                 reload:function(){t.postMessage("$MSG_RELOAD")},
@@ -106,8 +120,9 @@ class VdsBridge(
                   };
                 }
               };
+              if(web)window.VdsNative.web=web;
               t.onmessage=function(e){
-                var d=String(e.data),m=/^(cec|kiosk|ticket):([A-Za-z0-9_-]+):(.*)${'$'}/.exec(d);
+                var d=String(e.data),m=/^(cec|kiosk|ticket|web):([A-Za-z0-9_-]+):(.*)${'$'}/.exec(d);
                 if(m&&w[m[1]+":"+m[2]])w[m[1]+":"+m[2]](m[3]);
               };
             })();
