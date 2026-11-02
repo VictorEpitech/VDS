@@ -112,6 +112,7 @@ API admin additive du noyau, aucun nouveau module · `GET /api/v1/onboarding` : 
 
 - 2026-11-02 — Lot E (actions rapides) : sélection multiple par appels unitaires depuis l'admin sur les API existantes (pas de POST /screens/actions), annulation = envoi différé de 8 s côté client, seul ajout serveur GET /api/v1/fleet/playback (lecture, additif), pas de bump vds-core ; forçage et appliquer un planning → lot H, redémarrer et captures → lot I. Voir docs/architecture-actions-rapides.md.
 - 2026-11-02 — Mineur de revue navigation (à traiter) : le périmètre par groupe de l'éditeur n'est pas appliqué sur `/fleet/summary` ni sur `screens?issues` (compteurs et liste « à traiter » portent sur tout le site).
+- 2026-11-02 — content.url 0.2.0 : sur Android, WebView native superposée sans aucun pont (capacité VdsNative.web, frame principale locale seule), invisible tant que la page n'est pas chargée sans erreur, sans interaction publique ; iframe conservée ailleurs. Contrat et noyau inchangés. Détail : docs/architecture-content-url-natif.md.
 
 ## Risques
 
@@ -128,6 +129,7 @@ API admin additive du noyau, aucun nouveau module · `GET /api/v1/onboarding` : 
 | Changement côté Studio (cookie, rôles, menu) | Contrat de session minimal et versionné ; test d'intégration sur la route de session |
 | Build sur VPS 1 qui fait tomber la production (déjà arrivé au Studio) | Images construites en CI, Dokploy ne fait que déployer |
 | Pas de préproduction côté Studio | Migrations additives, déploiement VDS indépendant du Studio |
+| Hors Android, la page d'erreur d'une cible refusant l'iframe reste visible | Correctif possible (sonde d'en-têtes serveur + avertissement admin), non implémenté |
 
 ## Questions ouvertes
 

@@ -507,7 +507,7 @@ Cycle : le player prépare l'élément suivant hors écran (`prepare` ≤ 10 s),
 | `content.image` | `<img>` décodé (`decode()`), `object-fit` selon `props.fit` | — |
 | `content.video` | `<video muted playsinline>`, son si `props.audio` | durée lue par `ffprobe` dans `process_media` ; `vds-ended` en fin |
 | `content.pdf` | images `page-<n>` paginées, `props.page_duration_ms` | pages rendues par `pypdfium2` (licence permissive) dans `process_media`, largeur 3840 |
-| `content.url` | `<iframe sandbox="allow-scripts allow-same-origin">` sans `allow-top-navigation` | `requires_network: true` : sauté hors ligne ; sites refusant l'iframe = limite documentée |
+| `content.url` | `<iframe sandbox="allow-scripts allow-same-origin">` sans `allow-top-navigation` | `requires_network: true` : sauté hors ligne ; sur Android avec `VdsNative.web`, WebView native superposée sans pont (sites refusant l'iframe compris), voir `architecture-content-url-natif.md` |
 
 Les modules intégrés s'exécutent dans la page du player ; les modules tiers passeront par une iframe sandbox (déjà prévu). CSP propre à `<base>/player/` : `script-src 'self'`, `media-src 'self' blob:`, `frame-src https:`.
 
