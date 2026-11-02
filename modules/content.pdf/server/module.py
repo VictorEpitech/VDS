@@ -68,6 +68,8 @@ class ContentPdf(ContentType):
                 for index in range(meta["count"]):
                     data = await asyncio.to_thread((out / f"page-{index + 1}.jpg").read_bytes)
                     await store.put_variant(f"page-{index + 1}", _once(data), mime="image/jpeg")
+                thumb = await asyncio.to_thread((out / "thumb.webp").read_bytes)
+                await store.put_variant("thumb", _once(thumb), mime="image/webp")
             return MediaMeta(width=meta["width"], height=meta["height"], page_count=meta["count"])
         finally:
             await asyncio.to_thread(shutil.rmtree, tmp, True)

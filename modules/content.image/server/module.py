@@ -14,6 +14,7 @@ from vds_sdk.server.media import MediaInfo
 
 MAX_PIXELS = 100_000_000
 DEFAULT_THUMB = 320
+THUMB_TARGET = 30 * 1024
 FITS = ("contain", "cover")
 
 
@@ -29,6 +30,18 @@ async def _spool(chunks: AsyncIterator[bytes]) -> IO[bytes]:
     return fh
 
 
+def _webp(img: Image.Image) -> bytes:
+    """WebP, qualité abaissée par paliers jusqu'à THUMB_TARGET octets (best effort)."""
+    data = b""
+    for quality in (80, 65, 50, 35):
+        out = io.BytesIO()
+        img.save(out, "WEBP", quality=quality, method=4)
+        data = out.getvalue()
+        if len(data) <= THUMB_TARGET:
+            break
+    return data
+
+
 def _inspect(fh: IO[bytes], thumb_size: int) -> tuple[int, int, bytes]:
     try:
         with Image.open(fh) as img:
@@ -36,11 +49,9 @@ def _inspect(fh: IO[bytes], thumb_size: int) -> tuple[int, int, bytes]:
             if width * height > MAX_PIXELS:
                 raise ContractError("content.image.too_large")
             img.draft("RGB", (thumb_size * 2, thumb_size * 2))
-            thumb = img.convert("RGB")
+            thumb = img.convert("RGBA" if "A" in img.getbands() else "RGB")
             thumb.thumbnail((thumb_size, thumb_size))
-            out = io.BytesIO()
-            thumb.save(out, "JPEG", quality=80)
-            return width, height, out.getvalue()
+            return width, height, _webp(thumb)
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError, ValueError) as exc:
         raise ContractError("content.image.invalid") from exc
 
@@ -63,7 +74,7 @@ class ContentImage(ContentType):
             width, height, thumb = await asyncio.to_thread(_inspect, fh, self._thumb_size)
         finally:
             fh.close()
-        await store.put_variant("thumb", _once(thumb), mime="image/jpeg")
+        await store.put_variant("thumb", _once(thumb), mime="image/webp")
         return MediaMeta(width=width, height=height)
 
     async def to_player(

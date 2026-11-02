@@ -18,6 +18,9 @@ from vds_sdk.server.media import MediaInfo
 DEFAULT_TIMEOUT_S = 30
 MEM_LIMIT_BYTES = 2 * 1024**3
 FITS = ("contain", "cover")
+THUMB_SIDE = 320
+THUMB_MAX_BYTES = 512 * 1024
+THUMB_TIMEOUT_S = 20
 
 
 async def _write(chunks: AsyncIterator[bytes], path: Path) -> None:
@@ -27,6 +30,10 @@ async def _write(chunks: AsyncIterator[bytes], path: Path) -> None:
             await asyncio.to_thread(fh.write, chunk)
     finally:
         await asyncio.to_thread(fh.close)
+
+
+async def _once(data: bytes) -> AsyncIterator[bytes]:
+    yield data
 
 
 def _limit_child(cpu_s: int) -> None:
@@ -75,6 +82,7 @@ def parse_probe(raw: bytes) -> MediaMeta:
 
 class ContentVideo(ContentType):
     ffprobe_bin = "ffprobe"
+    ffmpeg_bin = "ffmpeg"
 
     def __init__(self) -> None:
         self._timeout_s = DEFAULT_TIMEOUT_S
@@ -113,12 +121,50 @@ class ContentVideo(ContentType):
             raise ContractError("content.video.invalid")
         return out
 
+    async def _thumb(self, path: Path, duration_ms: int | None) -> bytes | None:
+        """Image à 10 % de la durée en WebP (même sandbox que ffprobe). None si indisponible."""
+        at = 0.0 if duration_ms is None else duration_ms / 1000 * 0.1
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                self.ffmpeg_bin,
+                "-v", "error", "-nostdin",
+                "-ss", f"{at:.3f}",
+                "-i", str(path),
+                "-frames:v", "1",
+                "-vf", f"scale=w={THUMB_SIDE}:h={THUMB_SIDE}:force_original_aspect_ratio=decrease",
+                "-c:v", "libwebp", "-q:v", "60",
+                "-f", "webp", "pipe:1",
+                stdin=asyncio.subprocess.DEVNULL,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.DEVNULL,
+                env={"PATH": "/usr/local/bin:/usr/bin:/bin", "LC_ALL": "C"},
+                cwd=str(path.parent),
+                close_fds=True,
+                start_new_session=True,
+                preexec_fn=lambda: _limit_child(THUMB_TIMEOUT_S + 5),  # noqa: PLW1509
+            )  # fmt: skip
+        except OSError:
+            return None
+        try:
+            out, _ = await asyncio.wait_for(proc.communicate(), THUMB_TIMEOUT_S)
+        except TimeoutError:
+            proc.kill()
+            await proc.wait()
+            return None
+        if proc.returncode != 0 or not out or len(out) > THUMB_MAX_BYTES:
+            return None
+        return out
+
     async def process_media(self, media: MediaRef, store: MediaStore) -> MediaMeta:
         tmp = Path(await asyncio.to_thread(tempfile.mkdtemp, prefix="vds-video-"))
         try:
             path = tmp / "original"
             await _write(store.read("original"), path)
-            return parse_probe(await self._probe(path))
+            meta = parse_probe(await self._probe(path))
+            thumb = await self._thumb(path, meta.duration_ms)
+            if thumb is not None:  # vignette facultative : absente = icône du kind
+                await store.put_variant("thumb", _once(thumb), mime="image/webp")
+            return meta
         finally:
             await asyncio.to_thread(shutil.rmtree, tmp, True)
 

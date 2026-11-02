@@ -11,6 +11,23 @@ import sys
 
 EXIT_INVALID = 3
 EXIT_TOO_MANY = 4
+THUMB_SIDE = 320
+THUMB_TARGET = 30 * 1024
+
+
+def _thumb(image, outdir: str) -> None:  # type: ignore[no-untyped-def]
+    """Vignette WebP (plus grand côté 320 px, ~30 Kio visés) de la page 1."""
+    small = image.copy()
+    small.thumbnail((THUMB_SIDE, THUMB_SIDE))
+    data = b""
+    for quality in (80, 65, 50, 35):
+        out = io.BytesIO()
+        small.save(out, "WEBP", quality=quality, method=4)
+        data = out.getvalue()
+        if len(data) <= THUMB_TARGET:
+            break
+    with open(f"{outdir}/thumb.webp", "wb") as fh:
+        fh.write(data)
 
 
 def main(argv: list[str]) -> int:
@@ -45,6 +62,7 @@ def main(argv: list[str]) -> int:
                 fh.write(out.getvalue())
             if index == 0:
                 first = (image.width, image.height)
+                _thumb(image, outdir)
             page.close()
     except pdfium.PdfiumError:
         return EXIT_INVALID
