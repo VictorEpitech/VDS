@@ -51,6 +51,7 @@ class PlaylistService(ServiceBase):
         q = (
             select(Playlist, count)
             .outerjoin(PlaylistItem, PlaylistItem.playlist_id == Playlist.id)
+            .where(Playlist.owner_override_id.is_(None))
             .group_by(Playlist.id)
             .order_by(Playlist.name, Playlist.id)
         )
@@ -199,6 +200,26 @@ class PlaylistService(ServiceBase):
         for index, item in enumerate(items):
             if item.position != index:
                 item.position = index
+
+    async def add_item_uncommitted(
+        self, playlist_id: UUID, content_type: str, props: dict[str, Any], duration_ms: int | None
+    ) -> PlaylistItem:
+        """Ajoute un élément (validé) en fin de playlist sans commit ni audit : l'appelant porte
+        la transaction (forçage de contenu isolé)."""
+        media_ids = await self._validate_props(content_type, props)
+        position = len(await self.items(playlist_id))
+        item = PlaylistItem(
+            playlist_id=playlist_id,
+            position=position,
+            content_type=content_type,
+            props=props,
+            duration_ms=duration_ms,
+            enabled=True,
+        )
+        self._s.add(item)
+        await self._s.flush()
+        await self._set_media(item.id, media_ids)
+        return item
 
     async def add_item(self, playlist_id: UUID, body: sc.ItemCreate) -> sc.ItemOut:
         playlist = await self.get(playlist_id)

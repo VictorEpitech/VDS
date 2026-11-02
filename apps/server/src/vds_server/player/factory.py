@@ -23,6 +23,12 @@ def schedule_builder(rt: Runtime, session: AsyncSession) -> ScheduleBuilder:
         )
         return cfg.get("timezone")
 
+    async def respect_of(screen_id: UUID) -> object:
+        cfg = await ModuleConfigReader(rt.maker, rt.schemas, CORE_NAMESPACE).resolve(
+            ScopeRef(level="screen", id=str(screen_id))
+        )
+        return cfg.get("override.respect_scheduled_off", False)
+
     async def power_of(screen_id: UUID, now: datetime) -> list[dict[str, str]]:
         return await PowerPlanBuilder(session, rt.schemas).player_slots(screen_id, now)
 
@@ -40,4 +46,5 @@ def schedule_builder(rt: Runtime, session: AsyncSession) -> ScheduleBuilder:
         rt.registry.instance,
         power_of,
         kiosk_of,
+        respect_of,
     )

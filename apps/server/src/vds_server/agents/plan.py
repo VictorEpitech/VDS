@@ -25,6 +25,9 @@ log = logging.getLogger("vds.agents")
 # Événements qui peuvent modifier le plan d'un site (portée résolue en sites concernés).
 TRIGGERS = (
     "power.plan_changed",
+    "override.created",
+    "override.updated",
+    "override.stopped",
     "config.changed",
     "screen.created",
     "screen.updated",
@@ -61,11 +64,13 @@ class PlanPusher:
     async def _sites(self, s: AsyncSession, payload: dict[str, Any]) -> set[UUID]:
         level = payload.get("scope_level")
         raw = payload.get("scope_id") or payload.get("screen_id") or payload.get("id")
+        if "override_id" in payload:  # forçage : la cible est un niveau de la chaîne
+            level, raw = payload.get("target_type"), payload.get("target_id")
         try:
             target = UUID(str(raw)) if raw else None
         except ValueError:
             return set()
-        if level is None and "scope_level" not in payload:
+        if level is None and "scope_level" not in payload and "override_id" not in payload:
             # événement d'écran
             site = await s.scalar(select(Screen.site_id).where(Screen.id == target))
             if site is None and payload.get(

@@ -25,8 +25,9 @@ from vds_server.db.models import (
     Screen,
     Site,
 )
+from vds_server.db.models_override import PlaybackOverride
 from vds_server.diffusion import resolver
-from vds_server.diffusion.resolver import ScheduleSpec, Slot
+from vds_server.diffusion.resolver import OverrideSpec, ScheduleSpec, Slot
 
 SCHEDULE_FORMAT = 1
 DEFAULT_TZ = "Europe/Paris"
@@ -84,6 +85,56 @@ async def load_specs(session: AsyncSession, chain: dict[str, UUID]) -> list[Sche
     ]
 
 
+OVERRIDE_LOOKBACK = timedelta(days=2)
+
+
+def override_spec(row: PlaybackOverride, respect: bool) -> OverrideSpec | None:
+    """Spec résolveur ; `ends_at` tronqué à l'arrêt manuel. None si le forçage n'a jamais joué."""
+    ends = row.ends_at if row.ended_at is None else min(row.ends_at, row.ended_at)
+    if ends <= row.starts_at:
+        return None
+    return OverrideSpec(
+        id=row.id,
+        target_type=row.target_type,
+        target_id=row.target_id,
+        starts_at=row.starts_at,
+        ends_at=ends,
+        playlist_id=row.playlist_id,
+        priority=row.priority,
+        created_at=row.created_at,
+        respect_scheduled_off=respect,
+    )
+
+
+async def load_overrides(
+    session: AsyncSession,
+    chain: dict[str, UUID],
+    now: datetime,
+    respect_default: bool = False,
+) -> list[OverrideSpec]:
+    """Forçages de la chaîne de l'écran pouvant toucher la fenêtre J/J+1 (fin tronquée si arrêté).
+
+    `respect_default` : valeur de config résolue pour l'écran quand le forçage ne la fixe pas."""
+    conds = [
+        (PlaybackOverride.target_type == level) & (PlaybackOverride.target_id == target)
+        for level, target in chain.items()
+    ]
+    rows = (
+        await session.execute(
+            select(PlaybackOverride).where(
+                PlaybackOverride.ends_at > now - OVERRIDE_LOOKBACK, or_(*conds)
+            )
+        )
+    ).scalars()
+    specs = (
+        override_spec(
+            r, respect_default if r.respect_scheduled_off is None else r.respect_scheduled_off
+        )
+        for r in rows
+    )
+    return [s for s in specs if s is not None]
+
+
 async def screen_media_ids(session: AsyncSession, screen_id: UUID) -> set[UUID]:
     """Médias référencés par les programmations actives de l'écran (autorisation de lecture)."""
     screen = await session.get(Screen, screen_id)
@@ -92,6 +143,12 @@ async def screen_media_ids(session: AsyncSession, screen_id: UUID) -> set[UUID]:
     specs = await load_specs(session, await screen_chain(session, screen))
     horizon = datetime.now(UTC).date() - timedelta(days=1)
     playlists = {s.playlist_id for s in specs if s.ends_on is None or s.ends_on >= horizon}
+    now = datetime.now(UTC)
+    playlists |= {
+        o.playlist_id
+        for o in await load_overrides(session, await screen_chain(session, screen), now)
+        if o.playlist_id is not None and o.ends_at > now
+    }
     if not playlists:
         return set()
     q = (
@@ -119,7 +176,9 @@ class ScheduleBuilder:
         instance_of: InstanceLookup | None = None,
         power_of: PowerLookup | None = None,
         kiosk_of: KioskLookup | None = None,
+        respect_of: TimezoneLookup | None = None,
     ) -> None:
+        self._respect_of = respect_of
         self._kiosk_of = kiosk_of
         self._power_of = power_of
         self._instance_of = instance_of
@@ -136,7 +195,10 @@ class ScheduleBuilder:
         tz = _zone(await self._tz_of(screen_id))
         day: date = now.astimezone(tz).date()
         chain = await screen_chain(self._s, screen)
-        slots = resolver.resolve(chain, await load_specs(self._s, chain), tz, day)
+        overrides = await load_overrides(
+            self._s, chain, now, await self._respect_default(screen_id)
+        )
+        slots = resolver.resolve(chain, await load_specs(self._s, chain), tz, day, overrides)
         playlists, assets, types = await self._playlists(
             {s.playlist_id for s in slots if s.playlist_id}
         )
@@ -162,6 +224,11 @@ class ScheduleBuilder:
             body["kiosk"] = await self._kiosk_of(screen, now)
         body["revision"] = revision_of(body)
         return body
+
+    async def _respect_default(self, screen_id: UUID) -> bool:
+        if self._respect_of is None:
+            return False
+        return bool(await self._respect_of(screen_id))
 
     async def _playlists(
         self, ids: set[UUID]
@@ -302,12 +369,19 @@ def _zone(name: object) -> ZoneInfo:
 
 def _slot(slot: Slot, playlists: dict[str, Any]) -> dict[str, Any]:
     base = {"start": slot.start.isoformat(), "end": slot.end.isoformat()}
-    if slot.schedule_id is None or slot.playlist_id is None:
-        return {**base, "kind": "off", "mode": "black"}
+    if slot.playlist_id is None:
+        off: dict[str, Any] = {**base, "kind": "off", "mode": "black"}
+        if slot.override_id is not None:
+            off["override_id"] = str(slot.override_id)
+        return off
     zone = {"id": "main", "x": 0, "y": 0, "w": 1, "h": 1, "playlist": _pl(slot.playlist_id)}
     return {
         **base,
         "kind": "play",
         "layout": {"zones": [zone]},
-        "source": {"schedule_id": str(slot.schedule_id)},
+        "source": {
+            "schedule_id": None if slot.schedule_id is None else str(slot.schedule_id),
+            "kind": slot.source,
+            "override_id": None if slot.override_id is None else str(slot.override_id),
+        },
     }

@@ -331,6 +331,10 @@ class Playlist(Base, Timestamps):
     updated_by: Mapped[UUID | None] = mapped_column(
         ForeignKey("user_account.id", ondelete="SET NULL")
     )
+    # non null = playlist système éphémère d'un forçage (exclue des listes, purgée avec lui)
+    owner_override_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("playback_overrides.id", ondelete="CASCADE", use_alter=True)
+    )
 
 
 class PlaylistItem(Base, Timestamps):
@@ -409,4 +413,4 @@ class ScheduleRule(Base, Timestamps):
     end_minute: Mapped[int] = mapped_column(SmallInteger)
 
 
-from vds_server.db import models_onboarding, models_power  # noqa: E402,F401  (tables lots 3, Premiers pas)
+from vds_server.db import models_onboarding, models_override, models_power  # noqa: E402,F401  (tables lots 3, Premiers pas, forçage)

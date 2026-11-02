@@ -33,6 +33,7 @@ from vds_server.diffusion.access import MediaAccess
 from vds_server.discovery.service import DiscoveryEvents
 from vds_server.enrollment.local import LocalChannel
 from vds_server.events import CoreBus
+from vds_server.overrides.sweeper import SWEEP_INTERVAL_S, OverrideSweeper
 from vds_server.player.device_auth import DeviceAuth, bearer
 from vds_server.player.ratelimit import FailureLimiter
 from vds_server.player.schedule import screen_media_ids
@@ -96,6 +97,7 @@ class Runtime:
         self.supervisor.register(self.bus.subscribe)
         self.power_state = PowerStateTracker(self.maker, self.schemas)
         self.power_state.register(self.bus.subscribe)
+        self.override_sweeper = OverrideSweeper(self.maker, self.bus, self.schemas)
         self.plan_pusher = PlanPusher(self.maker, self.schemas, self.command_queue)
         self.plan_pusher.register(self.bus.subscribe)
         for name in ("module.enabled", "module.disabled", "module.quarantined"):
@@ -196,14 +198,23 @@ class Runtime:
                 with contextlib.suppress(Exception):
                     await self.bus.process_pending()
 
+        async def sweep() -> None:
+            while True:
+                await asyncio.sleep(SWEEP_INTERVAL_S)
+                await self.override_sweeper.run_once()
+
         task = asyncio.create_task(pump())
+        sweep_task = asyncio.create_task(sweep())
         try:
             app.state.runtime = self
             yield
         finally:
             task.cancel()
+            sweep_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await task
+            with contextlib.suppress(asyncio.CancelledError):
+                await sweep_task
             await self.power_state.stop()
             await self.supervisor.stop()
             await self.agent_hub.stop()

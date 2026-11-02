@@ -302,7 +302,8 @@
           "power.calendars.write",
           "incidents.read",
           "screens.provision",
-          "network.discover"
+          "network.discover",
+          "override.write"
         ],
         "type": "string"
       },

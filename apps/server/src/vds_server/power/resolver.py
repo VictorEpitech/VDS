@@ -10,12 +10,20 @@ Les bornes sont des heures murales converties en instants : un jour de changemen
 23 h ou 25 h, et les créneaux contigus de même état sont fusionnés (minuit n'est pas une borne).
 """
 
-from collections.abc import Collection, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta, tzinfo
 from typing import Literal
+from uuid import UUID
 
-from vds_server.diffusion.resolver import DAY_MINUTES, SPECIFICITY, WINDOW_DAYS, wall_to_instant
+from vds_server.diffusion.resolver import (
+    DAY_MINUTES,
+    SPECIFICITY,
+    WINDOW_DAYS,
+    OverrideSpec,
+    wall_to_instant,
+    winning_override,
+)
 
 State = Literal["on", "off"]
 
@@ -110,6 +118,35 @@ def resolve(
         else:
             slots.append(PowerSlot(a, b, state))
     return [PowerSlot(s.start.astimezone(tz), s.end.astimezone(tz), s.state) for s in slots]
+
+
+def apply_overrides(
+    slots: Sequence[PowerSlot],
+    chain: Mapping[str, UUID],
+    overrides: Collection[OverrideSpec],
+    tz: tzinfo,
+) -> list[PowerSlot]:
+    """Forçages sur l'alimentation : un forçage de playlist rallume l'écran (sauf
+    `respect_scheduled_off` en plage éteinte), un forçage d'extinction l'éteint."""
+    if not slots or not overrides:
+        return list(slots)
+    lo, hi = slots[0].start, slots[-1].end
+    cuts = {lo, hi}
+    for s in slots:
+        cuts.update((s.start, s.end))
+    for o in overrides:
+        cuts.update(p for p in (o.starts_at, o.ends_at) if lo <= p <= hi)
+    points = sorted(cuts)
+    out: list[PowerSlot] = []
+    for a, b in zip(points, points[1:], strict=False):
+        base: State = next((s.state for s in slots if s.start <= a and s.end >= b), "on")
+        forced = winning_override(chain, overrides, a, b, schedule_off=base == "off")
+        state: State = base if forced is None else ("on" if forced.playlist_id else "off")
+        if out and out[-1].state == state:
+            out[-1] = PowerSlot(out[-1].start, b, state)
+        else:
+            out.append(PowerSlot(a, b, state))
+    return [PowerSlot(s.start.astimezone(tz), s.end.astimezone(tz), s.state) for s in out]
 
 
 def to_wire(slots: Sequence[PowerSlot]) -> list[dict[str, str]]:

@@ -151,3 +151,31 @@ CORE_EVENTS_1_6: frozenset[str] = CORE_EVENTS_1_5 | frozenset(
 )
 
 CRITICAL_EVENTS_1_6: frozenset[str] = CRITICAL_EVENTS_1_5
+
+# --- vds-core 1.7.0 (additif) : forçage avec fin automatique -------------------------
+# Émis par le noyau (primitive de planification). Payloads `version: 1` ; les clés ci-dessous
+# sont le minimum garanti (le noyau peut en ajouter). `override.updated` : prolongation/note,
+# nécessaire pour que l'agent de site recalcule son plan. Aucun événement critique.
+CORE_EVENT_PAYLOAD_1_7: dict[str, tuple[str, ...]] = {
+    **CORE_EVENT_PAYLOAD_1_6,
+    "override.created": (
+        "override_id",
+        "target_type",
+        "target_id",
+        "kind",
+        "playlist_id",
+        "starts_at",
+        "ends_at",
+        "created_by",
+        "created_by_module",
+    ),
+    "override.updated": ("override_id", "target_type", "target_id", "ends_at"),
+    "override.stopped": ("override_id", "target_type", "target_id", "ended_at", "ended_by"),
+    "override.expired": ("override_id", "target_type", "target_id", "ended_at"),
+}
+
+CORE_EVENTS_1_7: frozenset[str] = CORE_EVENTS_1_6 | frozenset(
+    set(CORE_EVENT_PAYLOAD_1_7) - set(CORE_EVENT_PAYLOAD_1_6)
+)
+
+CRITICAL_EVENTS_1_7: frozenset[str] = CRITICAL_EVENTS_1_6

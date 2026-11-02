@@ -10,15 +10,19 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vds_server.db.models import Playlist, Schedule, Screen, Site
+from vds_server.db.models_override import PlaybackOverride
 from vds_server.diffusion import resolver
-from vds_server.player.schedule import _zone, load_specs, screen_chain
+from vds_server.player.schedule import _zone, load_overrides, load_specs, screen_chain
 
 TimezoneOf = Callable[[UUID], Awaitable[object]]
+RespectOf = Callable[[UUID], Awaitable[object]]
 
 
 class ScreenPlaybackOut(BaseModel):
     screen_id: UUID
-    source: Literal["schedule", "none"]  # "override" ajouté en lot H, additif
+    source: Literal["schedule", "override", "none"]  # "override" : vds-core 1.7.0 (additif)
+    override_id: UUID | None = None
+    override_name: str | None = None
     schedule_id: UUID | None = None
     schedule_name: str | None = None
     playlist_id: UUID | None = None
@@ -28,7 +32,11 @@ class ScreenPlaybackOut(BaseModel):
 
 
 async def fleet_playback(
-    session: AsyncSession, site_id: UUID | None, now: datetime, timezone_of: TimezoneOf
+    session: AsyncSession,
+    site_id: UUID | None,
+    now: datetime,
+    timezone_of: TimezoneOf,
+    respect_of: RespectOf | None = None,
 ) -> list[ScreenPlaybackOut]:
     q = (
         select(Screen)
@@ -42,8 +50,10 @@ async def fleet_playback(
     for screen in (await session.execute(q)).scalars():
         tz = _zone(await timezone_of(screen.id))
         chain = await screen_chain(session, screen)
+        respect = bool(await respect_of(screen.id)) if respect_of else False
+        overrides = await load_overrides(session, chain, now, respect)
         slots = resolver.resolve(
-            chain, await load_specs(session, chain), tz, now.astimezone(tz).date()
+            chain, await load_specs(session, chain), tz, now.astimezone(tz).date(), overrides
         )
         idx = next((i for i, s in enumerate(slots) if s.start <= now < s.end), None)
         if idx is None:
@@ -52,23 +62,42 @@ async def fleet_playback(
         cur = slots[idx]
         nxt = slots[idx + 1].start.astimezone(UTC) if idx + 1 < len(slots) else None
         until = cur.end.astimezone(UTC)
-        if cur.schedule_id is None or cur.playlist_id is None:
+        if cur.playlist_id is None:
             out.append(
                 ScreenPlaybackOut(
-                    screen_id=screen.id, source="none", until=until, next_change_at=nxt
+                    screen_id=screen.id,
+                    source="none" if cur.override_id is None else "override",
+                    override_id=cur.override_id,
+                    until=until,
+                    next_change_at=nxt,
                 )
             )
             continue
         sched_name = (
-            await session.execute(select(Schedule.name).where(Schedule.id == cur.schedule_id))
-        ).scalar_one_or_none()
+            None
+            if cur.schedule_id is None
+            else (
+                await session.execute(select(Schedule.name).where(Schedule.id == cur.schedule_id))
+            ).scalar_one_or_none()
+        )
+        ov_name = (
+            None
+            if cur.override_id is None
+            else (
+                await session.execute(
+                    select(PlaybackOverride.name).where(PlaybackOverride.id == cur.override_id)
+                )
+            ).scalar_one_or_none()
+        )
         pl_name = (
             await session.execute(select(Playlist.name).where(Playlist.id == cur.playlist_id))
         ).scalar_one_or_none()
         out.append(
             ScreenPlaybackOut(
                 screen_id=screen.id,
-                source="schedule",
+                source=cur.source if cur.source != "off" else "none",
+                override_id=cur.override_id,
+                override_name=ov_name,
                 schedule_id=cur.schedule_id,
                 schedule_name=sched_name,
                 playlist_id=cur.playlist_id,

@@ -388,6 +388,76 @@ export interface paths {
         patch: operations["patch_organization_api_v1_organization_patch"];
         trace?: never;
     };
+    "/api/v1/overrides": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Overrides */
+        get: operations["list_overrides_api_v1_overrides_get"];
+        put?: never;
+        /** Create Override */
+        post: operations["create_override_api_v1_overrides_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/overrides/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview Override */
+        post: operations["preview_override_api_v1_overrides_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/overrides/{override_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Override */
+        get: operations["get_override_api_v1_overrides__override_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Patch Override */
+        patch: operations["patch_override_api_v1_overrides__override_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/overrides/{override_id}/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop Override */
+        post: operations["stop_override_api_v1_overrides__override_id__stop_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pairings/claim": {
         parameters: {
             query?: never;
@@ -2490,6 +2560,8 @@ export interface components {
              * @constant
              */
             mode: "black";
+            /** Override Id */
+            override_id?: string | null;
             /** Start */
             start: string;
         };
@@ -2544,6 +2616,151 @@ export interface components {
             kiosk: "device_owner" | "soft" | "none";
             /** Ok */
             ok: boolean;
+        };
+        /**
+         * OverrideContentIn
+         * @description « Forcer un contenu » : devient une playlist éphémère d'un élément.
+         */
+        OverrideContentIn: {
+            /** Content Type */
+            content_type: string;
+            /** Duration Ms */
+            duration_ms?: number | null;
+            /** Props */
+            props?: {
+                [key: string]: unknown;
+            };
+        };
+        /** OverrideCreate */
+        OverrideCreate: {
+            content?: components["schemas"]["OverrideContentIn"] | null;
+            /** Duration Minutes */
+            duration_minutes?: number | null;
+            /** Ends At */
+            ends_at?: string | null;
+            /**
+             * Kind
+             * @default playlist
+             * @enum {string}
+             */
+            kind: "playlist" | "off";
+            /** Name */
+            name?: string | null;
+            /** Note */
+            note?: string | null;
+            /** Playlist Id */
+            playlist_id?: string | null;
+            /**
+             * Priority
+             * @default 0
+             */
+            priority: number;
+            /** Request Id */
+            request_id?: string | null;
+            /** Respect Scheduled Off */
+            respect_scheduled_off?: boolean | null;
+            /** Starts At */
+            starts_at?: string | null;
+            /**
+             * Target Id
+             * Format: uuid
+             */
+            target_id: string;
+            /**
+             * Target Type
+             * @enum {string}
+             */
+            target_type: "organization" | "site" | "group" | "screen";
+            /** Until */
+            until?: "end_of_day" | null;
+        };
+        /** OverrideOut */
+        OverrideOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by: string | null;
+            /** Created By Module */
+            created_by_module: string | null;
+            /** End Reason */
+            end_reason: ("stopped" | "expired") | null;
+            /** Ended At */
+            ended_at: string | null;
+            /**
+             * Ends At
+             * Format: date-time
+             */
+            ends_at: string;
+            /** Ephemeral */
+            ephemeral: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "playlist" | "off";
+            /** Name */
+            name: string;
+            /** Note */
+            note: string | null;
+            /** Playlist Id */
+            playlist_id: string | null;
+            /** Priority */
+            priority: number;
+            /** Respect Scheduled Off */
+            respect_scheduled_off: boolean;
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "scheduled" | "active" | "ended";
+            /**
+             * Target Id
+             * Format: uuid
+             */
+            target_id: string;
+            /** Target Name */
+            target_name: string;
+            /**
+             * Target Type
+             * @enum {string}
+             */
+            target_type: "organization" | "site" | "group" | "screen";
+        };
+        /** OverridePatch */
+        OverridePatch: {
+            /** Ends At */
+            ends_at?: string | null;
+            /** Note */
+            note?: string | null;
+        };
+        /** OverridePreviewOut */
+        OverridePreviewOut: {
+            /**
+             * Ends At
+             * Format: date-time
+             */
+            ends_at: string;
+            /** Screens In Scheduled Off */
+            screens_in_scheduled_off: number;
+            /** Screens Offline */
+            screens_offline: number;
+            /** Screens Total */
+            screens_total: number;
+            /** Superseded Override Ids */
+            superseded_override_ids: string[];
         };
         /** PairingClaim */
         PairingClaim: {
@@ -3163,6 +3380,10 @@ export interface components {
         ScreenPlaybackOut: {
             /** Next Change At */
             next_change_at?: string | null;
+            /** Override Id */
+            override_id?: string | null;
+            /** Override Name */
+            override_name?: string | null;
             /** Playlist Id */
             playlist_id?: string | null;
             /** Playlist Name */
@@ -3180,7 +3401,7 @@ export interface components {
              * Source
              * @enum {string}
              */
-            source: "schedule" | "none";
+            source: "schedule" | "override" | "none";
             /** Until */
             until?: string | null;
         };
@@ -3268,13 +3489,22 @@ export interface components {
             /** To */
             to: string;
         };
-        /** SlotSource */
+        /**
+         * SlotSource
+         * @description Origine du créneau. vds-core 1.7.0 (additif) : `kind` et `override_id` ; `schedule_id`
+         *     est null pour un forçage. Un client < 1.7.0 ignore les clés qu'il ne connaît pas.
+         */
         SlotSource: {
             /**
-             * Schedule Id
-             * Format: uuid
+             * Kind
+             * @default schedule
+             * @enum {string}
              */
-            schedule_id: string;
+            kind: "schedule" | "override";
+            /** Override Id */
+            override_id?: string | null;
+            /** Schedule Id */
+            schedule_id: string | null;
         };
         /** StepSkipIn */
         StepSkipIn: {
@@ -4248,6 +4478,205 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrganizationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_overrides_api_v1_overrides_get: {
+        parameters: {
+            query?: {
+                active?: boolean | null;
+                site_id?: string | null;
+                target_type?: ("organization" | "site" | "group" | "screen") | null;
+                target_id?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OverrideOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_override_api_v1_overrides_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OverrideCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OverrideOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_override_api_v1_overrides_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OverrideCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OverridePreviewOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_override_api_v1_overrides__override_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                override_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OverrideOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_override_api_v1_overrides__override_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                override_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OverridePatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OverrideOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stop_override_api_v1_overrides__override_id__stop_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                override_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OverrideOut"];
                 };
             };
             /** @description Validation Error */

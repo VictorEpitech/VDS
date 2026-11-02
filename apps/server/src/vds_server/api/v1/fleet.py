@@ -52,7 +52,15 @@ def build_router(rt: Runtime) -> APIRouter:
             )
             return cfg.get("timezone")
 
-        return await playback.fleet_playback(session, site_id, datetime.now(UTC), timezone_of)
+        async def respect_of(screen_id: UUID) -> object:
+            cfg = await ModuleConfigReader(rt.maker, rt.schemas, CORE_NAMESPACE).resolve(
+                ScopeRef(level="screen", id=str(screen_id))
+            )
+            return cfg.get("override.respect_scheduled_off", False)
+
+        return await playback.fleet_playback(
+            session, site_id, datetime.now(UTC), timezone_of, respect_of
+        )
 
     @router.get("/apk", response_model=FleetApkOut)
     async def fleet_apk(session: Session, actor: Admin, site_id: UUID | None = None) -> FleetApkOut:

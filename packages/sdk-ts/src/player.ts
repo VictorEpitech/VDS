@@ -45,6 +45,8 @@ export interface OffSlot {
   end: string;
   kind: "off";
   mode: "black";
+  /** vds-core 1.7.0 : présent si l'extinction est forcée (absent = hors plage). */
+  override_id?: string | null;
 }
 
 export interface PlaySlot {
@@ -55,7 +57,10 @@ export interface PlaySlot {
     zones: LayoutZone[];
   };
   source: {
-    schedule_id: string;
+    /** null pour un forçage (vds-core 1.7.0). */
+    schedule_id: string | null;
+    kind?: "schedule" | "override";
+    override_id?: string | null;
   };
 }
 

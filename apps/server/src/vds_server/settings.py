@@ -30,9 +30,7 @@ class Settings(BaseSettings):
     quarantine_failures: int = 5
     quarantine_window_s: int = 600
     apk_dir: Path = Path("/opt/vds/apk")  # VDS_APK_DIR : apk.json + fichiers APK signés par la CI
-    apk_signer_sha256: str | None = (
-        None  # VDS_APK_SIGNER_SHA256 : autre signataire rejeté
-    )
+    apk_signer_sha256: str | None = None  # VDS_APK_SIGNER_SHA256 : autre signataire rejeté
     provision_lan_check: bool = True  # VDS_PROVISION_LAN_CHECK
     secret_key: str | None = None  # VDS_SECRET_KEY : dérive les clés du service LAN de cache
     local_agent_dir: Path | None = None  # VDS_LOCAL_AGENT_DIR : canal local (absent = indisponible)

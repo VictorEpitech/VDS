@@ -116,7 +116,12 @@ class Layout(BaseModel):
 
 
 class SlotSource(BaseModel):
-    schedule_id: UUID
+    """Origine du créneau. vds-core 1.7.0 (additif) : `kind` et `override_id` ; `schedule_id`
+    est null pour un forçage. Un client < 1.7.0 ignore les clés qu'il ne connaît pas."""
+
+    schedule_id: UUID | None
+    kind: Literal["schedule", "override"] = "schedule"
+    override_id: UUID | None = None
 
 
 class OffSlot(BaseModel):
@@ -124,6 +129,7 @@ class OffSlot(BaseModel):
     end: str
     kind: Literal["off"] = "off"
     mode: Literal["black"] = "black"
+    override_id: UUID | None = None  # 1.7.0 : extinction forcée (absent = hors plage)
 
 
 class PlaySlot(BaseModel):

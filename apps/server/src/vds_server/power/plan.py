@@ -20,7 +20,7 @@ from vds_server.db.models_power import (
     PowerException,
     PowerPlanRule,
 )
-from vds_server.player.schedule import revision_of
+from vds_server.player.schedule import load_overrides, revision_of, screen_chain
 from vds_server.power import resolver
 from vds_server.power.resolver import ExceptionSpec, PlanRule, PowerSlot
 
@@ -54,7 +54,9 @@ class PowerPlanBuilder:
         self._cfg = ConfigService(session, schemas)
         self._schemas = schemas
 
-    async def for_screen(self, screen_id: UUID, now: datetime | None = None) -> ScreenPower:
+    async def for_screen(
+        self, screen_id: UUID, now: datetime | None = None, *, with_overrides: bool = True
+    ) -> ScreenPower:
         now = now or datetime.now(UTC)
         screen = await self._s.get(Screen, screen_id)
         if screen is None or screen.archived_at is not None:
@@ -69,6 +71,12 @@ class PowerPlanBuilder:
         days = await self._calendar_days(calendars, window)
         exceptions = await self._exceptions(await self._cfg.chain("screen", screen_id), window)
         slots = resolver.resolve(rules, days, exceptions, tz, day)
+        if with_overrides:
+            chain = await screen_chain(self._s, screen)
+            overrides = await load_overrides(
+                self._s, chain, now, bool(res["override.respect_scheduled_off"].value)
+            )
+            slots = resolver.apply_overrides(slots, chain, overrides, tz)
         return ScreenPower(
             screen_id=screen_id,
             timezone=tz.key,
