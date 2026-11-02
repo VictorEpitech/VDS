@@ -276,7 +276,8 @@ async def test_media_reprocess_regenerates_thumb_only(
         m=UUID(str(media)),
     )
     assert [a[0] for a in after] == ["original", "thumb"]
-    assert after[0] == before[0] and after[1][2] == before[1][2]
+    assert after[0] == before[0]
+    assert after[1][2].startswith(before[1][2].removesuffix(".webp") + "-r1-")
     assert (await sql(migrated_db_url, "SELECT revision FROM media"))[0] == (1,)
     again = await reprocess(rt(app), "thumb")
     assert (again.created, again.skipped) == (0, 1)

@@ -2,6 +2,7 @@
 
 import asyncio
 import re
+import secrets
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -19,6 +20,7 @@ from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
 from vds_server.db.models import Media, MediaVariant
 from vds_server.diffusion.base import ServiceBase
+from vds_server.diffusion.scope import ContentScope, OrganizationScope
 from vds_server.diffusion.tombstones import add_tombstones
 
 CHUNK = 1024 * 1024
@@ -61,9 +63,9 @@ VARIANT_EXT = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
 class _VariantStore:
     """MediaStore confié au module : écrit les variantes à côté de l'original."""
 
-    def __init__(self, storage: StorageBackend, key: str, revision: int = 1) -> None:
+    def __init__(self, storage: StorageBackend, key: str, tag: str = "") -> None:
         self._storage = storage
-        self._suffix = f"-r{revision}" if revision >= 2 else ""
+        self._suffix = f"-{tag}" if tag else ""
         self._dir = key.rsplit("/", 1)[0]
         self._original = key
         self.created: dict[str, StoredObject] = {}
@@ -110,8 +112,10 @@ class MediaUploadService(ServiceBase):
         max_bytes: int,
         processor: Callable[[str], tuple[str, Module] | None] | None = None,
         replaced_grace_hours: int = 48,
+        scope: ContentScope | None = None,
     ) -> None:
         super().__init__(session, bus, actor)
+        self._scope: ContentScope = scope or OrganizationScope()
         self._processor = processor
         self._storage = storage
         self._max = max_bytes
@@ -254,6 +258,8 @@ class MediaUploadService(ServiceBase):
         ).scalar_one_or_none()
         if media is None:
             raise ApiError("media.not_found", 404)
+        if not await self._scope.can_write_media(self._actor, media_id):
+            raise ApiError("media.forbidden", 403)
         if if_match is not None:
             wanted = if_match.strip().removeprefix("W/").strip('"').lower()
             if wanted != (media.sha256 or ""):
@@ -271,7 +277,9 @@ class MediaUploadService(ServiceBase):
         if kind != media.kind:
             raise ApiError("media.replace_kind_mismatch", 422)
         revision = media.revision + 1
-        key = f"{media_id.hex[:2]}/{media_id}/original-r{revision}.{ext}"
+        # suffixe unique par tentative (jamais la clé d une tentative suivante)
+        tag = f"r{revision}-{secrets.token_hex(4)}"
+        key = f"{media_id.hex[:2]}/{media_id}/original-{tag}.{ext}"
 
         async def chunks() -> AsyncIterator[bytes]:
             total = len(head)
@@ -284,21 +292,21 @@ class MediaUploadService(ServiceBase):
                     raise ApiError("media.too_large", 413)
                 yield block
 
+        backend = self._storage_id()
         try:
             stored = await self._storage.put(key, chunks(), mime=mime)
-        except ApiError:
-            await self._storage.delete(key)
+        except (ApiError, OSError):
+            await self._abort(backend, media_id, [key])
             raise
         if expected is not None and stored.sha256 != expected:
-            await self._storage.delete(key)
+            await self._abort(backend, media_id, [key])
             raise ApiError("media.sha256_mismatch", 422)
         if stored.sha256 == media.sha256:  # même contenu : aucun effet
-            await self._storage.delete(key)
+            await self._abort(backend, media_id, [key], commit=False)
             await self._s.rollback()
             await self._s.refresh(media)
             return media
-        backend = self._storage_id()
-        store = _VariantStore(self._storage, key, revision)
+        store = _VariantStore(self._storage, key, tag)
         meta = MediaMeta()
         failure: str | None = None
         found = self._processor(mime) if self._processor else None
@@ -412,6 +420,19 @@ class MediaUploadService(ServiceBase):
             raise
         await self._s.refresh(media)
         return media
+
+    async def _abort(
+        self, backend: str, media_id: UUID, keys: list[str], *, commit: bool = True
+    ) -> None:
+        """Nettoyage d'une tentative ratée : suppression au mieux, tombstone en filet."""
+        for k in keys:
+            try:
+                await self._storage.delete(k)
+            except Exception:  # noqa: S110 - la tombstone reprendra la suppression
+                pass
+        if commit:
+            await add_tombstones(self._s, backend, keys, reason="aborted", media_id=media_id)
+            await self._s.commit()  # libère le verrou de ligne
 
     def _storage_id(self) -> str:
         return getattr(self._storage, "module_id", None) or "storage.local"

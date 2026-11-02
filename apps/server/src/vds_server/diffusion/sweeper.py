@@ -14,7 +14,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import delete, select, text
+from sqlalchemy import delete, exists, select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from vds_sdk import Event, EventBus
 from vds_sdk.server.storage import StorageBackend
@@ -327,6 +327,21 @@ class ContentSweeper:
             for row in list(rows):
                 backend = self._backend_of(row.backend)
                 if backend is None:  # module désactivé : la ligne attend
+                    continue
+                in_use = await s.scalar(
+                    select(
+                        exists().where(
+                            MediaVariant.storage_key == row.key,
+                            MediaVariant.media_id.is_not(None),
+                        )
+                    )
+                )
+                in_use = in_use or await s.scalar(
+                    select(exists().where(Media.storage_key == row.key))
+                )
+                if in_use:  # filet : jamais de suppression d'un fichier encore référencé
+                    log.warning("storage.gc skipped referenced key backend=%s", row.backend)
+                    await s.delete(row)
                     continue
                 try:
                     await backend.delete(row.key)

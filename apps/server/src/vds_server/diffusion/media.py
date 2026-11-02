@@ -182,6 +182,11 @@ class MediaService(ServiceBase):
         row = await self._s.get(Media, media_id)
         if row is None:
             raise ApiError("media.not_found", 404)
+        visible = await self._s.scalar(
+            select(exists().where(Media.id == media_id, self._scope.media_filter(self._actor)))
+        )
+        if not visible:
+            raise ApiError("media.forbidden", 403)
         return row
 
     async def out(self, row: Media) -> sc.MediaOut:
@@ -194,6 +199,7 @@ class MediaService(ServiceBase):
         return to_out(row, int(usage or 0), thumb, datetime.now(UTC))
 
     async def variants(self, media_id: UUID) -> list[MediaVariant]:
+        await self.get(media_id)
         q = (
             select(MediaVariant)
             .where(MediaVariant.media_id == media_id)
@@ -202,6 +208,10 @@ class MediaService(ServiceBase):
         return list((await self._s.execute(q)).scalars())
 
     async def used_by(self, media_id: UUID) -> list[UUID]:
+        await self.get(media_id)
+        return await self._used_by(media_id)
+
+    async def _used_by(self, media_id: UUID) -> list[UUID]:
         q = (
             select(PlaylistItem.playlist_id)
             .join(PlaylistItemMedia, PlaylistItemMedia.item_id == PlaylistItem.id)
@@ -244,7 +254,7 @@ class MediaService(ServiceBase):
         return media
 
     async def _delete_one(self, media: Media) -> None:
-        used = await self.used_by(media.id)
+        used = await self._used_by(media.id)
         if used:
             raise ApiError("media.in_use", 409, playlists=[str(p) for p in used])
         keys = set(

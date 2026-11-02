@@ -8,6 +8,7 @@ import json
 import re
 import time
 from collections.abc import Awaitable, Callable
+from uuid import UUID
 
 from starlette.datastructures import Headers
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -44,7 +45,7 @@ class UploadLimitMiddleware:
     ) -> None:
         self.app = app
         self.path = f"{settings.prefix}/api/v1/media"
-        self._replace = re.compile(rf"^{re.escape(self.path)}/[0-9a-fA-F-]{{36}}/file$")
+        self._replace = re.compile(rf"^{re.escape(self.path)}/(?P<id>[^/]+)/file$")
         self._fetch = limit
         self._cached: tuple[float, int] | None = None
 
@@ -55,11 +56,22 @@ class UploadLimitMiddleware:
             self._cached = (now, await self._fetch())
         return self._cached[1]
 
+    def _is_replace(self, path: str) -> bool:
+        """Toute forme acceptée par `media_uuid` (32 hex, urn:uuid:, accolades…) est couverte."""
+        m = self._replace.match(path)
+        if m is None:
+            return False
+        try:
+            UUID(m.group("id"))
+        except ValueError:
+            return False  # la route répondra 404
+        return True
+
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if (
             scope["type"] != "http"
             or scope["method"] != "POST"
-            or (scope["path"] != self.path and not self._replace.match(scope["path"]))
+            or (scope["path"] != self.path and not self._is_replace(scope["path"]))
         ):
             await self.app(scope, receive, send)
             return

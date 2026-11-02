@@ -10,6 +10,7 @@ import argparse
 import asyncio
 import json
 import logging
+import secrets
 from collections.abc import AsyncIterator
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
@@ -38,8 +39,8 @@ class Report:
 class _OnlyVariantStore(_VariantStore):
     """Ne conserve que la variante demandée : les autres écritures du module sont drainées."""
 
-    def __init__(self, storage: StorageBackend, key: str, revision: int, only: str) -> None:
-        super().__init__(storage, key, revision)
+    def __init__(self, storage: StorageBackend, key: str, tag: str, only: str) -> None:
+        super().__init__(storage, key, tag)
         self._only = only
 
     async def put_variant(
@@ -78,7 +79,9 @@ async def reprocess(
         if limit is not None and report.created >= limit:
             break
         async with rt.maker() as s:
-            media = await s.get(Media, media_id)
+            media = (
+                await s.execute(select(Media).where(Media.id == media_id).with_for_update())
+            ).scalar_one_or_none()
             if media is None or not media.storage_key:
                 continue
             report.scanned += 1
@@ -97,7 +100,9 @@ async def reprocess(
             if not isinstance(instance, ContentType) or dry_run:
                 report.skipped += 1
                 continue
-            store = _OnlyVariantStore(storage, media.storage_key, media.revision, variant)
+            store = _OnlyVariantStore(
+                storage, media.storage_key, f"r{media.revision}-{secrets.token_hex(4)}", variant
+            )
             ref = MediaRef(
                 id=media.id,
                 kind=media.kind,
@@ -112,6 +117,14 @@ async def reprocess(
             except Exception as exc:
                 log.warning("reprocess failed media=%s: %s", media_id, type(exc).__name__)
                 report.failed += 1
+                await add_tombstones(
+                    s,
+                    media.storage_backend or backend_id,
+                    [v.key for v in store.created.values() if v.key],
+                    reason="aborted",
+                    media_id=media_id,
+                )
+                await s.commit()
                 continue
             del meta  # métadonnées inchangées : on ne touche pas à la ligne `media`
             obj = store.created.get(variant)

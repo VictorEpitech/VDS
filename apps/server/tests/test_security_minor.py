@@ -132,6 +132,17 @@ async def test_replace_file_size_checked_before_read(small: AsyncClient, sbase: 
     assert ok.status_code == 200 and ok.json() == {"media": 1}
 
 
+async def test_replace_alternate_uuid_forms_still_limited(small: AsyncClient, sbase: str) -> None:
+    async def body() -> AsyncIterator[bytes]:
+        yield b"x" * 10
+
+    for form in ("0" * 32, "urn:uuid:" + "0" * 8 + "-0000-0000-0000-" + "0" * 12):
+        r = await small.post(
+            f"{pre(sbase)}/api/v1/media/{form}/file", content=body(), headers=SAME
+        )
+        assert r.status_code == 411 and r.json()["code"] == "media.length_required"
+
+
 async def test_multipart_without_length_refused(small: AsyncClient, sbase: str) -> None:
     async def body() -> AsyncIterator[bytes]:
         yield b"x" * 10

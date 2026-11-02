@@ -320,6 +320,40 @@ async def test_pdf_invalid_and_too_long() -> None:
     assert err2.value.code == "content.pdf.too_many_pages" and not store.variants
 
 
+def _pdf_sized(w: float, h: float) -> bytes:
+    doc = pdfium.PdfDocument.new()
+    doc.new_page(w, h)
+    out = io.BytesIO()
+    doc.save(out)
+    return out.getvalue()
+
+
+async def test_pdf_trapped_inputs_bounded_and_clean() -> None:
+    """PDF piégés (remplacement inclus) : page géante, tronqué, binaire, boucle."""
+    _, module = _load("content.pdf")
+    await _setup(module, {"render_width": 640})
+    ref = _ref("document", "application/pdf")
+    # Page géante (MediaBox 14400 pt) : rendu borné par le worker, pas d'image démesurée.
+    store = FakeStore(_pdf_sized(14400, 14400))
+    meta = await module.process_media(ref, store)
+    assert meta.page_count == 1 and (meta.width or 0) <= 4096 and (meta.height or 0) <= 4096
+    # Entrées hostiles : toujours une ContractError nommée, jamais d exception brute.
+    good = _pdf(1)
+    boom = [
+        good[: len(good) // 2],
+        b"%PDF-1.7\n" + bytes(range(256)) * 40,
+        b"%PDF-1.4\n1 0 obj<</Type/Pages/Kids[1 0 R]/Count 1>>endobj\n"
+        b"trailer<</Root 1 0 R>>\n%%EOF",
+        b"\x00" * 4096,
+    ]
+    for raw in boom:
+        bad = FakeStore(raw)
+        with pytest.raises(ContractError) as err:
+            await module.process_media(ref, bad)
+        assert err.value.code.startswith("content.pdf.") and not bad.variants
+
+
+
 # --- content.url --------------------------------------------------------------
 
 

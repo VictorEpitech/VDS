@@ -51,7 +51,7 @@ def build_router(rt: Runtime) -> APIRouter:
         unused: bool | None = None,
         sort: sc.MediaSort = "-created_at",
         limit: Annotated[int, Query(ge=1, le=200)] = 50,
-        offset: Annotated[int, Query(ge=0)] = 0,
+        offset: Annotated[int, Query(ge=0, le=100000)] = 0,
     ) -> sc.MediaPage:
         return await s.list_page(
             kind=kind,
@@ -106,7 +106,7 @@ def build_router(rt: Runtime) -> APIRouter:
         state: sc.MediaState = "all",
         sort: sc.PlaylistSort = "name",
         limit: Annotated[int, Query(ge=1, le=200)] = 50,
-        offset: Annotated[int, Query(ge=0)] = 0,
+        offset: Annotated[int, Query(ge=0, le=100000)] = 0,
     ) -> sc.PlaylistPage:
         return await s.list_page(
             search=q, tags=_split_tags(tags), state=state, sort=sort, limit=limit, offset=offset

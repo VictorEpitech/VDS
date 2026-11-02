@@ -81,6 +81,29 @@ async def test_single_download_for_many_screens_and_integrity(tmp_path: Path) ->
     assert origin.hits == []
 
 
+async def test_replaced_media_new_sha_downloaded_old_evicted(tmp_path: Path) -> None:
+    """Remplacement serveur : même chemin, nouveau sha256 -> nouveau fichier."""
+    ma = "a" * 32
+    origin = Origin({f"media/{ma}/original": A})
+    cache = MediaCache(tmp_path / "m", 10**9)
+    await cache.sync(origin.client(), BASE, TOKEN, {"items": [entry(A, ma)]})
+    assert cache.has(sha(A))
+    origin.blobs[f"media/{ma}/original"] = B  # révision N+1 servie sous la même clé
+    origin.hits.clear()
+    res = await cache.sync(origin.client(), BASE, TOKEN, {"items": [entry(B, ma)]})
+    assert (res.items, res.missing) == (1, 0) and cache.has(sha(B))
+    assert sum(h.startswith("media/") for h in origin.hits) == 1
+    cache_max = MediaCache(tmp_path / "m", max_bytes=len(B))
+    cache_max.evict(keep={sha(B)})
+    assert cache_max.has(sha(B)) and not cache_max.has(sha(A))
+    # l'ancien sha annoncé avec les nouveaux octets est refusé (intégrité)
+    origin.hits.clear()
+    res = await MediaCache(tmp_path / "m2", 10**9).sync(
+        origin.client(), BASE, TOKEN, {"items": [entry(A, ma)]}
+    )
+    assert res.missing == 1
+
+
 async def test_rejects_unsafe_entries(tmp_path: Path) -> None:
     origin = Origin({})
     cache = MediaCache(tmp_path / "m", 10**9)

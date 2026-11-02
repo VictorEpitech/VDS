@@ -1,14 +1,16 @@
 """Remplacement de fichier d'un média (révision N+1), deux VDS_BASE_PATH."""
 
 import io
+import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from uuid import UUID
 
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
 from PIL import Image
-from sqlalchemy import pool, text
+from sqlalchemy import ColumnElement, false, pool, text
 from sqlalchemy.ext.asyncio import create_async_engine
 from test_auth import SAME, admin, anon, app, base, clean, editor, new_client, p  # noqa: F401, F811
 from test_diffusion_media_files import (  # noqa: F401, F811 - fixtures partagées
@@ -22,6 +24,9 @@ from test_diffusion_media_files import (  # noqa: F401, F811 - fixtures partagé
     upload,
 )
 from test_pairing import _pairing_clean  # noqa: F401
+from vds_server.core.errors import ApiError
+from vds_server.diffusion.media import MediaService
+from vds_server.diffusion.media_files import MediaUploadService, Upload
 
 
 @pytest.fixture(autouse=True)
@@ -81,7 +86,7 @@ async def test_replace_bumps_revision_and_tombstones_old(
         mid=mid,
     )
     assert [r[0] for r in rows] == ["original", "thumb"]
-    assert all("-r2." in str(r[1]) for r in rows)
+    assert all(re.search(r"-r2-[0-9a-f]{8}\.", str(r[1])) for r in rows)
     assert (await sql(migrated_db_url, "SELECT revision FROM media WHERE id=:mid", mid=mid)) == [
         (2,)
     ]
@@ -143,6 +148,30 @@ async def test_replace_processing_failure_keeps_revision(
     assert (await admin.get(f"{p}/media/{first['id']}/original")).status_code == 200
 
 
+async def test_replace_pdf_with_trapped_pdf_keeps_revision(
+    content_modules: None, admin: AsyncClient, p: str, migrated_db_url: str
+) -> None:
+    """PDF -> PDF piégé : 422, révision et fichiers courants intacts."""
+    import io
+
+    import pypdfium2 as pdfium  # type: ignore[import-untyped]
+
+    doc = pdfium.PdfDocument.new()
+    doc.new_page(200, 300)
+    buf = io.BytesIO()
+    doc.save(buf)
+    good = buf.getvalue()
+    status, first = await upload(admin, p, good, mime="application/pdf", name="a.pdf")
+    assert status in (200, 201)
+    for trapped in (good[: len(good) // 2], b"%PDF-1.7\n" + bytes(range(256)) * 30):
+        status, body = await replace(admin, p, first["id"], trapped, mime="application/pdf")
+        assert status == 422 and body["code"] == "media.processing_failed"
+    assert (await sql(migrated_db_url, "SELECT revision, sha256 FROM media")) == [
+        (1, first["sha256"])
+    ]
+    assert (await admin.get(f"{p}/media/{first['id']}/original")).status_code == 200
+
+
 async def test_replace_if_match(
     content_modules: None, admin: AsyncClient, p: str, migrated_db_url: str
 ) -> None:
@@ -201,3 +230,87 @@ async def test_replace_requires_same_origin_and_editor(
         headers=SAME,
     )
     assert r.status_code == 404
+
+
+async def test_failed_replace_then_retry_keeps_served_file_through_gc(
+    content_modules: None,
+    admin: AsyncClient,
+    app: FastAPI,
+    p: str,
+    migrated_db_url: str,
+    media_dir: Path,
+) -> None:
+    _, first = await upload(admin, p, _png("red"))
+    mid = first["id"]
+    status, _ = await replace(admin, p, mid, BAD_PNG)
+    assert status == 422
+    aborted = {t[0] for t in await sql(migrated_db_url, "SELECT key FROM storage_tombstone")}
+    ok_status, body = await replace(admin, p, mid, _png("blue"))
+    assert ok_status == 200, body
+    keys = {r[0] for r in await sql(migrated_db_url, "SELECT storage_key FROM media_variant")}
+    assert not (keys & aborted)  # clés distinctes à chaque tentative
+    await sql(migrated_db_url, "UPDATE storage_tombstone SET not_before = now() - interval '1 h'")
+    await app.state.runtime.content_sweeper.gc()
+    served = await admin.get(f"{p}/media/{mid}/original")
+    assert served.status_code == 200 and served.content == _png("blue")
+    assert (await admin.get(f"{p}/media/{mid}/thumb")).status_code == 200
+
+
+async def test_gc_never_deletes_referenced_key(
+    content_modules: None,
+    admin: AsyncClient,
+    app: FastAPI,
+    p: str,
+    migrated_db_url: str,
+) -> None:
+    _, first = await upload(admin, p, _png("red"))
+    mid = first["id"]
+    await sql(
+        migrated_db_url,
+        "INSERT INTO storage_tombstone (backend, key, reason, media_id, not_before) "
+        "SELECT 'storage.local', storage_key, 'aborted', :m, now() - interval '1 h' "
+        "FROM media_variant WHERE media_id = :m",
+        m=UUID(str(mid)),
+    )
+    await app.state.runtime.content_sweeper.gc()
+    assert (await admin.get(f"{p}/media/{mid}/original")).status_code == 200
+    assert (await sql(migrated_db_url, "SELECT count(*) FROM storage_tombstone"))[0] == (0,)
+
+
+class _DenyScope:
+    def media_filter(self, principal: object) -> ColumnElement[bool]:
+        return false()
+
+    def playlist_filter(self, principal: object) -> ColumnElement[bool]:
+        return false()
+
+    async def can_write_media(self, principal: object, media_id: object) -> bool:
+        return False
+
+    async def can_write_playlist(self, principal: object, playlist_id: object) -> bool:
+        return False
+
+
+class _Bytes:
+    async def read(self, size: int = -1, /) -> bytes:
+        return _png("blue")
+
+
+async def test_scope_denies_get_variants_used_by_and_replace(
+    content_modules: None, admin: AsyncClient, app: FastAPI, p: str
+) -> None:
+    _, first = await upload(admin, p, _png("red"))
+    mid = UUID(str(first["id"]))
+    rt = app.state.runtime
+    async with rt.maker() as s:
+        svc = MediaService(s, rt.bus, None, None, _DenyScope())  # type: ignore[arg-type]
+        for call in (svc.get, svc.variants, svc.used_by):
+            with pytest.raises(ApiError) as exc:
+                await call(mid)
+            assert exc.value.status == 403
+        up = MediaUploadService(
+            s, rt.bus, None, None, 10**7, scope=_DenyScope()  # type: ignore[arg-type]
+        )
+        with pytest.raises(ApiError) as exc:
+            await up.replace(mid, Upload(_Bytes(), "a.png", None, None, None))
+        assert exc.value.status == 403
