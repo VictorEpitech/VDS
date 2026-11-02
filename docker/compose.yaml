@@ -20,6 +20,7 @@ services:
       dockerfile: docker/server.Dockerfile
     environment:
       VDS_BASE_PATH: ${VDS_BASE_PATH:-/}
+      VDS_APK_SIGNER_SHA256: ${VDS_APK_SIGNER_SHA256:-}
       VDS_AUTH_PROVIDER: ${VDS_AUTH_PROVIDER:-auth.local}
       VDS_THEME: ${VDS_THEME:-theme.vtech}
       VDS_DEFAULT_LOCALE: ${VDS_DEFAULT_LOCALE:-fr}
