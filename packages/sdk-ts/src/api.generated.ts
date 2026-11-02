@@ -897,6 +897,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/screens/pair": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pair Screen */
+        post: operations["pair_screen_api_v1_screens_pair_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/screens/{screen_id}": {
         parameters: {
             query?: never;
@@ -2536,6 +2553,19 @@ export interface components {
             /** Poll Secret */
             poll_secret: string;
         };
+        /** PairingStateOut */
+        PairingStateOut: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "claimed" | "consumed";
+        };
         /** PlanCreate */
         PlanCreate: {
             /** Description */
@@ -3014,6 +3044,32 @@ export interface components {
              * Format: uuid
              */
             site_id: string;
+        };
+        /**
+         * ScreenPair
+         * @description Création d'écran + réclamation d'un code TV, atomiques.
+         */
+        ScreenPair: {
+            /** Code */
+            code: string;
+            /** Group Id */
+            group_id?: string | null;
+            /** Name */
+            name: string;
+            /** Orientation */
+            orientation?: ("landscape" | "portrait") | null;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+        };
+        /** ScreenPaired */
+        ScreenPaired: {
+            pairing: components["schemas"]["PairingStateOut"];
+            /** Replayed */
+            replayed: boolean;
+            screen: components["schemas"]["ScreenOut"];
         };
         /** ScreenPatch */
         ScreenPatch: {
@@ -5521,6 +5577,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScreenOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pair_screen_api_v1_screens_pair_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScreenPair"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenPaired"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenPaired"];
                 };
             };
             /** @description Validation Error */

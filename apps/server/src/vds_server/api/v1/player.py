@@ -11,8 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
 from vds_server.core.runtime import Runtime
+from vds_server.inventory import schemas as isc
+from vds_server.inventory.devices import screens_out
 from vds_server.player import schemas as sc
 from vds_server.player.device_auth import DevicePrincipal, bearer
+from vds_server.player.enroll import pair_new_screen
 from vds_server.player.factory import schedule_builder
 from vds_server.player.ratelimit import RateLimiter
 from vds_server.player.schedule import SCHEDULE_FORMAT, ScheduleBuilder
@@ -34,6 +37,7 @@ def build_router(rt: Runtime) -> APIRouter:
     start_limiter = RateLimiter(limit=10, window_s=60)
     ticket_limiter = RateLimiter(limit=10, window_s=60)
     poll_limiter = RateLimiter(limit=40, window_s=60)
+    claim_limiter = RateLimiter(limit=30, window_s=60)  # partagé claim + screens/pair
 
     def svc(session: Session) -> PairingService:
         return PairingService(session, rt.bus)
@@ -95,7 +99,32 @@ def build_router(rt: Runtime) -> APIRouter:
 
     @router.post("/pairings/claim", response_model=sc.PairingClaimed)
     async def claim(body: sc.PairingClaim, actor: Admin, s: Pairing) -> sc.PairingClaimed:
+        claim_limiter.check(f"user:{actor.actor_id}")
         return sc.PairingClaimed(screen_id=await s.claim(actor, body.code, body.screen_id))
+
+    @router.post(
+        "/screens/pair",
+        response_model=isc.ScreenPaired,
+        status_code=201,
+        responses={200: {"model": isc.ScreenPaired}},
+        tags=["inventory"],
+    )
+    async def pair_screen(
+        body: isc.ScreenPair, actor: Admin, session: Session, response: Response
+    ) -> isc.ScreenPaired:
+        claim_limiter.check(f"user:{actor.actor_id}")
+        screen, row, replayed = await pair_new_screen(session, rt.bus, actor, body)
+        if replayed:
+            response.status_code = 200
+        out = (await screens_out(session, [screen]))[0]
+        return isc.ScreenPaired(
+            screen=out,
+            pairing=isc.PairingStateOut(
+                status="consumed" if row.status == "consumed" else "claimed",
+                expires_at=row.expires_at,
+            ),
+            replayed=replayed,
+        )
 
     @router.delete("/screens/{screen_id}/device", status_code=204)
     async def revoke_device(screen_id: UUID, actor: Admin, s: Pairing) -> Response:

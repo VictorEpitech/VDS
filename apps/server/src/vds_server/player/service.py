@@ -1,6 +1,7 @@
 """Appairage des appareils et révocation."""
 
 import secrets
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
@@ -35,6 +36,13 @@ def format_code(code: str) -> str:
 def normalize_code(raw: str) -> str:
     code = "".join(ch for ch in raw.upper() if ch.isalnum())
     return code.translate(str.maketrans("OIL", "011"))  # tolérance de saisie Crockford
+
+
+@dataclass(frozen=True)
+class ScreenReplay:
+    """Code déjà réclamé par le même admin : rejeu idempotent."""
+
+    row: PairingRequest
 
 
 class PairingService:
@@ -183,25 +191,43 @@ class PairingService:
         return token, screen_id
 
     # --- côté admin -------------------------------------------------------
-    async def claim(self, actor: Principal, code: str, screen_id: UUID) -> UUID:
-        screen = await self._s.get(Screen, screen_id)
-        if screen is None or screen.archived_at is not None:
-            raise ApiError("errors.screen_not_found", 404)
+    async def lock_code(self, code: str, actor: Principal) -> "PairingRequest | ScreenReplay":
+        """Verrouille la demande du code et la valide (toutes statuts confondus).
+
+        Lève pairing_code_invalid (404), pairing_code_expired (410, marquage commité) ou
+        pairing_code_claimed (409). Renvoie un `ScreenReplay` si le même admin avait déjà
+        réclamé ce code pour un écran non archivé (idempotence).
+        """
         row = (
             await self._s.execute(
                 select(PairingRequest)
-                .where(
-                    PairingRequest.code == normalize_code(code), PairingRequest.status == "pending"
-                )
+                .where(PairingRequest.code == normalize_code(code))
+                .order_by(PairingRequest.created_at.desc())
+                .limit(1)
                 .with_for_update()
             )
         ).scalar_one_or_none()
         if row is None:
             raise ApiError("errors.pairing_code_invalid", 404)
-        if row.expires_at <= datetime.now(UTC):
-            row.status = "expired"
-            await self._s.commit()
+        if row.status in ("claimed", "consumed"):
+            screen = await self._s.get(Screen, row.screen_id) if row.screen_id else None
+            if (
+                screen is not None
+                and screen.archived_at is None
+                and row.claimed_by is not None
+                and row.claimed_by == actor.user_id
+            ):
+                return ScreenReplay(row)
+            raise ApiError("errors.pairing_code_claimed", 409)
+        if row.status == "expired" or row.expires_at <= datetime.now(UTC):
+            if row.status == "pending":
+                row.status = "expired"
+                await self._s.commit()
             raise ApiError("errors.pairing_code_expired", 410)
+        return row
+
+    def mark_claimed(self, actor: Principal, row: PairingRequest, screen_id: UUID) -> None:
+        """Pose claimed + audit pairing.claimed ; ne commite pas."""
         row.status = "claimed"
         row.screen_id = screen_id
         row.claimed_by = actor.user_id
@@ -214,6 +240,15 @@ class PairingService:
             target_id=str(screen_id),
             details={"pairing_id": str(row.id)},
         )
+
+    async def claim(self, actor: Principal, code: str, screen_id: UUID) -> UUID:
+        screen = await self._s.get(Screen, screen_id)
+        if screen is None or screen.archived_at is not None:
+            raise ApiError("errors.screen_not_found", 404)
+        row = await self.lock_code(code, actor)
+        if isinstance(row, ScreenReplay):
+            raise ApiError("errors.pairing_code_claimed", 409)
+        self.mark_claimed(actor, row, screen_id)
         await self._s.commit()
         return screen_id
 

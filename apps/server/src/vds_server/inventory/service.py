@@ -213,7 +213,8 @@ class InventoryService:
         if group.site_id != site_id:
             raise ApiError("screen.group_other_site", 422)
 
-    async def create_screen(self, body: sc.ScreenCreate) -> Screen:
+    async def add_screen(self, body: sc.ScreenCreate, **audit_details: str) -> Screen:
+        """Valide site/groupe, ajoute, flush, audite ; ne commite pas."""
         await self.get_site(body.site_id)
         await self._check_group(body.group_id, body.site_id)
         screen = Screen(
@@ -224,9 +225,22 @@ class InventoryService:
         )
         self._s.add(screen)
         await self._flush("screen.conflict")
-        self._audit("screen.created", "screen", screen.id, site_id=str(body.site_id))
+        self._audit(
+            "screen.created", "screen", screen.id, site_id=str(body.site_id), **audit_details
+        )
+        return screen
+
+    async def create_screen(self, body: sc.ScreenCreate) -> Screen:
+        screen = await self.add_screen(body)
         await self._commit("screen.conflict")
         return screen
+
+    async def publish_pending(self) -> None:
+        """Publie les événements en attente (après un commit fait par l'appelant)."""
+        events, self._events = self._events, []
+        if self._bus is not None:
+            for event in events:
+                await self._bus.publish(event)
 
     async def update_screen(self, screen_id: UUID, body: sc.ScreenPatch) -> Screen:
         screen = await self.get_screen(screen_id)

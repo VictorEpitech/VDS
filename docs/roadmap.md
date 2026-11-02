@@ -107,6 +107,9 @@ Un seul cache (SW + IndexedDB du player web), chaque empaquetage garantit un con
 ### 30 octobre 2026 — Refonte navigation : Premiers pas et résumé de parc (architecte, sans bump vds-core)
 API admin additive du noyau, aucun nouveau module · `GET /api/v1/onboarding` : 7 étapes à ids stables (`account`, `site`, `screen`, `media`, `playlist`, `schedule`, `power` facultative) calculées serveur, statuts `todo|in_progress|done|skipped`, `done` l'emporte sur `skipped`, `account` auto-cochée et non ignorable (mot de passe = affaire de `auth.local`, pas de `if studio`) · `PUT /api/v1/onboarding/steps/{step}` `{skipped}` et `PUT /api/v1/onboarding/card` `{hidden}` : admin, même origine, audités, sans événement de bus · migration additive `onboarding_state` (une ligne par organisation : `skipped_steps text[]`, `card_hidden_at`) ; `GET` sans écriture · `GET /api/v1/fleet/summary?site_id=` : écrans par `ScreenStatus` recalculé par `screen_status` (pas le cache du `Supervisor`), « à traiter » = `offline|revoked` ou incident d'écran ouvert, incidents ouverts, agents ; même prédicat exposé par `GET /api/v1/screens?issues=true` · réponses en ids, libellés côté front FR/EN · point d'accroche réservé : étapes de module `<module_id>:<step>` (serait un bump mineur). Détail : `docs/architecture-onboarding.md`.
 
+### 2 novembre 2026 — Refonte lot D : assistant « Ajouter un écran » (architecte, sans bump vds-core)
+2026-11-02 — Lot D : POST /screens/pair atomique (création écran + claim, une transaction), idempotence par code, nouveau 409 errors.pairing_code_claimed, vérification finale sur l'existant (heartbeat + power.probe), Android et découverte côté front seulement, sans bump vds-core. Voir docs/architecture-ajout-ecran.md.
+
 ## Risques
 
 | Risque | Parade |

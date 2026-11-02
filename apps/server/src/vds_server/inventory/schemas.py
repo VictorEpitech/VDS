@@ -68,6 +68,16 @@ class ScreenCreate(_In):
     orientation: Orientation = "landscape"
 
 
+class ScreenPair(_In):
+    """Création d'écran + réclamation d'un code TV, atomiques."""
+
+    code: str = Field(min_length=6, max_length=12)
+    site_id: UUID
+    group_id: UUID | None = None
+    name: str = NAME
+    orientation: Orientation | None = None  # absent : déduit de l'appareil, sinon paysage
+
+
 class ScreenPatch(_In):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     orientation: Orientation | None = None
@@ -124,3 +134,14 @@ class ScreenOut(_Out):
     archived_at: datetime | None
     device: DeviceStateOut | None = None  # None : écran non appairé
     kiosk: KioskOut | None = None
+
+
+class PairingStateOut(BaseModel):
+    status: Literal["claimed", "consumed"]
+    expires_at: datetime
+
+
+class ScreenPaired(BaseModel):
+    screen: ScreenOut
+    pairing: PairingStateOut
+    replayed: bool
