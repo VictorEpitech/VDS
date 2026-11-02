@@ -55,6 +55,12 @@ Conception et découpage L3-T0…T12 : `docs/architecture-lot3.md` (contrat vds-
 - [x] E2E réel serveur + agent (`make e2e-agent`, `apps/site-agent/e2e/`) : agent créé, `/ws/agent` TLS, plan via `agent/plan`, cascade Samsung (refus) → ADB → WoL, exécution hors ligne serveur coupé, rejeu au retour, `power.failed` → incident → mail (faux SMTP) → résolution, aux deux `VDS_BASE_PATH`
 - [x] Écarts de l'E2E résolus (contrat non modifié) : (1) `power/state.py` (`PowerStateTracker`) écrit `power_state.desired` (plan résolu, recalculé toutes les 15 s et sur les événements de plan ; `desired_since` = début du créneau) puis `observed`/`power_action` depuis `power.changed|power.failed` (agent ou player, `reason` relu de la commande `power.set` par `request_id`, rejeu d'outbox dédoublonné) : `scheduled_off` se produit en conditions réelles ; (2) `PUT /api/v1/registry/modules/{id}/state` (`enabled|disabled`, admin, audité `module.enabled|disabled`, activation à chaud, codes `module.not_found` 404 / contrat 409) ; (3) arrêt propre : écoute LISTEN sur une connexion `engine.connect()` invalidée à l'annulation (plus de MissingGreenlet) et fermeture du pair (`WebSocketDisconnect`, dont 1011 à l'arrêt d'uvicorn) traitée par la session d'agent au lieu d'une exception ; l'E2E vérifie `power_state`/`power_action` et l'absence de `MissingGreenlet`/1011 au SIGTERM
 
+### Refonte navigation A–C (hors lot)
+- [x] Navigation à 5 entrées, onglets bas mobile, supervision fusionnée dans Écrans, redirections des anciennes URL aux deux `VDS_BASE_PATH` (`ia.test.tsx`, `app.test.tsx`)
+- [x] API `/onboarding`, `/fleet/summary`, `screens?issues` (`test_onboarding.py`)
+- [x] Carte Premiers pas sur l'Accueil, réouverture dans Plus › Aide (`onboarding.test.tsx`)
+- [ ] Recette sur écran réel : `docs/demos/refonte-navigation.md`
+
 ### Lot 4 — Mises en page et diffusion complète
 - [ ] Éditeur de grille + calques, paysage/portrait
 - [ ] Alternance + override

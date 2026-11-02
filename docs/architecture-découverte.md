@@ -80,7 +80,9 @@ Le module intégré : `modules/discovery.lan/module.json`, `kind: discovery`, `c
 PlatformHint = Literal["android", "google_tv", "tizen", "webos", "cast", "unknown"]
 
 
-class DiscoveryScope(BaseModel):  # construit par le runtime (§3), jamais par le serveur ni le module
+class DiscoveryScope(
+    BaseModel
+):  # construit par le runtime (§3), jamais par le serveur ni le module
     model_config = ConfigDict(frozen=True)
     networks: tuple[IPv4Network, ...]  # 1 ou 2, RFC1918, préfixe >= /22
     truncated: bool
@@ -102,11 +104,17 @@ class DiscoveredDevice(BaseModel):  # extra="forbid", chaînes bornées à 128 c
 
 class DiscoveryNet(Protocol):  # fourni par le runtime ; chaque appel revalide le périmètre
     def neighbors(self) -> Mapping[IPv4Address, str]: ...  # IP -> MAC, lecture seule
-    async def mdns_browse(self, services: Sequence[str], window_s: float) -> AsyncIterator[MdnsRecord]: ...
-    async def ssdp_search(self, targets: Sequence[str], window_s: float) -> AsyncIterator[SsdpReply]: ...
+    async def mdns_browse(
+        self, services: Sequence[str], window_s: float
+    ) -> AsyncIterator[MdnsRecord]: ...
+    async def ssdp_search(
+        self, targets: Sequence[str], window_s: float
+    ) -> AsyncIterator[SsdpReply]: ...
     async def ssdp_description(self, reply: SsdpReply) -> SsdpDescription | None: ...
     async def tcp_open(self, ip: IPv4Address, ports: Sequence[int]) -> frozenset[int]: ...
-    async def sweep(self, ports: Sequence[int]) -> AsyncIterator[tuple[IPv4Address, frozenset[int]]]: ...
+    async def sweep(
+        self, ports: Sequence[int]
+    ) -> AsyncIterator[tuple[IPv4Address, frozenset[int]]]: ...
 
 
 class Discoverer(Protocol):
@@ -135,7 +143,9 @@ class DiscoveryScanArgs(BaseModel):  # extra="forbid" ; aucune cible réseau
     probe_ports: bool  # valeur résolue côté serveur depuis la config du site
 
 
-class DiscoveryBatch(BaseModel):  # progression, au plus 16 appareils par trame, au plus 1 trame / 500 ms
+class DiscoveryBatch(
+    BaseModel
+):  # progression, au plus 16 appareils par trame, au plus 1 trame / 500 ms
     scan_id: UUID
     seq: int
     devices: list[DiscoveredDevice]
