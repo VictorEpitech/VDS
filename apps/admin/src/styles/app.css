@@ -1316,3 +1316,59 @@ fieldset.field > legend {
 .cards.has-selection {
   padding-block-end: 16rem;
 }
+
+/* Forçage : formulaire, aperçu, ligne de carte écran. */
+.override-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--vds-space-3);
+  margin-block-end: var(--vds-space-4);
+}
+
+.override-search {
+  margin-block-end: var(--vds-space-2);
+}
+
+.override-preview {
+  display: grid;
+  gap: var(--vds-space-2);
+}
+
+.override-preview:empty {
+  display: none;
+}
+
+.override-controls,
+.override-line {
+  display: grid;
+  gap: var(--vds-space-2);
+}
+
+.override-block {
+  margin-block-start: var(--vds-space-4);
+}
+
+.override-block-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vds-space-3);
+}
+
+.override-block-head h2 {
+  margin: 0;
+}
+
+.override-form fieldset,
+.override-form .field {
+  min-inline-size: 0;
+}
+
+.override-form select,
+.override-form input:not([type="checkbox"]):not([type="radio"]),
+.override-form textarea {
+  inline-size: 100%;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}

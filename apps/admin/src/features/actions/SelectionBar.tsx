@@ -12,13 +12,14 @@ interface Props {
   groups: readonly Group[];
   sites: readonly Site[];
   apk?: FleetApk;
+  onForce: () => void;
   onClear: () => void;
 }
 
 const onlineAgent = (agents: readonly Agent[], siteId: string) => agents.find((a) => a.site_id === siteId && a.status === "online");
 
 /** Barre d'actions de la sélection : tonale, sans ombre ; feuille basse à 375 px. Admin seulement (le parent la masque sinon). */
-export function SelectionBar({ selected, agents, groups, sites, apk, onClear }: Props) {
+export function SelectionBar({ selected, agents, groups, sites, apk, onForce, onClear }: Props) {
   const { t } = useTranslation();
   const { queue } = useActionQueue();
   const uid = useId();
@@ -64,6 +65,10 @@ export function SelectionBar({ selected, agents, groups, sites, apk, onClear }: 
             {t(`actions.kind.${k}`)}
           </button>
         ))}
+        <button type="button" className="btn btn-text" onClick={onForce}>
+          <Icon name="overridden" />
+          {t("overrides.force")}
+        </button>
         <button type="button" className="btn btn-text" aria-expanded={mode === "group"} onClick={() => setMode(mode === "group" ? null : "group")}>
           <Icon name="site" />
           {t("actions.kind.group")}

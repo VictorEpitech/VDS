@@ -296,7 +296,18 @@
     "agent_outdated": "Agent du site trop ancien pour cette mise à jour.",
     "module_disabled": "Le pilote d'alimentation ADB n'est pas actif.",
     "no_adb_host": "L'adresse ADB de l'écran n'est pas renseignée.",
-    "not_android": "Cet écran n'est pas un appareil Android."
+    "not_android": "Cet écran n'est pas un appareil Android.",
+    "override": {
+      "end_required": "Choisissez jusqu'à quand forcer l'affichage.",
+      "end_in_past": "La fin du forçage doit être dans le futur.",
+      "duration_too_long": "Ce forçage est trop long. Choisissez une durée plus courte.",
+      "content_ambiguous": "Choisissez une seule chose à afficher.",
+      "target_not_found": "Cette cible n'existe plus.",
+      "forbidden_kind": "Seul un administrateur peut forcer l'extinction ou cibler toute l'organisation.",
+      "too_many_active": "Il y a déjà trop de forçages actifs sur cette cible. Arrêtez-en un avant d'en créer un autre.",
+      "start_too_far": "Le début du forçage est trop éloigné. Choisissez une date plus proche.",
+      "already_ended": "Ce forçage est déjà terminé."
+    }
   },
   "auth": {
     "checking": {
@@ -973,6 +984,12 @@
   },
   "config": {
     "core": {
+      "override": {
+        "max_active_per_target": {
+          "title": "Forçages actifs maximum par cible",
+          "description": "Nombre maximal de forçages en cours ou à venir sur un même écran, groupe ou site."
+        }
+      },
       "player": {
         "kiosk": {
           "title": "Kiosque du player",
@@ -1337,6 +1354,96 @@
       "up_to_date": "déjà à jour",
       "update_running": "mise à jour déjà en cours",
       "unknown": "non éligible"
+    }
+  },
+  "overrides": {
+    "admin_only": "Géré par un administrateur",
+    "force": "Forcer l'affichage",
+    "force_for": "Forcer l'affichage sur {name}",
+    "until": "Forcé jusqu'à {when}",
+    "from": "Forçage prévu à partir de {when}",
+    "remaining": "{duration} restantes",
+    "extend": "Prolonger (+1 h)",
+    "extend_for": "Prolonger le forçage de {name} d'une heure",
+    "extended": "Le forçage de {name} est prolongé jusqu'à {when}.",
+    "stop": "Arrêter",
+    "stop_for": "Arrêter le forçage de {name}",
+    "stop_confirm": "Arrêter maintenant",
+    "stop_offline": "{count, plural, one {# écran hors ligne l'affichera} other {# écrans hors ligne l'afficheront}} encore jusqu'à {when} : l'arrêt ne peut pas l'atteindre.",
+    "stopped": "Le forçage de {name} est arrêté.",
+    "stopped_offline": "Le forçage de {name} est arrêté. {count, plural, one {# écran hors ligne l'affichera} other {# écrans hors ligne l'afficheront}} jusqu'à {when}.",
+    "created": "{count, plural, =0 {Forçage créé} one {Forçage en cours sur # écran, jusqu'à {when}.} other {Forçage en cours sur # écrans, jusqu'à {when}.}}",
+    "duration": {
+      "min": "{count} min",
+      "hours": "{count} h",
+      "hours_min": "{h} h {m} min",
+      "end_of_day": "Fin de journée",
+      "date": "Date précise"
+    },
+    "form": {
+      "title": "Forcer l'affichage",
+      "rule": "Le forçage passe avant la programmation et s'arrête seul à l'heure choisie. Si plusieurs forçages se recouvrent, le dernier l'emporte.",
+      "submit": "Forcer l'affichage"
+    },
+    "what": {
+      "label": "Quoi afficher",
+      "search": "Rechercher une playlist ou un média",
+      "playlists": "Playlists",
+      "media": "Médias",
+      "off_help": "L'extinction forcée n'affiche aucun contenu."
+    },
+    "where": {
+      "label": "Où",
+      "group_whole": "Le groupe {name} ({count, plural, one {# écran} other {# écrans}})",
+      "selection": "{count, plural, one {# écran sélectionné} other {# écrans sélectionnés}}",
+      "mode_group": "Tout le groupe {name}",
+      "mode_screens": "Les {count} écrans choisis"
+    },
+    "when": {
+      "label": "Jusqu'à quand",
+      "date": "Date et heure de fin",
+      "date_invalid": "Choisissez une date de fin à venir.",
+      "default": "Durée habituelle : {duration}",
+      "end_of_day_help": "Jusqu'à minuit, dans le fuseau horaire du site."
+    },
+    "advanced": {
+      "starts_at": "Début différé",
+      "starts_at_help": "Laissez vide pour commencer tout de suite.",
+      "priority": "Priorité numérique",
+      "priority_help": "Entre -1000 et 1000. Entre deux forçages de même priorité, le plus récent l'emporte.",
+      "respect": "Écrans éteints par la programmation",
+      "respect_default": "Selon le réglage habituel",
+      "respect_yes": "Les laisser éteints",
+      "respect_no": "Les rallumer pendant le forçage",
+      "respect_help": "Par défaut, le forçage rallume les écrans prévus éteints, puis les éteint à nouveau à la fin.",
+      "off": "Forcer l'extinction (aucun contenu)",
+      "off_help": "Réservé aux administrateurs.",
+      "name": "Nom du forçage",
+      "note": "Note"
+    },
+    "preview": {
+      "title": "Aperçu avant validation",
+      "loading": "Calcul de l'aperçu…",
+      "summary": "{count, plural, =0 {Aucun écran concerné.} one {# écran concerné, jusqu'à {when}.} other {# écrans concernés, jusqu'à {when}.}}",
+      "offline": "{count, plural, one {# écran hors ligne l'affichera} other {# écrans hors ligne l'afficheront}} jusqu'à {when}, même si vous arrêtez le forçage avant.",
+      "scheduled_off": "{count, plural, one {# écran éteint par la programmation sera rallumé.} other {# écrans éteints par la programmation seront rallumés.}}",
+      "scheduled_off_respected": "{count, plural, one {# écran éteint par la programmation restera éteint.} other {# écrans éteints par la programmation resteront éteints.}}",
+      "superseded": "{count, plural, one {# forçage en cours sera masqué : le dernier l'emporte.} other {# forçages en cours seront masqués : le dernier l'emporte.}}"
+    },
+    "block": {
+      "title": "Forçages en cours",
+      "empty": "Aucun forçage en cours. Les écrans suivent leur programmation.",
+      "screens": "{count, plural, =0 {Aucun écran} one {# écran} other {# écrans}}"
+    },
+    "target": {
+      "screen": "Écran {name}",
+      "group": "Groupe {name}",
+      "site": "Site {name}",
+      "organization": "Toute l'organisation"
+    },
+    "status": {
+      "scheduled": "Forçage prévu",
+      "active": "Forçage en cours"
     }
   }
 }

@@ -296,7 +296,18 @@
     "agent_outdated": "Site agent too old for this update.",
     "module_disabled": "The ADB power driver is not active.",
     "no_adb_host": "The screen's ADB address is not set.",
-    "not_android": "This screen is not an Android device."
+    "not_android": "This screen is not an Android device.",
+    "override": {
+      "end_required": "Choose how long to force the display.",
+      "end_in_past": "The override must end in the future.",
+      "duration_too_long": "This override is too long. Choose a shorter duration.",
+      "content_ambiguous": "Choose a single thing to show.",
+      "target_not_found": "This target no longer exists.",
+      "forbidden_kind": "Only an administrator can force power-off or target the whole organization.",
+      "too_many_active": "There are already too many active overrides on this target. Stop one before creating another.",
+      "start_too_far": "The override start is too far away. Pick a closer date.",
+      "already_ended": "This override has already ended."
+    }
   },
   "auth": {
     "checking": {
@@ -973,6 +984,12 @@
   },
   "config": {
     "core": {
+      "override": {
+        "max_active_per_target": {
+          "title": "Maximum active overrides per target",
+          "description": "Maximum number of running or upcoming overrides on a single screen, group or site."
+        }
+      },
       "player": {
         "kiosk": {
           "title": "Player kiosk",
@@ -1337,6 +1354,96 @@
       "up_to_date": "already up to date",
       "update_running": "update already running",
       "unknown": "not eligible"
+    }
+  },
+  "overrides": {
+    "admin_only": "Managed by an administrator",
+    "force": "Force display",
+    "force_for": "Force display on {name}",
+    "until": "Forced until {when}",
+    "from": "Override scheduled from {when}",
+    "remaining": "{duration} left",
+    "extend": "Extend (+1 h)",
+    "extend_for": "Extend the override on {name} by one hour",
+    "extended": "The override on {name} now lasts until {when}.",
+    "stop": "Stop",
+    "stop_for": "Stop the override on {name}",
+    "stop_confirm": "Stop now",
+    "stop_offline": "{count, plural, one {# offline screen will} other {# offline screens will}} keep showing it until {when}: stopping cannot reach {count, plural, one {it} other {them}}.",
+    "stopped": "The override on {name} is stopped.",
+    "stopped_offline": "The override on {name} is stopped. {count, plural, one {# offline screen will} other {# offline screens will}} keep showing it until {when}.",
+    "created": "{count, plural, =0 {Override created} one {Override running on # screen, until {when}.} other {Override running on # screens, until {when}.}}",
+    "duration": {
+      "min": "{count} min",
+      "hours": "{count} h",
+      "hours_min": "{h} h {m} min",
+      "end_of_day": "End of day",
+      "date": "Specific date"
+    },
+    "form": {
+      "title": "Force display",
+      "rule": "An override takes precedence over the schedule and ends on its own at the chosen time. When several overrides overlap, the latest one wins.",
+      "submit": "Force display"
+    },
+    "what": {
+      "label": "What to show",
+      "search": "Search a playlist or a media",
+      "playlists": "Playlists",
+      "media": "Media",
+      "off_help": "A forced power-off shows no content."
+    },
+    "where": {
+      "label": "Where",
+      "group_whole": "Group {name} ({count, plural, one {# screen} other {# screens}})",
+      "selection": "{count, plural, one {# screen selected} other {# screens selected}}",
+      "mode_group": "Whole group {name}",
+      "mode_screens": "The {count} chosen screens"
+    },
+    "when": {
+      "label": "Until when",
+      "date": "End date and time",
+      "date_invalid": "Choose an end date in the future.",
+      "default": "Usual duration: {duration}",
+      "end_of_day_help": "Until midnight, in the site's time zone."
+    },
+    "advanced": {
+      "starts_at": "Delayed start",
+      "starts_at_help": "Leave empty to start right away.",
+      "priority": "Numeric priority",
+      "priority_help": "Between -1000 and 1000. With equal priority, the most recent override wins.",
+      "respect": "Screens switched off by the schedule",
+      "respect_default": "Use the usual setting",
+      "respect_yes": "Keep them off",
+      "respect_no": "Switch them on during the override",
+      "respect_help": "By default, the override switches on screens that should be off, then switches them off again at the end.",
+      "off": "Force power-off (no content)",
+      "off_help": "Administrators only.",
+      "name": "Override name",
+      "note": "Note"
+    },
+    "preview": {
+      "title": "Preview before confirming",
+      "loading": "Computing the preview…",
+      "summary": "{count, plural, =0 {No screen affected.} one {# screen affected, until {when}.} other {# screens affected, until {when}.}}",
+      "offline": "{count, plural, one {# offline screen will} other {# offline screens will}} show it until {when}, even if you stop the override earlier.",
+      "scheduled_off": "{count, plural, one {# screen switched off by the schedule will be switched on.} other {# screens switched off by the schedule will be switched on.}}",
+      "scheduled_off_respected": "{count, plural, one {# screen switched off by the schedule will stay off.} other {# screens switched off by the schedule will stay off.}}",
+      "superseded": "{count, plural, one {# running override will be hidden: the latest one wins.} other {# running overrides will be hidden: the latest one wins.}}"
+    },
+    "block": {
+      "title": "Running overrides",
+      "empty": "No override running. Screens follow their schedule.",
+      "screens": "{count, plural, =0 {No screen} one {# screen} other {# screens}}"
+    },
+    "target": {
+      "screen": "Screen {name}",
+      "group": "Group {name}",
+      "site": "Site {name}",
+      "organization": "Whole organization"
+    },
+    "status": {
+      "scheduled": "Override scheduled",
+      "active": "Override running"
     }
   }
 }

@@ -9,6 +9,8 @@ import { keys, type Agent, type Command, type Screen, type ScreenApk, type Fleet
 import { Link } from "react-router-dom";
 import { ApkUpdateConfirm, needsUpdate, planApkUpdate } from "../actions/apk";
 import { useActionQueue } from "../actions/ActionQueueProvider";
+import { OverrideControls, OverrideUntil } from "../overrides/OverrideControls";
+import type { Override } from "../overrides/overrides";
 import { KioskControls } from "../kiosk/KioskControls";
 import { KioskSetting } from "../kiosk/KioskSetting";
 import { powerSetArgs, useRemoteCommand } from "../supervision/commands";
@@ -32,6 +34,13 @@ interface Props {
   /** Agent du site (en ligne de préférence) ; les commandes d'alimentation passent par lui. */
   agent: Agent | undefined;
   isAdmin: boolean;
+  /** Administrateur ou éditeur : peut forcer, prolonger et arrêter. */
+  canForce?: boolean;
+  /** Forçage actif sur cet écran (celui de la programmation résolue). */
+  override?: Override;
+  /** Tous les écrans (pour annoncer les écrans hors ligne d'un forçage de groupe ou de site). */
+  allScreens?: readonly Screen[];
+  onForce?: () => void;
   provisionable: boolean;
   selected: boolean;
   selectDisabled: boolean;
@@ -40,7 +49,7 @@ interface Props {
 }
 
 /** Carte écran unique, utilisée sous tous les filtres : état, alimentation, programmation active, actions. */
-export function ScreenCard({ screen, siteName, groupName, state, power, playback, apk, availableApk, agent, isAdmin, provisionable, selected, selectDisabled, onSelect, onNotice }: Props) {
+export function ScreenCard({ screen, siteName, groupName, state, power, playback, apk, availableApk, agent, isAdmin, canForce = false, override, allScreens = [], onForce, provisionable, selected, selectDisabled, onSelect, onNotice }: Props) {
   const { t, i18n } = useTranslation();
   const api = useApi();
   const qc = useQueryClient();
@@ -94,7 +103,7 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
     ) : (
       <>
         {[playback.schedule_name, playback.playlist_name].filter(Boolean).join(" · ")}
-        {playback.until ? <span className="meta"> · {t("screens.card.until", { when: fmt(playback.until, { timeStyle: "short", dateStyle: "short" }) })}</span> : null}
+        {playback.until && playback.source !== "override" ? <span className="meta"> · {t("screens.card.until", { when: fmt(playback.until, { timeStyle: "short", dateStyle: "short" }) })}</span> : null}
       </>
     );
 
@@ -160,6 +169,15 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
           </div>
         ) : null}
       </dl>
+      {playback?.source === "override" ? (
+        <div className="override-line">
+          <p>
+            <Icon name="overridden" />{" "}
+            {override ? <OverrideUntil override={override} /> : playback.until ? t("overrides.until", { when: fmt(playback.until, { timeStyle: "short", dateStyle: "short" }) }) : null}
+          </p>
+          {override && canForce ? <OverrideControls override={override} screens={allScreens} label={screen.name} isAdmin={isAdmin} onDone={onNotice} /> : null}
+        </div>
+      ) : null}
       <KioskControls screen={screen} />
       {isAdmin ? <KioskSetting level="screen" id={screen.id} /> : null}
       <div className="actions">
@@ -175,6 +193,12 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
           <button type="button" className="btn btn-text" disabled={!ready || cmd.isPending} aria-describedby={ready ? undefined : hintId} onClick={() => run("detect")} aria-label={t("supervision.detect.run_for", { name: screen.name })}>
             <Icon name="detect" />
             {t("supervision.detect.run")}
+          </button>
+        ) : null}
+        {canForce && onForce && !screen.archived_at ? (
+          <button type="button" className="btn btn-text" onClick={onForce} aria-label={t("overrides.force_for", { name: screen.name })}>
+            <Icon name="overridden" />
+            {t("overrides.force")}
           </button>
         ) : null}
         {updatable ? (

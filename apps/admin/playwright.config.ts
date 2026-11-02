@@ -25,6 +25,8 @@ export default defineConfig({
       baseURL: `http://127.0.0.1:${c.port}`,
       browserName: "chromium" as const,
       viewport: { width: 1280, height: 800 },
+      // Déterminisme : axe ne doit pas mesurer un contraste en plein fondu (transition de fond des liens du menu).
+      reducedMotion: "reduce" as const,
     },
   })),
 });

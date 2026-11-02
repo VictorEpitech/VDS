@@ -9,6 +9,8 @@ import { MAX_SELECTION } from "../features/actions/queue";
 import { ApkPanel } from "../features/actions/ApkPanel";
 import { SelectionBar } from "../features/actions/SelectionBar";
 import { useProvisioningAvailable } from "../features/provisioning/hooks";
+import { OverrideForm, type OverrideInitial } from "../features/overrides/OverrideForm";
+import { canForce, useOverrides } from "../features/overrides/overrides";
 import { ScreenCard } from "../features/screens/ScreenCard";
 import { IncidentsList } from "../features/supervision/IncidentsList";
 import { displayState, ISSUE_STATES } from "../features/supervision/status";
@@ -32,6 +34,9 @@ export function Screens() {
   const playback = usePlayback();
   const session = useSession();
   const isAdmin = session.data?.role === "admin";
+  const forcer = canForce(session.data?.role);
+  const overrides = useOverrides(forcer);
+  const [force, setForce] = useState<OverrideInitial | undefined>(undefined);
   const fleetApk = useFleetApk(isAdmin);
   const apk = fleetApk.data;
   const provisionable = useProvisioningAvailable((sites.data ?? []).map((x) => x.id));
@@ -46,7 +51,7 @@ export function Screens() {
     queries: active.map((s) => ({ queryKey: powerKeys.screen(s.id), staleTime: 60_000, queryFn: () => api.get<ScreenPower>(`/power/screens/${s.id}`) })),
   });
   const now = new Date();
-  const rows = active.map((s, i) => ({ s, power: powers[i]?.data, state: displayState(s, powers[i]?.data, incidents.data ?? [], now) }));
+  const rows = active.map((s, i) => ({ s, power: powers[i]?.data, state: displayState(s, powers[i]?.data, incidents.data ?? [], now, playback.data?.find((p) => p.screen_id === s.id)) }));
   const visible = issues ? rows.filter((r) => ISSUE_STATES.has(r.state)) : rows;
   const chosen = visible.filter((r) => selection.has(r.s.id)).map((r) => r.s);
   const allChosen = visible.length > 0 && visible.slice(0, MAX_SELECTION).every((r) => selection.has(r.s.id));
@@ -66,6 +71,12 @@ export function Screens() {
       <div className="page-head">
         <h1>{t("screens.title")}</h1>
         <div className="actions">
+          {forcer ? (
+            <button type="button" className="btn btn-text" aria-expanded={force !== undefined} onClick={() => setForce(null)}>
+              <Icon name="overridden" />
+              {t("overrides.force")}
+            </button>
+          ) : null}
           <Link className="btn btn-filled" to="/screens/add">
             <Icon name="add" />
             {t("screens.pair")}
@@ -73,6 +84,21 @@ export function Screens() {
         </div>
       </div>
       <p className="lead">{t("screens.intro")}</p>
+      {forcer && force !== undefined ? (
+        <OverrideForm
+          screens={screens.data ?? []}
+          groups={groups.data ?? []}
+          sites={sites.data ?? []}
+          initial={force}
+          isAdmin={isAdmin}
+          onClose={() => setForce(undefined)}
+          onDone={(m) => {
+            setForce(undefined);
+            setSelection(new Set());
+            setNotice(m);
+          }}
+        />
+      ) : null}
       <div className="filter-bar" role="group" aria-label={t("screens.filter.label")}>
         <button type="button" className="btn btn-text" aria-pressed={!issues} onClick={() => setFilter("all")}>
           {t("screens.filter.all")}
@@ -121,6 +147,10 @@ export function Screens() {
             availableApk={apk?.available ?? null}
             agent={agentOf(agents.data ?? [], s.site_id)}
             isAdmin={isAdmin}
+            canForce={forcer}
+            override={overrides.data?.find((o) => o.id === playback.data?.find((p) => p.screen_id === s.id)?.override_id)}
+            allScreens={screens.data ?? []}
+            onForce={() => setForce({ type: "screen", id: s.id })}
             provisionable={provisionable}
             selected={selection.has(s.id)}
             selectDisabled={selection.size >= MAX_SELECTION}
@@ -129,7 +159,7 @@ export function Screens() {
           />
         ))}
       </ul>
-      {isAdmin && chosen.length ? <SelectionBar selected={chosen} agents={agents.data ?? []} groups={groups.data ?? []} sites={sites.data ?? []} apk={apk} onClear={() => setSelection(new Set())} /> : null}
+      {isAdmin && chosen.length ? <SelectionBar selected={chosen} agents={agents.data ?? []} groups={groups.data ?? []} sites={sites.data ?? []} apk={apk} onForce={() => setForce({ selection: chosen })} onClear={() => setSelection(new Set())} /> : null}
     </>
   );
 }

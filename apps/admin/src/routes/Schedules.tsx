@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ConfirmAction, Empty, ErrorAlert, QueryStatus } from "../components/feedback";
 import { Icon } from "../components/Icon";
+import { ActiveOverrides } from "../features/overrides/ActiveOverrides";
 import { dayRanges } from "../features/schedule/rules";
 import { ScheduleForm, type ScheduleDraft } from "../features/schedule/ScheduleForm";
 import { useApi } from "../lib/api";
@@ -62,6 +63,7 @@ export function Schedules() {
         ) : null}
       </div>
       <p className="lead">{t("schedules.intro")}</p>
+      <ActiveOverrides />
       {form !== null ? (
         <ScheduleForm
           key={form === "new" ? "new" : form.id}

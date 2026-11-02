@@ -134,12 +134,14 @@ test("375 px : pas de défilement horizontal, cibles de 44 px", async ({ page },
 test("clavier : lien d'évitement puis toute la navigation", async ({ page }, info) => {
   await page.goto(home(info));
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  // Le nombre d'éléments focalisables avant « English » varie (préfixe, thème, cartes qui arrivent) : on tabule jusqu'à l'avoir atteint.
+  const wanted = ["Accueil", "Écrans", "English"];
   const reached = new Set<string>();
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 80 && !wanted.every((n) => [...reached].some((t) => t.includes(n))); i++) {
     await page.keyboard.press("Tab");
     reached.add(await page.evaluate(() => document.activeElement?.textContent?.trim() ?? ""));
   }
-  for (const name of ["Accueil", "Écrans", "English"]) {
+  for (const name of wanted) {
     expect([...reached].some((t) => t.includes(name))).toBe(true);
   }
 });
