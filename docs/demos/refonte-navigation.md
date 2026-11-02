@@ -65,3 +65,30 @@ Durée : ~15 min. Aucun secret ici. Serveur autonome (`/`) puis hébergé (`/esp
 - [ ] Vraie TV Android : « Installer depuis le réseau » avec un agent en ligne (invite RSA acceptée sur la TV).
 - [ ] Deux `VDS_BASE_PATH` : refaire le parcours code -> en ligne en `/` puis en `/espace/affichage` ; `/pairing` et `/screens/android` des signets mènent à l'assistant.
 - [ ] Automatisé : `apps/server/tests/test_screen_pair.py`, `apps/admin/src/features/screens/add/add.test.tsx`, `apps/admin/src/features/diffusion.test.tsx`, e2e `diffusion.spec.ts` et `provision.spec.ts` (passent par les redirections).
+
+## Lot E : actions rapides et sélection multiple
+
+Spécification : `docs/architecture-actions-rapides.md`. Prérequis : un site avec un agent en ligne, au moins deux écrans (un en ligne, un autre), un pilote d'alimentation réglé sur l'un d'eux.
+
+### Automatisé
+
+- [ ] `apps/server/tests/test_fleet_playback.py` : programmation active, `next_change_at`, hors plage, bornes, week-end, changement d'heure Europe/Paris, dates de validité (aux deux `VDS_BASE_PATH`).
+- [ ] `apps/admin/src/features/actions/actions.test.tsx` : file, annulation, concurrence, sondage mutualisé, réessai.
+- [ ] e2e `apps/admin/e2e/actions.spec.ts` (4 combinaisons préfixe x thème) : Allumer un écran en ligne, action en lot puis annulation (aucune commande envoyée après 8 s), suppression en lot confirmée, aucune requête hors origine serveur.
+
+### Sur écran réel (non automatisable)
+
+- [ ] Écran en ligne : le bouton Allumer de sa carte est actif (agent en ligne) ; clic, puis la TV s'allume réellement et la carte annonce « est allumé ».
+- [ ] Écran éteint (hors service prévu) : Allumer le rallume ; agent arrêté : boutons grisés avec la raison liée.
+- [ ] Carte : état, dernière activité, alimentation et programmation active (nom, playlist, « jusqu'à ») cohérents avec la réalité, y compris après un changement de créneau.
+- [ ] Sélection de 2 écrans puis Éteindre : décompte « Envoi dans N s » visible et annoncé, « Annuler l'action » dans les 8 s, puis constater qu'aucune TV ne s'éteint ; recommencer sans annuler : les TV s'éteignent, résultat par écran affiché.
+- [ ] Annulation à 8 s pile et navigation vers une autre page pendant l'attente : le bandeau suit, l'action part (ou est annulée) une seule fois.
+- [ ] Fermer l'onglet pendant l'attente : avertissement du navigateur, puis rien n'est envoyé.
+- [ ] Un écran dont l'agent est hors ligne dans la sélection : « N écrans ignorés » affiché, les autres sont traités ; « Réessayer les échecs » ne relance que les échecs.
+- [ ] Suppression en lot : confirmation explicite avec focus sur le bouton, aucun délai d'annulation, écrans retirés de la liste.
+- [ ] 375 px (téléphone réel) : barre d'actions en feuille basse sans masquer le dernier écran, cases à cocher et boutons >= 44 px, aucun défilement horizontal.
+- [ ] Thèmes V-Tech clair, V-Tech sombre, Allia : barre et bandeau d'actions tonaux sans ombre, focus visible, contrastes lisibles (alerte, succès, échec).
+- [ ] Clavier seul : cocher, « Tout sélectionner », atteindre la barre, choisir une action, annuler avec Entrée ; lecteur d'écran : nombre sélectionné, compte à rebours et résultat annoncés (`aria-live`).
+- [ ] FR puis EN en direct : aucune clé brute, pluriels corrects (1 écran / 2 écrans), causes d'échec traduites.
+- [ ] Comme administrateur seulement : un éditeur ne voit ni cases à cocher, ni Allumer/Éteindre.
+- [ ] Deux `VDS_BASE_PATH` : refaire Allumer unitaire, lot + annulation et suppression en `/` puis en `/espace/affichage` ; onglet Réseau : toutes les requêtes vont vers l'origine du serveur, aucune vers un appareil du LAN.
