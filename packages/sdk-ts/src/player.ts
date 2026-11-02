@@ -86,6 +86,8 @@ export interface PlaylistItem {
   props: Record<string, unknown>;
   assets: string[];
   requires_network: boolean;
+  /** vds-core 1.8.0 : instant UTC (ISO 8601) à partir duquel l'élément est sauté (média expiré). */
+  until?: string | null;
 }
 
 export interface AssetRef {

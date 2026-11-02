@@ -1,9 +1,11 @@
+import asyncio
+
 import pytest
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import text
+from sqlalchemy import pool, text
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, create_async_engine
 from vds_server.db.base import Base
 from vds_server.db.models import ConfigOverride, Organization, Screen, ScreenGroup, Site
 
@@ -147,3 +149,88 @@ async def test_diffusion_constraints(session: AsyncSession) -> None:
         with pytest.raises(IntegrityError):
             async with session.begin_nested():
                 await session.execute(rule, {"s": sid, "a": lo, "b": hi})
+
+
+async def test_mediatheque_defaults_and_tag_limit(session: AsyncSession) -> None:
+    ins_media = text(
+        "INSERT INTO media (kind, title, mime) VALUES ('image','m','image/png') "
+        "RETURNING revision, tags, expires_at, expired_at"
+    )
+    row = (await session.execute(ins_media)).one()
+    assert row.revision == 1 and row.tags == [] and row.expires_at is None
+    ok = text("INSERT INTO media (kind, title, mime, tags) VALUES ('image','m','x', :t)")
+    await session.execute(ok, {"t": [f"t{i}" for i in range(20)]})
+    for stmt in (
+        "INSERT INTO media (kind, title, mime, tags) VALUES ('image','m','x', :t)",
+        "INSERT INTO playlist (name, tags) VALUES ('p', :t)",
+    ):
+        with pytest.raises(IntegrityError):  # 21 tags
+            async with session.begin_nested():
+                await session.execute(text(stmt), {"t": [f"t{i}" for i in range(21)]})
+    with pytest.raises(IntegrityError):
+        async with session.begin_nested():
+            await session.execute(text("UPDATE media SET revision = 0"))
+
+
+async def test_playlist_override_no_expiry(session: AsyncSession) -> None:
+    await session.execute(
+        text("INSERT INTO playlist (name, expires_at) VALUES ('p', now() + interval '1 day')")
+    )
+    ov = text(
+        "INSERT INTO playback_overrides (name, kind, target_type, target_id, starts_at, ends_at) "
+        "VALUES ('o','off','site', gen_random_uuid(), now(), now() + interval '1 hour') "
+        "RETURNING id"
+    )
+    oid = (await session.execute(ov)).scalar_one()
+    with pytest.raises(IntegrityError):
+        async with session.begin_nested():
+            await session.execute(
+                text(
+                    "INSERT INTO playlist (name, owner_override_id, expires_at) "
+                    "VALUES ('e', :o, now())"
+                ),
+                {"o": oid},
+            )
+
+
+async def test_storage_tombstone_constraints(session: AsyncSession) -> None:
+    ins = text(
+        "INSERT INTO storage_tombstone (backend, key, reason, not_before) "
+        "VALUES ('storage.local', :k, :r, now())"
+    )
+    await session.execute(ins, {"k": "ab/x/original.png", "r": "purged"})
+    with pytest.raises(IntegrityError):  # unicité (backend, key)
+        async with session.begin_nested():
+            await session.execute(ins, {"k": "ab/x/original.png", "r": "deleted"})
+    with pytest.raises(IntegrityError):  # raison inconnue
+        async with session.begin_nested():
+            await session.execute(ins, {"k": "ab/y/original.png", "r": "bogus"})
+    await session.execute(
+        text(
+            "INSERT INTO storage_tombstone (backend, key, reason, not_before) "
+            "VALUES ('storage.s3', 'ab/x/original.png', 'replaced', now())"
+        )
+    )
+
+
+def test_0016_downgrade_removes_then_restores(migrated_db_url: str, alembic_cfg: Config) -> None:
+    async def columns() -> tuple[set[str], bool]:
+        engine = create_async_engine(migrated_db_url, poolclass=pool.NullPool)
+        async with engine.connect() as c:
+            cols = await c.execute(
+                text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_name IN ('media','playlist') "
+                    "AND column_name IN ('expires_at','expired_at','revision','tags')"
+                )
+            )
+            tomb = await c.execute(text("SELECT to_regclass('public.storage_tombstone')"))
+            result = ({r[0] for r in cols}, tomb.scalar() is not None)
+        await engine.dispose()
+        return result
+
+    command.downgrade(alembic_cfg, "0015_playback_override")
+    assert asyncio.run(columns()) == (set(), False)
+    command.upgrade(alembic_cfg, "heads")
+    names, has_tomb = asyncio.run(columns())
+    assert names == {"expires_at", "expired_at", "revision", "tags"} and has_tomb

@@ -56,7 +56,7 @@ def load(tmp_path: Path, raw: dict[str, Any], core: str = "1.5.0") -> Any:
 
 
 def test_version_and_permission() -> None:
-    assert CORE_API_VERSION in {"1.5.0", "1.6.0", "1.7.0"}
+    assert CORE_API_VERSION in {"1.5.0", "1.6.0", "1.7.0", "1.8.0"}
     assert "network.discover" in PERMISSIONS
 
 

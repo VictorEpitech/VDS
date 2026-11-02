@@ -179,3 +179,27 @@ CORE_EVENTS_1_7: frozenset[str] = CORE_EVENTS_1_6 | frozenset(
 )
 
 CRITICAL_EVENTS_1_7: frozenset[str] = CRITICAL_EVENTS_1_6
+
+# --- vds-core 1.8.0 (additif) : médiathèque (expiration, purge, remplacement) ---------
+# Payloads `version: 1` ; clés = minimum garanti. `media.purged` et `playlist.purged` sont
+# critiques (outbox). `schedule.deleted` gagne la clé optionnelle `reason` ("user" |
+# "playlist_purged") sans changer les clés requises (`schedule_id`).
+CORE_EVENT_PAYLOAD_1_8: dict[str, tuple[str, ...]] = {
+    **CORE_EVENT_PAYLOAD_1_7,
+    "media.updated": ("media_id", "fields"),
+    "media.replaced": ("media_id", "revision", "sha256", "previous_sha256"),
+    "media.expired": ("media_id", "expires_at"),
+    "media.restored": ("media_id",),
+    "media.purged": ("media_id", "playlist_ids"),
+    "playlist.expired": ("playlist_id", "expires_at"),
+    "playlist.restored": ("playlist_id",),
+    "playlist.purged": ("playlist_id", "schedule_ids"),
+}
+
+CORE_EVENTS_1_8: frozenset[str] = CORE_EVENTS_1_7 | frozenset(
+    set(CORE_EVENT_PAYLOAD_1_8) - set(CORE_EVENT_PAYLOAD_1_7)
+)
+
+CRITICAL_EVENTS_1_8: frozenset[str] = CRITICAL_EVENTS_1_7 | {"media.purged", "playlist.purged"}
+
+SCHEDULE_DELETED_REASONS_1_8: frozenset[str] = frozenset({"user", "playlist_purged"})

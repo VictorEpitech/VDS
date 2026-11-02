@@ -17,7 +17,7 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
-from sqlalchemy.dialects.postgresql import CITEXT, JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, CITEXT, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from vds_server.db.base import Base, tstz, uuid_pk
@@ -282,6 +282,19 @@ class Media(Base, Timestamps):
         CheckConstraint("status IN ('processing','ready','failed')", name="status"),
         Index("ix_media_sha256", "sha256"),
         Index("ix_media_kind", "kind"),
+        CheckConstraint("revision >= 1", name="revision"),
+        CheckConstraint("cardinality(tags) <= 20", name="tags"),
+        Index("ix_media_tags", "tags", postgresql_using="gin"),
+        Index(
+            "ix_media_expires_at",
+            "expires_at",
+            postgresql_where=text("expires_at IS NOT NULL AND expired_at IS NULL"),
+        ),
+        Index(
+            "ix_media_expired_at",
+            "expired_at",
+            postgresql_where=text("expired_at IS NOT NULL"),
+        ),
     )
 
     id: Mapped[UUID] = uuid_pk()
@@ -302,6 +315,11 @@ class Media(Base, Timestamps):
     created_by: Mapped[UUID | None] = mapped_column(
         ForeignKey("user_account.id", ondelete="SET NULL")
     )
+    # vds-core 1.8.0 (migration 0016) : expiration, révision du fichier, tags libres
+    expires_at: Mapped[datetime | None] = tstz(nullable=True, now=False)
+    expired_at: Mapped[datetime | None] = tstz(nullable=True, now=False)
+    revision: Mapped[int] = mapped_column(Integer, server_default="1")
+    tags: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default=text("'{}'"))
 
 
 class MediaVariant(Base, Timestamps):
@@ -321,6 +339,23 @@ class MediaVariant(Base, Timestamps):
 
 class Playlist(Base, Timestamps):
     __tablename__ = "playlist"
+    __table_args__ = (
+        CheckConstraint("cardinality(tags) <= 20", name="tags"),
+        CheckConstraint(
+            "owner_override_id IS NULL OR expires_at IS NULL", name="override_no_expiry"
+        ),
+        Index("ix_playlist_tags", "tags", postgresql_using="gin"),
+        Index(
+            "ix_playlist_expires_at",
+            "expires_at",
+            postgresql_where=text("expires_at IS NOT NULL AND expired_at IS NULL"),
+        ),
+        Index(
+            "ix_playlist_expired_at",
+            "expired_at",
+            postgresql_where=text("expired_at IS NOT NULL"),
+        ),
+    )
 
     id: Mapped[UUID] = uuid_pk()
     name: Mapped[str] = mapped_column(Text)
@@ -335,6 +370,31 @@ class Playlist(Base, Timestamps):
     owner_override_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("playback_overrides.id", ondelete="CASCADE", use_alter=True)
     )
+    # vds-core 1.8.0 (migration 0016)
+    expires_at: Mapped[datetime | None] = tstz(nullable=True, now=False)
+    expired_at: Mapped[datetime | None] = tstz(nullable=True, now=False)
+    tags: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default=text("'{}'"))
+
+
+class StorageTombstone(Base):
+    """File de suppression physique (migration 0016) : écrite dans la transaction de la base."""
+
+    __tablename__ = "storage_tombstone"
+    __table_args__ = (
+        CheckConstraint("reason IN ('replaced','purged','deleted','aborted')", name="reason"),
+        UniqueConstraint("backend", "key"),
+        Index("ix_storage_tombstone_not_before", "not_before"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    backend: Mapped[str] = mapped_column(Text)
+    key: Mapped[str] = mapped_column(Text)
+    reason: Mapped[str] = mapped_column(Text)
+    media_id: Mapped[UUID | None] = mapped_column()
+    not_before: Mapped[datetime] = tstz(now=False)
+    attempts: Mapped[int] = mapped_column(Integer, server_default="0")
+    last_error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = tstz()
 
 
 class PlaylistItem(Base, Timestamps):

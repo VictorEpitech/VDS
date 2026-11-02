@@ -1,6 +1,7 @@
 """Types et façade media du noyau VDS."""
 
 from collections.abc import AsyncIterator
+from datetime import datetime
 from typing import Literal, Protocol
 from uuid import UUID
 
@@ -24,6 +25,9 @@ class MediaInfo(BaseModel):
     duration_ms: int | None = None
     page_count: int | None = None
     variants: list[str] = Field(default_factory=list)
+    # vds-core 1.8.0 (additif)
+    revision: int = 1
+    expires_at: datetime | None = None
 
 
 class MediaFacade(Protocol):

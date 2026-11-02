@@ -1,6 +1,7 @@
 # VDS — Architecture
 
 > Mise à jour de l'APK player Android depuis l'admin (vds-core 1.6.0) : voir `architecture-apk-update.md`.
+> Médiathèque (grille/tableau, tags, expiration et purge des médias et playlists, remplacement de fichier, usage ; vds-core 1.8.0 additif, migration 0016) : voir `architecture-mediatheque.md`.
 
 ## Contraintes
 
@@ -364,6 +365,8 @@ Résolution par écran : override actif > alternance des schedules actifs > hors
 ## Diffusion et player (décision lot 2, vds-core 1.1.0)
 
 > Forçage (override) avec fin automatique : décision du 2026-11-02, vds-core 1.7.0 additif, voir `docs/architecture-forcage.md`. Entité `PlaybackOverride` (ne pas confondre avec `ConfigOverride`), insérée dans le résolveur unique `diffusion/resolver.py` ; elle gagne toujours sur la programmation, sa fin est jouée hors ligne par le player.
+>
+> Expiration des médias et playlists (décision du 2026-11-02, vds-core 1.8.0, voir `docs/architecture-mediatheque.md`) : une playlist expirée termine ses programmations et forçages à `expires_at` dans le même résolveur ; un média expiré est porté par le champ optionnel `until` de l'élément de trame, sauté hors ligne par le player. Identité de cache player = (clé, sha256) : un remplacement de fichier garde la clé `media/<id>/<variant>` et change le sha256.
 
 Jalon : un écran TCL réel joue une playlist. Tout ce qui suit est identique dans les deux modes ; toutes les URL échangées avec le player sont **relatives à l'URL serveur stockée par l'appareil** (préfixe compris), jamais absolues. Tests d'API et Playwright paramétrés sur `VDS_BASE_PATH=/` et `/espace/affichage`.
 
