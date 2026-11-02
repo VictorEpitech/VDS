@@ -556,6 +556,13 @@ export interface PlatformBridge {
 
 - **Contexte non sécurisé (Tizen en `http://IP:port`)** : `indexedDB` peut être absent, bloqué ou ne jamais répondre, et `caches`/Service Worker sont indisponibles. Le player ouvre IndexedDB avec un timeout de 3 s puis bascule en repli mémoire (jeton, programmation, journal : perdus au redémarrage, pas de hors ligne). Sans Cache API aucun média n'est stocké, donc rien ne se lit : un écran Tizen doit être servi en HTTPS ou installé en web app. `main.ts` ne reste jamais sur le spinner (journal interne, nouvelle tentative avec backoff). Le jeton est aussi transmis par la page au SW (en-tête `Authorization`) car le SW ne peut pas lire IndexedDB en repli mémoire. Cible de build : ES2017.
 
+### Expiration et identité de cache (lot médiathèque, M7)
+
+- `PlaylistItem.until` (ISO 8601 UTC, vds-core 1.8.0) : contrôlé à la préparation, au démarrage et à **chaque tick (1 s)** ; l'élément courant dont `until` est dépassé est arrêté immédiatement (borne exclusive, valeur illisible ignorée). Saut silencieux (pas d'entrée dans le journal d'erreurs), hors ligne comme en ligne, y compris en replay J+1 `stale` (`until` est absolu : un élément périmé ne rejoue jamais).
+- Aucun élément actif (playlist vide ou tous expirés) : écran **noir** (plus le logo `idle`), la zone ré-essaie toutes les 5 s au plus, jamais de boucle serrée.
+- Identité de cache = (clé, sha256). `AssetStore.hasAll/missing` acceptent `doc.assets` : une clé dont le sha256 diffère est « manquante » (heartbeat `cache.missing`, saut `asset_missing`). Téléchargement sur une clé d'attente (`?vds-staging=1`), vérifié, puis copié sur la clé définitive : l'ancien octet reste jouable jusqu'à la vérification du nouveau. Les restes d'attente sont purgés à `init()`. Le SW sert toujours par URL : inchangé.
+- Contrainte : ces clés d'attente vivent dans `vds-media-v1` ; ne jamais les compter dans le quota affiché ni les exposer.
+
 ### Plan d'alimentation et canal WS côté player (L3-T5 / T8b)
 
 - `ScheduleDocument.power` (`[{from, to, state}]`, J et J+1) est exécuté par `PowerController` à chaque tick du moteur (1 s), sans serveur : n'agit qu'aux changements d'état voulu ; CEC (`power.cec`) puis `power.blank` (`Engine.setSuspended` : noir, éléments libérés, vidéos déchargées). Échec d'un pilote : `errors[]` du heartbeat, 3 nouvelles tentatives à 30 s, `power.blank` appliqué quoi qu'il arrive. Document expiré : le dernier jour est rejoué en heure murale (comme la programmation) ; aucun plan = allumé. Après rechargement de la page l'état est recalculé depuis le plan en IndexedDB, donc un écran éteint le reste.
