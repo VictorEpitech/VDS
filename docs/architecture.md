@@ -1,5 +1,7 @@
 # VDS — Architecture
 
+> Mise à jour de l'APK player Android depuis l'admin (vds-core 1.6.0) : voir `architecture-apk-update.md`.
+
 ## Contraintes
 
 | Contrainte | Valeur | Effet |

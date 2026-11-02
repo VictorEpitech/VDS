@@ -82,7 +82,9 @@ Ce lot peut être avancé avant le lot 3 si le Studio est le premier déploiemen
 - [ ] Installation / mise à jour en un clic, sauvegarde
 - [ ] Déploiement sur les 4 premiers sites
 
-## Décisions (22–23 octobre 2026)
+## Décisions
+
+- 2026-11-02 — Mise à jour APK Android depuis l'admin : commande agent `apk.update` via `power.adb` (ADB `install -r`, hôte = config de l'écran, aucun scan), version remontée par le heartbeat (`app_version_code`), APK = `apk.json` (CI ou `VDS_APK_DIR`, relu à chaud), pas de téléversement UI, fan-out file lot E sans annulation, vds-core 1.6.0 additif, `power.adb` 0.3.0. Voir `architecture-apk-update.md`. (22–23 octobre 2026)
 
 Système maison (pas Xibo) · une instance Docker par client · perso, potentiellement commercial · noyau + modules, intégrés et à chaud, un format · FastAPI + React · player web unique 4 empaquetages · agent par site · alimentation en cascade · import de fichiers + grille/calques · alternance + override sur créneau · kiosque obligatoire · admin/éditeur + validation par groupe · FR/EN · notifications mail · pas de suivi conso · charte V-Tech (MD3) · nom de travail VDS.
 
