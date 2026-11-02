@@ -67,6 +67,14 @@ describe.each(["", "/espace/affichage"])("Accueil et fil d'Ariane, base « %s »
     expect(screen.queryByRole("heading", { name: "E1" })).toBeNull();
     expect(screen.getByRole("button", { name: "À traiter" })).toHaveAttribute("aria-pressed", "true");
   });
+
+  it("entrée active : Plus reste active sous /sites", async () => {
+    mockApi({ "GET /sites": [], "GET /screens": [], "GET /fleet/summary": FLEET, "GET /onboarding": ONB }, b);
+    await renderRoutes(routes, "/sites", b);
+    const nav = await screen.findByRole("navigation", { name: "Navigation principale" });
+    expect(within(nav).getByRole("link", { name: "Plus" })).toHaveClass("active");
+    expect(within(nav).getByRole("link", { name: "Écrans" })).not.toHaveClass("active");
+  });
 });
 
 describe("trailFor", () => {
