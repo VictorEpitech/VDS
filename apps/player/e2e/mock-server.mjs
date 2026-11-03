@@ -94,6 +94,7 @@ const fresh = () => ({
   pollS: 2, // poll_interval_s renvoyé au heartbeat
   wsBlocked: false, // refuse l'upgrade WS (proxy qui ne le transmet pas)
   ws: { upgrades: 0, auths: [], closed: [] },
+  layout: null, // { zones, playlists: {clé: items[]}, background?, player?, orientation? } : mise en page multi-zones (1.9) ; null = zone main
   slots: null, // [[h0, h1, kind]] en heures depuis minuit UTC du jour simulé ; null = tout play
   heartbeats: [],
   mediaHits: {},
@@ -103,6 +104,16 @@ const fresh = () => ({
 let S = fresh();
 const serverNow = () => (S.clock ? S.clock.base + (Date.now() - S.clock.at) : Date.now());
 const iso = (ms) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, "+00:00");
+
+const mapItem = (i) => ({
+  id: i.id,
+  content_type: mediaOf(i.media).mime.startsWith("video") ? "content.video" : "content.image",
+  duration_ms: i.ms ?? null,
+  props: { src: `media/${i.media}/original` },
+  assets: [`media/${i.media}/original`],
+  requires_network: false,
+  ...(i.until ? { until: i.until } : {}),
+});
 
 function schedule() {
   const now = serverNow();
@@ -114,11 +125,14 @@ function schedule() {
           start: iso(day + a * 3600000),
           end: iso(day + b * 3600000),
           kind: "play",
-          layout: { zones: [{ id: "main", x: 0, y: 0, w: 1, h: 1, playlist: "pl_1" }] },
+          layout: S.layout
+            ? { zones: S.layout.zones, ...(S.layout.background ? { background: S.layout.background } : {}) }
+            : { zones: [{ id: "main", x: 0, y: 0, w: 1, h: 1, playlist: "pl_1" }] },
           source: { schedule_id: "sc_1" },
         },
   );
-  const used = [...new Set(S.items.map((i) => i.media))];
+  const lists = S.layout ? S.layout.playlists : { pl_1: S.items };
+  const used = [...new Set([...Object.values(lists).flat().map((i) => i.media), ...(S.layout?.bgMedia ? [S.layout.bgMedia] : [])])];
   const doc = {
     format: 1,
     screen: { id: "screen-1", name: "Accueil", orientation: "landscape" },
@@ -126,19 +140,7 @@ function schedule() {
     valid_from: iso(day),
     valid_until: iso(day + 48 * 3600000),
     slots,
-    playlists: {
-      pl_1: {
-        items: S.items.map((i) => ({
-          id: i.id,
-          content_type: mediaOf(i.media).mime.startsWith("video") ? "content.video" : "content.image",
-          duration_ms: i.ms ?? null,
-          props: { src: `media/${i.media}/original` },
-          assets: [`media/${i.media}/original`],
-          requires_network: false,
-          ...(i.until ? { until: i.until } : {}),
-        })),
-      },
-    },
+    playlists: Object.fromEntries(Object.entries(lists).map(([k, items]) => [k, { items: items.map(mapItem) }])),
     assets: Object.fromEntries(
       used.map((m) => [`media/${m}/original`, { sha256: mediaOf(m).sha, bytes: mediaOf(m).buf.length, mime: mediaOf(m).mime }]),
     ),
@@ -147,6 +149,7 @@ function schedule() {
       "content.video": { version: "0.1.0", element: "vds-content-video", script: "modules/content.video/assets/player.js" },
     },
   };
+  if (S.layout?.player) doc.player = S.layout.player;
   if (S.kiosk) doc.kiosk = S.kiosk;
   if (S.power) {
     doc.power = S.power.map(([a, b, state]) => ({ from: iso(day + a * 3600000), to: iso(day + b * 3600000), state }));
@@ -206,6 +209,7 @@ async function control(req, res, url) {
       if ("down" in body) S.down = Boolean(body.down);
       if ("revoked" in body) S.revoked = Boolean(body.revoked);
       if ("slots" in body) S.slots = body.slots;
+      if ("layout" in body) S.layout = body.layout;
       if ("power" in body) S.power = body.power;
       if ("kiosk" in body) S.kiosk = body.kiosk;
       if ("pollS" in body) S.pollS = Number(body.pollS);

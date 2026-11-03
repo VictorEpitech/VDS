@@ -78,8 +78,11 @@ export function slotAssets(doc: ScheduleDocument, slots: ScheduleSlot[]): string
   const keys = new Set<string>();
   for (const s of slots) {
     if (s.kind !== "play") continue;
-    for (const z of (s as PlaySlot).layout.zones) {
-      for (const it of doc.playlists[z.playlist]?.items ?? []) it.assets.forEach((a) => keys.add(a));
+    const layout = (s as PlaySlot).layout;
+    if (layout.background?.asset) keys.add(layout.background.asset);
+    for (const z of layout.zones) {
+      const lists = [z.playlist, ...(z.overrides ?? []).map((o) => o.playlist)];
+      for (const k of lists) for (const it of doc.playlists[k]?.items ?? []) it.assets.forEach((a) => keys.add(a));
     }
   }
   return [...keys];

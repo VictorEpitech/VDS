@@ -15,7 +15,12 @@ html, body {
 #app { position: fixed; inset: 0; background: black; }
 .stage { position: absolute; inset: 0; background: black; overflow: hidden; }
 .zone { position: absolute; overflow: hidden; }
-.zone > * { position: absolute; inset: 0; }
+.zone > .play, .play > * { position: absolute; inset: 0; }
+.stage { isolation: isolate; }
+.bg { position: absolute; inset: 0; z-index: -1; }
+.bg > img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.zone[data-fit="cover"] img, .zone[data-fit="cover"] video { object-fit: cover !important; }
+.zone[data-fit="stretch"] img, .zone[data-fit="stretch"] video { object-fit: fill !important; }
 .system {
   position: absolute;
   inset: 0;
