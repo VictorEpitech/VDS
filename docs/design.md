@@ -21,7 +21,7 @@ Utilisateurs : admin, éditeur (publication soumise à validation selon le group
 | Éditeur de grille | Zones, calques, aperçu | critique |
 | Playlists | Éléments, durées, transitions | V1 |
 | Planning | Schedules et overrides sur calendrier | critique |
-| Utilisateurs et groupes | Rôles, groupes, validation | V1 |
+| Utilisateurs et groupes | Rôles, groupes, validation, périmètre (nœuds organisation/site/groupe) | V1 |
 | Modules et réglages | Modules, permissions, formulaires générés, langues | V1 |
 
 ## Parcours prioritaires
@@ -31,6 +31,12 @@ Utilisateurs : admin, éditeur (publication soumise à validation selon le group
 3. **Programmer** : layout + playlists → cible → créneau → voir les alternances sur la même cible.
 4. **Forcer** : depuis le planning, layout + cible + créneau ; alternance suspendue clairement visible.
 5. **Alimentation** : plages d'un site/groupe → exceptions → on/off immédiat depuis le parc (mobile inclus).
+
+### Utilisateurs, périmètre et propriétaire (lot J)
+
+- **Écran Utilisateurs** : un éditeur choisit son périmètre dans l'arbre organisation/site/groupe (`/scope-tree`) ; un nouvel éditeur n'a aucun périmètre et le dit explicitement. Le rôle fourni par le fournisseur d'authentification (`role_source = provider`) n'est pas modifiable dans VDS, le périmètre l'est toujours. Enregistrement avec `If-Match` (`scopes_version`).
+- **Sélecteur Propriétaire** (médias, playlists, mises en page) : limité aux nœuds inscriptibles (`writable`) ; l'option « Partagé » n'apparaît que si `can_share`.
+- **Éditeur restreint** : ne voit que ses nœuds, leurs ancêtres et descendants ; le reste est introuvable (404), sans message technique. Un contenu référencé hors périmètre apparaît comme un compteur (`hidden_count`), jamais nommé. Erreurs `scope.forbidden`, `scope.shared_forbidden`, `scope.reference_out_of_scope` traduites en messages FR/EN.
 
 ## Éditeur de grille
 

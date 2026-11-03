@@ -134,6 +134,16 @@ API admin additive du noyau, aucun nouveau module · `GET /api/v1/onboarding` : 
 | Build sur VPS 1 qui fait tomber la production (déjà arrivé au Studio) | Images construites en CI, Dokploy ne fait que déployer |
 | Pas de préproduction côté Studio | Migrations additives, déploiement VDS indépendant du Studio |
 | Hors Android, la page d'erreur d'une cible refusant l'iframe reste visible | Correctif possible (sonde d'en-têtes serveur + avertissement admin), non implémenté |
+| Lot J : filtre Propriétaire des listes et règles « héritée de… » non faits | À faire : filtre côté listes médias/playlists/mises en page, libellés d'héritage |
+| Lot J : test de concurrence du verrou J-D5 non écrit | À écrire : deux écritures simultanées (référence vs déplacement de propriétaire) ; le verrou existe mais n'est pas éprouvé sous charge |
+| Lot J : pas d'admin de site (décision V1) | Point d'extension préservé (périmètre par nœud) ; à rouvrir après V1 |
+| Planning : pagination de la timeline en keyset SQL non faite | Pagination actuelle en mémoire ; à passer en keyset SQL si le volume l'exige |
+| Planning : plan d'alimentation absent de la timeline | À ajouter à la timeline quand le besoin est confirmé |
+| Admin : `If-Match` non posé (ex. `PUT /users/{id}/scopes`, `scopes_version`) | L'admin doit envoyer `If-Match` pour détecter les modifications concurrentes |
+| Admin non testé contre le vrai backend (lot J compris) | Test e2e Playwright sur serveur réel à ajouter |
+| Pin signataire APK non posé | À poser avant diffusion publique de l'APK |
+| Traductions `core.override.*` et `core.content.*` manquantes | À compléter FR/EN (règle i18n) |
+| `EXPIRING_SOON_DAYS` en dur | À rendre configurable (héritage de configuration) |
 
 ## Questions ouvertes
 

@@ -358,6 +358,8 @@ Voir `docs/architecture-planning.md`. Résolveur unique extrait de `ScheduleBuil
 
 Droits par site et groupe (lot J, décisions du 2026-11-03) : périmètre éditeur par nœuds organisation/site/groupe, contenus partitionnés par propriétaire, nouvel éditeur sans périmètre, pas d'admin de site en V1 ; voir `docs/architecture-droits.md`.
 
+Livré (J1 à J7, vds-core 1.10.0 additif) : objet hors périmètre = 404 (jamais de révélation d'existence) ; visible mais non modifiable = 403 `scope.forbidden` ; contenu partagé (`owner: null`) réservé aux éditeurs au périmètre organisation = 403 `scope.shared_forbidden` ; usages d'un contenu référencé hors périmètre = compteur `hidden_count` sans nom (suppression : 409 `scope.used_out_of_scope`) ; verrou J-D5 : un objet ne référence qu'un contenu dont le propriétaire est égal ou ancêtre de son nœud (422 `scope.reference_out_of_scope`, admin compris) ; `user_account.role_source` (`vds` | `provider`) ; événements `user.scope_changed@1` et `user.role_changed@1`, clé optionnelle `owner` sur `media.*`, `playlist.*`, `layout.*` ; routes `/me` (+ `role_source`, `perimeter`), `/scope-tree`, `/users`, `PUT /users/{id}/scopes` (If-Match = `scopes_version`). Migration 0018 rétrocompatible (éditeurs existants = organisation).
+
 | Objet | Contenu |
 | --- | --- |
 | Media | image, vidéo ≤ 4K (son on/off), PDF → pages, URL |

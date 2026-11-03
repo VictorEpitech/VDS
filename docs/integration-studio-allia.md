@@ -60,6 +60,8 @@ sequenceDiagram
 
 Le premier accès d'un utilisateur Studio crée son profil VDS (identifiant Studio en référence, pas de mot de passe stocké). Les groupes VDS et la validation avant diffusion se règlent ensuite dans VDS.
 
+**Source du rôle et périmètre** : le rôle venant du Studio est recopié à chaque connexion et marqué `user_account.role_source = 'provider'` (non modifiable dans VDS ; un rôle nul laisse la valeur inchangée). Le **périmètre** d'un éditeur (nœuds organisation/site/groupe, `user_scope`) est **toujours stocké dans VDS**, jamais dans le Studio, qui n'a aucune notion de site ou groupe VDS : un nouvel éditeur Studio arrive sans périmètre. Aucun changement de la route de session côté Studio. Voir `docs/architecture-droits.md`.
+
 ## Ce qu'il faut ajouter côté Studio
 
 À faire dans le dépôt du Studio, en suivant son guide « 04 — Ajouter un module ». **Aucune migration** n'est nécessaire.
