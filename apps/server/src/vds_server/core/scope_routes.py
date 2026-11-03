@@ -71,6 +71,7 @@ SCOPE_ROUTES: dict[str, ScopeClass] = {
     "POST /api/v1/player/pair": "scope_neutral",
     "POST /api/v1/player/pairings": "scope_neutral",
     "GET /api/v1/player/pairings/{pairing_id}": "scope_neutral",
+    "GET /api/v1/player/feeds/{feed_id}": "scope_neutral",
     "GET /api/v1/player/schedule": "scope_neutral",
     "GET /api/v1/player-commands": "scoped",
     "POST /api/v1/player/screenshots": "scope_neutral",

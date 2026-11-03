@@ -1,6 +1,5 @@
 """GET /api/v1/player/feeds/{id} et `feeds` dans la programmation, aux deux VDS_BASE_PATH."""
 
-from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
 
@@ -34,7 +33,7 @@ class FakeNet:
 
 
 @pytest.fixture
-async def net(app: FastAPI, migrated_db_url: str) -> AsyncIterator[FakeNet]:
+async def net(app: FastAPI, migrated_db_url: str) -> FakeNet:
     engine = create_async_engine(migrated_db_url, poolclass=pool.NullPool)
     async with engine.begin() as c:
         await c.execute(text("TRUNCATE content_feed"))
