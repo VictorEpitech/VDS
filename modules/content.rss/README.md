@@ -20,4 +20,4 @@ Organisation (niveau Avancé) :
 
 - Les flux d'un réseau privé (intranet) sont refusés par conception ; un relais par l'agent de site serait un futur module.
 - Texte seul : pas d'images de flux en V1 (point d'accroche : image via la médiathèque).
-- Le player (liste, défilement) est une tâche distincte : `assets/player.js` est pour l'instant un élément qui échoue proprement (`player_pending`), donc l'élément est sauté.
+- Player : `display: list` montre les entrées (titre, date locale, résumé coupé) par pages d'autant d'entrées que la zone en tient, une page toutes les `item_duration_s` secondes ; `ticker` fait défiler les titres en continu puis rend la main (`vds-ended`). Tout est inséré avec `textContent`. Les entrées sans titre ni résumé sont ignorées.
