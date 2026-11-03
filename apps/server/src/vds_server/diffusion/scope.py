@@ -150,12 +150,12 @@ class PerimeterScope:
         if access == "read":
             return or_(
                 site_col.is_(None),
-                and_(group_col.is_(None), site_col.in_(p.sites_closure)),
-                group_col.in_(p.groups_closure),
+                and_(group_col.is_(None), site_col.is_not(None), site_col.in_(p.sites_closure)),
+                and_(group_col.is_not(None), group_col.in_(p.groups_closure)),
             )
         return or_(
-            and_(group_col.is_(None), site_col.in_(p.sites)),
-            group_col.in_(p.groups_closure),
+            and_(group_col.is_(None), site_col.is_not(None), site_col.in_(p.sites)),
+            and_(group_col.is_not(None), group_col.in_(p.groups_closure)),
         )
 
     def screen_filter(self, principal: Principal) -> ColumnElement[bool]:
