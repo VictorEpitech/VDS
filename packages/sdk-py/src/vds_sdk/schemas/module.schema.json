@@ -306,7 +306,8 @@
           "override.write",
           "layouts.read",
           "layouts.write",
-          "screens.command"
+          "screens.command",
+          "content.feeds"
         ],
         "type": "string"
       },

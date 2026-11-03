@@ -77,6 +77,7 @@ def test_version_and_permission() -> None:
         "1.9.0",
         "1.10.0",
         "1.11.0",
+        "1.12.0",
     }  # courant ; compat 1.4 testée dans test_compat_14
     assert "screens.provision" in permissions.PERMISSIONS
 

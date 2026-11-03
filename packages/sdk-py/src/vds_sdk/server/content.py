@@ -5,6 +5,8 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from ..module import Module
+from .feeds import FeedRequest
+from .http import SafeHttp
 from .media import MediaInfo, MediaKind
 from .storage import StoredObject
 
@@ -45,6 +47,7 @@ class PlayerItemSpec(BaseModel):
     props: dict[str, Any]
     assets: list[str] = Field(default_factory=list)
     duration_ms: int | None = None
+    feeds: list[str] = Field(default_factory=list)  # vds-core 1.12.0 : feed_id à précharger
 
 
 class ContentType(Module):
@@ -84,3 +87,10 @@ class ContentType(Module):
             Spécification pour le lecteur.
         """
         return PlayerItemSpec(props=dict(props))
+
+    async def fetch_feed(self, req: FeedRequest, http: SafeHttp) -> dict[str, Any]:
+        """Récupère et normalise les données d'un flux (vds-core 1.12.0) ; JSON <= 64 Kio.
+
+        Le noyau appelle cette méthode (jamais le player). Défaut : non implémenté.
+        """
+        raise NotImplementedError

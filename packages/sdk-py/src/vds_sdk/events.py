@@ -261,3 +261,21 @@ CORE_EVENTS_1_11: frozenset[str] = CORE_EVENTS_1_10 | frozenset(
 )
 
 CRITICAL_EVENTS_1_11: frozenset[str] = CRITICAL_EVENTS_1_10
+
+# --- vds-core 1.12.0 (additif) : flux de données (widgets météo / RSS) ------------------
+# Payloads `version: 1`. Nouveau domaine `feed`. `feed.failed` émis une fois au passage
+# ok -> échec (3 échecs consécutifs) ; `feed.recovered` au retour. Aucun événement critique,
+# aucun abonné par défaut (point d'accroche notifier).
+CORE_EVENT_DOMAINS_1_12: frozenset[str] = CORE_EVENT_DOMAINS_1_11 | {"feed"}
+
+CORE_EVENT_PAYLOAD_1_12: dict[str, tuple[str, ...]] = {
+    **CORE_EVENT_PAYLOAD_1_11,
+    "feed.failed": ("module_id", "feed_id", "error_code", "failing_since"),
+    "feed.recovered": ("module_id", "feed_id", "fetched_at"),
+}
+
+CORE_EVENTS_1_12: frozenset[str] = CORE_EVENTS_1_11 | frozenset(
+    set(CORE_EVENT_PAYLOAD_1_12) - set(CORE_EVENT_PAYLOAD_1_11)
+)
+
+CRITICAL_EVENTS_1_12: frozenset[str] = CRITICAL_EVENTS_1_11

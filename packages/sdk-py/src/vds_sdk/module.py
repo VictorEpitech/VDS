@@ -9,6 +9,8 @@ from pydantic import BaseModel
 from .bus import ScopedBus
 
 if TYPE_CHECKING:
+    from .server.feeds import FeedsApi
+    from .server.http import SafeHttp
     from .server.media import MediaFacade
     from .server.screens import ScreensApi
 
@@ -34,6 +36,8 @@ class CoreApi(Protocol):
 
     media: "MediaFacade"  # permissions media.read / media.write (aucune nouvelle)
     screens: "ScreensApi"  # vds-core 1.11.0 ; permission screens.command
+    safe_http: "SafeHttp"  # vds-core 1.12.0 ; permission net.outbound (`http` = routes du module)
+    feeds: "FeedsApi"  # vds-core 1.12.0 ; permission content.feeds
 
 
 class ModuleContext(Protocol):

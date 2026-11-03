@@ -71,6 +71,7 @@ def test_core_version_is_1_3() -> None:
         "1.9.0",
         "1.10.0",
         "1.11.0",
+        "1.12.0",
     }  # courant ; compat 1.4 testée dans test_compat_14
 
 

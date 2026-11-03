@@ -1,4 +1,4 @@
-"""Modèles Pydantic du manifeste `module.json` (contrat vds-core 1.11.0)."""
+"""Modèles Pydantic du manifeste `module.json` (contrat vds-core 1.12.0)."""
 
 import json
 import re
@@ -229,6 +229,7 @@ class ModuleManifest(_Strict):
                     "1.9.0",
                     "1.10.0",
                     "1.11.0",
+                    "1.12.0",
                 )
             ) or (satisfies("1.1.0", self.core)):
                 raise ValueError("contract.kind_requires_1_2")
@@ -263,7 +264,7 @@ class ModuleManifest(_Strict):
                         "1.9.0",
                         "1.10.0",
                         "1.11.0",
-                    "1.11.0",
+                        "1.12.0",
                     )
                 ) or (satisfies("1.2.0", self.core)):
                     raise ValueError("contract.provision_requires_1_3")
@@ -271,6 +272,11 @@ class ModuleManifest(_Strict):
                     raise ValueError("module.provision_permission_missing")
                 if "site-agent" not in self.targets:
                     raise ValueError("module.provision_target_invalid")
+        if "content.feeds" in self.permissions:
+            if self.kind != "content-type":
+                raise ValueError("module.permission_kind_forbidden")
+            if not satisfies("1.12.0", self.core) or satisfies("1.11.0", self.core):
+                raise ValueError("contract.feeds_requires_1_12")
         if "network.discover" in self.permissions and self.kind != "discovery":
             raise ValueError("module.permission_kind_forbidden")
         if any(c.startswith("discovery.") for c in self.capabilities) and self.kind != "discovery":
@@ -289,7 +295,7 @@ class ModuleManifest(_Strict):
         if self.kind == "content-type":
             if self.content is None:
                 raise ValueError("module.content_type_missing_content")
-            if not satisfies("1.1.0", self.core):
+            if not (satisfies("1.1.0", self.core) or satisfies("1.12.0", self.core)):
                 raise ValueError("module.content_type_core_incompatible")
             if satisfies("1.0.0", self.core):
                 raise ValueError("module.content_type_core_incompatible")

@@ -1,4 +1,4 @@
-"""Catalogue fermé de permissions (contrat 1.0, étendu en 1.2, 1.3, 1.5, 1.7, 1.9 et 1.11)."""
+"""Catalogue fermé de permissions (contrat 1.0, étendu en 1.2, 1.3, 1.5, 1.7, 1.9, 1.11 et 1.12)."""
 
 from typing import Literal, get_args
 
@@ -25,5 +25,6 @@ Permission = Literal[
     "layouts.read",
     "layouts.write",
     "screens.command",
+    "content.feeds",
 ]
 PERMISSIONS: frozenset[str] = frozenset(get_args(Permission))

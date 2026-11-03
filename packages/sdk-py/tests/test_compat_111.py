@@ -38,7 +38,7 @@ NOW = datetime(2026, 1, 1, tzinfo=UTC)
 
 
 def test_version() -> None:
-    assert CORE_API_VERSION == "1.11.0"
+    assert CORE_API_VERSION in {"1.11.0", "1.12.0"}
 
 
 def test_events_1_11_additive() -> None:
