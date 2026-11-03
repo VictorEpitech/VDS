@@ -59,7 +59,7 @@ describe("types de contenu et formulaire généré", () => {
     expect(await screen.findByText(/Types acceptés.*Image.*PDF.*Page web.*Vidéo/s)).toBeInTheDocument();
     const urls = vi.mocked(fetch).mock.calls.map((c) => String(c[0]));
     expect(urls).toContain(`${b}/api/v1/registry/content-types`);
-    expect(contentTypesFixture().map((c) => c.id)).toEqual(["content.image", "content.pdf", "content.url", "content.video"]);
+    expect(contentTypesFixture().map((c) => c.id)).toEqual(["content.image", "content.pdf", "content.rss", "content.url", "content.video", "content.weather"]);
   });
 
   it("champs simples visibles, champs avancés dans le volet « Avancé » (FR)", async () => {

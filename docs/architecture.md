@@ -687,6 +687,11 @@ Détail dans `docs/architecture-widgets.md`. Contrat additif : permission `conte
 - **Rafraîchissement** : tâche de fond (tick 30 s), 4 récupérations en parallèle, une requête à la fois par hôte, bail de 120 s (multi-workers), échec = données conservées + backoff exponentiel plafonné à `refresh_s` (borné à 300–86400 s), 200 flux par module (`feeds.quota_exceeded`), purge des flux inutilisés depuis 7 jours. Un module peut allonger l'intervalle (en-tête `Expires`) via la clé réservée `_next_after_s` du résultat de `fetch_feed`.
 - **Hors ligne** : le player garde le dernier état connu par flux (IndexedDB) et saute l'élément au-delà de `max_age_s` (`feed_unavailable` / `feed_stale`).
 
+**Player (W6-W9, `apps/player`)** : `FeedService` (`src/feeds.ts`) implémente `ctx.feed` : requête conditionnelle (`If-None-Match`) avec délai de 3 s puis IndexedDB (store `feeds`, clé `feed_id`, `DB_VERSION` 2) ; flux préchargés à chaque synchronisation (`item.feeds` de toute la programmation), purge des flux non référencés, sondage séquentiel toutes les 300 s tant que la programmation en référence, arrêté à `stop()`. `ctx.now()` (additif, sdk-ts) donne l'horloge corrigée de la dérive serveur : l'âge d'un flux se juge avec elle, pas avec `Date.now()`. Un élément qui échoue avec `feed_unavailable` / `feed_stale` est sauté et le code est remonté dans les erreurs du heartbeat ; l'écran n'affiche rien de technique. Contraintes de plateforme :
+- Les pictogrammes sont des `<img src="data:image/svg+xml,…">` (documents isolés : les `id` de symboles et de dégradés des SVG MET n'entrent pas en collision, contrairement à des `<svg>` en ligne) ; ils exigent `img-src data:` dans la CSP du player (déjà présent). Pas de dépendance à un second fichier : tout est dans `player.js`, donc préchargé par la synchro et lisible hors ligne.
+- Pas de container queries (Tizen 7 / Chromium 94) : la mise en page est calculée en pixels depuis la taille de la zone au moment de `prepare()`.
+- Une horloge simulée de test (`page.clock`) doit couper le serveur simulé avant d'avancer : sinon le heartbeat recale la dérive sur l'horloge réelle du serveur et annule le saut.
+
 ## Données, sécurité, déploiement
 
 - PostgreSQL 17 ; médias disque local via module storage ; cache média sur l'agent.
