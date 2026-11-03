@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Any, get_args
 from uuid import UUID
 
-from sqlalchemy import exists, func, or_, select
+from sqlalchemy import exists, func, or_, select, true
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,6 +25,7 @@ from vds_server.db.models import (
 )
 from vds_server.db.models_onboarding import OnboardingState
 from vds_server.db.models_power import PowerException, PowerPlanRule, SiteAgent
+from vds_server.diffusion.scope import PerimeterScope
 from vds_server.onboarding.schemas import (
     CardOut,
     OnboardingOut,
@@ -71,17 +72,33 @@ async def _organization(session: AsyncSession) -> Organization:
 
 
 async def compute(
-    session: AsyncSession, org_id: UUID, th: Thresholds, now: datetime
+    session: AsyncSession,
+    org_id: UUID,
+    th: Thresholds,
+    now: datetime,
+    actor: Principal | None = None,
 ) -> OnboardingOut:
+    """`actor` : les comptes d'un éditeur ne portent que sur son périmètre (lot J)."""
     state = await session.get(OnboardingState, org_id)  # absence de ligne = défauts
     skipped = set(state.skipped_steps) if state else set()
-    live_screen = Screen.archived_at.is_(None)
+    scope = PerimeterScope(session)
+    live_screen: Any = Screen.archived_at.is_(None)
+    site_vis: Any = true()
+    media_vis: Any = true()
+    playlist_vis: Any = true()
+    sched_vis: Any = true()
+    if actor is not None:
+        live_screen = live_screen & scope.screen_filter(actor)
+        site_vis = scope.site_filter(actor)
+        media_vis = scope.media_filter(actor)
+        playlist_vis = scope.playlist_filter(actor)
+        sched_vis = scope.target_filter(actor, Schedule.target_type, Schedule.target_id, "read")
 
     admins = await _count(
         session,
         select(func.count()).where(UserAccount.role == "admin", UserAccount.is_active.is_(True)),
     )
-    sites = await _count(session, select(func.count()).where(Site.archived_at.is_(None)))
+    sites = await _count(session, select(func.count()).where(Site.archived_at.is_(None), site_vis))
     agents = (
         await session.execute(
             select(SiteAgent.last_seen_at)
@@ -105,18 +122,22 @@ async def compute(
             PairingRequest.status == "pending", PairingRequest.expires_at > now
         ),
     )
-    media = await _count(session, select(func.count()).select_from(Media))
-    playlists = await _count(session, select(func.count()).select_from(Playlist))
+    media = await _count(session, select(func.count()).select_from(Media).where(media_vis))
+    playlists = await _count(
+        session, select(func.count()).select_from(Playlist).where(playlist_vis)
+    )
     filled = await _count(
         session,
         select(func.count())
         .select_from(Playlist)
-        .where(exists().where(PlaylistItem.playlist_id == Playlist.id)),
+        .where(exists().where(PlaylistItem.playlist_id == Playlist.id), playlist_vis),
     )
-    schedules = await _count(session, select(func.count()).select_from(Schedule))
+    schedules = await _count(session, select(func.count()).select_from(Schedule).where(sched_vis))
     covering = await _count(
         session,
-        select(func.count()).select_from(Schedule).where(exists(_covered_screens())),
+        select(func.count())
+        .select_from(Schedule)
+        .where(exists(_covered_screens()), sched_vis),
     )
     power = await _count(session, select(func.count()).select_from(PowerPlanRule)) + await _count(
         session, select(func.count()).select_from(PowerException)

@@ -1744,6 +1744,10 @@ export interface components {
         Body_upload_media_api_v1_media_post: {
             /** File */
             file: string;
+            /** Owner Id */
+            owner_id?: string | null;
+            /** Owner Type */
+            owner_type?: ("organization" | "site" | "group") | null;
             /** Sha256 */
             sha256?: string | null;
             /** Title */
@@ -2621,6 +2625,7 @@ export interface components {
              * @enum {string}
              */
             orientation: "landscape" | "portrait";
+            owner?: components["schemas"]["NodeRef"] | null;
             /** Tags */
             tags?: string[];
             /** Zones */
@@ -2649,6 +2654,7 @@ export interface components {
              * @enum {string}
              */
             orientation: "landscape" | "portrait";
+            owner?: components["schemas"]["NodeRef"] | null;
             /** Revision */
             revision: number;
             /** Tags */
@@ -2684,6 +2690,7 @@ export interface components {
              * @enum {string}
              */
             orientation: "landscape" | "portrait";
+            owner?: components["schemas"]["NodeRef"] | null;
             /** Revision */
             revision: number;
             /** Tags */
@@ -2702,6 +2709,11 @@ export interface components {
         };
         /** LayoutUsageOut */
         LayoutUsageOut: {
+            /**
+             * Hidden Count
+             * @default 0
+             */
+            hidden_count: number;
             /** Overrides */
             overrides: components["schemas"]["LayoutUsageOverride"][];
             /** Schedules */
@@ -3001,6 +3013,7 @@ export interface components {
             mime: string;
             /** Original Filename */
             original_filename: string | null;
+            owner?: components["schemas"]["NodeRef"] | null;
             /** Page Count */
             page_count: number | null;
             /** Revision */
@@ -3065,6 +3078,7 @@ export interface components {
             mime: string;
             /** Original Filename */
             original_filename: string | null;
+            owner?: components["schemas"]["NodeRef"] | null;
             /** Page Count */
             page_count: number | null;
             /** Revision */
@@ -3103,6 +3117,7 @@ export interface components {
         MediaPatch: {
             /** Expires At */
             expires_at?: string | null;
+            owner?: components["schemas"]["NodeRef"] | null;
             /** Tags */
             tags?: string[] | null;
             /** Title */
@@ -3110,6 +3125,11 @@ export interface components {
         };
         /** MediaUsageOut */
         MediaUsageOut: {
+            /**
+             * Hidden Count
+             * @default 0
+             */
+            hidden_count: number;
             /** Overrides */
             overrides: components["schemas"]["UsageOverride"][];
             /** Playlists */
@@ -3188,6 +3208,19 @@ export interface components {
             name: {
                 [key: string]: string;
             };
+        };
+        /** NodeRef */
+        NodeRef: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "organization" | "site" | "group";
         };
         /** OffSlot */
         OffSlot: {
@@ -3598,6 +3631,7 @@ export interface components {
             description?: string | null;
             /** Name */
             name: string;
+            owner?: components["schemas"]["NodeRef"] | null;
         };
         /** PlaylistDetailOut */
         PlaylistDetailOut: {
@@ -3623,6 +3657,7 @@ export interface components {
             items: components["schemas"]["ItemOut"][];
             /** Name */
             name: string;
+            owner?: components["schemas"]["NodeRef"] | null;
             /** Tags */
             tags: string[];
             /**
@@ -3653,6 +3688,7 @@ export interface components {
             item_count: number;
             /** Name */
             name: string;
+            owner?: components["schemas"]["NodeRef"] | null;
             /** Tags */
             tags: string[];
             /**
@@ -3676,11 +3712,17 @@ export interface components {
             expires_at?: string | null;
             /** Name */
             name?: string | null;
+            owner?: components["schemas"]["NodeRef"] | null;
             /** Tags */
             tags?: string[] | null;
         };
         /** PlaylistUsageOut */
         PlaylistUsageOut: {
+            /**
+             * Hidden Count
+             * @default 0
+             */
+            hidden_count: number;
             /** Overrides */
             overrides: components["schemas"]["UsageOverride"][];
             /** Schedules */
@@ -4741,7 +4783,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                level: "organization" | "site" | "group" | "screen";
+                level: string;
                 target_id: string;
                 namespace: string;
             };
@@ -4774,7 +4816,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                level: "organization" | "site" | "group" | "screen";
+                level: string;
                 target_id: string;
                 namespace: string;
                 key: string;
@@ -4812,7 +4854,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                level: "organization" | "site" | "group" | "screen";
+                level: string;
                 target_id: string;
                 namespace: string;
                 key: string;

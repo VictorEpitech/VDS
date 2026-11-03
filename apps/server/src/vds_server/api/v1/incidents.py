@@ -13,8 +13,10 @@ from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
 from vds_server.core.runtime import Runtime
 from vds_server.db.models_power import Incident
+from vds_server.diffusion.scope import PerimeterScope
 from vds_server.supervision import incidents as inc
 from vds_server.supervision.schemas import IncidentOut
+from vds_server.supervision.visibility import incident_filter
 
 
 async def _out(session: AsyncSession, row: Incident) -> IncidentOut:
@@ -46,14 +48,18 @@ def build_router(rt: Runtime) -> APIRouter:
     @router.get("", response_model=list[IncidentOut])
     async def list_incidents(
         session: Session,
-        _: Reader,
+        actor: Reader,
         state: Literal["open", "resolved", "all"] = "open",
         kind: Annotated[str | None, Query(max_length=80)] = None,
         site_id: UUID | None = None,
         limit: Annotated[int, Query(ge=1, le=200)] = 50,
         offset: Annotated[int, Query(ge=0)] = 0,
     ) -> list[IncidentOut]:
-        stmt = select(Incident).order_by(Incident.opened_at.desc(), Incident.id)
+        stmt = (
+            select(Incident)
+            .where(incident_filter(actor, PerimeterScope(session)))
+            .order_by(Incident.opened_at.desc(), Incident.id)
+        )
         if state == "open":
             stmt = stmt.where(Incident.resolved_at.is_(None))
         elif state == "resolved":
@@ -66,8 +72,12 @@ def build_router(rt: Runtime) -> APIRouter:
         return [await _out(session, r) for r in rows]
 
     @router.get("/{incident_id}", response_model=IncidentOut)
-    async def get_incident(incident_id: UUID, session: Session, _: Reader) -> IncidentOut:
-        row = await session.get(Incident, incident_id)
+    async def get_incident(incident_id: UUID, session: Session, actor: Reader) -> IncidentOut:
+        row = await session.scalar(
+            select(Incident).where(
+                Incident.id == incident_id, incident_filter(actor, PerimeterScope(session))
+            )
+        )
         if row is None:
             raise ApiError("incidents.not_found", 404)
         return await _out(session, row)

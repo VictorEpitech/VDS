@@ -16,13 +16,21 @@ from vds_server.config.schemas import CORE_NAMESPACE, ConfigSchemaProvider
 from vds_server.config.service import ConfigService
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
+from vds_server.core.perimeter import Node, node_of_owner, owner_ref
 from vds_server.db.models import Media, Organization, Playlist, Schedule
 from vds_server.db.models_layout import Layout, LayoutZone
 from vds_server.db.models_override import PlaybackOverride
 from vds_server.diffusion import layout_schemas as ls
 from vds_server.diffusion import schemas as sc
 from vds_server.diffusion.base import ServiceBase
-from vds_server.diffusion.scope import ContentScope, OrganizationScope
+from vds_server.diffusion.ownership import (
+    check_owner_change,
+    check_reference,
+    owner_for_create,
+    require_ownable,
+    resolve_node,
+)
+from vds_server.diffusion.scope import ContentScope, PerimeterScope
 from vds_server.diffusion.tags import escape_like, normalize_tag, normalize_tags
 from vds_server.diffusion.targets import TARGET_MODELS, screens_of
 
@@ -79,7 +87,7 @@ class LayoutService(ServiceBase):
     ) -> None:
         super().__init__(session, bus, actor)
         self._schemas = schemas
-        self._scope: ContentScope = scope or OrganizationScope()
+        self._scope: ContentScope = scope or PerimeterScope(session)
 
     # --- lecture ---------------------------------------------------------------------
     async def _org_id(self) -> UUID:
@@ -130,6 +138,7 @@ class LayoutService(ServiceBase):
             revision=row.revision,
             created_at=row.created_at,
             updated_at=row.updated_at,
+            owner=owner_ref(row.owner_site_id, row.owner_group_id),
         )
 
     async def get(self, layout_id: UUID) -> ls.LayoutOut:
@@ -203,6 +212,7 @@ class LayoutService(ServiceBase):
                     usage_count=usage[r.id],
                     zones=[zone_out(z) for z in zones[r.id]],
                     updated_at=r.updated_at,
+                    owner=owner_ref(r.owner_site_id, r.owner_group_id),
                 )
                 for r in rows
             ],
@@ -210,7 +220,9 @@ class LayoutService(ServiceBase):
         )
 
     # --- validation ------------------------------------------------------------------
-    async def _validate(self, body: ls.LayoutIn, org_id: UUID) -> None:
+    async def _validate(
+        self, body: ls.LayoutIn, org_id: UUID, holder: Node | None
+    ) -> None:
         max_zones = await self._max_zones(org_id)
         if len(body.zones) > max_zones:
             raise ApiError("layout.too_many_zones", 422, max=max_zones)
@@ -224,19 +236,22 @@ class LayoutService(ServiceBase):
                 raise ApiError("layout.zone_out_of_bounds", 422, zone=z.key)
         playlists = {z.playlist_id for z in body.zones if z.playlist_id is not None}
         if playlists:
-            found = set(
-                (
+            found = {
+                pid: node_of_owner(site, group)
+                for pid, site, group in (
                     await self._s.execute(
-                        select(Playlist.id).where(
+                        select(Playlist.id, Playlist.owner_site_id, Playlist.owner_group_id).where(
                             Playlist.id.in_(playlists),
                             Playlist.owner_override_id.is_(None),
                             self._scope.playlist_filter(self._actor),
                         )
                     )
-                ).scalars()
-            )
-            if found != playlists:
+                ).all()
+            }
+            if set(found) != playlists:
                 raise ApiError("layout.playlist_not_found", 422)
+            for owner in found.values():
+                await check_reference(self._s, owner, holder)  # J-D5
         if body.background_media_id is not None:
             media = await self._s.scalar(
                 select(Media).where(
@@ -245,6 +260,9 @@ class LayoutService(ServiceBase):
             )
             if media is None:
                 raise ApiError("layout.media_not_found", 422)
+            await check_reference(
+                self._s, node_of_owner(media.owner_site_id, media.owner_group_id), holder
+            )  # J-D5
             if media.kind != "image":
                 raise ApiError("layout.background_not_image", 422)
         normalize_tags(body.tags)
@@ -279,8 +297,14 @@ class LayoutService(ServiceBase):
 
     async def create(self, body: ls.LayoutIn) -> ls.LayoutOut:
         org_id = await self._org_id()
-        await self._validate(body, org_id)
+        owner_site, owner_group = await owner_for_create(
+            self._s, self._scope, self._actor, given="owner" in body.model_fields_set,
+            ref=body.owner,
+        )  # fmt: skip
+        await self._validate(body, org_id, node_of_owner(owner_site, owner_group))
         row = Layout(
+            owner_site_id=owner_site,
+            owner_group_id=owner_group,
             org_id=org_id,
             name=body.name,
             orientation=body.orientation,
@@ -300,10 +324,19 @@ class LayoutService(ServiceBase):
         org_id = await self._org_id()
         row = await self._row(layout_id, lock=True)
         if not await self._scope.can_write_layout(self._actor, layout_id):
-            raise ApiError("layout.forbidden", 403)
+            raise ApiError("scope.forbidden", 403)
         if row.revision != revision:
             raise ApiError("layout.revision_conflict", 412, revision=row.revision)
-        await self._validate(body, org_id)
+        holder = node_of_owner(row.owner_site_id, row.owner_group_id)
+        if "owner" in body.model_fields_set:
+            node, (site_id, group_id) = await resolve_node(self._s, body.owner)
+            require_ownable(self._scope, self._actor, node)
+            if node != holder:
+                await check_owner_change(self._s, "layout", row.id, node)
+                holder = node
+                row.owner_site_id, row.owner_group_id = site_id, group_id
+                self._audit("layout.owner_changed", "layout", row.id, "layout_id", emit=False)
+        await self._validate(body, org_id, holder)
         row.name = body.name
         row.orientation = body.orientation
         row.background_color = body.background_color
@@ -322,7 +355,7 @@ class LayoutService(ServiceBase):
     async def duplicate(self, layout_id: UUID) -> ls.LayoutOut:
         src = await self._row(layout_id)
         if not await self._scope.can_write_layout(self._actor, layout_id):
-            raise ApiError("layout.forbidden", 403)
+            raise ApiError("scope.forbidden", 403)
         zones = (await self._zones([src.id]))[src.id]
         existing = set(
             (await self._s.scalars(select(Layout.name).where(Layout.org_id == src.org_id))).all()
@@ -340,6 +373,8 @@ class LayoutService(ServiceBase):
             background_media_id=src.background_media_id,
             tags=list(src.tags or []),
             created_by=self._actor.user_id,
+            owner_site_id=src.owner_site_id,
+            owner_group_id=src.owner_group_id,
         )
         self._s.add(row)
         await self._flush("layout.name_conflict")
@@ -368,7 +403,7 @@ class LayoutService(ServiceBase):
     async def delete(self, layout_id: UUID) -> None:
         row = await self._row(layout_id, lock=True)
         if not await self._scope.can_write_layout(self._actor, layout_id):
-            raise ApiError("layout.forbidden", 403)
+            raise ApiError("scope.forbidden", 403)
         schedules = (
             await self._s.scalars(select(Schedule.id).where(Schedule.layout_id == layout_id))
         ).all()
@@ -393,11 +428,32 @@ class LayoutService(ServiceBase):
         layout = await self._row(layout_id)
         now = datetime.now(UTC)
         zone_keys = [z.key for z in (await self._zones([layout.id]))[layout.id]]
+        sched_vis = self._scope.target_filter(
+            self._actor, Schedule.target_type, Schedule.target_id, "read"
+        )
+        ov_vis = self._scope.target_filter(
+            self._actor, PlaybackOverride.target_type, PlaybackOverride.target_id, "read"
+        )
+        hidden = int(
+            await self._s.scalar(
+                select(func.count())
+                .select_from(Schedule)
+                .where(Schedule.layout_id == layout_id, ~sched_vis)
+            )
+            or 0
+        ) + int(
+            await self._s.scalar(
+                select(func.count())
+                .select_from(PlaybackOverride)
+                .where(PlaybackOverride.layout_id == layout_id, ~ov_vis)
+            )
+            or 0
+        )
         sched = list(
             (
                 await self._s.execute(
                     select(Schedule)
-                    .where(Schedule.layout_id == layout_id)
+                    .where(Schedule.layout_id == layout_id, sched_vis)
                     .order_by(Schedule.name, Schedule.id)
                 )
             ).scalars()
@@ -429,7 +485,7 @@ class LayoutService(ServiceBase):
             (
                 await self._s.execute(
                     select(PlaybackOverride)
-                    .where(PlaybackOverride.layout_id == layout_id)
+                    .where(PlaybackOverride.layout_id == layout_id, ov_vis)
                     .order_by(PlaybackOverride.ends_at.desc(), PlaybackOverride.id)
                 )
             ).scalars()
@@ -440,6 +496,7 @@ class LayoutService(ServiceBase):
                     select(PlaybackOverride)
                     .where(
                         live,
+                        ov_vis,
                         PlaybackOverride.zone_ids.is_not(None),
                         or_(*(PlaybackOverride.zone_ids.contains([k]) for k in zone_keys)),
                     )
@@ -471,6 +528,7 @@ class LayoutService(ServiceBase):
             screens_orientation_mismatch=sum(
                 1 for s in screens.values() if s.orientation != layout.orientation
             ),
+            hidden_count=hidden,
         )
 
 

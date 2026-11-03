@@ -20,6 +20,7 @@ from vds_server.db.models_power import (
 )
 from vds_server.diffusion.base import ServiceBase
 from vds_server.diffusion.schemas import RuleIn, RuleOut, to_hhmm, to_minutes
+from vds_server.diffusion.scope import PerimeterScope
 from vds_server.diffusion.targets import TARGET_MODELS
 from vds_server.power import schemas as sc
 
@@ -27,6 +28,23 @@ MANUAL_MODULE = "core"
 
 
 class PowerService(ServiceBase):
+    @property
+    def _scope(self) -> PerimeterScope:
+        return PerimeterScope(self._s)
+
+    def _require_shared(self) -> None:
+        """Les plans sont des objets partagés (organisation) : modifiables par `unrestricted`."""
+        if not self._actor.perimeter.unrestricted:
+            raise ApiError("scope.shared_forbidden", 403)
+
+    async def _require_target(self, level: str, scope_id: UUID | None) -> None:
+        if scope_id is None:
+            if not self._actor.perimeter.unrestricted:
+                raise ApiError("scope.forbidden", 403)
+            return
+        if not await self._scope.can_target(self._actor, level, scope_id):
+            raise ApiError("scope.forbidden", 403)
+
     def _plan_changed(self, level: str, scope_id: UUID | None) -> None:
         payload = {"scope_level": level}
         if scope_id is not None:
@@ -82,6 +100,7 @@ class PowerService(ServiceBase):
         return await self._plan_out(await self._plan(plan_id))
 
     async def create_plan(self, body: sc.PlanCreate) -> sc.PlanOut:
+        self._require_shared()
         row = PowerPlan(
             name=body.name,
             description=body.description,
@@ -96,6 +115,7 @@ class PowerService(ServiceBase):
         return await self.get_plan(row.id)
 
     async def update_plan(self, plan_id: UUID, body: sc.PlanPatch) -> sc.PlanOut:
+        self._require_shared()
         row = await self._plan(plan_id)
         fields = body.model_fields_set
         if body.name is not None:
@@ -121,6 +141,7 @@ class PowerService(ServiceBase):
         return await self.get_plan(row.id)
 
     async def delete_plan(self, plan_id: UUID) -> None:
+        self._require_shared()
         row = await self._plan(plan_id)
         used = await self._s.execute(
             select(func.count())
@@ -155,9 +176,18 @@ class PowerService(ServiceBase):
         )
 
     async def _exception(self, exception_id: UUID) -> PowerException:
-        row = await self._s.get(PowerException, exception_id)
+        row = (
+            await self._s.execute(
+                select(PowerException).where(
+                    PowerException.id == exception_id,
+                    self._scope.target_filter(
+                        self._actor, PowerException.scope_level, PowerException.scope_id, "read"
+                    ),
+                )
+            )
+        ).scalar_one_or_none()
         if row is None:
-            raise ApiError("power.exception_not_found", 404)
+            raise ApiError("power.exception_not_found", 404)  # hors périmètre : 404
         return row
 
     async def _check_scope(self, level: str, scope_id: UUID | None) -> None:
@@ -180,8 +210,14 @@ class PowerService(ServiceBase):
         on_or_after: date | None,
         on_or_before: date | None,
     ) -> list[sc.ExceptionOut]:
-        q = select(PowerException).order_by(
-            PowerException.starts_on, PowerException.created_at, PowerException.id
+        q = (
+            select(PowerException)
+            .where(
+                self._scope.target_filter(
+                    self._actor, PowerException.scope_level, PowerException.scope_id, "read"
+                )
+            )
+            .order_by(PowerException.starts_on, PowerException.created_at, PowerException.id)
         )
         if scope_level:
             q = q.where(PowerException.scope_level == scope_level)
@@ -198,6 +234,7 @@ class PowerService(ServiceBase):
 
     async def create_exception(self, body: sc.ExceptionCreate) -> sc.ExceptionOut:
         await self._check_scope(body.scope_level, body.scope_id)
+        await self._require_target(body.scope_level, body.scope_id)
         row = PowerException(created_by=self._actor.user_id, updated_by=self._actor.user_id)
         self._fill(row, body)
         self._s.add(row)
@@ -213,7 +250,9 @@ class PowerService(ServiceBase):
         self, exception_id: UUID, body: sc.ExceptionReplace
     ) -> sc.ExceptionOut:
         row = await self._exception(exception_id)
+        await self._require_target(row.scope_level, row.scope_id)
         await self._check_scope(body.scope_level, body.scope_id)
+        await self._require_target(body.scope_level, body.scope_id)
         self._plan_changed(row.scope_level, row.scope_id)  # ancienne portée aussi
         self._fill(row, body)
         row.updated_at = datetime.now(UTC)
@@ -228,6 +267,7 @@ class PowerService(ServiceBase):
     async def delete_exception(self, exception_id: UUID) -> None:
         row = await self._exception(exception_id)
         level, scope = row.scope_level, row.scope_id
+        await self._require_target(level, scope)
         await self._s.delete(row)
         self._audit(
             "power.exception.deleted", "power_exception", exception_id, "exception_id", emit=False

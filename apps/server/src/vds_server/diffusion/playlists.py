@@ -13,6 +13,7 @@ from vds_sdk import EventBus
 from vds_server.config.schemas import ConfigSchemaProvider
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
+from vds_server.core.perimeter import node_of_owner, owner_ref
 from vds_server.db.models import Media, Playlist, PlaylistItem, PlaylistItemMedia, Schedule
 from vds_server.db.models_layout import LayoutZone
 from vds_server.diffusion import schemas as sc
@@ -25,7 +26,14 @@ from vds_server.diffusion.expiry import (
     state_clause,
 )
 from vds_server.diffusion.layouts import touch_layouts
-from vds_server.diffusion.scope import ContentScope, OrganizationScope
+from vds_server.diffusion.ownership import (
+    check_owner_change,
+    check_reference,
+    owner_for_create,
+    require_ownable,
+    resolve_node,
+)
+from vds_server.diffusion.scope import ContentScope, PerimeterScope
 from vds_server.diffusion.tags import AUTOCOMPLETE_MAX, escape_like, normalize_tag, normalize_tags
 
 ItemSchemaLookup = Callable[[str], dict[str, Any] | None]
@@ -67,6 +75,7 @@ def to_out(p: Playlist, item_count: int, now: datetime) -> sc.PlaylistOut:
         expires_at=p.expires_at,
         expired=is_expired(p, now),
         tags=list(p.tags or []),
+        owner=owner_ref(p.owner_site_id, p.owner_group_id),
     )
 
 
@@ -83,7 +92,7 @@ class PlaylistService(ServiceBase):
         super().__init__(session, bus, actor)
         self._item_schema = item_schema
         self._schemas = schemas
-        self._scope: ContentScope = scope or OrganizationScope()
+        self._scope: ContentScope = scope or PerimeterScope(session)
 
     # --- playlists -------------------------------------------------------
     async def list_page(
@@ -154,13 +163,19 @@ class PlaylistService(ServiceBase):
     async def _writable(self, playlist_id: UUID) -> Playlist:
         playlist = await self.get(playlist_id)
         if not await self._scope.can_write_playlist(self._actor, playlist_id):
-            raise ApiError("playlist.forbidden", 403)
+            raise ApiError("scope.forbidden", 403)
         return playlist
 
     async def get(self, playlist_id: UUID) -> Playlist:
-        row = await self._s.get(Playlist, playlist_id)
+        row = (
+            await self._s.execute(
+                select(Playlist).where(
+                    Playlist.id == playlist_id, self._scope.playlist_filter(self._actor)
+                )
+            )
+        ).scalar_one_or_none()
         if row is None:
-            raise ApiError("playlist.not_found", 404)
+            raise ApiError("playlist.not_found", 404)  # hors périmètre : 404 (J-D6)
         return row
 
     async def items(self, playlist_id: UUID) -> list[PlaylistItem]:
@@ -202,11 +217,17 @@ class PlaylistService(ServiceBase):
         )
 
     async def create(self, body: sc.PlaylistCreate) -> Playlist:
+        owner_site, owner_group = await owner_for_create(
+            self._s, self._scope, self._actor, given="owner" in body.model_fields_set,
+            ref=body.owner,
+        )  # fmt: skip
         playlist = Playlist(
             name=body.name,
             description=body.description,
             created_by=self._actor.user_id,
             updated_by=self._actor.user_id,
+            owner_site_id=owner_site,
+            owner_group_id=owner_group,
         )
         self._s.add(playlist)
         await self._s.flush()
@@ -220,6 +241,15 @@ class PlaylistService(ServiceBase):
 
     async def update(self, playlist_id: UUID, body: sc.PlaylistPatch) -> Playlist:
         playlist = await self._writable(playlist_id)
+        if "owner" in body.model_fields_set:
+            node, (site_id, group_id) = await resolve_node(self._s, body.owner)
+            require_ownable(self._scope, self._actor, node)
+            if node != node_of_owner(playlist.owner_site_id, playlist.owner_group_id):
+                await check_owner_change(self._s, "playlist", playlist.id, node)
+                playlist.owner_site_id, playlist.owner_group_id = site_id, group_id
+                self._audit(
+                    "playlist.owner_changed", "playlist", playlist.id, "playlist_id", emit=False
+                )
         if body.name is not None:
             playlist.name = body.name
         if "description" in body.model_fields_set:
@@ -274,7 +304,11 @@ class PlaylistService(ServiceBase):
 
     # --- éléments --------------------------------------------------------
     async def _validate_props(
-        self, content_type: str, props: dict[str, Any], keep: frozenset[UUID] = frozenset()
+        self,
+        playlist: Playlist,
+        content_type: str,
+        props: dict[str, Any],
+        keep: frozenset[UUID] = frozenset(),
     ) -> list[UUID]:
         """`keep` : médias déjà présents dans l'élément (un média expiré y reste toléré)."""
         schema = self._item_schema(content_type)
@@ -293,9 +327,20 @@ class PlaylistService(ServiceBase):
             )
         ids: list[UUID] = []
         for name, media_id, kind in media_refs(schema, props):
-            media = await self._s.get(Media, media_id)
+            media = (
+                await self._s.execute(
+                    select(Media).where(
+                        Media.id == media_id, self._scope.media_filter(self._actor)
+                    )
+                )
+            ).scalar_one_or_none()
             if media is None:
                 raise ApiError("playlist.media_not_found", 422, field=name)
+            await check_reference(
+                self._s,
+                node_of_owner(media.owner_site_id, media.owner_group_id),
+                node_of_owner(playlist.owner_site_id, playlist.owner_group_id),
+            )  # J-D5
             if media.kind != kind:
                 raise ApiError("playlist.media_kind_mismatch", 422, field=name, expected=kind)
             if media_id not in keep and is_expired(media, datetime.now(UTC)):
@@ -334,7 +379,9 @@ class PlaylistService(ServiceBase):
     ) -> PlaylistItem:
         """Ajoute un élément (validé) en fin de playlist sans commit ni audit : l'appelant porte
         la transaction (forçage de contenu isolé)."""
-        media_ids = await self._validate_props(content_type, props)
+        media_ids = await self._validate_props(
+            await self.get(playlist_id), content_type, props
+        )
         position = len(await self.items(playlist_id))
         item = PlaylistItem(
             playlist_id=playlist_id,
@@ -351,7 +398,7 @@ class PlaylistService(ServiceBase):
 
     async def add_item(self, playlist_id: UUID, body: sc.ItemCreate) -> sc.ItemOut:
         playlist = await self._writable(playlist_id)
-        media_ids = await self._validate_props(body.content_type, body.props)
+        media_ids = await self._validate_props(playlist, body.content_type, body.props)
         items = await self.items(playlist_id)
         item = PlaylistItem(
             playlist_id=playlist_id,
@@ -384,7 +431,9 @@ class PlaylistService(ServiceBase):
         item = await self._item(playlist_id, item_id)
         if body.props is not None:
             current = frozenset((await self.media_ids([item_id]))[item_id])
-            media_ids = await self._validate_props(item.content_type, body.props, current)
+            media_ids = await self._validate_props(
+                playlist, item.content_type, body.props, current
+            )
             item.props = body.props
             await self._set_media(item.id, media_ids)
         if "duration_ms" in body.model_fields_set:

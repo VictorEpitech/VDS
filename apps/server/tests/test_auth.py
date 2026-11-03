@@ -99,13 +99,18 @@ async def admin(anon: AsyncClient, p: str) -> AsyncClient:
 
 
 @pytest.fixture
-async def editor(app: FastAPI, admin: AsyncClient, p: str) -> AsyncIterator[AsyncClient]:
+async def editor(
+    app: FastAPI, admin: AsyncClient, p: str, migrated_db_url: str
+) -> AsyncIterator[AsyncClient]:
     r = await admin.post(
         f"{p}/api/v1/m/auth.local/users",
         json={"email": "ed@vds.test", "display_name": "Ed", "password": PASSWORD, "role": "editor"},
         headers=SAME,
     )
     assert r.status_code == 201, r.text
+    # un nouvel éditeur n'a aucun périmètre (J-D12) ; ce fixture reproduit l'éditeur « existant »
+    # de la migration 0018 : nœud organisation, comportement V1 inchangé.
+    await grant_org_scope(migrated_db_url, "ed@vds.test")
     async with new_client(app) as c:
         r = await c.post(
             f"{p}/api/v1/m/auth.local/login",
@@ -120,6 +125,20 @@ async def editor(app: FastAPI, admin: AsyncClient, p: str) -> AsyncIterator[Asyn
         )
         assert r.status_code == 204, r.text
         yield c
+
+
+async def grant_org_scope(url: str, email: str) -> None:
+    engine = create_async_engine(url, poolclass=pool.NullPool)
+    async with engine.begin() as c:
+        await c.execute(
+            text(
+                "INSERT INTO user_scope (user_id, organization_id) "
+                "SELECT u.id, o.id FROM user_account u CROSS JOIN organization o "
+                "WHERE u.email = :e ON CONFLICT DO NOTHING"
+            ),
+            {"e": email},
+        )
+    await engine.dispose()
 
 
 async def audit_actions(migrated_db_url: str) -> list[str]:

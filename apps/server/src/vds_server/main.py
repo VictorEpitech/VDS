@@ -7,6 +7,7 @@ from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, FastAPI
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from vds_server.agents import cache as agent_cache
 from vds_server.agents import plan as agent_plan
@@ -36,8 +37,9 @@ from vds_server.config.api import build_router as build_config_router
 from vds_server.config.reader import ModuleConfigReader
 from vds_server.config.schemas import CORE_NAMESPACE
 from vds_server.core.auth import Principal
-from vds_server.core.errors import install_error_handlers
+from vds_server.core.errors import ApiError, install_error_handlers
 from vds_server.core.runtime import Runtime
+from vds_server.diffusion.scope import PerimeterScope
 from vds_server.middleware.headers import SecurityHeadersMiddleware
 from vds_server.middleware.same_origin import SameOriginMiddleware
 from vds_server.middleware.upload_limit import UploadLimitMiddleware
@@ -112,7 +114,7 @@ def create_app(
                     schemas=runtime.schemas,
                     bus=runtime.bus,
                     actor_id=_actor_id(runtime),
-                    read_guard=pipeline.require("editor"),
+                    read_guard=_config_read_guard(runtime),
                     write_guard=pipeline.require("admin"),
                 )
             )
@@ -148,6 +150,23 @@ def _actor_id(rt: Runtime) -> Callable[..., Any]:
         return p.user_id
 
     return actor_id
+
+
+def _config_read_guard(rt: Runtime) -> Callable[..., Any]:
+    """Lecture/écriture de configuration : la cible doit être dans le périmètre (404 sinon)."""
+
+    async def guard(
+        p: Annotated[Principal, Depends(rt.pipeline.require("editor"))],
+        session: Annotated[AsyncSession, Depends(rt.session)],
+        level: str,
+        target_id: UUID,
+    ) -> None:
+        if level == "organization" and not p.perimeter.empty:
+            return
+        if not await PerimeterScope(session).can_read_target(p, level, target_id):
+            raise ApiError("config.target_not_found", 404)
+
+    return guard
 
 
 def app_factory() -> FastAPI:

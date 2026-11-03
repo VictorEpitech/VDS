@@ -550,6 +550,12 @@ class _NoLayoutScope:
     async def can_write_layout(self, principal: Any, layout_id: Any) -> bool:
         return False
 
+    async def can_read_target(self, *args: Any) -> bool:
+        return True
+
+    async def can_target(self, *args: Any) -> bool:
+        return True
+
 
 async def test_layout_scope_duplicate_and_existence(
     admin: AsyncClient, p: str, monkeypatch: pytest.MonkeyPatch
@@ -560,9 +566,9 @@ async def test_layout_scope_duplicate_and_existence(
     vis = await mk_layout(admin, p, "Visible")
     scope = _NoLayoutScope()
     for mod in ("diffusion.layouts", "diffusion.schedules", "overrides.service"):
-        monkeypatch.setattr(f"vds_server.{mod}.OrganizationScope", lambda: scope)
+        monkeypatch.setattr(f"vds_server.{mod}.PerimeterScope", lambda session: scope)
     dup = await admin.post(f"{p}/api/v1/layouts/{vis['id']}/duplicate", headers=SAME)
-    assert dup.status_code == 403 and dup.json()["code"] == "layout.forbidden"
+    assert dup.status_code == 403 and dup.json()["code"] == "scope.forbidden"
     r = await sched_layout(admin, p, lay["id"], scr)
     assert r.status_code == 422 and r.json()["code"] == "schedule.layout_not_found"
     o = await ov(admin, p, target_type="screen", target_id=scr, layout_id=lay["id"])

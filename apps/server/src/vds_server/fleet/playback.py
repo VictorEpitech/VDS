@@ -6,7 +6,7 @@ from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import ColumnElement, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vds_server.db.models import Playlist, Schedule, Screen, Site
@@ -40,6 +40,7 @@ async def fleet_playback(
     now: datetime,
     timezone_of: TimezoneOf,
     respect_of: RespectOf | None = None,
+    screen_filter: ColumnElement[bool] | None = None,
 ) -> list[ScreenPlaybackOut]:
     q = (
         select(Screen)
@@ -49,6 +50,8 @@ async def fleet_playback(
     )
     if site_id is not None:
         q = q.where(Screen.site_id == site_id)
+    if screen_filter is not None:
+        q = q.where(screen_filter)
     out: list[ScreenPlaybackOut] = []
     for screen in (await session.execute(q)).scalars():
         tz = _zone(await timezone_of(screen.id))

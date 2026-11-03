@@ -82,6 +82,7 @@ class UserAccount(Base, Timestamps):
     __table_args__ = (
         UniqueConstraint("auth_provider", "external_id"),
         CheckConstraint("role IN ('admin','editor')", name="role"),
+        CheckConstraint("role_source IN ('vds','provider')", name="role_source"),
         Index("ix_user_account_email", "email"),
     )
 
@@ -94,6 +95,42 @@ class UserAccount(Base, Timestamps):
     locale: Mapped[str | None] = mapped_column(Text)
     is_active: Mapped[bool] = mapped_column(server_default=text("true"))
     last_seen_at: Mapped[datetime | None] = tstz(nullable=True, now=False)
+    # lot J (0018) : 'provider' = le rôle est fourni par l'auth-provider (non modifiable dans VDS)
+    role_source: Mapped[str] = mapped_column(Text, server_default="vds")
+
+
+class UserScope(Base):
+    """Nœud de périmètre d'un éditeur (lot J, 0018) : organisation, site ou groupe."""
+
+    __tablename__ = "user_scope"
+    __table_args__ = (
+        CheckConstraint("num_nonnulls(organization_id, site_id, group_id) = 1", name="one_scope"),
+        UniqueConstraint("user_id", "scope_id"),
+        Index("ix_user_scope_user_id", "user_id"),
+    )
+
+    id: Mapped[UUID] = uuid_pk()
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("user_account.id", ondelete="CASCADE"))
+    organization_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("organization.id", ondelete="CASCADE")
+    )
+    site_id: Mapped[UUID | None] = mapped_column(ForeignKey("site.id", ondelete="CASCADE"))
+    group_id: Mapped[UUID | None] = mapped_column(ForeignKey("screen_group.id", ondelete="CASCADE"))
+    scope_type: Mapped[str] = mapped_column(
+        Text,
+        Computed(
+            "CASE WHEN group_id IS NOT NULL THEN 'group' "
+            "WHEN site_id IS NOT NULL THEN 'site' ELSE 'organization' END",
+            persisted=True,
+        ),
+    )
+    scope_id: Mapped[UUID] = mapped_column(
+        Computed("COALESCE(group_id, site_id, organization_id)", persisted=True)
+    )
+    created_by: Mapped[UUID | None] = mapped_column(
+        ForeignKey("user_account.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime] = tstz()
 
 
 class ConfigOverride(Base, Timestamps):
@@ -284,6 +321,14 @@ class Media(Base, Timestamps):
         Index("ix_media_kind", "kind"),
         CheckConstraint("revision >= 1", name="revision"),
         CheckConstraint("cardinality(tags) <= 20", name="tags"),
+        CheckConstraint("owner_group_id IS NULL OR owner_site_id IS NOT NULL", name="owner"),
+        ForeignKeyConstraint(
+            ["owner_group_id", "owner_site_id"],
+            ["screen_group.id", "screen_group.site_id"],
+            name="fk_media_owner_group",
+            ondelete="SET NULL (owner_group_id)",
+        ),
+        Index("ix_media_owner", "owner_site_id", "owner_group_id"),
         Index("ix_media_tags", "tags", postgresql_using="gin"),
         Index(
             "ix_media_expires_at",
@@ -320,6 +365,9 @@ class Media(Base, Timestamps):
     expired_at: Mapped[datetime | None] = tstz(nullable=True, now=False)
     revision: Mapped[int] = mapped_column(Integer, server_default="1")
     tags: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default=text("'{}'"))
+    # lot J (0018) : propriétaire-nœud ; les deux NULL = organisation (partagé)
+    owner_site_id: Mapped[UUID | None] = mapped_column(ForeignKey("site.id", ondelete="RESTRICT"))
+    owner_group_id: Mapped[UUID | None] = mapped_column()
 
 
 class MediaVariant(Base, Timestamps):
@@ -344,6 +392,14 @@ class Playlist(Base, Timestamps):
         CheckConstraint(
             "owner_override_id IS NULL OR expires_at IS NULL", name="override_no_expiry"
         ),
+        CheckConstraint("owner_group_id IS NULL OR owner_site_id IS NOT NULL", name="owner"),
+        ForeignKeyConstraint(
+            ["owner_group_id", "owner_site_id"],
+            ["screen_group.id", "screen_group.site_id"],
+            name="fk_playlist_owner_group",
+            ondelete="SET NULL (owner_group_id)",
+        ),
+        Index("ix_playlist_owner", "owner_site_id", "owner_group_id"),
         Index("ix_playlist_tags", "tags", postgresql_using="gin"),
         Index(
             "ix_playlist_expires_at",
@@ -374,6 +430,9 @@ class Playlist(Base, Timestamps):
     expires_at: Mapped[datetime | None] = tstz(nullable=True, now=False)
     expired_at: Mapped[datetime | None] = tstz(nullable=True, now=False)
     tags: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default=text("'{}'"))
+    # lot J (0018) : propriétaire-nœud ; les deux NULL = organisation (partagé)
+    owner_site_id: Mapped[UUID | None] = mapped_column(ForeignKey("site.id", ondelete="RESTRICT"))
+    owner_group_id: Mapped[UUID | None] = mapped_column()
 
 
 class StorageTombstone(Base):

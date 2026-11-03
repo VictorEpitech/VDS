@@ -9,8 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from vds_server.config.api import OriginOut
 from vds_server.core.auth import Principal
+from vds_server.core.errors import ApiError
 from vds_server.core.runtime import Runtime
 from vds_server.diffusion.schemas import TargetType
+from vds_server.diffusion.scope import PerimeterScope
 from vds_server.power import resolver
 from vds_server.power import schemas as sc
 from vds_server.power.plan import PowerPlanBuilder
@@ -29,8 +31,12 @@ def build_router(rt: Runtime) -> APIRouter:
     def admin_svc(session: Session, actor: Admin) -> PowerService:
         return PowerService(session, rt.bus, actor)
 
-    def builder(session: Session, _: Editor) -> PowerPlanBuilder:
+    def builder(session: Session, actor: Editor) -> PowerPlanBuilder:
         return PowerPlanBuilder(session, rt.schemas)
+
+    async def visible_screen(session: Session, actor: Editor, screen_id: UUID) -> None:
+        if not await PerimeterScope(session).can_read_target(actor, "screen", screen_id):
+            raise ApiError("errors.screen_not_found", 404)
 
     Svc = Annotated[PowerService, Depends(svc)]
     AdminSvc = Annotated[PowerService, Depends(admin_svc)]
@@ -127,8 +133,13 @@ def build_router(rt: Runtime) -> APIRouter:
     # --- plan résolu d'un écran (le rattachement passe par /config, clés power.*) ---
     @router.get("/screens/{screen_id}", response_model=sc.ScreenPowerOut)
     async def screen_power(
-        screen_id: UUID, b: Builder, at: Annotated[datetime | None, Query()] = None
+        screen_id: UUID,
+        b: Builder,
+        session: Session,
+        actor: Editor,
+        at: Annotated[datetime | None, Query()] = None,
     ) -> sc.ScreenPowerOut:
+        await visible_screen(session, actor, screen_id)
         r = await b.for_screen(screen_id, at)
         wire = resolver.to_wire(r.slots)
         return sc.ScreenPowerOut(

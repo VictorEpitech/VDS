@@ -32,6 +32,7 @@ async def upsert_identity(
             email=identity.email,
             display_name=identity.display_name,
             role=new_role,
+            role_source="provider" if identity.role else "vds",
         )
         .on_conflict_do_nothing(index_elements=["auth_provider", "external_id"])
         .returning(UserAccount.id)
@@ -60,6 +61,8 @@ async def upsert_identity(
         return row, True
     if not row.is_active:
         raise AccessDenied("auth.account_inactive")
+    if identity.role and row.role_source != "provider":
+        row.role_source = "provider"
     if identity.role and row.role != identity.role:
         audit.record(
             session,

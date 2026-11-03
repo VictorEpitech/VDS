@@ -1,7 +1,8 @@
 """Envoi des octets d'un média et service `<base>/media/<id>/<variant>`."""
 
 import re
-from typing import Annotated
+from typing import Annotated, Literal
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, Header, Request, Response, UploadFile
 from fastapi.responses import StreamingResponse
@@ -13,6 +14,7 @@ from vds_server.config.reader import ModuleConfigReader
 from vds_server.config.schemas import CORE_NAMESPACE
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
+from vds_server.core.perimeter import NodeRef
 from vds_server.core.runtime import Runtime
 from vds_server.db.models import MediaVariant
 from vds_server.diffusion import schemas as sc
@@ -51,7 +53,16 @@ def build_router(rt: Runtime) -> APIRouter:
         file: Annotated[UploadFile, File()],
         title: Annotated[str | None, Form(max_length=120)] = None,
         sha256: Annotated[str | None, Form(max_length=64)] = None,
+        owner_type: Annotated[Literal["organization", "site", "group"] | None, Form()] = None,
+        owner_id: Annotated[UUID | None, Form()] = None,
     ) -> sc.MediaOut:
+        if owner_type is not None and owner_type != "organization" and owner_id is None:
+            raise ApiError("scope.node_not_found", 404)
+        owner = (
+            None
+            if owner_type is None or owner_type == "organization" or owner_id is None
+            else NodeRef(type=owner_type, id=owner_id)
+        )
         cfg = await ModuleConfigReader(rt.maker, rt.schemas, CORE_NAMESPACE).resolve()
         max_bytes = int(cfg.get("media_max_upload_mb", 2048)) * 1024 * 1024
         svc = MediaUploadService(
@@ -64,6 +75,8 @@ def build_router(rt: Runtime) -> APIRouter:
                 declared_mime=file.content_type,
                 title=title,
                 expected_sha256=sha256,
+                owner_given=owner_type is not None,
+                owner=owner,
             )
         )
         return await MediaService(session, rt.bus, actor, rt.schemas).out(media)
@@ -102,7 +115,7 @@ def build_router(rt: Runtime) -> APIRouter:
     async def serve_media(
         request: Request, media_id: str, variant: str, session: Session, backend: Storage
     ) -> Response:
-        await rt.media_access.authorize(request)
+        human = await rt.media_access.authorize(request)
         if not VARIANT_RE.match(variant):
             raise ApiError("media.not_found", 404)
         row = (
@@ -114,6 +127,10 @@ def build_router(rt: Runtime) -> APIRouter:
         ).scalar_one_or_none()
         if row is None:
             raise ApiError("media.not_found", 404)
+        if human is not None and not await MediaService(
+            session, rt.bus, human, rt.schemas
+        ).visible(row.media_id):
+            raise ApiError("media.not_found", 404)  # hors périmètre : pas de révélation
         etag = f'"{row.sha256}"' if row.sha256 else None
         headers = {
             "Accept-Ranges": "bytes",

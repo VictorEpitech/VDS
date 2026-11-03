@@ -8,8 +8,10 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from vds_server.core.auth import Principal
 from vds_server.db.models import Screen
 from vds_server.db.models_power import Incident, SiteAgent
+from vds_server.diffusion.scope import PerimeterScope
 from vds_server.fleet.health import evaluate
 from vds_server.fleet.schemas import (
     AgentsSummaryOut,
@@ -19,14 +21,22 @@ from vds_server.fleet.schemas import (
     ToHandleOut,
 )
 from vds_server.supervision.status import ScreenStatus, Thresholds
+from vds_server.supervision.visibility import incident_filter
 
 REASONS = ("offline", "revoked", "power_failed")
 
 
 async def summary(
-    session: AsyncSession, site_id: UUID | None, now: datetime, th: Thresholds
+    session: AsyncSession,
+    site_id: UUID | None,
+    now: datetime,
+    th: Thresholds,
+    actor: Principal | None = None,
 ) -> FleetSummaryOut:
+    scope = PerimeterScope(session)
     q = select(Screen).where(Screen.archived_at.is_(None))
+    if actor is not None:
+        q = q.where(scope.screen_filter(actor))
     if site_id:
         q = q.where(Screen.site_id == site_id)
     health = await evaluate(session, list((await session.execute(q)).scalars()), now, th)
@@ -34,11 +44,15 @@ async def summary(
     by_reason = Counter(r for h in health.values() for r in h.reasons)
 
     iq = select(Incident).where(Incident.resolved_at.is_(None))
+    if actor is not None:
+        iq = iq.where(incident_filter(actor, scope))
     if site_id:
         iq = iq.where(Incident.site_id == site_id)
     incidents = list((await session.execute(iq)).scalars())
 
     aq = select(SiteAgent).where(SiteAgent.revoked_at.is_(None))
+    if actor is not None and not actor.perimeter.unrestricted:
+        aq = aq.where(SiteAgent.site_id.in_(actor.perimeter.sites))
     if site_id:
         aq = aq.where(SiteAgent.site_id == site_id)
     agents = list((await session.execute(aq)).scalars())

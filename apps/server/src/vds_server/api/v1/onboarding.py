@@ -20,13 +20,15 @@ def build_router(rt: Runtime) -> APIRouter:
     Reader = Annotated[Principal, Depends(rt.pipeline.require("editor"))]
     Admin = Annotated[Principal, Depends(rt.pipeline.require("admin"))]
 
-    async def current(session: AsyncSession, org_id: UUID) -> OnboardingOut:
+    async def current(
+        session: AsyncSession, org_id: UUID, actor: Principal | None = None
+    ) -> OnboardingOut:
         th = Thresholds.from_config(await rt.core_config())
-        return await service.compute(session, org_id, th, datetime.now(UTC))
+        return await service.compute(session, org_id, th, datetime.now(UTC), actor)
 
     @router.get("", response_model=OnboardingOut)
-    async def get_onboarding(session: Session, _: Reader) -> OnboardingOut:
-        return await current(session, await service.organization_id(session))
+    async def get_onboarding(session: Session, actor: Reader) -> OnboardingOut:
+        return await current(session, await service.organization_id(session), actor)
 
     @router.put("/steps/{step}", response_model=OnboardingOut)
     async def put_step(

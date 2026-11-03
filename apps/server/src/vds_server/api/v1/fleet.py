@@ -5,6 +5,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from vds_sdk import ScopeRef
 
@@ -14,6 +15,7 @@ from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
 from vds_server.core.runtime import Runtime
 from vds_server.db.models import Site
+from vds_server.diffusion.scope import PerimeterScope
 from vds_server.fleet import playback, service
 from vds_server.fleet.schemas import FleetSummaryOut
 from vds_server.provisioning.apk_update import ApkUpdateService, FleetApkOut
@@ -26,25 +28,28 @@ def build_router(rt: Runtime) -> APIRouter:
     Reader = Annotated[Principal, Depends(rt.pipeline.require("editor"))]
     Admin = Annotated[Principal, Depends(rt.pipeline.require("admin"))]
 
+    async def visible_site(session: AsyncSession, actor: Principal, site_id: UUID | None) -> None:
+        if site_id is None:
+            return
+        site = await session.scalar(
+            select(Site).where(Site.id == site_id, PerimeterScope(session).site_filter(actor))
+        )
+        if site is None or site.archived_at is not None:
+            raise ApiError("site.not_found", 404)
+
     @router.get("/summary", response_model=FleetSummaryOut)
     async def fleet_summary(
-        session: Session, _: Reader, site_id: UUID | None = None
+        session: Session, actor: Reader, site_id: UUID | None = None
     ) -> FleetSummaryOut:
-        if site_id is not None:
-            site = await session.get(Site, site_id)
-            if site is None or site.archived_at is not None:
-                raise ApiError("site.not_found", 404)
+        await visible_site(session, actor, site_id)
         th = Thresholds.from_config(await rt.core_config())
-        return await service.summary(session, site_id, datetime.now(UTC), th)
+        return await service.summary(session, site_id, datetime.now(UTC), th, actor)
 
     @router.get("/playback", response_model=list[playback.ScreenPlaybackOut])
     async def fleet_playback(
-        session: Session, _: Reader, site_id: UUID | None = None
+        session: Session, actor: Reader, site_id: UUID | None = None
     ) -> list[playback.ScreenPlaybackOut]:
-        if site_id is not None:
-            site = await session.get(Site, site_id)
-            if site is None or site.archived_at is not None:
-                raise ApiError("site.not_found", 404)
+        await visible_site(session, actor, site_id)
 
         async def timezone_of(screen_id: UUID) -> object:
             cfg = await ModuleConfigReader(rt.maker, rt.schemas, CORE_NAMESPACE).resolve(
@@ -59,7 +64,12 @@ def build_router(rt: Runtime) -> APIRouter:
             return cfg.get("override.respect_scheduled_off", False)
 
         return await playback.fleet_playback(
-            session, site_id, datetime.now(UTC), timezone_of, respect_of
+            session,
+            site_id,
+            datetime.now(UTC),
+            timezone_of,
+            respect_of,
+            PerimeterScope(session).screen_filter(actor),
         )
 
     @router.get("/apk", response_model=FleetApkOut)

@@ -307,10 +307,10 @@ async def test_scope_denies_get_variants_used_by_and_replace(
         for call in (svc.get, svc.variants, svc.used_by):
             with pytest.raises(ApiError) as exc:
                 await call(mid)
-            assert exc.value.status == 403
+            assert exc.value.status == 404  # hors périmètre : 404 (J-D6)
         up = MediaUploadService(
             s, rt.bus, None, None, 10**7, scope=_DenyScope()  # type: ignore[arg-type]
         )
         with pytest.raises(ApiError) as exc:
             await up.replace(mid, Upload(_Bytes(), "a.png", None, None, None))
-        assert exc.value.status == 403
+        assert exc.value.status == 404  # hors périmètre : 404 (J-D6)

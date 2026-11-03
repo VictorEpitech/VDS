@@ -6,6 +6,7 @@ from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
+from vds_server.core.perimeter import NodeRef
 from vds_server.diffusion.schemas import UsageSchedule
 
 ZoneKey = Annotated[str, Field(pattern=r"^[a-z0-9_-]{1,32}$")]
@@ -51,6 +52,8 @@ class LayoutIn(_In):
     background_media_id: UUID | None = None
     tags: list[str] = Field(default_factory=list, max_length=20)
     zones: list[LayoutZoneIn] = Field(min_length=1, max_length=MAX_ZONES_ABSOLUTE)
+    # lot J : création, absent = défaut du périmètre ; PUT, présent (même null = partagé) = changer
+    owner: NodeRef | None = None
 
 
 class LayoutZoneOut(BaseModel):
@@ -80,6 +83,7 @@ class LayoutOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     warnings: list[str] = Field(default_factory=list)
+    owner: NodeRef | None = None
 
 
 class LayoutSummary(BaseModel):
@@ -92,6 +96,7 @@ class LayoutSummary(BaseModel):
     usage_count: int
     zones: list[LayoutZoneOut]  # géométrie seule utile à la vignette
     updated_at: datetime
+    owner: NodeRef | None = None
 
 
 class LayoutPage(BaseModel):
@@ -114,3 +119,4 @@ class LayoutUsageOut(BaseModel):
     zone_overrides: list[LayoutUsageOverride]  # forçages de zone actifs ou futurs
     screens_total: int
     screens_orientation_mismatch: int
+    hidden_count: int = 0  # référents hors périmètre : compteur seul

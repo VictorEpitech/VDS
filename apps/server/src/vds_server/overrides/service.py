@@ -15,6 +15,7 @@ from vds_server.config.schemas import CORE_NAMESPACE, ConfigSchemaProvider
 from vds_server.config.service import ConfigService
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
+from vds_server.core.perimeter import node_of_owner, node_of_target
 from vds_server.db.models import Organization, Playlist, Screen, ScreenGroup
 from vds_server.db.models_layout import Layout
 from vds_server.db.models_override import PlaybackOverride
@@ -22,6 +23,7 @@ from vds_server.diffusion.base import ServiceBase
 from vds_server.diffusion.expiry import is_expired
 from vds_server.diffusion.layout_content import load_layouts
 from vds_server.diffusion.layouts import orientation_mismatch
+from vds_server.diffusion.ownership import check_reference
 from vds_server.diffusion.playlists import ItemSchemaLookup, PlaylistService
 from vds_server.diffusion.resolver import (
     WINDOW_DAYS,
@@ -30,7 +32,7 @@ from vds_server.diffusion.resolver import (
     resolve_input,
     wall_to_instant,
 )
-from vds_server.diffusion.scope import ContentScope, OrganizationScope
+from vds_server.diffusion.scope import ContentScope, PerimeterScope
 from vds_server.diffusion.targets import TARGET_MODELS, screens_of
 from vds_server.fleet.health import evaluate
 from vds_server.overrides import schemas as sc
@@ -93,7 +95,7 @@ class OverrideService(ServiceBase):
         scope: ContentScope | None = None,
     ) -> None:
         super().__init__(session, bus, actor)
-        self._scope: ContentScope = scope or OrganizationScope()
+        self._scope: ContentScope = scope or PerimeterScope(session)
         self._schemas = schemas
         self._item_schema = item_schema
         self._clock = clock
@@ -216,6 +218,11 @@ class OverrideService(ServiceBase):
     async def _validate(self, body: sc.OverrideCreate) -> str:
         self._check_rights(body.kind, body.target_type)
         name = await self._target_name(body.target_type, body.target_id)
+        if not await self._scope.can_read_target(self._actor, body.target_type, body.target_id):
+            raise ApiError("override.target_not_found", 422, target_type=body.target_type)
+        if not await self._scope.can_target(self._actor, body.target_type, body.target_id):
+            raise ApiError("scope.forbidden", 403)
+        holder = await node_of_target(self._s, body.target_type, body.target_id)
         if body.kind == "off":
             if body.playlist_id is not None or body.content is not None or body.layout_id:
                 raise ApiError("override.content_ambiguous", 422)
@@ -229,19 +236,32 @@ class OverrideService(ServiceBase):
                     raise ApiError("override.zone_requires_playlist", 422)
                 await self._check_zone_ids(body.zone_ids)
             if body.layout_id is not None:
-                if (
-                    await self._s.scalar(
-                        select(Layout.id).where(
+                lay = (
+                    await self._s.execute(
+                        select(Layout).where(
                             Layout.id == body.layout_id, self._scope.layout_filter(self._actor)
                         )
                     )
-                    is None
-                ):
+                ).scalar_one_or_none()
+                if lay is None:
                     raise ApiError("override.layout_not_found", 422)
+                await check_reference(
+                    self._s, node_of_owner(lay.owner_site_id, lay.owner_group_id), holder
+                )
             if body.playlist_id is not None:
-                pl = await self._s.get(Playlist, body.playlist_id)
+                pl = (
+                    await self._s.execute(
+                        select(Playlist).where(
+                            Playlist.id == body.playlist_id,
+                            self._scope.playlist_filter(self._actor),
+                        )
+                    )
+                ).scalar_one_or_none()
                 if pl is None or pl.owner_override_id is not None:
                     raise ApiError("override.playlist_not_found", 422)
+                await check_reference(
+                    self._s, node_of_owner(pl.owner_site_id, pl.owner_group_id), holder
+                )
                 if is_expired(pl, self._clock()):
                     raise ApiError("playlist.expired", 422)
         return name
@@ -269,8 +289,13 @@ class OverrideService(ServiceBase):
         name = body.name or f"{target_name} {starts.astimezone(UTC):%H:%M}"
         ephemeral: Playlist | None = None
         if body.content is not None:
+            node = await node_of_target(self._s, body.target_type, body.target_id)
             ephemeral = Playlist(
-                name=name, created_by=self._actor.user_id, updated_by=self._actor.user_id
+                name=name,
+                created_by=self._actor.user_id,
+                updated_by=self._actor.user_id,
+                owner_site_id=None if node is None else await self._site_of(node),
+                owner_group_id=None if node is None or node.type != "group" else node.id,
             )
             self._s.add(ephemeral)
             await self._s.flush()
@@ -550,10 +575,29 @@ class OverrideService(ServiceBase):
         return sorted(out)
 
     # --- lecture ---------------------------------------------------------------------
-    async def _get(self, override_id: UUID) -> PlaybackOverride:
-        row = await self._s.get(PlaybackOverride, override_id)
+    async def _site_of(self, node: Any) -> UUID | None:
+        if node.type == "site":
+            return UUID(str(node.id))
+        site_id = await self._s.scalar(select(ScreenGroup.site_id).where(ScreenGroup.id == node.id))
+        return None if site_id is None else UUID(str(site_id))
+
+    def _target_visible(self) -> Any:
+        return self._scope.target_filter(
+            self._actor, PlaybackOverride.target_type, PlaybackOverride.target_id, "read"
+        )
+
+    async def _get(self, override_id: UUID, *, write: bool = False) -> PlaybackOverride:
+        row = (
+            await self._s.execute(
+                select(PlaybackOverride).where(
+                    PlaybackOverride.id == override_id, self._target_visible()
+                )
+            )
+        ).scalar_one_or_none()
         if row is None:
-            raise ApiError("override.not_found", 404)
+            raise ApiError("override.not_found", 404)  # hors périmètre : 404 (J-D6)
+        if write and not await self._scope.can_target(self._actor, row.target_type, row.target_id):
+            raise ApiError("scope.forbidden", 403)
         return row
 
     async def get(self, override_id: UUID) -> sc.OverrideOut:
@@ -571,8 +615,10 @@ class OverrideService(ServiceBase):
         scope: str | None = None,
     ) -> list[sc.OverrideOut]:
         now = self._clock()
-        q = select(PlaybackOverride).order_by(
-            PlaybackOverride.created_at.desc(), PlaybackOverride.id
+        q = (
+            select(PlaybackOverride)
+            .where(self._target_visible())
+            .order_by(PlaybackOverride.created_at.desc(), PlaybackOverride.id)
         )
         if active is True:
             q = q.where(PlaybackOverride.ended_at.is_(None), PlaybackOverride.ends_at > now)
@@ -610,6 +656,8 @@ class OverrideService(ServiceBase):
     async def update(self, override_id: UUID, body: sc.OverridePatch) -> sc.OverrideOut:
         row = await self._get(override_id)
         self._check_rights(row.kind, row.target_type)
+        if not await self._scope.can_target(self._actor, row.target_type, row.target_id):
+            raise ApiError("scope.forbidden", 403)
         now = self._clock()
         if status_of(row, now) == "ended":
             raise ApiError("override.already_ended", 409)
@@ -653,6 +701,8 @@ class OverrideService(ServiceBase):
     async def stop(self, override_id: UUID) -> sc.OverrideOut:
         row = await self._get(override_id)
         self._check_rights(row.kind, row.target_type)
+        if not await self._scope.can_target(self._actor, row.target_type, row.target_id):
+            raise ApiError("scope.forbidden", 403)
         now = self._clock()
         if status_of(row, now) == "ended":  # idempotent
             return await self._out(row, now)

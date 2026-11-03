@@ -15,6 +15,7 @@ from vds_sdk import EventBus
 from vds_server.config.schemas import ConfigSchemaProvider
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
+from vds_server.core.perimeter import node_of_owner, owner_ref
 from vds_server.db.models import Media, MediaVariant, PlaylistItem, PlaylistItemMedia
 from vds_server.db.models_layout import Layout
 from vds_server.diffusion import schemas as sc
@@ -27,7 +28,8 @@ from vds_server.diffusion.expiry import (
     state_clause,
 )
 from vds_server.diffusion.layouts import touch_layouts
-from vds_server.diffusion.scope import ContentScope, OrganizationScope
+from vds_server.diffusion.ownership import check_owner_change, require_ownable, resolve_node
+from vds_server.diffusion.scope import ContentScope, PerimeterScope
 from vds_server.diffusion.tags import (
     AUTOCOMPLETE_MAX,
     escape_like,
@@ -88,6 +90,7 @@ def to_out(row: Media, usage_count: int, has_thumb: bool, now: datetime) -> sc.M
         tags=list(row.tags or []),
         thumb=f"media/{row.id}/{THUMB}" if has_thumb else None,
         usage_count=usage_count,
+        owner=owner_ref(row.owner_site_id, row.owner_group_id),
     )
 
 
@@ -102,7 +105,7 @@ class MediaService(ServiceBase):
     ) -> None:
         super().__init__(session, bus, actor)
         self._schemas = schemas
-        self._scope: ContentScope = scope or OrganizationScope()
+        self._scope: ContentScope = scope or PerimeterScope(session)
 
     # --- lecture ---------------------------------------------------------
     async def list_page(
@@ -188,8 +191,15 @@ class MediaService(ServiceBase):
             select(exists().where(Media.id == media_id, self._scope.media_filter(self._actor)))
         )
         if not visible:
-            raise ApiError("media.forbidden", 403)
+            raise ApiError("media.not_found", 404)  # hors périmètre : pas de révélation (J-D6)
         return row
+
+    async def visible(self, media_id: UUID) -> bool:
+        return bool(
+            await self._s.scalar(
+                select(exists().where(Media.id == media_id, self._scope.media_filter(self._actor)))
+            )
+        )
 
     async def out(self, row: Media) -> sc.MediaOut:
         usage = await self._s.scalar(select(usage_count_expr()).where(Media.id == row.id))
@@ -227,7 +237,7 @@ class MediaService(ServiceBase):
     async def _writable(self, media_id: UUID) -> Media:
         media = await self.get(media_id)
         if not await self._scope.can_write_media(self._actor, media_id):
-            raise ApiError("media.forbidden", 403)
+            raise ApiError("scope.forbidden", 403)
         return media
 
     def _apply_patch(
@@ -248,6 +258,13 @@ class MediaService(ServiceBase):
 
     async def patch(self, media_id: UUID, body: sc.MediaPatch) -> Media:
         media = await self._writable(media_id)
+        if "owner" in body.model_fields_set:
+            node, (site_id, group_id) = await resolve_node(self._s, body.owner)
+            require_ownable(self._scope, self._actor, node)
+            if node != node_of_owner(media.owner_site_id, media.owner_group_id):
+                await check_owner_change(self._s, "media", media.id, node)
+                media.owner_site_id, media.owner_group_id = site_id, group_id
+                self._audit("media.owner_changed", "media", media.id, "media_id", emit=False)
         self._apply_patch(
             media, set(body.model_fields_set), body.title, body.tags, body.expires_at,
             datetime.now(UTC),

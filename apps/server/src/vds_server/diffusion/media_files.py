@@ -18,9 +18,11 @@ from vds_sdk.server.storage import StorageBackend, StoredObject
 
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
+from vds_server.core.perimeter import NodeRef
 from vds_server.db.models import Media, MediaVariant
 from vds_server.diffusion.base import ServiceBase
-from vds_server.diffusion.scope import ContentScope, OrganizationScope
+from vds_server.diffusion.ownership import owner_for_create
+from vds_server.diffusion.scope import ContentScope, PerimeterScope
 from vds_server.diffusion.tombstones import add_tombstones
 
 CHUNK = 1024 * 1024
@@ -100,6 +102,8 @@ class Upload:
     declared_mime: str | None
     title: str | None
     expected_sha256: str | None
+    owner_given: bool = False  # lot J : propriétaire explicite (None = partagé) ou défaut
+    owner: NodeRef | None = None
 
 
 class MediaUploadService(ServiceBase):
@@ -115,7 +119,7 @@ class MediaUploadService(ServiceBase):
         scope: ContentScope | None = None,
     ) -> None:
         super().__init__(session, bus, actor)
-        self._scope: ContentScope = scope or OrganizationScope()
+        self._scope: ContentScope = scope or PerimeterScope(session)
         self._processor = processor
         self._storage = storage
         self._max = max_bytes
@@ -135,6 +139,9 @@ class MediaUploadService(ServiceBase):
         if declared and declared not in ("application/octet-stream", mime):
             raise ApiError("media.type_mismatch", 415)
         kind, ext = ALLOWED[mime]
+        owner_site, owner_group = await owner_for_create(
+            self._s, self._scope, self._actor, given=up.owner_given, ref=up.owner
+        )
         media_id = uuid4()
         key = f"{media_id.hex[:2]}/{media_id}/original.{ext}"
 
@@ -198,6 +205,8 @@ class MediaUploadService(ServiceBase):
             storage_key=key,
             status=status,
             created_by=self._actor.user_id,
+            owner_site_id=owner_site,
+            owner_group_id=owner_group,
         )
         self._s.add(media)
         await self._s.flush()  # media avant media_variant (FK)
@@ -256,10 +265,13 @@ class MediaUploadService(ServiceBase):
         media = (
             await self._s.execute(select(Media).where(Media.id == media_id).with_for_update())
         ).scalar_one_or_none()
-        if media is None:
+        visible = await self._s.scalar(
+            select(Media.id).where(Media.id == media_id, self._scope.media_filter(self._actor))
+        )
+        if media is None or visible is None:
             raise ApiError("media.not_found", 404)
         if not await self._scope.can_write_media(self._actor, media_id):
-            raise ApiError("media.forbidden", 403)
+            raise ApiError("scope.forbidden", 403)
         if if_match is not None:
             wanted = if_match.strip().removeprefix("W/").strip('"').lower()
             if wanted != (media.sha256 or ""):

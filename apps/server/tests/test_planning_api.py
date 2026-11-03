@@ -445,6 +445,9 @@ class _Restricted:
     async def can_write_playlist(self, principal: Any, playlist_id: Any) -> bool:
         return str(playlist_id) != self.forbidden
 
+    async def can_read_target(self, *args: Any) -> bool:
+        return True
+
 
 async def test_restricted_scope(
     admin: AsyncClient, editor: AsyncClient, p: str, monkeypatch: pytest.MonkeyPatch
@@ -456,7 +459,7 @@ async def test_restricted_scope(
     assert [r["screen_name"] for r in full.json()["screens"]] == ["Hall", "Hidden"]
     scope = _Restricted()
     scope.forbidden = w["pl_scr"]
-    monkeypatch.setattr("vds_server.diffusion.planning.OrganizationScope", lambda: scope)
+    monkeypatch.setattr("vds_server.diffusion.planning.PerimeterScope", lambda session: scope)
     r = await tl(admin, p, "group", w["group"])
     assert r.status_code == 200, r.text
     assert [s["screen_name"] for s in r.json()["screens"]] == ["Hall"]

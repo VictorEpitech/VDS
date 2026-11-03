@@ -10,6 +10,7 @@ from vds_sdk import EventBus
 
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
+from vds_server.core.perimeter import node_of_owner, node_of_target
 from vds_server.db.models import (
     Playlist,
     Schedule,
@@ -20,8 +21,9 @@ from vds_server.diffusion import schemas as sc
 from vds_server.diffusion.base import ServiceBase
 from vds_server.diffusion.expiry import is_expired
 from vds_server.diffusion.layouts import MISMATCH, orientation_mismatch
+from vds_server.diffusion.ownership import check_reference
 from vds_server.diffusion.priority import priority_level
-from vds_server.diffusion.scope import ContentScope, OrganizationScope
+from vds_server.diffusion.scope import ContentScope, PerimeterScope
 from vds_server.diffusion.targets import TARGET_MODELS
 
 
@@ -50,7 +52,7 @@ class ScheduleService(ServiceBase):
         scope: ContentScope | None = None,
     ) -> None:
         super().__init__(session, bus, actor)
-        self._scope: ContentScope = scope or OrganizationScope()
+        self._scope: ContentScope = scope or PerimeterScope(session)
 
     async def _target_exists(self, target_type: str, target_id: UUID) -> None:
         if await self._s.get(TARGET_MODELS[target_type], target_id) is None:
@@ -82,6 +84,46 @@ class ScheduleService(ServiceBase):
             await self._playlist_exists(playlist_id)
         elif layout_id is not None:
             await self._layout_exists(layout_id)
+
+    async def _check_scope(
+        self,
+        playlist_id: UUID | None,
+        layout_id: UUID | None,
+        target_type: str,
+        target_id: UUID,
+    ) -> None:
+        """Périmètre d'écriture : cible modifiable (403), contenu lisible (422, sans fuite) et
+        propriétaire du contenu égal ou ancêtre du nœud de la cible (J-D5, 422)."""
+        if not await self._scope.can_read_target(self._actor, target_type, target_id):
+            raise ApiError("schedule.target_not_found", 422, target_type=target_type)
+        if not await self._scope.can_target(self._actor, target_type, target_id):
+            raise ApiError("scope.forbidden", 403)
+        holder = await node_of_target(self._s, target_type, target_id)
+        if playlist_id is not None:
+            row = (
+                await self._s.execute(
+                    select(Playlist).where(
+                        Playlist.id == playlist_id, self._scope.playlist_filter(self._actor)
+                    )
+                )
+            ).scalar_one_or_none()
+            if row is None:
+                raise ApiError("schedule.playlist_not_found", 422)
+            owner = node_of_owner(row.owner_site_id, row.owner_group_id)
+        elif layout_id is not None:
+            lay = (
+                await self._s.execute(
+                    select(Layout).where(
+                        Layout.id == layout_id, self._scope.layout_filter(self._actor)
+                    )
+                )
+            ).scalar_one_or_none()
+            if lay is None:
+                raise ApiError("schedule.layout_not_found", 422)
+            owner = node_of_owner(lay.owner_site_id, lay.owner_group_id)
+        else:
+            return
+        await check_reference(self._s, owner, holder)
 
     async def _rules(self, ids: list[UUID]) -> dict[UUID, list[sc.RuleOut]]:
         out: dict[UUID, list[sc.RuleOut]] = {i: [] for i in ids}
@@ -122,7 +164,15 @@ class ScheduleService(ServiceBase):
     async def list_all(
         self, *, target_type: str | None, target_id: UUID | None, playlist_id: UUID | None
     ) -> list[sc.ScheduleOut]:
-        q = select(Schedule).order_by(Schedule.name, Schedule.id)
+        q = (
+            select(Schedule)
+            .where(
+                self._scope.target_filter(
+                    self._actor, Schedule.target_type, Schedule.target_id, "read"
+                )
+            )
+            .order_by(Schedule.name, Schedule.id)
+        )
         if target_type:
             q = q.where(Schedule.target_type == target_type)
         if target_id:
@@ -134,9 +184,24 @@ class ScheduleService(ServiceBase):
         return [self._out(r, rules[r.id]) for r in rows]
 
     async def get_row(self, schedule_id: UUID) -> Schedule:
-        row = await self._s.get(Schedule, schedule_id)
+        row = (
+            await self._s.execute(
+                select(Schedule).where(
+                    Schedule.id == schedule_id,
+                    self._scope.target_filter(
+                        self._actor, Schedule.target_type, Schedule.target_id, "read"
+                    ),
+                )
+            )
+        ).scalar_one_or_none()
         if row is None:
-            raise ApiError("schedule.not_found", 404)
+            raise ApiError("schedule.not_found", 404)  # hors périmètre : 404 (J-D6)
+        return row
+
+    async def _writable_row(self, schedule_id: UUID) -> Schedule:
+        row = await self.get_row(schedule_id)
+        if not await self._scope.can_target(self._actor, row.target_type, row.target_id):
+            raise ApiError("scope.forbidden", 403)
         return row
 
     async def get(self, schedule_id: UUID) -> sc.ScheduleOut:
@@ -198,6 +263,7 @@ class ScheduleService(ServiceBase):
 
     async def create(self, body: sc.ScheduleCreate) -> sc.ScheduleOut:
         await self.validate_create(body)
+        await self._check_scope(body.playlist_id, body.layout_id, body.target_type, body.target_id)
         row = Schedule(
             name=body.name,
             playlist_id=body.playlist_id,
@@ -234,9 +300,10 @@ class ScheduleService(ServiceBase):
         return out
 
     async def update(self, schedule_id: UUID, body: sc.SchedulePatch) -> sc.ScheduleOut:
-        row = await self.get_row(schedule_id)
+        row = await self._writable_row(schedule_id)
         fields = body.model_fields_set
         v = await self.validate_patch(row, body)
+        await self._check_scope(v.playlist_id, v.layout_id, v.target_type, v.target_id)
         row.playlist_id, row.layout_id = v.playlist_id, v.layout_id
         row.target_type, row.target_id = v.target_type, v.target_id
         row.name, row.priority, row.enabled = v.name, v.priority, v.enabled
@@ -254,7 +321,7 @@ class ScheduleService(ServiceBase):
         return await self._with_warnings(await self.get(row.id), row)
 
     async def delete(self, schedule_id: UUID) -> None:
-        row = await self.get_row(schedule_id)
+        row = await self._writable_row(schedule_id)
         await self._s.delete(row)
         self._audit("schedule.deleted", "schedule", schedule_id, "schedule_id")
         await self._commit("schedule.conflict")

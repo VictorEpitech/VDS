@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, exists, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from vds_sdk import Event, EventBus
@@ -21,6 +21,7 @@ from vds_server.db.models import (
     Site,
 )
 from vds_server.db.models_power import Incident, PowerException, RemoteCommand
+from vds_server.diffusion.scope import PerimeterScope
 from vds_server.inventory import schemas as sc
 from vds_server.player.kiosk import load_requests
 
@@ -31,6 +32,7 @@ class InventoryService:
         self._bus = bus
         self._actor = actor
         self._events: list[Event] = []
+        self._scope = PerimeterScope(session)
 
     # --- infrastructure --------------------------------------------------
     def _audit(self, action: str, target_type: str, target_id: UUID, **details: Any) -> None:
@@ -69,10 +71,15 @@ class InventoryService:
             for event in events:
                 await self._bus.publish(event)
 
-    async def _get[T](self, model: type[T], pk: UUID, code: str) -> T:
+    async def _get[T](self, model: type[T], pk: UUID, code: str, visible: Any = None) -> T:
         row = await self._s.get(model, pk)
         if row is None:
             raise ApiError(code, 404)
+        m: Any = model
+        if visible is not None and not await self._s.scalar(
+            select(exists().where(m.id == pk, visible))
+        ):
+            raise ApiError(code, 404)  # hors périmètre : 404 (J-D6)
         return row
 
     # --- organisation ----------------------------------------------------
@@ -91,13 +98,15 @@ class InventoryService:
 
     # --- sites -----------------------------------------------------------
     async def list_sites(self, *, include_archived: bool) -> list[Site]:
-        q = select(Site).order_by(Site.name)
+        q = select(Site).where(self._scope.site_filter(self._actor)).order_by(Site.name)
         if not include_archived:
             q = q.where(Site.archived_at.is_(None))
         return list((await self._s.execute(q)).scalars())
 
     async def get_site(self, site_id: UUID) -> Site:
-        return await self._get(Site, site_id, "site.not_found")
+        return await self._get(
+            Site, site_id, "site.not_found", self._scope.site_filter(self._actor)
+        )
 
     async def create_site(self, body: sc.SiteCreate) -> Site:
         org = await self.organization()
@@ -151,11 +160,17 @@ class InventoryService:
     # --- groupes ---------------------------------------------------------
     async def list_groups(self, site_id: UUID) -> list[ScreenGroup]:
         await self.get_site(site_id)
-        q = select(ScreenGroup).where(ScreenGroup.site_id == site_id).order_by(ScreenGroup.name)
+        q = (
+            select(ScreenGroup)
+            .where(ScreenGroup.site_id == site_id, self._scope.group_filter(self._actor))
+            .order_by(ScreenGroup.name)
+        )
         return list((await self._s.execute(q)).scalars())
 
     async def get_group(self, group_id: UUID) -> ScreenGroup:
-        return await self._get(ScreenGroup, group_id, "group.not_found")
+        return await self._get(
+            ScreenGroup, group_id, "group.not_found", self._scope.group_filter(self._actor)
+        )
 
     async def create_group(self, site_id: UUID, body: sc.GroupCreate) -> ScreenGroup:
         await self.get_site(site_id)
@@ -194,7 +209,7 @@ class InventoryService:
     async def list_screens(
         self, *, site_id: UUID | None, group_id: UUID | None, include_archived: bool
     ) -> list[Screen]:
-        q = select(Screen).order_by(Screen.name)
+        q = select(Screen).where(self._scope.screen_filter(self._actor)).order_by(Screen.name)
         if site_id:
             q = q.where(Screen.site_id == site_id)
         if group_id:
@@ -204,7 +219,9 @@ class InventoryService:
         return list((await self._s.execute(q)).scalars())
 
     async def get_screen(self, screen_id: UUID) -> Screen:
-        return await self._get(Screen, screen_id, "screen.not_found")
+        return await self._get(
+            Screen, screen_id, "screen.not_found", self._scope.screen_filter(self._actor)
+        )
 
     async def _check_group(self, group_id: UUID | None, site_id: UUID) -> None:
         if group_id is None:

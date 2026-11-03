@@ -7,7 +7,7 @@ from datetime import UTC, date, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, or_, select, true
+from sqlalchemy import ColumnElement, func, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vds_server.core.auth import Principal
@@ -24,7 +24,7 @@ from vds_server.db.models import (
 from vds_server.db.models_override import PlaybackOverride
 from vds_server.diffusion import schemas as sc
 from vds_server.diffusion.expiry import is_expired
-from vds_server.diffusion.scope import ContentScope, OrganizationScope
+from vds_server.diffusion.scope import ContentScope, PerimeterScope
 from vds_server.diffusion.targets import TARGET_MODELS
 
 
@@ -34,7 +34,7 @@ class UsageService:
     ) -> None:
         self._s = session
         self._actor = actor
-        self._scope: ContentScope = scope or OrganizationScope()
+        self._scope: ContentScope = scope or PerimeterScope(session)
 
     async def _target_names(self, rows: list[Schedule]) -> dict[tuple[str, UUID], str]:
         names: dict[tuple[str, UUID], str] = {}
@@ -50,15 +50,37 @@ class UsageService:
 
     async def _schedules_and_overrides(
         self, playlist_ids: list[UUID], now: datetime
-    ) -> tuple[list[sc.UsageSchedule], list[sc.UsageOverride], int]:
+    ) -> tuple[list[sc.UsageSchedule], list[sc.UsageOverride], int, int]:
+        """(programmations, forçages, écrans, nombre de lignes hors périmètre)."""
         if not playlist_ids:
-            return [], [], 0
+            return [], [], 0, 0
+        sched_vis = self._scope.target_filter(
+            self._actor, Schedule.target_type, Schedule.target_id, "read"
+        )
+        ov_vis = self._scope.target_filter(
+            self._actor, PlaybackOverride.target_type, PlaybackOverride.target_id, "read"
+        )
+        hidden = int(
+            await self._s.scalar(
+                select(func.count())
+                .select_from(Schedule)
+                .where(Schedule.playlist_id.in_(playlist_ids), ~sched_vis)
+            )
+            or 0
+        ) + int(
+            await self._s.scalar(
+                select(func.count())
+                .select_from(PlaybackOverride)
+                .where(PlaybackOverride.playlist_id.in_(playlist_ids), ~ov_vis)
+            )
+            or 0
+        )
         today: date = now.date()
         sched = list(
             (
                 await self._s.execute(
                     select(Schedule)
-                    .where(Schedule.playlist_id.in_(playlist_ids))
+                    .where(Schedule.playlist_id.in_(playlist_ids), sched_vis)
                     .order_by(Schedule.name, Schedule.id)
                 )
             ).scalars()
@@ -81,7 +103,7 @@ class UsageService:
             (
                 await self._s.execute(
                     select(PlaybackOverride)
-                    .where(PlaybackOverride.playlist_id.in_(playlist_ids))
+                    .where(PlaybackOverride.playlist_id.in_(playlist_ids), ov_vis)
                     .order_by(PlaybackOverride.ends_at.desc(), PlaybackOverride.id)
                 )
             ).scalars()
@@ -102,7 +124,7 @@ class UsageService:
             for o in ovs
             if o.ended_at is None and o.starts_at <= now < o.ends_at
         ]
-        return schedules, overrides, await self._screens(set(targets))
+        return schedules, overrides, await self._screens(set(targets)), hidden
 
     async def _screens(self, targets: set[tuple[str, UUID]]) -> int:
         """Écrans actifs couverts par au moins une cible (borne supérieure, indicatif)."""
@@ -122,18 +144,40 @@ class UsageService:
         q = (
             select(Screen.id)
             .join(Site, Site.id == Screen.site_id)
-            .where(Screen.archived_at.is_(None), Site.archived_at.is_(None), or_(*conds))
+            .where(
+                Screen.archived_at.is_(None),
+                Site.archived_at.is_(None),
+                or_(*conds),
+                self._scope.screen_filter(self._actor),
+            )
         )
         return len((await self._s.execute(q)).all())
 
     async def media(self, media_id: UUID) -> sc.MediaUsageOut:
-        if await self._s.scalar(select(Media.id).where(Media.id == media_id)) is None:
+        if (
+            await self._s.scalar(
+                select(Media.id).where(Media.id == media_id, self._scope.media_filter(self._actor))
+            )
+            is None
+        ):
             raise ApiError("media.not_found", 404)
         now = datetime.now(UTC)
         refs = (
             select(PlaylistItem.playlist_id)
             .join(PlaylistItemMedia, PlaylistItemMedia.item_id == PlaylistItem.id)
             .where(PlaylistItemMedia.media_id == media_id)
+        )
+        hidden_playlists = int(
+            await self._s.scalar(
+                select(func.count())
+                .select_from(Playlist)
+                .where(
+                    Playlist.id.in_(refs),
+                    Playlist.owner_override_id.is_(None),
+                    ~self._scope.playlist_filter(self._actor),
+                )
+            )
+            or 0
         )
         rows = list(
             (
@@ -145,7 +189,7 @@ class UsageService:
             ).scalars()
         )
         visible = [p.id for p in rows]
-        schedules, overrides, screens = await self._schedules_and_overrides(visible, now)
+        schedules, overrides, screens, hidden = await self._schedules_and_overrides(visible, now)
         return sc.MediaUsageOut(
             playlists=[
                 sc.UsagePlaylist(
@@ -157,6 +201,7 @@ class UsageService:
             schedules=schedules,
             overrides=overrides,
             screens_now=screens,
+            hidden_count=hidden + hidden_playlists,
         )
 
     async def playlist(self, playlist_id: UUID) -> sc.PlaylistUsageOut:
@@ -167,7 +212,7 @@ class UsageService:
         )
         if found is None:
             raise ApiError("playlist.not_found", 404)
-        schedules, overrides, _ = await self._schedules_and_overrides(
+        schedules, overrides, _, hidden = await self._schedules_and_overrides(
             [playlist_id], datetime.now(UTC)
         )
-        return sc.PlaylistUsageOut(schedules=schedules, overrides=overrides)
+        return sc.PlaylistUsageOut(schedules=schedules, overrides=overrides, hidden_count=hidden)

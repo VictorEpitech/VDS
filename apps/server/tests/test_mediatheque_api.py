@@ -202,7 +202,7 @@ async def test_usage_and_unused(
     pu = (await editor.get(f"{p}/api/v1/playlists/{pl}/usage")).json()
     assert len(pu["schedules"]) == 1 and len(pu["overrides"]) == 1
     empty = (await editor.get(f"{p}/api/v1/playlists/{other}/usage")).json()
-    assert empty == {"schedules": [], "overrides": []}
+    assert empty == {"schedules": [], "overrides": [], "hidden_count": 0}
     assert (await editor.get(f"{p}/api/v1/media/{UUID(int=1)}/usage")).status_code == 404
 
     # variante thumb -> clé relative

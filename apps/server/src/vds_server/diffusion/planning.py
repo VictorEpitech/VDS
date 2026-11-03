@@ -53,7 +53,7 @@ from vds_server.diffusion.resolver import (
     wall_to_instant,
 )
 from vds_server.diffusion.schedules import ScheduleService
-from vds_server.diffusion.scope import ContentScope, OrganizationScope
+from vds_server.diffusion.scope import ContentScope, PerimeterScope
 from vds_server.diffusion.targets import TARGET_MODELS, screens_of
 from vds_server.fleet.health import evaluate
 from vds_server.player.schedule import DEFAULT_TZ, _zone, load_inputs
@@ -133,7 +133,7 @@ class PlanningService:
         scope: ContentScope | None = None,
     ) -> None:
         self._actor = actor
-        self._scope: ContentScope = scope or OrganizationScope()
+        self._scope: ContentScope = scope or PerimeterScope(session)
         self._s = session
         self._schemas = schemas
         self._sched = schedules
@@ -141,7 +141,9 @@ class PlanningService:
 
     # --- cibles, écrans, configuration ----------------------------------------------------
     async def _ordered_screens(self, target_type: str, target_id: UUID) -> list[Screen]:
-        if await self._s.get(TARGET_MODELS[target_type], target_id) is None:
+        if await self._s.get(
+            TARGET_MODELS[target_type], target_id
+        ) is None or not await self._scope.can_read_target(self._actor, target_type, target_id):
             raise ApiError("planning.target_not_found", 404, target_type=target_type)
         screens = await screens_of(self._s, target_type, target_id)
         if screens:
@@ -701,6 +703,7 @@ class PlanningService:
             [
                 str(self._actor.user_id),
                 self._actor.role,
+                self._actor.perimeter.version,
                 target_type,
                 str(target_id),
                 str(start),
@@ -875,7 +878,12 @@ class PlanningService:
         return await self._until(playlist_id)
 
     async def _check_playlist_scope(self, playlist_id: UUID) -> None:
-        if not await self._scope.can_write_playlist(self._actor, playlist_id):
+        visible = await self._s.scalar(
+            select(Playlist.id).where(
+                Playlist.id == playlist_id, self._scope.playlist_filter(self._actor)
+            )
+        )
+        if visible is None:
             raise ApiError("planning.playlist_out_of_scope", 403)
 
     async def _until(self, playlist_id: UUID) -> datetime | None:

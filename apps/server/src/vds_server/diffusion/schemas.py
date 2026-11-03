@@ -7,6 +7,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from vds_server.core.perimeter import NodeRef
 from vds_server.diffusion.priority import PriorityLevel
 
 MediaKind = Literal["image", "video", "document"]
@@ -63,6 +64,7 @@ class MediaOut(_Out):
     tags: list[str]
     thumb: str | None  # clé relative "media/<id>/thumb" si la variante existe, sinon None
     usage_count: int  # nombre de playlists qui le référencent
+    owner: NodeRef | None = None  # lot J : propriétaire-nœud ; null = partagé (organisation)
 
 
 class MediaDetailOut(MediaOut):
@@ -79,6 +81,7 @@ class MediaPatch(_In):
     title: str | None = Field(default=None, min_length=1, max_length=120)
     tags: list[str] | None = Field(default=None, max_length=100)  # bornes exactes : service
     expires_at: datetime | None = None  # présent (même null) = modifier ; null = jamais
+    owner: NodeRef | None = None  # présent (même null = partagé) = changer de propriétaire
 
     @model_validator(mode="after")
     def _not_empty(self) -> "MediaPatch":
@@ -122,11 +125,13 @@ class MediaUsageOut(_Out):
     schedules: list[UsageSchedule]
     overrides: list[UsageOverride]
     screens_now: int  # borne supérieure, indicative
+    hidden_count: int = 0  # référents hors périmètre : compteur seul, jamais de nom
 
 
 class PlaylistUsageOut(_Out):
     schedules: list[UsageSchedule]
     overrides: list[UsageOverride]
+    hidden_count: int = 0
 
 
 BulkAction = Literal["set_expiry", "add_tags", "remove_tags", "delete"]
@@ -156,6 +161,7 @@ class MediaBulkOut(_Out):
 class PlaylistCreate(_In):
     name: str = NAME
     description: str | None = Field(default=None, max_length=2000)
+    owner: NodeRef | None = None  # absent = défaut du périmètre ; null = partagé
 
 
 class PlaylistPatch(_In):
@@ -163,6 +169,7 @@ class PlaylistPatch(_In):
     description: str | None = Field(default=None, max_length=2000)
     tags: list[str] | None = Field(default=None, max_length=100)  # bornes exactes : service
     expires_at: datetime | None = None  # présent (même null) = modifier ; null = jamais
+    owner: NodeRef | None = None  # présent (même null = partagé) = changer de propriétaire
 
 
 class ItemCreate(_In):
@@ -203,6 +210,7 @@ class PlaylistOut(_Out):
     expires_at: datetime | None
     expired: bool
     tags: list[str]
+    owner: NodeRef | None = None
 
 
 class PlaylistPage(_Out):

@@ -15,6 +15,7 @@ from vds_sdk.server import AuthProvider, AuthRequest
 
 from vds_server.core import users
 from vds_server.core.errors import ApiError
+from vds_server.core.perimeter import UNRESTRICTED, Perimeter, load_perimeter
 from vds_server.events import CoreBus
 
 Role = Literal["admin", "editor"]
@@ -29,6 +30,8 @@ class Principal:
     display_name: str
     role: Role
     locale: str | None
+    # J-D10 : défaut = non restreint pour les acteurs non humains ; `resolve` le fixe toujours.
+    perimeter: Perimeter = UNRESTRICTED
 
     @property
     def actor_id(self) -> str:
@@ -70,6 +73,9 @@ class AuthPipeline:
                 raise ApiError("auth.unauthenticated", 401)
             async with self._maker() as session:
                 row, created = await users.upsert_identity(session, identity)
+                perimeter = await load_perimeter(
+                    session, row.id, "admin" if row.role == "admin" else "editor"
+                )
                 await session.commit()
         except AccessDenied as exc:
             raise ApiError(exc.code, 403) from exc
@@ -84,6 +90,7 @@ class AuthPipeline:
             display_name=row.display_name,
             role="admin" if row.role == "admin" else "editor",
             locale=row.locale,
+            perimeter=perimeter,
         )
 
     async def principal(self, request: Request) -> Principal:

@@ -6,6 +6,7 @@ from uuid import UUID
 from sqlalchemy import (
     CheckConstraint,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     SmallInteger,
@@ -31,6 +32,14 @@ class Layout(Base, Timestamps):
         ),
         CheckConstraint("cardinality(tags) <= 20", name="tags"),
         CheckConstraint("revision >= 1", name="revision"),
+        CheckConstraint("owner_group_id IS NULL OR owner_site_id IS NOT NULL", name="owner"),
+        ForeignKeyConstraint(
+            ["owner_group_id", "owner_site_id"],
+            ["screen_group.id", "screen_group.site_id"],
+            name="fk_layout_owner_group",
+            ondelete="SET NULL (owner_group_id)",
+        ),
+        Index("ix_layout_owner", "owner_site_id", "owner_group_id"),
         UniqueConstraint("org_id", "name"),
         Index("ix_layout_tags", "tags", postgresql_using="gin"),
         Index("ix_layout_background_media_id", "background_media_id"),
@@ -49,6 +58,9 @@ class Layout(Base, Timestamps):
     created_by: Mapped[UUID | None] = mapped_column(
         ForeignKey("user_account.id", ondelete="SET NULL")
     )
+    # lot J (0018) : propriétaire-nœud ; les deux NULL = organisation (partagé)
+    owner_site_id: Mapped[UUID | None] = mapped_column(ForeignKey("site.id", ondelete="RESTRICT"))
+    owner_group_id: Mapped[UUID | None] = mapped_column()
 
 
 class LayoutZone(Base):
