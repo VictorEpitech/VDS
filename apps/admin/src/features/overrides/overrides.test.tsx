@@ -150,8 +150,8 @@ describe.each([
     expect(within(card).queryByRole("button", { name: new RegExp(`^${locale === "fr" ? "Arrêter le forçage" : "Stop the override"}`) })).toBeNull();
   });
 
-  it.each(["override.too_many_active", "override.start_too_far", "override.forbidden_kind"])("code %s traduit, jamais « erreur inconnue »", async (code) => {
-    mockApi(base({ "POST /overrides/preview": errorResponse(code === "override.forbidden_kind" ? 403 : code === "override.too_many_active" ? 409 : 422, code) }), b);
+  it.each(["override.too_many_active", "override.start_too_far", "override.forbidden_kind", "override.content_requires_admin"])("code %s traduit, jamais « erreur inconnue »", async (code) => {
+    mockApi(base({ "POST /overrides/preview": errorResponse(code === "override.forbidden_kind" || code === "override.content_requires_admin" ? 403 : code === "override.too_many_active" ? 409 : 422, code) }), b);
     const user = userEvent.setup();
     await renderRoutes(routes, "/screens", b, locale);
     await user.click(await screen.findByRole("button", { name: `${locale === "fr" ? "Forcer l'affichage sur" : "Force display on"} Écran 1` }));
@@ -160,6 +160,7 @@ describe.each([
     const alert = await within(form).findByRole("alert");
     expect(alert).not.toHaveTextContent(locale === "fr" ? "Une erreur est survenue" : /something went wrong|error occurred/i);
     expect(alert.textContent).not.toMatch(/errors\./);
+    if (code === "override.content_requires_admin") expect(alert).toHaveTextContent(locale === "fr" ? "réservé aux administrateurs" : "reserved for administrators");
   });
 
   it("erreur serveur de l'aperçu : message traduit, envoi bloqué", async () => {

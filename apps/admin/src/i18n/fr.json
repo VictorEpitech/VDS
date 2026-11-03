@@ -413,6 +413,7 @@
       "end_in_past": "La fin du forçage doit être dans le futur.",
       "duration_too_long": "Ce forçage est trop long. Choisissez une durée plus courte.",
       "content_ambiguous": "Choisissez une seule chose à afficher.",
+      "content_requires_admin": "Le forçage de contenu est réservé aux administrateurs quand la validation est active. Demandez à un administrateur.",
       "target_not_found": "Cette cible n'existe plus.",
       "forbidden_kind": "Seul un administrateur peut forcer l'extinction ou cibler toute l'organisation.",
       "too_many_active": "Il y a déjà trop de forçages actifs sur cette cible. Arrêtez-en un avant d'en créer un autre.",

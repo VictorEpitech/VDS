@@ -413,6 +413,7 @@
       "end_in_past": "The override must end in the future.",
       "duration_too_long": "This override is too long. Choose a shorter duration.",
       "content_ambiguous": "Choose a single thing to show.",
+      "content_requires_admin": "Forcing content is reserved for administrators while validation is on. Ask an administrator.",
       "target_not_found": "This target no longer exists.",
       "forbidden_kind": "Only an administrator can force power-off or target the whole organization.",
       "too_many_active": "There are already too many active overrides on this target. Stop one before creating another.",
