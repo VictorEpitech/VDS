@@ -38,7 +38,7 @@ from vds_server.diffusion.tags import (
     normalize_tags,
 )
 from vds_server.diffusion.tombstones import add_tombstones
-from vds_server.publication.reader import playlists_publishing_media
+from vds_server.publication.reader import layouts_publishing_media, playlists_publishing_media
 
 THUMB = "thumb"
 MAX_PAGE = 200
@@ -264,6 +264,18 @@ class MediaService(ServiceBase):
         if restored:
             self._audit("media.restored", "media", media.id, "media_id")
 
+    async def _guard_restore(self, media: Media, new: datetime | None, now: datetime) -> None:
+        """Prolonger un média expiré le remet en diffusion s'il figure dans un instantané publié :
+        réservé à l'admin quand la validation est active (sinon contournement du workflow)."""
+        if media.expired_at is None or not (new is None or new > now):
+            return
+        if self._actor.role == "admin" or not await self._pub.review_required():
+            return
+        if await playlists_publishing_media(self._s, media.id) or await layouts_publishing_media(
+            self._s, media.id
+        ):
+            raise ApiError("publication.media_in_use_requires_admin", 403)
+
     async def patch(self, media_id: UUID, body: sc.MediaPatch) -> Media:
         media = await self._writable(media_id)
         if "owner" in body.model_fields_set:
@@ -273,10 +285,12 @@ class MediaService(ServiceBase):
                 await check_owner_change(self._s, "media", media.id, node)
                 media.owner_site_id, media.owner_group_id = site_id, group_id
                 self._audit("media.owner_changed", "media", media.id, "media_id", emit=False)
+        now = datetime.now(UTC)
+        if "expires_at" in body.model_fields_set:
+            await self._guard_restore(media, aware(body.expires_at), now)
         self._apply_patch(
-            media, set(body.model_fields_set), body.title, body.tags, body.expires_at,
-            datetime.now(UTC),
-        )  # fmt: skip
+            media, set(body.model_fields_set), body.title, body.tags, body.expires_at, now
+        )
         await self._commit("media.conflict")
         return media
 
@@ -284,6 +298,8 @@ class MediaService(ServiceBase):
         used = await self._used_by(media.id)
         if used:
             raise ApiError("media.in_use", 409, playlists=[str(p) for p in used])
+        if published_bg := await layouts_publishing_media(self._s, media.id):
+            raise ApiError("media.in_use", 409, layouts=[str(i) for i in published_bg])
         backgrounds = list(
             (
                 await self._s.scalars(
@@ -330,6 +346,7 @@ class MediaService(ServiceBase):
                 if body.action == "delete":
                     await self._delete_one(media)
                 elif body.action == "set_expiry":
+                    await self._guard_restore(media, expires_at, now)
                     self._apply_patch(media, {"expires_at"}, None, None, expires_at, now)
                 else:
                     current = set(media.tags or [])

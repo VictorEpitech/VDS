@@ -111,6 +111,16 @@ class PublicationService:
             raise _not_found(entity_type)
         return row
 
+    async def _lock_existing(self, entity_type: str, entity_id: UUID) -> Publication | None:
+        return (
+            await self._s.execute(
+                select(Publication)
+                .where(Publication.entity_type == entity_type, Publication.entity_id == entity_id)
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            )
+        ).scalar_one_or_none()
+
     async def _exists(self, entity_type: str, entity_id: UUID) -> bool:
         model: Any = {"playlist": Playlist, "layout": Layout, "schedule": Schedule}[entity_type]
         return (await self._s.scalar(select(model.id).where(model.id == entity_id))) is not None
@@ -155,9 +165,14 @@ class PublicationService:
         missing = await self._missing(built)
         if missing and include:
             for dep_type, dep_id in missing:
-                dep = await self._lock(dep_type, dep_id, create=True)
-                dep.working_rev = max(dep.working_rev, 1)
-                await self._publish(dep, auto=False, include=True)
+                dep = await self._lock_existing(dep_type, dep_id)
+                # seules les dépendances soumises (in_review) et inchangées depuis la soumission
+                # (expected_rev = submitted_rev) sont approuvées ; les autres restent bloquantes
+                if dep is None or dep.state != "in_review" or dep.working_rev != dep.submitted_rev:
+                    continue
+                if await self._publish(dep, auto=False, include=True):
+                    continue
+                self._audit("publication.approved", dep, via="include_dependencies")
             missing = await self._missing(built)
         if missing:
             return missing
@@ -285,10 +300,32 @@ class PublicationService:
         """Un seul objet : `blocked_by` calculé (dépendances non publiées) hors état publié."""
         (out,) = await self._outs([row], names=True)
         if row.state != "published":
+            missing = await self.missing_dependencies(row.entity_type, row.entity_id)
             out.blocked_by = [
                 ps.EntityRef(entity_type=t, entity_id=i)  # type: ignore[arg-type]
-                for t, i in await self.missing_dependencies(row.entity_type, row.entity_id)
+                for t, i in await self._visible(missing)
             ]
+        return out
+
+    async def _visible(self, keys: list[Key]) -> list[Key]:
+        """Un éditeur ne voit pas les identifiants hors de son périmètre (admin : tout)."""
+        if self._is_admin() or self._actor is None:
+            return keys
+        from vds_server.diffusion.scope import PerimeterScope
+
+        scope = PerimeterScope(self._s)
+        out: list[Key] = []
+        for entity_type, entity_id in keys:
+            if entity_type == "playlist":
+                model: Any = Playlist
+                cond = scope.playlist_filter(self._actor)
+            elif entity_type == "layout":
+                model = Layout
+                cond = scope.layout_filter(self._actor)
+            else:
+                continue
+            if await self._s.scalar(select(model.id).where(model.id == entity_id, cond)):
+                out.append((entity_type, entity_id))
         return out
 
     def _default(self, entity_type: str, entity_id: UUID) -> ps.PublicationOut:

@@ -168,6 +168,20 @@ async def published_schedules_of_playlist(session: AsyncSession, playlist_id: UU
     return list(rows)
 
 
+async def published_layouts_of_playlist(session: AsyncSession, playlist_id: UUID) -> list[UUID]:
+    """Mises en page dont l'instantané publié diffuse la playlist dans une zone."""
+    rows = await session.scalars(
+        select(Publication.entity_id)
+        .join(Layout, Layout.id == Publication.entity_id)
+        .where(
+            Publication.entity_type == "layout",
+            Publication.snapshot["zones"].contains([{"playlist_id": str(playlist_id)}]),
+        )
+        .order_by(Publication.entity_id)
+    )
+    return list(rows)
+
+
 async def published_schedules_of_layout(session: AsyncSession, layout_id: UUID) -> list[UUID]:
     rows = await session.scalars(
         select(Publication.entity_id)

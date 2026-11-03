@@ -39,6 +39,7 @@ from vds_server.overrides import schemas as sc
 from vds_server.player.schedule import _on_chain, load_inputs
 from vds_server.power.plan import PowerPlanBuilder
 from vds_server.publication.reader import is_published
+from vds_server.publication.service import PublicationService
 from vds_server.supervision.status import Thresholds
 
 DEFAULT_TZ = "Europe/Paris"
@@ -239,9 +240,8 @@ class OverrideService(ServiceBase):
             if body.layout_id is not None:
                 lay = (
                     await self._s.execute(
-                        select(Layout).where(
-                            Layout.id == body.layout_id, self._scope.layout_filter(self._actor)
-                        )
+                        select(Layout)
+                        .where(Layout.id == body.layout_id, self._scope.layout_filter(self._actor))
                         .with_for_update(read=True, of=Layout)  # J-D5
                     )
                 ).scalar_one_or_none()
@@ -260,7 +260,8 @@ class OverrideService(ServiceBase):
             if body.playlist_id is not None:
                 pl = (
                     await self._s.execute(
-                        select(Playlist).where(
+                        select(Playlist)
+                        .where(
                             Playlist.id == body.playlist_id,
                             self._scope.playlist_filter(self._actor),
                         )
@@ -300,6 +301,12 @@ class OverrideService(ServiceBase):
             if existing is not None:
                 return await self._out(existing, self._clock())
         target_name = await self._validate(body)
+        if (
+            body.content is not None
+            and self._actor.role != "admin"
+            and await PublicationService(self._s, self._actor, self._schemas).review_required()
+        ):  # la playlist éphémère est publiée d'office : réservé à l'admin sous validation
+            raise ApiError("override.content_requires_admin", 403)
         now = self._clock()
         starts, ends = await self._times(body, now, target_name)
         playlist_id = body.playlist_id

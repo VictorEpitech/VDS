@@ -290,8 +290,10 @@ async def test_override_with_inline_content_plays(
         "duration_minutes": 30,
         "content": {"content_type": "content.image", "props": {"src": str(media)}},
     }
-    r = await editor.post(f"{p}/api/v1/overrides", json=body, headers=SAME)
-    assert r.status_code == 201, r.text  # forçage : jamais soumis à validation
+    denied = await editor.post(f"{p}/api/v1/overrides", json=body, headers=SAME)
+    assert (denied.status_code, denied.json()["code"]) == (403, "override.content_requires_admin")
+    r = await admin.post(f"{p}/api/v1/overrides", json=body, headers=SAME)
+    assert r.status_code == 201, r.text  # contenu inline : réservé admin sous validation
     assert await live.items() == 1
 
 

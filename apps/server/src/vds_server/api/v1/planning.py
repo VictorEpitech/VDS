@@ -21,9 +21,8 @@ def build_router(rt: Runtime) -> APIRouter:
     Editor = Annotated[Principal, Depends(rt.pipeline.require("editor"))]
 
     def service(session: Session, actor: Editor) -> PlanningService:
-        return PlanningService(
-            session, rt.schemas, ScheduleService(session, None, actor), actor=actor
-        )
+        schedules = ScheduleService(session, None, actor, schemas=rt.schemas)
+        return PlanningService(session, rt.schemas, schedules, actor=actor)
 
     Svc = Annotated[PlanningService, Depends(service)]
     Limit = Annotated[int, Query(ge=1, le=ps.MAX_SCREENS_PER_PAGE)]

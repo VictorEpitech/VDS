@@ -25,6 +25,7 @@ from vds_server.db.models_power import Incident, PowerException, RemoteCommand
 from vds_server.diffusion.scope import PerimeterScope
 from vds_server.inventory import schemas as sc
 from vds_server.player.kiosk import load_requests
+from vds_server.publication.service import PublicationService
 
 
 class InventoryService:
@@ -144,12 +145,19 @@ class InventoryService:
 
     async def _drop_schedules(self, target_type: str, target_id: UUID) -> int:
         """Une programmation ne survit pas à sa cible (pas de FK polymorphe)."""
-        res = await self._s.execute(
-            delete(Schedule).where(
-                Schedule.target_type == target_type, Schedule.target_id == target_id
+        ids = list(
+            await self._s.scalars(
+                select(Schedule.id).where(
+                    Schedule.target_type == target_type, Schedule.target_id == target_id
+                )
             )
         )
-        return int(res.rowcount or 0)  # type: ignore[attr-defined]
+        if ids:
+            await self._s.execute(delete(Schedule).where(Schedule.id.in_(ids)))
+            pub = PublicationService(self._s, None)
+            for schedule_id in ids:  # sinon la ligne de publication reste orpheline
+                await pub.forget("schedule", schedule_id)
+        return len(ids)
 
     async def _count(self, model: Any, *where: Any) -> int:
         return int(

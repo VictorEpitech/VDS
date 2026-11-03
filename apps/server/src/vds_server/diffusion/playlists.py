@@ -36,7 +36,10 @@ from vds_server.diffusion.ownership import (
 )
 from vds_server.diffusion.scope import ContentScope, PerimeterScope
 from vds_server.diffusion.tags import AUTOCOMPLETE_MAX, escape_like, normalize_tag, normalize_tags
-from vds_server.publication.reader import published_schedules_of_playlist
+from vds_server.publication.reader import (
+    published_layouts_of_playlist,
+    published_schedules_of_playlist,
+)
 
 ItemSchemaLookup = Callable[[str], dict[str, Any] | None]
 
@@ -170,11 +173,20 @@ class PlaylistService(ServiceBase):
             raise ApiError("scope.forbidden", 403)
         return playlist
 
+    async def _get_any(self, playlist_id: UUID) -> Playlist:
+        """Y compris la playlist éphémère d'un forçage (usage interne uniquement)."""
+        row = await self._s.get(Playlist, playlist_id)
+        if row is None:
+            raise ApiError("playlist.not_found", 404)
+        return row
+
     async def get(self, playlist_id: UUID) -> Playlist:
         row = (
             await self._s.execute(
                 select(Playlist).where(
-                    Playlist.id == playlist_id, self._scope.playlist_filter(self._actor)
+                    Playlist.id == playlist_id,
+                    Playlist.owner_override_id.is_(None),  # playlists éphémères : hors /playlists
+                    self._scope.playlist_filter(self._actor),
                 )
             )
         ).scalar_one_or_none()
@@ -305,6 +317,8 @@ class PlaylistService(ServiceBase):
         used_ids = sorted(used)
         if used_ids:
             raise ApiError("playlist.in_use", 409, schedules=used_ids)
+        if published_zones := await published_layouts_of_playlist(self._s, playlist_id):
+            raise ApiError("playlist.in_use", 409, layouts=sorted(str(i) for i in published_zones))
         zone_layouts = sorted(
             (
                 await self._s.scalars(
@@ -408,7 +422,9 @@ class PlaylistService(ServiceBase):
     ) -> PlaylistItem:
         """Ajoute un élément (validé) en fin de playlist sans commit ni audit : l'appelant porte
         la transaction (forçage de contenu isolé)."""
-        media_ids = await self._validate_props(await self.get(playlist_id), content_type, props)
+        media_ids = await self._validate_props(
+            await self._get_any(playlist_id), content_type, props
+        )
         position = len(await self.items(playlist_id))
         item = PlaylistItem(
             playlist_id=playlist_id,
@@ -421,7 +437,7 @@ class PlaylistService(ServiceBase):
         self._s.add(item)
         await self._s.flush()
         await self._set_media(item.id, media_ids)
-        await self._publish(await self.get(playlist_id))
+        await self._publish(await self._get_any(playlist_id))
         return item
 
     async def add_item(self, playlist_id: UUID, body: sc.ItemCreate) -> sc.ItemOut:
