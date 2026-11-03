@@ -7,6 +7,8 @@ import { ConfirmAction, Empty, ErrorAlert, QueryStatus } from "../components/fee
 import { Icon } from "../components/Icon";
 import { useApi } from "../lib/api";
 import { TagEditor } from "../features/media/TagEditor";
+import { OwnerBadge, OwnerField, useOwnerChoice } from "../features/scope/Owner";
+import { useCanWrite } from "../features/scope/scope";
 import { keys, usePlaylistPage, type Playlist, type PlaylistDetail } from "../lib/queries";
 
 const PAGE_SIZE = 24;
@@ -26,10 +28,12 @@ export function Playlists() {
   const total = playlists.data?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const filtered = q.trim() !== "" || stateFilter !== "all" || tags.length > 0;
+  const owner = useOwnerChoice();
+  const canWrite = useCanWrite();
   const [name, setName] = useState("");
   const [missing, setMissing] = useState(false);
   const create = useMutation({
-    mutationFn: (n: string) => api.post<PlaylistDetail>("/playlists", { name: n }),
+    mutationFn: (n: string) => api.post<PlaylistDetail>("/playlists", owner.owner === undefined ? { name: n } : { name: n, owner: owner.owner }),
     onSuccess: (p) => {
       void qc.invalidateQueries({ queryKey: keys.playlists });
       navigate(`/content/playlists/${p.id}`);
@@ -69,6 +73,7 @@ export function Playlists() {
             </p>
           ) : null}
         </div>
+        <OwnerField choice={owner} />
         {create.isError ? <ErrorAlert error={create.error} /> : null}
         <button type="submit" className="btn btn-filled" disabled={create.isPending}>
           <Icon name="add" />
@@ -124,14 +129,19 @@ export function Playlists() {
                 </h3>
                 <p className="meta">{t("playlists.items", { count: p.item_count })}</p>
                 {p.tags.length > 0 ? <p className="meta">{t("tags.list", { tags: p.tags.join(", ") })}</p> : null}
-                <ExpiryBadge item={p} />
+                <div className="badges">
+                  <ExpiryBadge item={p} />
+                  <OwnerBadge owner={p.owner} />
+                </div>
               </div>
-              <ConfirmAction
-                label={t("playlists.delete.action")}
-                confirmLabel={t("playlists.delete.confirm", { name: p.name })}
-                pending={remove.isPending}
-                onConfirm={() => remove.mutate(p)}
-              />
+              {canWrite(p.owner) ? (
+                <ConfirmAction
+                  label={t("playlists.delete.action")}
+                  confirmLabel={t("playlists.delete.confirm", { name: p.name })}
+                  pending={remove.isPending}
+                  onConfirm={() => remove.mutate(p)}
+                />
+              ) : null}
             </li>
           ))}
         </ul>

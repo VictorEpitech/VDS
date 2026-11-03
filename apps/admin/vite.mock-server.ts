@@ -14,6 +14,7 @@ import { createFleetMock } from "./vite.mock-fleet";
 import { createPlanningMock } from "./vite.mock-planning";
 import { createPowerMock } from "./vite.mock-power";
 import { createProvisionMock } from "./vite.mock-provision";
+import { createUsersMock, whoOf } from "./vite.mock-users";
 
 const BASE_RE = /^(\/[a-z0-9_-]+)+$/;
 const TYPES: Record<string, string> = {
@@ -88,7 +89,11 @@ export function vdsMockServer(): Plugin {
   const assetsPrefix = `/modules/${themeId}/${manifest.assets}/`;
 
   const local = authProvider === "auth.local";
-  const sessions = new Map<string, MockSession>([[E2E_SESSION, { name: "Ada", email: "ada@vds.test", mustChange: false }]]);
+  const sessions = new Map<string, MockSession>([
+    [E2E_SESSION, { name: "Ada", email: "ada@vds.test", mustChange: false }],
+    ["e2e-editor", { name: "Marie", email: "marie@vds.test", mustChange: false }],
+    ["e2e-editor-empty", { name: "Paul", email: "paul@vds.test", mustChange: false }],
+  ]);
   const cookiePath = base === "" ? "/" : `${base}/`;
 
   function sessionOf(req: IncomingMessage): [string, MockSession] | null {
@@ -104,15 +109,16 @@ export function vdsMockServer(): Plugin {
   const layoutsMock = createLayoutsMock(diffusionMock.world);
   const fleetMock = createFleetMock(diffusionMock.world, layoutsMock.zoneCandidates);
   const planningMock = createPlanningMock(diffusionMock.world, fleetMock.forcedOn);
+  const usersMock = createUsersMock(diffusionMock.world);
   const diffusion = async (req: IncomingMessage, res: ServerResponse, route: string, query: URLSearchParams): Promise<boolean> =>
-    (await layoutsMock(req, res, route, query)) || (await fleetMock(req, res, route)) || (await planningMock(req, res, route, query)) || (await provisionMock(req, res, route, query)) || (await powerMock(req, res, route, query)) || diffusionMock(req, res, route, query);
+    (await usersMock(req, res, route, query)) || (await layoutsMock(req, res, route, query)) || (await fleetMock(req, res, route)) || (await planningMock(req, res, route, query)) || (await provisionMock(req, res, route, query)) || (await powerMock(req, res, route, query)) || diffusionMock(req, res, route, query);
 
   async function api(req: IncomingMessage, res: ServerResponse, route: string, query: URLSearchParams): Promise<void> {
     const method = req.method ?? "GET";
     if (!local) {
       // Provider hébergé : l'utilisateur est déjà connecté par le Studio.
       if (route === "/me" && method === "GET") {
-        return send(res, 200, TYPES[".json"]!, JSON.stringify({ id: "studio-1", display_name: "Camille", email: null, role: "admin", provider: authProvider, locale: null }));
+        return send(res, 200, TYPES[".json"]!, JSON.stringify({ id: "studio-1", display_name: "Camille", email: null, provider: authProvider, locale: null, ...usersMock.me(whoOf(req)) }));
       }
       if (await diffusion(req, res, route, query)) return;
       return error(res, 404, "errors.not_found");
@@ -134,7 +140,7 @@ export function vdsMockServer(): Plugin {
     if (route === "/me" && method === "GET") {
       if (!sess) return error(res, 401, "auth.unauthenticated");
       if (sess[1].mustChange) return error(res, 403, "auth_local.password_change_required");
-      return ok(200, { id: "u-1", display_name: sess[1].name, email: sess[1].email, role: "admin", provider: authProvider, locale: null });
+      return ok(200, { id: "u-1", display_name: sess[1].name, email: sess[1].email, provider: authProvider, locale: null, ...usersMock.me(whoOf(req)) });
     }
     if (route === "/m/auth.local/status" && method === "GET") return ok(200, { initialized: true });
     if (route === "/m/auth.local/bootstrap" && method === "POST") return error(res, 409, "auth_local.already_initialized");

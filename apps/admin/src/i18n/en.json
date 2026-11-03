@@ -27,7 +27,9 @@
     "install_android": "Install on Android TV",
     "playlist_edit": "Edit playlist",
     "site_detail": "Site details",
-    "layouts": "Layouts"
+    "layouts": "Layouts",
+    "users": "Users",
+    "user_detail": "User details"
   },
   "language": {
     "label": "Language",
@@ -355,6 +357,18 @@
       "if_match_required": "Reload the layout before saving.",
       "if_match_invalid": "Reload the layout before saving.",
       "not_found": "This layout no longer exists."
+    },
+    "scope": {
+      "forbidden": "This item is visible but outside your write scope.",
+      "shared_forbidden": "Only an administrator (or an organization-wide editor) can create or change shared content.",
+      "reference_out_of_scope": "This item can only use content from its own level or a higher one.",
+      "node_unknown": "This site or group no longer exists. Reload the list.",
+      "not_found": "This item does not exist or is outside your scope."
+    },
+    "user": {
+      "role_managed_by_provider": "This person's role is managed by the sign-in service.",
+      "last_admin": "At least one active administrator must remain.",
+      "self_demotion": "You cannot remove your own administrator rights."
     }
   },
   "auth": {
@@ -1433,7 +1447,8 @@
     "help": {
       "title": "Help",
       "onboarding": "Getting started guides you through setting up your fleet."
-    }
+    },
+    "users": "Accounts, roles and each editor's scope."
   },
   "onboarding": {
     "title": "Getting started",
@@ -2004,6 +2019,77 @@
       "title": "Simultaneous elements",
       "intro": "How many videos a screen can play at once. Most TVs play only one.",
       "form_label": "Simultaneous elements"
+    }
+  },
+  "scope": {
+    "owner": {
+      "label": "Owner",
+      "shared": "Shared",
+      "help": "Shared content is visible to everyone; otherwise it stays in the chosen site or group.",
+      "current": "Outside your choices",
+      "apply": "Apply",
+      "generic": {
+        "organization": "Shared",
+        "site": "Site",
+        "group": "Group"
+      }
+    },
+    "none": "No scope: an administrator must grant you one before you can work.",
+    "read_only": "Read only: this item is outside your write scope.",
+    "hidden_count": "{count, plural, one {# other use outside your scope} other {# other uses outside your scope}}"
+  },
+  "users": {
+    "title": "Users",
+    "intro": "Give each person a role and a scope (sites and groups). An editor only sees and changes their own scope.",
+    "detail": "User",
+    "back": "Back to users",
+    "manage": "Manage",
+    "empty": "No users yet.",
+    "no_match": "No user matches these filters.",
+    "last_seen": "Last activity: {date}",
+    "never_seen": "Never signed in",
+    "saved": "Changes saved.",
+    "account": "Account",
+    "filters": {
+      "label": "Filter users",
+      "search": "Search",
+      "role": "Role",
+      "all_roles": "All roles",
+      "site": "Site",
+      "all_sites": "All sites"
+    },
+    "role": {
+      "admin": "Administrator",
+      "editor": "Editor"
+    },
+    "active": {
+      "yes": "Active",
+      "no": "Disabled"
+    },
+    "field": {
+      "role": "Role",
+      "active": "Active account"
+    },
+    "role_hint": {
+      "provider": "Role managed by the sign-in service",
+      "self": "You cannot change your own role or disable your own account.",
+      "last_admin": "Last administrator: their role and account cannot be changed."
+    },
+    "scope": {
+      "title": "Scope",
+      "all": "Whole organization",
+      "none_short": "No scope",
+      "sites": "{count, plural, one {# site} other {# sites}}",
+      "groups": "{count, plural, one {# group} other {# groups}}",
+      "groups_of": "Groups of {site}",
+      "help": "Checking a site grants all its groups. Up and down arrows move between boxes, space toggles.",
+      "no_sites": "No site exists yet.",
+      "admin_all": "An administrator has access to the whole organization.",
+      "empty": "No scope: an administrator must grant this editor a site or a group.",
+      "summary": "Chosen scope: {summary}",
+      "conflict": "Someone else changed this scope. Reload to pick up the current version.",
+      "reload": "Reload",
+      "saved": "Scope saved."
     }
   }
 }

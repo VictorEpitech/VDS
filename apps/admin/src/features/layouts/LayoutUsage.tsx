@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { QueryStatus } from "../../components/feedback";
 import { Icon } from "../../components/Icon";
+import { HiddenUsage } from "../scope/Owner";
 import { useLayoutUsage } from "./layouts";
 
 /** Usage d'une mise en page : programmations, forçages (d'écran et de zone), écrans d'orientation différente. */
@@ -20,7 +21,7 @@ export function LayoutUsage({ id }: { id: string }) {
               <span>{t("layouts.usage.mismatch", { count: u.screens_orientation_mismatch, total: u.screens_total })}</span>
             </p>
           ) : null}
-          {u.schedules.length + u.overrides.length + u.zone_overrides.length === 0 ? <p className="meta">{t("layouts.usage.none")}</p> : null}
+          {u.schedules.length + u.overrides.length + u.zone_overrides.length === 0 && !(u.hidden_count > 0) ? <p className="meta">{t("layouts.usage.none")}</p> : null}
           {u.schedules.length > 0 ? (
             <>
               <h3>{t("layouts.usage.schedules")}</h3>
@@ -62,6 +63,7 @@ export function LayoutUsage({ id }: { id: string }) {
               </ul>
             </>
           ) : null}
+          <HiddenUsage count={u.hidden_count} />
         </>
       ) : null}
     </section>

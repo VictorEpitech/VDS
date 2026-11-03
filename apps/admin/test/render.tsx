@@ -44,13 +44,13 @@ type Handler = (url: string, init: RequestInit | undefined) => unknown;
 
 /** fetch simulé : `routes` associe "METHOD /chemin" (sans base) à une réponse JSON, `null` (204) ou une Response. */
 export function mockApi(routes: Record<string, Handler | unknown>, basePath = "") {
-  const calls: { method: string; path: string; body: unknown }[] = [];
+  const calls: { method: string; path: string; body: unknown; headers?: Record<string, string> }[] = [];
   const fn = vi.fn((input: string, init?: RequestInit) => {
     const method = init?.method ?? "GET";
     const path = String(input).slice(`${basePath}/api/v1`.length);
-    calls.push({ method, path, body: typeof init?.body === "string" ? JSON.parse(init.body) : undefined });
+    calls.push({ method, path, body: typeof init?.body === "string" ? JSON.parse(init.body) : undefined, headers: init?.headers as Record<string, string> | undefined });
     if (method === "GET" && path === "/me" && !routes["GET /me"]) {
-      return Promise.resolve(new Response(JSON.stringify({ id: "u1", display_name: "Ada", email: null, role: "admin", provider: "auth.local", locale: null })));
+      return Promise.resolve(new Response(JSON.stringify({ id: "u1", display_name: "Ada", email: null, role: "admin", provider: "auth.local", locale: null, role_source: "vds", perimeter: { unrestricted: true, can_share: true, nodes: [] } })));
     }
     if (method === "GET" && path === "/registry/content-types" && !routes["GET /registry/content-types"]) {
       return Promise.resolve(new Response(JSON.stringify(contentTypesFixture())));

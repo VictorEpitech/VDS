@@ -11,6 +11,8 @@ import { useApi } from "../../lib/api";
 import { formatBytes, formatDateTime } from "../../lib/media-view";
 import { keys, useMediaUsage, type Media } from "../../lib/queries";
 import { useContentTypes } from "../../lib/content-types";
+import { HiddenUsage, OwnerBadge, OwnerEdit } from "../scope/Owner";
+import { useCanWrite, type NodeRef } from "../scope/scope";
 import { ExpiryField } from "./ExpiryField";
 import { MediaThumb } from "./MediaThumb";
 import { TagEditor } from "./TagEditor";
@@ -33,6 +35,8 @@ export function MediaDetail({ id, onClose }: { id: string; onClose: () => void }
   const detail = useQuery({ queryKey: [...keys.media, "one", id] as const, queryFn: () => api.get<Detail>(`/media/${id}`) });
   const usage = useMediaUsage(id);
   const media = detail.data;
+  const canWrite = useCanWrite();
+  const writable = canWrite(media?.owner);
 
   useEffect(() => {
     heading.current?.focus();
@@ -46,7 +50,7 @@ export function MediaDetail({ id, onClose }: { id: string; onClose: () => void }
 
   const refresh = () => qc.invalidateQueries({ queryKey: keys.media });
   const patch = useMutation({
-    mutationFn: (body: { expires_at?: string | null; tags?: string[] }) => api.patch<Media>(`/media/${id}`, body),
+    mutationFn: (body: { expires_at?: string | null; tags?: string[]; owner?: NodeRef | null }) => api.patch<Media>(`/media/${id}`, body),
     onSuccess: refresh,
   });
   const replace = useMutation({
@@ -86,6 +90,7 @@ export function MediaDetail({ id, onClose }: { id: string; onClose: () => void }
             <MediaStatus status={media.status} />
             <ExpiryBadge item={media} />
             {media.usage_count === 0 && media.status === "ready" ? <UnusedBadge /> : null}
+            <OwnerBadge owner={media.owner} />
           </div>
           {media.status === "failed" ? (
             <p className="field-error">
@@ -133,7 +138,7 @@ export function MediaDetail({ id, onClose }: { id: string; onClose: () => void }
             <QueryStatus query={usage} />
             {usage.data ? (
               usage.data.playlists.length === 0 && usage.data.overrides.length === 0 ? (
-                <p className="meta">{t("media.usage.none")}</p>
+                usage.data.hidden_count > 0 ? <HiddenUsage count={usage.data.hidden_count} /> : <p className="meta">{t("media.usage.none")}</p>
               ) : (
                 <>
                   <ul className="list-reset usage-list">
@@ -163,12 +168,14 @@ export function MediaDetail({ id, onClose }: { id: string; onClose: () => void }
                       </ul>
                     </>
                   ) : null}
+                  <HiddenUsage count={usage.data.hidden_count} />
                   <p className="meta">{t("media.usage.screens_now", { count: screens })}</p>
                 </>
               )
             ) : null}
           </section>
 
+          {writable ? (
           <section aria-labelledby="media-replace-title" className="section">
             <h3 id="media-replace-title">{t("media.replace.title")}</h3>
             {!replacing ? (
@@ -216,11 +223,14 @@ export function MediaDetail({ id, onClose }: { id: string; onClose: () => void }
               </div>
             )}
           </section>
+          ) : null}
 
+          {writable ? (
           <section aria-labelledby="media-options-title" className="section">
             <h3 id="media-options-title">{t("media.detail.options")}</h3>
             <ExpiryField key={`${media.id}-${media.expires_at ?? ""}`} value={media.expires_at} pending={patch.isPending} onSave={(iso) => patch.mutate({ expires_at: iso })} />
             <TagEditor scope="media" tags={media.tags} pending={patch.isPending} onChange={(tags) => patch.mutate({ tags })} />
+            <OwnerEdit owner={media.owner} pending={patch.isPending} onSave={(owner) => patch.mutate({ owner })} />
             {patch.isError ? <ErrorAlert error={patch.error} /> : null}
             <details className="advanced">
               <summary>{t("form.advanced")}</summary>
@@ -236,6 +246,7 @@ export function MediaDetail({ id, onClose }: { id: string; onClose: () => void }
               </div>
             </details>
           </section>
+          ) : null}
         </>
       ) : null}
     </aside>

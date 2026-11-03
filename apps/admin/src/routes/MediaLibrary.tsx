@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useErrorText } from "../auth/error-text";
 import { Icon } from "../components/Icon";
 import { MediaBrowser } from "../features/media/MediaBrowser";
+import { OwnerField, useOwnerChoice } from "../features/scope/Owner";
 import { useUploads } from "../features/media/upload";
 import { useContentTypes } from "../lib/content-types";
 
@@ -10,7 +11,9 @@ export function MediaLibrary() {
   const { t, i18n } = useTranslation();
   const errorText = useErrorText();
   const contentTypes = useContentTypes();
-  const { jobs, start, dismiss } = useUploads();
+  const { jobs, start: send, dismiss } = useUploads();
+  const owner = useOwnerChoice();
+  const start = (files: File[]) => send(files, owner.owner);
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const onDrop = (e: DragEvent) => {
@@ -26,6 +29,7 @@ export function MediaLibrary() {
 
       <section className="card" aria-labelledby="upload-title">
         <h2 id="upload-title">{t("media.upload.title")}</h2>
+        <OwnerField choice={owner} />
         <div
           className="dropzone"
           data-dragging={dragging || undefined}

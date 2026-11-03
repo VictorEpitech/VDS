@@ -2599,3 +2599,80 @@ fieldset.field > legend {
   gap: var(--vds-space-2);
   min-block-size: var(--vds-touch-target);
 }
+
+/* --- Droits : périmètre, propriétaire (tokens uniquement, élévation tonale, aucune ombre) --- */
+
+.fieldset-plain {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.field-label {
+  font-weight: 600;
+}
+
+.owner-edit-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vds-space-2) var(--vds-space-3);
+}
+
+.owner-edit-row select {
+  flex: 1 1 12rem;
+  min-inline-size: 0;
+}
+
+.scope-picker {
+  min-inline-size: 0;
+  margin: 0;
+  padding: var(--vds-space-3);
+  border: 1px solid var(--vds-outline);
+  border-radius: var(--vds-radius-md);
+}
+
+.scope-picker > legend {
+  padding-inline: var(--vds-space-2);
+  font-weight: 600;
+}
+
+.scope-picker .field-check {
+  min-block-size: 2.75rem;
+  align-items: center;
+}
+
+.scope-picker .field-check label {
+  flex: 1;
+  min-block-size: 2.75rem;
+  display: flex;
+  align-items: center;
+}
+
+.scope-tree {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-2);
+}
+
+.scope-tree-groups {
+  margin-inline-start: var(--vds-space-6);
+  padding-inline-start: var(--vds-space-3);
+  border-inline-start: 2px solid var(--vds-outline);
+}
+
+.hidden-usage {
+  display: flex;
+  align-items: center;
+  gap: var(--vds-space-2);
+}
+
+.row-title {
+  margin: 0;
+  font-size: inherit;
+}
+
+.owner-badge {
+  max-inline-size: 100%;
+}

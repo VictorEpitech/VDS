@@ -9,6 +9,8 @@ import { MediaStatus } from "../../components/MediaStatus";
 import { ApiError, useApi } from "../../lib/api";
 import { formatBytes, readView, storeView, type ViewMode } from "../../lib/media-view";
 import { keys, useMediaPage, usePlaylists, type ListParams, type Media } from "../../lib/queries";
+import { OwnerBadge } from "../scope/Owner";
+import { useCanWrite } from "../scope/scope";
 import { BulkBar } from "./BulkBar";
 import { MediaDetail } from "./MediaDetail";
 import { MediaThumb } from "./MediaThumb";
@@ -25,6 +27,7 @@ function Badges({ m }: { m: Media }) {
       {m.status !== "ready" ? <MediaStatus status={m.status} /> : null}
       <ExpiryBadge item={m} />
       {m.usage_count === 0 && m.status === "ready" ? <UnusedBadge /> : null}
+      <OwnerBadge owner={m.owner} />
     </div>
   );
 }
@@ -50,6 +53,7 @@ export function MediaBrowser({ onEmptyAction }: { onEmptyAction: () => void }) {
   const params: ListParams = { q, kind, state, tags, unused, sort, limit: PAGE_SIZE, offset: page * PAGE_SIZE };
   const media = useMediaPage(params);
   const playlists = usePlaylists();
+  const canWrite = useCanWrite();
   const items = media.data?.items ?? [];
   const total = media.data?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -124,9 +128,11 @@ export function MediaBrowser({ onEmptyAction }: { onEmptyAction: () => void }) {
       {m.title}
     </button>
   );
-  const del = (m: Media) => (
+  // Action d'écriture masquée (non désactivée) quand l'objet n'est pas modifiable par ce périmètre.
+  const del = (m: Media) =>
+    !canWrite(m.owner) ? null : (
     <ConfirmAction label={t("media.delete.action")} confirmLabel={t("media.delete.confirm", { title: m.title })} pending={remove.isPending} onConfirm={() => remove.mutate(m)} />
-  );
+    );
 
   return (
     <section aria-labelledby="library-title" className="section">

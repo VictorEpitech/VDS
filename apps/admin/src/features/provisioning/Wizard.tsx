@@ -11,6 +11,7 @@ import { isActive, STEP_ORDER, useAgentStall, useCapabilities, useProvision, use
 import { StepList, useCodeText } from "./StepList";
 import { AgentSetupLink } from "../sites/EnrollPanel";
 import { Tutorial } from "./Tutorial";
+import { useWritableTargets } from "../scope/scope";
 
 type Orientation = "landscape" | "portrait";
 const STEP_COUNT = 5;
@@ -34,6 +35,7 @@ export function ProvisionWizard() {
   const qc = useQueryClient();
   const sites = useSites();
   const groups = useAllGroups();
+  const targets = useWritableTargets();
   const screens = useScreens();
   const query = useSearchParams()[0];
   const wanted = query.get("screen") ?? "";
@@ -79,8 +81,8 @@ export function ProvisionWizard() {
     },
   });
 
-  const activeSites = (sites.data ?? []).filter((s) => !s.archived_at);
-  const siteGroups = (groups.data ?? []).filter((g) => g.site_id === siteId);
+  const activeSites = targets.sites.filter((s) => !s.archived_at);
+  const siteGroups = targets.groups.filter((g) => g.site_id === siteId);
   const available = caps.data?.available === true;
   const current: number = pid !== null ? runStep(session.data) : view;
 

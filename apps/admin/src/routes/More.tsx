@@ -1,10 +1,12 @@
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import { useSession } from "../auth/session";
+import { useScope } from "../features/scope/scope";
 import { ReopenOnboarding } from "../features/onboarding/OnboardingCard";
 import { Icon, type IconName } from "../components/Icon";
 
-const ENTRIES: { to: string; icon: IconName; key: string }[] = [
+const ENTRIES: { to: string; icon: IconName; key: string; adminOnly?: boolean }[] = [
+  { to: "/users", icon: "user", key: "users", adminOnly: true },
   { to: "/sites", icon: "site", key: "sites" },
   { to: "/power", icon: "power", key: "power" },
   { to: "/notifications", icon: "mail", key: "notifications" },
@@ -15,12 +17,15 @@ export function More() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const session = useSession();
+  const scope = useScope();
+  // Éditeur restreint : interface réduite, seuls les réglages de son périmètre restent accessibles (les autres sont refusés par le serveur).
+  const entries = ENTRIES.filter((e) => (e.adminOnly ? scope.isAdmin : !scope.restricted));
   return (
     <>
       <h1>{t("more.title")}</h1>
       <p className="lead">{t("more.intro")}</p>
       <ul className="cards list-reset">
-        {ENTRIES.map((e) => (
+        {entries.map((e) => (
           <li key={e.key} className="card">
             <h2>
               <Icon name={e.icon} />

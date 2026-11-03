@@ -27,7 +27,9 @@
     "install_android": "Installer sur Android TV",
     "playlist_edit": "Modifier la playlist",
     "site_detail": "Détail du site",
-    "layouts": "Mises en page"
+    "layouts": "Mises en page",
+    "users": "Utilisateurs",
+    "user_detail": "Fiche utilisateur"
   },
   "language": {
     "label": "Langue",
@@ -355,6 +357,18 @@
       "if_match_required": "Rechargez la mise en page avant d'enregistrer.",
       "if_match_invalid": "Rechargez la mise en page avant d'enregistrer.",
       "not_found": "Cette mise en page n'existe plus."
+    },
+    "scope": {
+      "forbidden": "Cet élément est visible mais hors de votre périmètre d'écriture.",
+      "shared_forbidden": "Seul un administrateur (ou un éditeur de toute l'organisation) peut créer ou modifier un contenu partagé.",
+      "reference_out_of_scope": "Cet élément ne peut utiliser que des contenus de son propre niveau ou d'un niveau supérieur.",
+      "node_unknown": "Ce site ou ce groupe n'existe plus. Rechargez la liste.",
+      "not_found": "Cet élément n'existe pas ou n'est pas dans votre périmètre."
+    },
+    "user": {
+      "role_managed_by_provider": "Le rôle de cette personne est géré par le service de connexion.",
+      "last_admin": "Il doit rester au moins un administrateur actif.",
+      "self_demotion": "Vous ne pouvez pas retirer vos propres droits d'administrateur."
     }
   },
   "auth": {
@@ -1433,7 +1447,8 @@
     "help": {
       "title": "Aide",
       "onboarding": "Les Premiers pas guident la mise en route de votre parc."
-    }
+    },
+    "users": "Comptes, rôles et périmètre de chaque éditeur."
   },
   "onboarding": {
     "title": "Premiers pas",
@@ -2004,6 +2019,77 @@
       "title": "Éléments lus en même temps",
       "intro": "Nombre de vidéos qu'un écran peut lire simultanément. La plupart des TV n'en lisent qu'une.",
       "form_label": "Éléments lus en même temps"
+    }
+  },
+  "scope": {
+    "owner": {
+      "label": "Propriétaire",
+      "shared": "Partagé",
+      "help": "Un contenu partagé est visible de tous ; sinon il reste dans le site ou le groupe choisi.",
+      "current": "Hors de vos choix",
+      "apply": "Appliquer",
+      "generic": {
+        "organization": "Partagé",
+        "site": "Site",
+        "group": "Groupe"
+      }
+    },
+    "none": "Aucun périmètre : un administrateur doit vous en attribuer un avant que vous puissiez travailler.",
+    "read_only": "Lecture seule : cet élément n'appartient pas à votre périmètre d'écriture.",
+    "hidden_count": "{count, plural, one {# autre usage hors de votre périmètre} other {# autres usages hors de votre périmètre}}"
+  },
+  "users": {
+    "title": "Utilisateurs",
+    "intro": "Attribuez un rôle et un périmètre (sites et groupes) à chaque personne. Un éditeur ne voit et ne modifie que son périmètre.",
+    "detail": "Utilisateur",
+    "back": "Retour aux utilisateurs",
+    "manage": "Gérer",
+    "empty": "Aucun utilisateur pour le moment.",
+    "no_match": "Aucun utilisateur ne correspond à ces filtres.",
+    "last_seen": "Dernière activité : {date}",
+    "never_seen": "Jamais connecté",
+    "saved": "Modifications enregistrées.",
+    "account": "Compte",
+    "filters": {
+      "label": "Filtrer les utilisateurs",
+      "search": "Rechercher",
+      "role": "Rôle",
+      "all_roles": "Tous les rôles",
+      "site": "Site",
+      "all_sites": "Tous les sites"
+    },
+    "role": {
+      "admin": "Administrateur",
+      "editor": "Éditeur"
+    },
+    "active": {
+      "yes": "Actif",
+      "no": "Désactivé"
+    },
+    "field": {
+      "role": "Rôle",
+      "active": "Compte actif"
+    },
+    "role_hint": {
+      "provider": "Rôle géré par le service de connexion",
+      "self": "Vous ne pouvez pas modifier votre propre rôle ni désactiver votre compte.",
+      "last_admin": "Dernier administrateur : son rôle et son compte ne peuvent pas être modifiés."
+    },
+    "scope": {
+      "title": "Périmètre",
+      "all": "Toute l'organisation",
+      "none_short": "Aucun périmètre",
+      "sites": "{count, plural, one {# site} other {# sites}}",
+      "groups": "{count, plural, one {# groupe} other {# groupes}}",
+      "groups_of": "Groupes de {site}",
+      "help": "Cocher un site donne accès à tous ses groupes. Flèches haut et bas pour passer d'une case à l'autre, espace pour cocher.",
+      "no_sites": "Aucun site n'existe encore.",
+      "admin_all": "Un administrateur a accès à toute l'organisation.",
+      "empty": "Aucun périmètre : un administrateur doit attribuer un site ou un groupe à cet éditeur.",
+      "summary": "Périmètre choisi : {summary}",
+      "conflict": "Ce périmètre a été modifié par quelqu'un d'autre. Rechargez pour reprendre la version actuelle.",
+      "reload": "Recharger",
+      "saved": "Périmètre enregistré."
     }
   }
 }

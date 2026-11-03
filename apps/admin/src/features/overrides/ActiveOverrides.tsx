@@ -4,10 +4,11 @@ import { useSession } from "../../auth/session";
 import { Empty, QueryStatus, SuccessAlert } from "../../components/feedback";
 import { Icon } from "../../components/Icon";
 import { StatusBadge } from "../../components/StatusBadge";
-import { useAllGroups, useScreens, useSites } from "../../lib/queries";
+import { useScreens } from "../../lib/queries";
 import { OverrideControls, OverrideUntil } from "./OverrideControls";
 import { OverrideForm } from "./OverrideForm";
 import { canForce, screensOf, useOverrides } from "./overrides";
+import { useWritableTargets } from "../scope/scope";
 
 /** Bloc « Forçages en cours » de l'Accueil : fin visible, prolonger / arrêter, nouveau forçage. Administrateur et éditeur. */
 export function ActiveOverrides() {
@@ -16,8 +17,7 @@ export function ActiveOverrides() {
   const allowed = canForce(session.data?.role);
   const overrides = useOverrides(allowed);
   const screens = useScreens();
-  const sites = useSites();
-  const groups = useAllGroups();
+  const targets = useWritableTargets();
   const [open, setOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   if (!allowed) return null;
@@ -39,9 +39,9 @@ export function ActiveOverrides() {
       {notice ? <SuccessAlert>{notice}</SuccessAlert> : null}
       {open ? (
         <OverrideForm
-          screens={screens.data ?? []}
-          groups={groups.data ?? []}
-          sites={sites.data ?? []}
+          screens={targets.screens(screens.data ?? [])}
+          groups={targets.groups}
+          sites={targets.sites}
           initial={null}
           isAdmin={session.data?.role === "admin"}
           onClose={() => setOpen(false)}

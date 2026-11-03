@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { ApiError, useApi } from "../../lib/api";
 import { keys, type Media } from "../../lib/queries";
+import type { Owner } from "../scope/scope";
 
 export interface UploadJob {
   key: number;
@@ -23,12 +24,14 @@ export function useUploads() {
   }, []);
 
   const start = useCallback(
-    (files: File[]) => {
+    (files: File[], owner?: Owner) => {
+      // Propriétaire explicite : champs multipart du serveur ; absent ou partagé : défaut du serveur (partagé).
+      const fields: Record<string, string> = owner && owner.type !== "organization" ? { owner_type: owner.type, owner_id: owner.id } : {};
       files.forEach((file) => {
         const key = Date.now() * 1000 + Math.floor(Math.random() * 1000);
         setJobs((list) => [...list, { key, name: file.name, progress: 0, state: "uploading" }]);
         api
-          .upload<Media>("/media", file, {}, (progress) => patch(key, { progress }))
+          .upload<Media>("/media", file, fields, (progress) => patch(key, { progress }))
           .then(() => {
             patch(key, { state: "done", progress: 1 });
             void qc.invalidateQueries({ queryKey: keys.media });

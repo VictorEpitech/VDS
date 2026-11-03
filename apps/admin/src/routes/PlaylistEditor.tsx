@@ -11,6 +11,8 @@ import { ItemForm, type ItemDraft } from "../features/playlist/ItemForm";
 import { useApi } from "../lib/api";
 import { useContentTypes } from "../lib/content-types";
 import { formatDateTime } from "../lib/media-view";
+import { HiddenUsage, OwnerBadge, OwnerEdit } from "../features/scope/Owner";
+import { useCanWrite, type NodeRef } from "../features/scope/scope";
 import { keys, useMedia, usePlaylist, usePlaylistUsage, type PlaylistDetail, type PlaylistItem } from "../lib/queries";
 
 export function PlaylistEditor() {
@@ -22,6 +24,8 @@ export function PlaylistEditor() {
   const media = useMedia();
   const usage = usePlaylistUsage(id);
   const contentTypes = useContentTypes();
+  const canWrite = useCanWrite();
+  const writable = canWrite(playlist.data?.owner);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [announce, setAnnounce] = useState("");
@@ -36,7 +40,7 @@ export function PlaylistEditor() {
     onSuccess: refresh,
   });
   const options = useMutation({
-    mutationFn: (body: { expires_at?: string | null; tags?: string[] }) => api.patch(`/playlists/${id}`, body),
+    mutationFn: (body: { expires_at?: string | null; tags?: string[]; owner?: NodeRef | null }) => api.patch(`/playlists/${id}`, body),
     onSuccess: refresh,
   });
   const add = useMutation({
@@ -122,6 +126,7 @@ export function PlaylistEditor() {
       <QueryStatus query={playlist} />
       {playlist.isSuccess ? (
         <>
+          {writable ? (
           <form
             className="inline-form"
             onSubmit={(e) => {
@@ -137,22 +142,29 @@ export function PlaylistEditor() {
               {t("common.save")}
             </button>
           </form>
+          ) : null}
           {rename.isError ? <ErrorAlert error={rename.error} /> : null}
-          <ExpiryBadge item={playlist.data} />
+          <div className="badges">
+            <ExpiryBadge item={playlist.data} />
+            <OwnerBadge owner={playlist.data.owner} />
+          </div>
 
+          {writable ? (
           <details className="advanced section" open={playlist.data.expires_at !== null || playlist.data.tags.length > 0 ? true : undefined}>
             <summary>{t("playlist.options")}</summary>
             <div className="advanced-body">
               <ExpiryField key={playlist.data.expires_at ?? ""} value={playlist.data.expires_at} pending={options.isPending} onSave={(iso) => options.mutate({ expires_at: iso })} />
               <TagEditor scope="playlists" tags={playlist.data.tags} pending={options.isPending} onChange={(tags) => options.mutate({ tags })} />
+              <OwnerEdit owner={playlist.data.owner} pending={options.isPending} onSave={(owner) => options.mutate({ owner })} />
               {options.isError ? <ErrorAlert error={options.error} /> : null}
             </div>
           </details>
+          ) : null}
 
           <section className="section" aria-labelledby="items-title">
             <div className="page-head">
               <h2 id="items-title">{t("playlist.items")}</h2>
-              {!adding ? (
+              {!adding && writable ? (
                 <button type="button" className="btn btn-filled" onClick={() => { setAdding(true); setEditing(null); }}>
                   <Icon name="add" />
                   {t("playlist.item.add")}
@@ -185,6 +197,7 @@ export function PlaylistEditor() {
                         {item.enabled ? null : ` · ${t("playlist.item.disabled")}`}
                       </p>
                     </div>
+                    {writable ? (
                     <div className="actions">
                       <button
                         type="button"
@@ -216,6 +229,7 @@ export function PlaylistEditor() {
                         onConfirm={() => remove.mutate(item)}
                       />
                     </div>
+                    ) : null}
                   </div>
                   {editing === item.id ? (
                     <ItemForm
@@ -238,7 +252,9 @@ export function PlaylistEditor() {
           <section className="section" aria-labelledby="usage-title">
             <h2 id="usage-title">{t("playlist.usage.title")}</h2>
             <QueryStatus query={usage} />
-            {usage.data && usage.data.schedules.length === 0 && usage.data.overrides.length === 0 ? <p className="meta">{t("playlist.usage.none")}</p> : null}
+            {usage.data && usage.data.schedules.length === 0 && usage.data.overrides.length === 0 ? (
+              usage.data.hidden_count > 0 ? null : <p className="meta">{t("playlist.usage.none")}</p>
+            ) : null}
             {usage.data && usage.data.schedules.length > 0 ? (
               <ul className="list-reset usage-list">
                 {usage.data.schedules.map((s) => (
@@ -255,6 +271,7 @@ export function PlaylistEditor() {
                 ))}
               </ul>
             ) : null}
+            <HiddenUsage count={usage.data?.hidden_count} />
           </section>
         </>
       ) : null}

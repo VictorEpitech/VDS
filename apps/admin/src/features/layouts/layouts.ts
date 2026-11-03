@@ -87,8 +87,9 @@ export function useDeleteLayout() {
 /** Zone d'édition : le serveur renvoie `LayoutZoneOut`, la mise à jour envoie `LayoutZoneIn` (mêmes champs). */
 export const toIn = (z: LayoutZone): LayoutZoneIn => ({ ...z });
 
-export function toLayoutIn(l: Pick<Layout, "name" | "orientation" | "background_color" | "background_media_id" | "tags">, zones: readonly LayoutZone[]): LayoutIn {
-  return { name: l.name, orientation: l.orientation, background_color: l.background_color, background_media_id: l.background_media_id, tags: l.tags, zones: zones.map(toIn) };
+export function toLayoutIn(l: Pick<Layout, "name" | "orientation" | "background_color" | "background_media_id" | "tags"> & { owner?: Layout["owner"] }, zones: readonly LayoutZone[]): LayoutIn {
+  // PUT remplace tout : le propriétaire est renvoyé tel quel, sinon il retomberait sur le défaut du serveur.
+  return { name: l.name, orientation: l.orientation, background_color: l.background_color, background_media_id: l.background_media_id, tags: l.tags, zones: zones.map(toIn), ...(l.owner === undefined ? {} : { owner: l.owner }) };
 }
 
 // --- Modèles : constantes de l'admin, simples préremplissages (le serveur ne connaît que des mises en page) ---

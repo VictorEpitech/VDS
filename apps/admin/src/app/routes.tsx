@@ -22,6 +22,7 @@ import { Schedules } from "../routes/Schedules";
 import { Screens } from "../routes/Screens";
 import { SiteDetail } from "../routes/SiteDetail";
 import { Sites } from "../routes/Sites";
+import { Users } from "../routes/Users";
 
 export const routes: RouteObject[] = [
   {
@@ -60,6 +61,8 @@ export const routes: RouteObject[] = [
           { path: "more", element: <More /> },
           { path: "sites", element: <Sites /> },
           { path: "sites/:id", element: <SiteDetail /> },
+          { path: "users", element: <Users /> },
+          { path: "users/:id", element: <Users detail /> },
           { path: "power", element: <Power /> },
           { path: "notifications", element: <Notifications /> },
           // Anciennes URL (signets, liens externes) : redirections, base conservée par le routeur.

@@ -6,7 +6,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { ErrorAlert, QueryStatus } from "../../../components/feedback";
 import { Icon, type IconName } from "../../../components/Icon";
 import { useApi } from "../../../lib/api";
-import { keys, useAllGroups, useScreens, useSites, type Screen } from "../../../lib/queries";
+import { keys, useScreens, useSites, type Screen } from "../../../lib/queries";
 import { DiscoveryPanel } from "../../discovery/DiscoveryPanel";
 import { applyDiscoveredDevice, suggestedName, type DiscoveredDevice } from "../../discovery/hooks";
 import { useProvisioningAvailable } from "../../provisioning/hooks";
@@ -14,6 +14,7 @@ import { AgentSetupLink } from "../../sites/EnrollPanel";
 import { InheritedSettings } from "./InheritedSettings";
 import { codeState, normalizeCode, pairMotive, type PairMotive } from "./pairErrors";
 import { VerifyStep } from "./VerifyStep";
+import { useWritableTargets } from "../../scope/scope";
 
 type Device = "browser" | "android" | "pi" | "other";
 type StepId = "device" | "code" | "details" | "verify";
@@ -68,7 +69,7 @@ export function AddScreen() {
   const api = useApi();
   const qc = useQueryClient();
   const sites = useSites();
-  const groups = useAllGroups();
+  const targets = useWritableTargets();
   const screens = useScreens();
   const wanted = useSearchParams()[0].get("screen") ?? "";
   const existing = wanted ? screens.data?.find((s) => s.id === wanted && !s.archived_at) : undefined;
@@ -128,8 +129,8 @@ export function AddScreen() {
     },
   });
 
-  const activeSites = (sites.data ?? []).filter((s) => !s.archived_at);
-  const siteGroups = (groups.data ?? []).filter((g) => g.site_id === siteId);
+  const activeSites = targets.sites.filter((s) => !s.archived_at);
+  const siteGroups = targets.groups.filter((g) => g.site_id === siteId);
   const cs = codeState(code);
 
   const goCode = () => {

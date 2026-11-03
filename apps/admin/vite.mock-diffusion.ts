@@ -30,6 +30,7 @@ const ITEM_MEDIA_FIELD: Record<string, [string, string]> = {
 };
 
 interface MediaRow {
+  owner?: { type: string; id: string } | null;
   id: string;
   title: string;
   kind: "image" | "video" | "document";
@@ -51,6 +52,7 @@ interface ItemRow {
 }
 interface PlaylistRow {
   id: string;
+  owner?: { type: string; id: string } | null;
   name: string;
   description: string | null;
   items: ItemRow[];
@@ -176,6 +178,7 @@ export function createDiffusionMock() {
     const status = age < PROCESSING_MS ? "processing" : m.broken ? "failed" : "ready";
     return {
       id: m.id,
+      owner: m.owner ?? null,
       title: m.title,
       kind: m.kind,
       mime: m.mime,
@@ -205,6 +208,7 @@ export function createDiffusionMock() {
   };
   const playlistOut = (p: PlaylistRow) => ({
     id: p.id,
+    owner: p.owner ?? null,
     name: p.name,
     description: p.description,
     item_count: p.items.length,
@@ -385,6 +389,7 @@ export function createDiffusionMock() {
         expires_at: null,
         tags: [],
         revision: 1,
+        owner: parsed.fields.owner_type && parsed.fields.owner_id ? { type: parsed.fields.owner_type, id: parsed.fields.owner_id } : null,
       };
       media.push(row);
       return send(201, mediaOut(row)), true;
@@ -446,7 +451,7 @@ export function createDiffusionMock() {
     }
     if (route === "/playlists" && method === "POST") {
       const body = await json();
-      const row: PlaylistRow = { id: randomUUID(), name: String(body.name ?? "").trim(), description: null, items: [], created: now(), expires_at: null, tags: [] };
+      const row: PlaylistRow = { id: randomUUID(), name: String(body.name ?? "").trim(), description: null, items: [], created: now(), expires_at: null, tags: [], owner: (body.owner as { type: string; id: string } | null | undefined) ?? null };
       if (!row.name) return fail(422, "errors.validation"), true;
       playlists.push(row);
       return send(201, playlistDetail(row)), true;
@@ -462,6 +467,7 @@ export function createDiffusionMock() {
           if (typeof body.name === "string" && body.name.trim()) row.name = body.name.trim();
           if ("expires_at" in body) row.expires_at = (body.expires_at as string | null) ?? null;
           if (Array.isArray(body.tags)) row.tags = body.tags as string[];
+          if ("owner" in body) row.owner = (body.owner as { type: string; id: string } | null) ?? null;
           return send(200, playlistDetail(row)), true;
         }
         if (method === "DELETE") {
@@ -535,7 +541,7 @@ export function createDiffusionMock() {
     }
     return false;
   };
-  return Object.assign(handle, { world: { sites, group, screens, schedules, playlists } });
+  return Object.assign(handle, { world: { sites, group, groups, screens, schedules, playlists } });
 
   function validateProps(type: string, props: Json): [number, string, Json?] | null {
     const field = ITEM_MEDIA_FIELD[type];

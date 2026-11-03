@@ -6,6 +6,7 @@ import { Icon } from "../components/Icon";
 import { ExclusiveSetting } from "../features/layouts/ExclusiveSetting";
 import { LayoutThumb } from "../features/layouts/LayoutThumb";
 import { TEMPLATE_IDS, templateZones, useCreateLayout, useLayoutPage, type Orientation, type TemplateId } from "../features/layouts/layouts";
+import { OwnerBadge, OwnerField, useOwnerChoice } from "../features/scope/Owner";
 import { useOrganization } from "../lib/queries";
 
 export function Layouts() {
@@ -16,6 +17,7 @@ export function Layouts() {
   const [orientationFilter, setOrientationFilter] = useState<Orientation | "">("");
   const layouts = useLayoutPage({ q, orientation: orientationFilter });
   const create = useCreateLayout();
+  const owner = useOwnerChoice();
   const org = useOrganization();
   const [open, setOpen] = useState(false);
   const [template, setTemplate] = useState<TemplateId>("full");
@@ -34,7 +36,7 @@ export function Layouts() {
     const n = name.trim();
     setMissing(n === "");
     if (!n) return;
-    create.mutate({ name: n, orientation, zones: templateZones(template, (k) => t(`layouts.templates.${template}.${k}`)), tags: [] }, { onSuccess: (l) => navigate(`/content/layouts/${l.id}`) });
+    create.mutate({ name: n, orientation, zones: templateZones(template, (k) => t(`layouts.templates.${template}.${k}`)), tags: [], ...(owner.owner === undefined ? {} : { owner: owner.owner }) }, { onSuccess: (l) => navigate(`/content/layouts/${l.id}`) });
   };
 
   return (
@@ -86,6 +88,7 @@ export function Layouts() {
               ))}
             </div>
           </fieldset>
+          <OwnerField choice={owner} />
           {create.isError ? <ErrorAlert error={create.error} /> : null}
           <div className="actions">
             <button type="submit" className="btn btn-filled" disabled={create.isPending} aria-busy={create.isPending}>
@@ -141,6 +144,7 @@ export function Layouts() {
               <p className="meta">
                 {t(`layouts.orientation.${l.orientation}`)} · {t("layouts.zone_count", { count: l.zone_count })} · {t("layouts.usage_count", { count: l.usage_count })}
               </p>
+              <OwnerBadge owner={l.owner} />
             </li>
           ))}
         </ul>

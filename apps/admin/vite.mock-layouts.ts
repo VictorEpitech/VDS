@@ -22,6 +22,7 @@ interface LayoutRow {
   background_color: string | null;
   background_media_id: string | null;
   tags: string[];
+  owner?: { type: string; id: string } | null;
   zones: Zone[];
   revision: number;
   created_at: string;
@@ -53,7 +54,7 @@ export function createLayoutsMock(world: World) {
   const now = () => new Date().toISOString();
   const usage = (l: LayoutRow) => world.schedules.filter((s) => s.layout_id === l.id);
   const full = (l: LayoutRow) => ({ ...l, warnings: [] });
-  const summary = (l: LayoutRow) => ({ id: l.id, name: l.name, orientation: l.orientation, revision: l.revision, tags: l.tags, updated_at: l.updated_at, zone_count: l.zones.length, usage_count: usage(l).length, zones: l.zones });
+  const summary = (l: LayoutRow) => ({ id: l.id, name: l.name, orientation: l.orientation, revision: l.revision, owner: l.owner ?? null, tags: l.tags, updated_at: l.updated_at, zone_count: l.zones.length, usage_count: usage(l).length, zones: l.zones });
 
   /** Zones rencontrées dans les mises en page (sélecteur de forçage de zone). */
   const zoneCandidates = (): { key: string; name: string; layouts: number }[] => {
@@ -99,7 +100,7 @@ export function createLayoutsMock(world: World) {
       if (rows.some((l) => l.name === String(body.name).trim())) return fail(409, "layout.name_conflict");
       const row: LayoutRow = {
         id: randomUUID(), name: String(body.name).trim(), orientation: body.orientation as LayoutRow["orientation"], background_color: (body.background_color as string | null) ?? null,
-        background_media_id: null, tags: (body.tags as string[] | undefined) ?? [], zones: body.zones as Zone[], revision: 1, created_at: now(), updated_at: now(),
+        background_media_id: null, owner: (body.owner as { type: string; id: string } | null | undefined) ?? null, tags: (body.tags as string[] | undefined) ?? [], zones: body.zones as Zone[], revision: 1, created_at: now(), updated_at: now(),
       };
       rows.push(row);
       return send(201, full(row)), true;
@@ -119,7 +120,7 @@ export function createLayoutsMock(world: World) {
         const bad = validate(body);
         if (bad) return fail(...bad);
         if (rows.some((l) => l !== row && l.name === String(body.name).trim())) return fail(409, "layout.name_conflict");
-        Object.assign(row, { name: String(body.name).trim(), orientation: body.orientation, background_color: (body.background_color as string | null) ?? null, tags: (body.tags as string[] | undefined) ?? [], zones: body.zones as Zone[], revision: row.revision + 1, updated_at: now() });
+        Object.assign(row, { name: String(body.name).trim(), orientation: body.orientation, background_color: (body.background_color as string | null) ?? null, tags: (body.tags as string[] | undefined) ?? [], ...("owner" in body ? { owner: body.owner as { type: string; id: string } | null } : {}), zones: body.zones as Zone[], revision: row.revision + 1, updated_at: now() });
         return send(200, full(row)), true;
       }
       if (method === "DELETE") {

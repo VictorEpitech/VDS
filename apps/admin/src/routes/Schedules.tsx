@@ -12,6 +12,7 @@ import { ScheduleWizard, type ScheduleDraft, type SchedulePrefill } from "../fea
 import { useLayouts } from "../features/layouts/layouts";
 import { useApi } from "../lib/api";
 import { keys, useAllGroups, usePlaylists, useSchedules, useScreens, useSites, type Schedule } from "../lib/queries";
+import { useWritableTargets } from "../features/scope/scope";
 
 /** À la création, seul l'identifiant de contenu utilisé est envoyé (l'autre est omis plutôt que nul). */
 function withoutUnusedTarget(d: ScheduleDraft): Partial<ScheduleDraft> {
@@ -27,6 +28,7 @@ export function Schedules() {
   const screens = useScreens();
   const sites = useSites();
   const groups = useAllGroups();
+  const targets = useWritableTargets();
   const playlists = usePlaylists();
   const layouts = useLayouts();
   const [form, setForm] = useState<"new" | Schedule | null>(null);
@@ -107,9 +109,9 @@ export function Schedules() {
           key={form === "new" ? `new-${prefill ? `${prefill.target.id}-${prefill.date}-${prefill.rule.start}` : ""}` : form.id}
           prefill={form === "new" ? prefill : undefined}
           schedule={form === "new" ? undefined : form}
-          screens={screens.data ?? []}
-          groups={groups.data ?? []}
-          sites={sites.data ?? []}
+          screens={targets.screens(screens.data ?? [])}
+          groups={targets.groups}
+          sites={targets.sites}
           playlists={playlists.data?.items ?? []}
           layouts={layouts.data?.items ?? []}
           pending={save.isPending}

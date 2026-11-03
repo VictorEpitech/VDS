@@ -1,6 +1,8 @@
 import { useId, useMemo, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
+import { OwnerBadge, OwnerEdit } from "../scope/Owner";
+import { useCanWrite, type NodeRef } from "../scope/scope";
 import { ConfirmAction, ErrorAlert, SuccessAlert } from "../../components/feedback";
 import { Icon } from "../../components/Icon";
 import { ApiError } from "../../lib/api";
@@ -47,13 +49,16 @@ export function LayoutEditor({ layout, maxZones = DEFAULT_MAX_ZONES, onReload, o
   const [orientation, setOrientation] = useState(layout.orientation);
   const [background, setBackground] = useState<string | null>(layout.background_color);
   const [zones, setZones] = useState<LayoutZone[]>(layout.zones);
+  const [owner, setOwner] = useState<NodeRef | null | undefined>(layout.owner);
+  const canWrite = useCanWrite();
+  const writable = canWrite(layout.owner);
   const [selectedAt, setSelectedAt] = useState(0);
   const [saved, setSaved] = useState(false);
   const [invalid, setInvalid] = useState(false);
 
   const body = useMemo(
-    () => toLayoutIn({ name: name.trim(), orientation, background_color: background, background_media_id: layout.background_media_id, tags: layout.tags }, zones),
-    [name, orientation, background, zones, layout],
+    () => toLayoutIn({ name: name.trim(), orientation, background_color: background, background_media_id: layout.background_media_id, tags: layout.tags, owner }, zones),
+    [name, orientation, background, zones, layout, owner],
   );
   const dirty = JSON.stringify(body) !== JSON.stringify(toLayoutIn(layout, layout.zones));
   const playlistList = playlists.data?.items ?? [];
@@ -105,7 +110,25 @@ export function LayoutEditor({ layout, maxZones = DEFAULT_MAX_ZONES, onReload, o
 
   return (
     <form className="layout-editor" onSubmit={submit} noValidate aria-label={t("layouts.editor.label")}>
+      {writable ? null : (
+        <p className="alert alert-info" role="status">
+          <Icon name="lock" />
+          <span>{t("scope.read_only")}</span>
+        </p>
+      )}
+      <fieldset className="fieldset-plain" disabled={!writable}>
       <div className="layout-meta card">
+        <div className="field">
+          <span className="field-label">{t("scope.owner.label")}</span>
+          <OwnerBadge owner={owner} />
+        </div>
+        <OwnerEdit
+          owner={owner}
+          onSave={(o) => {
+            setOwner(o);
+            setSaved(false);
+          }}
+        />
         <div className="field">
           <label htmlFor={`${uid}-name`}>{t("layouts.editor.name")}</label>
           <input
@@ -208,6 +231,7 @@ export function LayoutEditor({ layout, maxZones = DEFAULT_MAX_ZONES, onReload, o
           ) : null}
         </div>
       </div>
+      </fieldset>
 
       {invalid && (problems.length > 0 || name.trim() === "") ? (
         <p className="alert alert-error" role="alert">
@@ -229,6 +253,8 @@ export function LayoutEditor({ layout, maxZones = DEFAULT_MAX_ZONES, onReload, o
       {remove.isError ? <ErrorAlert error={remove.error} /> : null}
       {saved && !dirty ? <SuccessAlert>{t("layouts.editor.saved")}</SuccessAlert> : null}
       <div className="actions">
+        {writable ? (
+        <>
         <button type="submit" className="btn btn-filled" disabled={save.isPending || !dirty} aria-busy={save.isPending}>
           <Icon name="online" />
           {t("common.save")}
@@ -248,6 +274,8 @@ export function LayoutEditor({ layout, maxZones = DEFAULT_MAX_ZONES, onReload, o
           pending={remove.isPending}
           onConfirm={() => remove.mutate(layout.id, { onSuccess: () => onGone("/content/layouts") })}
         />
+        </>
+        ) : null}
         <Link className="btn btn-text" to="/content/layouts">
           <Icon name="back" />
           {t("layouts.back")}
