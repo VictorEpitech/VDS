@@ -148,12 +148,12 @@ class MediaUploadService(ServiceBase):
         async def chunks() -> AsyncIterator[bytes]:
             total = len(head)
             if total > self._max:
-                raise ApiError("media.too_large", 413)
+                raise ApiError("media.too_large", 413, limit=self._max, size=total)
             yield head
             while block := await up.file.read(CHUNK):
                 total += len(block)
                 if total > self._max:
-                    raise ApiError("media.too_large", 413)
+                    raise ApiError("media.too_large", 413, limit=self._max, size=total)
                 yield block
 
         try:
@@ -296,12 +296,12 @@ class MediaUploadService(ServiceBase):
         async def chunks() -> AsyncIterator[bytes]:
             total = len(head)
             if total > self._max:
-                raise ApiError("media.too_large", 413)
+                raise ApiError("media.too_large", 413, limit=self._max, size=total)
             yield head
             while block := await up.file.read(CHUNK):
                 total += len(block)
                 if total > self._max:
-                    raise ApiError("media.too_large", 413)
+                    raise ApiError("media.too_large", 413, limit=self._max, size=total)
                 yield block
 
         backend = self._storage_id()

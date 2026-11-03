@@ -122,6 +122,13 @@ async def test_multipart_size_checked_before_read(small: AsyncClient, sbase: str
     assert ok.status_code == 200 and ok.json() == {"media": 1}  # seul l'envoi valide arrive
 
 
+async def test_too_large_carries_limit_and_size(small: AsyncClient, sbase: str) -> None:
+    url = f"{pre(sbase)}/api/v1/media"
+    r = await small.post(url, files={"file": ("a.bin", b"x" * (1000 + OVERHEAD + 10))}, headers=SAME)
+    params = r.json()["params"]
+    assert r.status_code == 413 and params["limit"] == 1000 and params["size"] > 1000
+
+
 async def test_replace_file_size_checked_before_read(small: AsyncClient, sbase: str) -> None:
     url = f"{pre(sbase)}/api/v1/media/{'0' * 8}-0000-0000-0000-{'0' * 12}/file"
     r = await small.post(

@@ -23,8 +23,10 @@ class _TooLarge(Exception):
     pass
 
 
-def _error(status: int, code: str) -> tuple[Message, Message]:
-    body = json.dumps({"code": code, "params": {}}).encode()
+def _error(
+    status: int, code: str, params: dict[str, int] | None = None
+) -> tuple[Message, Message]:
+    body = json.dumps({"code": code, "params": params or {}}).encode()
     return (
         {
             "type": "http.response.start",
@@ -82,7 +84,7 @@ class UploadLimitMiddleware:
                 await send(m)
             return
         if int(raw) > maximum:
-            for m in _error(413, "media.too_large"):
+            for m in _error(413, "media.too_large", {"limit": maximum - OVERHEAD, "size": int(raw)}):
                 await send(m)
             return
         received = 0
@@ -107,5 +109,7 @@ class UploadLimitMiddleware:
             await self.app(scope, counting, tracking)
         except _TooLarge:
             if not started:
-                for m in _error(413, "media.too_large"):
+                for m in _error(
+                    413, "media.too_large", {"limit": maximum - OVERHEAD, "size": received}
+                ):
                     await send(m)
