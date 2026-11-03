@@ -7,6 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from vds_server.commands.screenshots import delete_files, screenshot_keys
 from vds_server.core.auth import Principal
 from vds_server.core.runtime import Runtime
 from vds_server.fleet.health import evaluate
@@ -122,8 +123,12 @@ def build_router(rt: Runtime) -> APIRouter:
         return (await screens_out(session, [await s.update_screen(screen_id, body)]))[0]
 
     @router.delete("/screens/{screen_id}", status_code=204)
-    async def delete_screen(screen_id: UUID, s: Write) -> Response:
+    async def delete_screen(screen_id: UUID, s: Write, session: Session) -> Response:
+        keys = await screenshot_keys(
+            session, screen_id
+        )  # la suppression de l'écran emporte les lignes
         await s.delete_screen(screen_id)
+        await delete_files(rt.storage_backend(), keys)
         return Response(status_code=204)
 
     return router

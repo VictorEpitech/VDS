@@ -2,7 +2,7 @@
 
 import hashlib
 import json
-from collections.abc import Callable, Collection, Sequence
+from collections.abc import Awaitable, Callable, Collection, Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 from uuid import UUID
@@ -381,7 +381,9 @@ class ScheduleBuilder:
         kiosk_of: KioskLookup | None = None,
         respect_of: TimezoneLookup | None = None,
         defaults_of: DefaultsLookup | None = None,
+        screenshot_of: Callable[[UUID], Awaitable[int]] | None = None,
     ) -> None:
+        self._screenshot_of = screenshot_of
         self._defaults_of = defaults_of
         self._respect_of = respect_of
         self._kiosk_of = kiosk_of
@@ -452,6 +454,10 @@ class ScheduleBuilder:
             body["power"] = await self._power_of(screen_id, now)
         if self._kiosk_of is not None:
             body["kiosk"] = await self._kiosk_of(screen, now)
+        if self._screenshot_of is not None:
+            interval = await self._screenshot_of(screen_id)
+            if interval > 0:  # absent = désactivée (point d'accroche additif, 1.11.0)
+                body["screenshot"] = {"interval_min": interval}
         body["revision"] = revision_of(body)
         return body
 

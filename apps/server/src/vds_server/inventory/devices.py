@@ -9,7 +9,10 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from vds_server.commands.access import screenshot_out
+from vds_server.commands.service import capabilities_of
 from vds_server.db.models import Screen, ScreenDevice
+from vds_server.db.models_command import Screenshot
 from vds_server.inventory import schemas as sc
 from vds_server.player import kiosk
 from vds_server.player.schemas import KioskReport
@@ -98,6 +101,7 @@ async def screens_out(session: AsyncSession, screens: Iterable[Screen]) -> list[
     rows = list(screens)
     devices = await latest_devices(session, (r.id for r in rows))
     requests = await kiosk.load_requests(session, rows)
+    shots = await _last_screenshots(session, [r.id for r in rows])
     now = datetime.now(UTC)
     out = []
     for r in rows:
@@ -105,5 +109,25 @@ async def screens_out(session: AsyncSession, screens: Iterable[Screen]) -> list[
         dev = devices.get(r.id)
         item.device = device_state(dev, now)
         item.kiosk = kiosk_state(requests[r.id], dev, now)
+        if dev is not None and dev.revoked_at is None:
+            item.capabilities = capabilities_of(dev.last_heartbeat)
+        shot = shots.get(r.id)
+        item.last_screenshot = screenshot_out(shot) if shot is not None else None
         out.append(item)
     return out
+
+
+async def _last_screenshots(
+    session: AsyncSession, screen_ids: list[UUID]
+) -> dict[UUID, Screenshot]:
+    if not screen_ids:
+        return {}
+    rows = (
+        await session.execute(
+            select(Screenshot)
+            .where(Screenshot.screen_id.in_(screen_ids))
+            .ext(distinct_on(Screenshot.screen_id))
+            .order_by(Screenshot.screen_id, Screenshot.captured_at.desc())
+        )
+    ).scalars()
+    return {r.screen_id: r for r in rows}

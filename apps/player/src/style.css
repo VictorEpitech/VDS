@@ -63,3 +63,19 @@ html, body {
 .mono { font-family: var(--vds-font-mono, monospace); }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 6s; } }
+
+/* identify : nom de l'écran seul, au-dessus de tout (règle 6 : aucune info technique). */
+.identify {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4vmin;
+  box-sizing: border-box;
+  background: var(--vds-background, black);
+  color: var(--vds-on-surface, white);
+  text-align: center;
+}
+.identify-name { font-family: var(--vds-font-heading, sans-serif); font-size: 9vmin; font-weight: 600; margin: 0; overflow-wrap: anywhere; }

@@ -1,4 +1,4 @@
-import { getPlatformBridge } from "@vds/sdk-ts";
+import { getPlatformBridge, getPlayerAdapter, registerPlayerAdapter } from "@vds/sdk-ts";
 import { serverUrl } from "./api";
 import { setDrift } from "./clock";
 import { kvGet } from "./db";
@@ -9,6 +9,7 @@ import { startRuntime } from "./runtime";
 import type { Runtime } from "./runtime";
 import { Screens } from "./screens";
 import { KV } from "./shared";
+import { createWebAdapter } from "./web-adapter";
 import { startWatchdog } from "./watchdog";
 import "./style.css";
 
@@ -46,6 +47,7 @@ function loadTheme(cssUrl: string | undefined): void {
 
 async function main(): Promise<void> {
   trackNativeWeb();
+  if (!getPlayerAdapter()) registerPlayerAdapter(createWebAdapter()); // un module player-adapter (Android, Pi) passe avant
   claimKioskBridge(); // avant tout content-type : seul ce contrôleur parle au kiosque natif
   const cfg = window.__VDS__;
   const locale = setLocale(cfg?.defaultLocale ?? navigator.language.slice(0, 2));

@@ -64,6 +64,17 @@ export class Screens {
     this.layer.replaceChildren(this.logo(), title, label, value, hint);
   }
 
+  /**
+   * `identify` : nom de l'écran seul, plein écran, au-dessus de tout. Retourne la fonction qui retire l'affichage.
+   * Jamais d'identifiant, d'adresse ni de version (règle 6).
+   */
+  showIdentify(name: string): () => void {
+    const node = el("div", "identify");
+    node.append(el("p", "identify-name", name));
+    document.body.append(node);
+    return () => node.remove();
+  }
+
   private logo(): HTMLElement {
     const logo = el("div", "vds-logo logo");
     logo.setAttribute("aria-hidden", "true");

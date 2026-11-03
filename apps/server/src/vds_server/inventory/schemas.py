@@ -6,6 +6,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from vds_server.commands.schemas import ScreenshotOut
+
 Orientation = Literal["landscape", "portrait"]
 NAME = Field(min_length=1, max_length=120)
 SLUG_RE = r"^[a-z0-9]+(-[a-z0-9]+)*$"
@@ -134,6 +136,9 @@ class ScreenOut(_Out):
     archived_at: datetime | None
     device: DeviceStateOut | None = None  # None : écran non appairé
     kiosk: KioskOut | None = None
+    # vds-core 1.11.0 : capacités annoncées par le player (vide : écran sans appareil actif)
+    capabilities: list[str] = []
+    last_screenshot: ScreenshotOut | None = None
 
 
 class PairingStateOut(BaseModel):

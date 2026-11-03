@@ -35,7 +35,10 @@ class SameOriginMiddleware:
         }
         # routes à jeton (pas de cookie, pas de CSRF possible) : exemptées si Bearer présent
         self.bearer_exact = {f"{settings.prefix}/api/v1/player/heartbeat"}
-        self.bearer_prefixes = (f"{settings.prefix}/api/v1/agent/",)
+        self.bearer_prefixes = (
+            f"{settings.prefix}/api/v1/agent/",
+            f"{settings.prefix}/api/v1/player/screenshots",  # captures : jeton d'appareil seul
+        )
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if (

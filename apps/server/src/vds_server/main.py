@@ -13,6 +13,7 @@ from vds_server.agents import cache as agent_cache
 from vds_server.agents import plan as agent_plan
 from vds_server.api.v1 import (
     agents,
+    commands,
     diffusion,
     discovery,
     enrollment,
@@ -97,6 +98,7 @@ def create_app(
         inner.include_router(power.build_router(runtime))
         inner.include_router(player.build_router(runtime))
         inner.include_router(kiosk.build_router(runtime))
+        inner.include_router(commands.build_router(runtime))
         inner.include_router(registry.build_router(runtime))
         inner.include_router(agents.build_router(runtime))
         inner.include_router(enrollment.build_router(runtime))

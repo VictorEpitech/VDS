@@ -25,6 +25,8 @@ export interface AssetStore {
   ensure(key: string, ref: AssetRef, signal?: AbortSignal): Promise<void>;
   purge(keep: ReadonlySet<string>): Promise<void>;
   clear(): Promise<void>;
+  /** Relit les octets et marque comme absentes les clés corrompues (sans les supprimer : elles restent jouables jusqu'au remplacement). */
+  verify?(keys: readonly string[]): Promise<string[]>;
   /** Mode dégradé : téléchargement à la demande, borné en mémoire. */
   readonly lazy?: boolean;
   /** Mode dégradé : URL `blob:` du média, sinon l'URL serveur (servie par le SW). */
@@ -118,6 +120,23 @@ export class AssetCache implements AssetStore {
     await cache.delete(staging);
     await kvSet(KV.asset(key), sha);
     this.present.set(key, sha);
+  }
+
+  async verify(keys: readonly string[]): Promise<string[]> {
+    const bad: string[] = [];
+    if (!this.cache) return bad;
+    for (const key of keys) {
+      const sha = this.present.get(key);
+      if (!sha) continue;
+      const res = await this.cache.match(resolveServer(key, this.server));
+      const actual = res?.body ? await sha256Stream(res.body) : null;
+      if (actual !== sha) {
+        this.present.set(key, ""); // ne correspond plus à aucune référence : `ensure` retélécharge via la clé d'attente
+        await kvDel(KV.asset(key));
+        bad.push(key);
+      }
+    }
+    return bad;
   }
 
   /** Supprime les médias non référencés (après bascule de révision). */

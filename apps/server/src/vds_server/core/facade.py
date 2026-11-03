@@ -9,9 +9,12 @@ from sqlalchemy import event, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from vds_sdk import Event, ModuleManifest, PermissionDenied
 from vds_sdk.server import Identity
+from vds_sdk.server.screens import ScreenCommandRequest
 
+from vds_server.commands.service import Actor, CommandCore
 from vds_server.core import audit, users
-from vds_server.db.models import UserAccount
+from vds_server.core.errors import ApiError
+from vds_server.db.models import Screen, UserAccount
 from vds_server.db.models_power import Incident
 from vds_server.security import cookies
 from vds_server.security.client_ip import client_ip
@@ -152,6 +155,28 @@ class _Incidents:
             return await incident_view(session, row) if row is not None else None
 
 
+class _Screens:
+    """`ScreensApi` (permission `screens.command`) : un module n'appelle jamais le player."""
+
+    def __init__(self, rt: "Runtime", module_id: str) -> None:
+        self._rt = rt
+        self._module_id = module_id
+
+    async def send_command(self, req: ScreenCommandRequest) -> UUID:
+        async with self._rt.maker() as session:
+            screen = await session.get(Screen, req.screen_id)
+            if screen is None:
+                raise ApiError("screen.not_found", 404)
+            row, _ = await CommandCore(session, self._rt.bus).create(
+                Actor("module", self._module_id),
+                screen,
+                req.name,
+                req.args,
+                ttl_s=req.ttl_s,
+            )
+            return row.id
+
+
 class ModuleCore:
     def __init__(self, rt: "Runtime", manifest: ModuleManifest) -> None:
         self._rt = rt
@@ -182,6 +207,11 @@ class ModuleCore:
         if not {"users.provision", "users.read"} & set(self._m.permissions):
             raise PermissionDenied(detail=f"users.* by {self._m.id}")
         return _Users(self._rt, self._m.id, frozenset(self._m.permissions))
+
+    @property
+    def screens(self) -> _Screens:
+        self._need("screens.command")
+        return _Screens(self._rt, self._m.id)
 
     @property
     def incidents(self) -> _Incidents:

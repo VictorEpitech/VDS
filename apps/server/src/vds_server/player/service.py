@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from vds_sdk import Event, EventBus
 
+from vds_server.commands.service import expire_device_commands
 from vds_server.core import audit
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
@@ -275,8 +276,10 @@ class PairingService:
             details={"device_id": str(dev.id), "reason": "revoked"},
         )
         event = _unpaired(dev, "revoked")
+        # commandes player en attente de l'appareil précédent : jamais livrées au suivant
+        expired = await expire_device_commands(self._s, device_id=dev.id, code="cmd.device_changed")
         await self._s.commit()
-        await self._publish([event])
+        await self._publish([event, *expired])
         # une demande déjà réclamée mais non consommée pour cet écran n'est plus valable
         await self._s.execute(
             update(PairingRequest)

@@ -38,6 +38,8 @@ export interface PlayerSocketDeps {
   onScheduleChanged: (revision: string) => void;
   /** 4410 : jeton révoqué, même traitement qu'un 401 HTTP. */
   onRevoked: () => void;
+  /** Trame `cmd` du serveur (docs/architecture-commandes.md §3.2). */
+  onCommand?: (cmd: { cmd_id: string; name: string; args?: Record<string, unknown>; expires_at: string }) => void;
   factory?: SocketFactory;
   random?: () => number;
 }
@@ -53,6 +55,17 @@ export class PlayerSocket {
 
   get connected(): boolean {
     return this.ready;
+  }
+
+  /** Envoie une trame si le canal est prêt ; faux sinon (le heartbeat prend le relais). */
+  sendFrame(type: string, data: unknown): boolean {
+    if (!this.ready || !this.ws) return false;
+    try {
+      this.ws.send(JSON.stringify({ v: 1, type, data }));
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   start(): void {
@@ -115,7 +128,7 @@ export class PlayerSocket {
 
   private onFrame(raw: unknown): void {
     if (typeof raw !== "string") return;
-    let f: { type?: unknown; data?: { revision?: unknown } };
+    let f: { type?: unknown; data?: { revision?: unknown; cmd_id?: unknown; name?: unknown; expires_at?: unknown; args?: unknown } };
     try {
       f = JSON.parse(raw) as typeof f;
     } catch {
@@ -125,6 +138,12 @@ export class PlayerSocket {
       this.ready = true;
       this.delay = BACKOFF_MIN_MS;
       if (typeof f.data?.revision === "string") this.deps.onScheduleChanged(f.data.revision);
+    } else if (f.type === "cmd") {
+      const d = f.data;
+      if (d && typeof d.cmd_id === "string" && typeof d.name === "string" && typeof d.expires_at === "string") {
+        const args = d.args && typeof d.args === "object" ? (d.args as Record<string, unknown>) : {};
+        this.deps.onCommand?.({ cmd_id: d.cmd_id, name: d.name, args, expires_at: d.expires_at });
+      }
     } else if (f.type === "schedule.changed" && typeof f.data?.revision === "string") {
       this.deps.onScheduleChanged(f.data.revision);
     }

@@ -685,6 +685,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/player-commands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Poll Commands */
+        get: operations["poll_commands_api_v1_player_commands_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/player/heartbeat": {
         parameters: {
             query?: never;
@@ -764,6 +781,40 @@ export interface paths {
         get: operations["player_schedule_api_v1_player_schedule_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/player/screenshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload Periodic */
+        post: operations["upload_periodic_api_v1_player_screenshots_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/player/screenshots/{cmd_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload On Demand */
+        post: operations["upload_on_demand_api_v1_player_screenshots__cmd_id__post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1298,6 +1349,41 @@ export interface paths {
         patch: operations["patch_screen_api_v1_screens__screen_id__patch"];
         trace?: never;
     };
+    "/api/v1/screens/{screen_id}/commands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Commands */
+        get: operations["list_commands_api_v1_screens__screen_id__commands_get"];
+        put?: never;
+        /** Create Command */
+        post: operations["create_command_api_v1_screens__screen_id__commands_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/screens/{screen_id}/commands/{command_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Command */
+        post: operations["cancel_command_api_v1_screens__screen_id__commands__command_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/screens/{screen_id}/device": {
         parameters: {
             query?: never;
@@ -1344,6 +1430,40 @@ export interface paths {
         put?: never;
         /** Create */
         post: operations["create_api_v1_screens__screen_id__provision_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/screens/{screen_id}/screenshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Screenshots */
+        get: operations["list_screenshots_api_v1_screens__screen_id__screenshots_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/screenshots/{screenshot_id}/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Screenshot Image */
+        get: operations["screenshot_image_api_v1_screenshots__screenshot_id__image_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1901,6 +2021,28 @@ export interface components {
              * Format: date-time
              */
             start: string;
+        };
+        /** CmdResult */
+        CmdResult: {
+            /**
+             * Cmd Id
+             * Format: uuid
+             */
+            cmd_id: string;
+            /** Code */
+            code?: string | null;
+            /**
+             * Data
+             * @default {}
+             */
+            data: {
+                [key: string]: unknown;
+            };
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "failed" | "expired" | "rejected";
         };
         /** CommandCreate */
         CommandCreate: {
@@ -2465,7 +2607,13 @@ export interface components {
             app_version?: string | null;
             /** App Version Code */
             app_version_code?: number | null;
+            /** Boot Id */
+            boot_id?: string | null;
             cache?: components["schemas"]["CacheState"] | null;
+            /** Capabilities */
+            capabilities?: string[] | null;
+            /** Command Results */
+            command_results?: components["schemas"]["CmdResult"][];
             /** Errors */
             errors?: {
                 [key: string]: unknown;
@@ -2493,6 +2641,8 @@ export interface components {
             }[];
             /** Poll Interval S */
             poll_interval_s: number;
+            /** Results Acked */
+            results_acked?: string[];
             /** Revision */
             revision: string | null;
             /**
@@ -3685,6 +3835,66 @@ export interface components {
             /** Start */
             start: string;
         };
+        /** PlayerCommandCreate */
+        PlayerCommandCreate: {
+            /** Args */
+            args?: {
+                [key: string]: unknown;
+            };
+            /** Batch Id */
+            batch_id?: string | null;
+            /**
+             * Name
+             * @enum {string}
+             */
+            name: "reload" | "restart" | "identify" | "screenshot" | "cache.resync";
+            /** Request Key */
+            request_key: string;
+            /** Ttl S */
+            ttl_s?: number | null;
+        };
+        /** PlayerCommandOut */
+        PlayerCommandOut: {
+            /** Args */
+            args: {
+                [key: string]: unknown;
+            };
+            /** Code */
+            code: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Done At */
+            done_at: string | null;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Name
+             * @enum {string}
+             */
+            name: "reload" | "restart" | "identify" | "screenshot" | "cache.resync";
+            /** Requested By */
+            requested_by: string | null;
+            /** Screen Id */
+            screen_id: string | null;
+            /** Screenshot Id */
+            screenshot_id: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "sent" | "ok" | "failed" | "expired" | "rejected" | "cancelled";
+        };
         /** PlayerItem */
         PlayerItem: {
             /** Assets */
@@ -4024,6 +4234,7 @@ export interface components {
             /** Revision */
             revision: string;
             screen: components["schemas"]["ScreenRef"];
+            screenshot?: components["schemas"]["ScreenshotDoc"] | null;
             /**
              * Server Time
              * Format: date-time
@@ -4213,6 +4424,11 @@ export interface components {
         ScreenOut: {
             /** Archived At */
             archived_at: string | null;
+            /**
+             * Capabilities
+             * @default []
+             */
+            capabilities: string[];
             device?: components["schemas"]["DeviceStateOut"] | null;
             /** Group Id */
             group_id: string | null;
@@ -4222,6 +4438,7 @@ export interface components {
              */
             id: string;
             kiosk?: components["schemas"]["KioskOut"] | null;
+            last_screenshot?: components["schemas"]["ScreenshotOut"] | null;
             /** Name */
             name: string;
             /**
@@ -4364,6 +4581,50 @@ export interface components {
             };
             /** Total */
             total: number;
+        };
+        /** ScreenshotCreated */
+        ScreenshotCreated: {
+            /**
+             * Screenshot Id
+             * Format: uuid
+             */
+            screenshot_id: string;
+        };
+        /** ScreenshotDoc */
+        ScreenshotDoc: {
+            /** Interval Min */
+            interval_min: number;
+        };
+        /** ScreenshotOut */
+        ScreenshotOut: {
+            /** Bytes */
+            bytes: number;
+            /**
+             * Captured At
+             * Format: date-time
+             */
+            captured_at: string;
+            /** Height */
+            height: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Image Url */
+            image_url: string;
+            /**
+             * Screen Id
+             * Format: uuid
+             */
+            screen_id: string;
+            /**
+             * Trigger
+             * @enum {string}
+             */
+            trigger: "on_demand" | "periodic";
+            /** Width */
+            width: number;
         };
         /** Segment */
         Segment: {
@@ -6407,6 +6668,37 @@ export interface operations {
             };
         };
     };
+    poll_commands_api_v1_player_commands_get: {
+        parameters: {
+            query: {
+                ids: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerCommandOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     player_heartbeat_api_v1_player_heartbeat_post: {
         parameters: {
             query?: never;
@@ -6572,6 +6864,70 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_periodic_api_v1_player_screenshots_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-vds-captured-at"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenshotCreated"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_on_demand_api_v1_player_screenshots__cmd_id__post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-vds-captured-at"?: string | null;
+            };
+            path: {
+                cmd_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenshotCreated"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -8102,6 +8458,115 @@ export interface operations {
             };
         };
     };
+    list_commands_api_v1_screens__screen_id__commands_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                screen_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerCommandOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_command_api_v1_screens__screen_id__commands_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                screen_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlayerCommandCreate"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerCommandOut"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerCommandOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_command_api_v1_screens__screen_id__commands__command_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                screen_id: string;
+                command_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerCommandOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     revoke_device_api_v1_screens__screen_id__device_delete: {
         parameters: {
             query?: never;
@@ -8217,6 +8682,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProvisionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_screenshots_api_v1_screens__screen_id__screenshots_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                screen_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenshotOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    screenshot_image_api_v1_screenshots__screenshot_id__image_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                screenshot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": unknown;
                 };
             };
             /** @description Validation Error */

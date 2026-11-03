@@ -22,6 +22,8 @@ export interface ScheduleDocument {
   kiosk?: KioskRequest;
   /** 1.9.0 : limites de lecture servies par le serveur. Absent = défauts (1 élément exclusif à la fois). */
   player?: { max_exclusive_elements: number };
+  /** 1.11.0 : capture périodique. Absent = désactivée. */
+  screenshot?: { interval_min: number };
 }
 
 export type KioskMode = "locked" | "unlocked" | "maintenance";

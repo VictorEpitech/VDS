@@ -97,6 +97,9 @@ const fresh = () => ({
   layout: null, // { zones, playlists: {clé: items[]}, background?, player?, orientation? } : mise en page multi-zones (1.9) ; null = zone main
   slots: null, // [[h0, h1, kind]] en heures depuis minuit UTC du jour simulé ; null = tout play
   heartbeats: [],
+  httpCmds: [], // commandes servies par le heartbeat tant que leur résultat n'est pas reçu
+  results: [], // cmd.result reçus (WS) et command_results (heartbeat)
+  uploads: [], // POST player/screenshots[/id]
   mediaHits: {},
   hits: 0,
   rejected: 0,
@@ -204,7 +207,7 @@ async function control(req, res, url) {
       S = fresh();
       return json(res, 200, {});
     case "/__test/state":
-      return json(res, 200, { ws: { ...S.ws, open: sockets.size }, down: S.down, heartbeats: S.heartbeats, mediaHits: S.mediaHits, hits: S.hits, rejected: S.rejected, pairing: S.pairing && { code: S.pairing.code } });
+      return json(res, 200, { ws: { ...S.ws, open: sockets.size }, down: S.down, heartbeats: S.heartbeats, results: S.results, uploads: S.uploads, mediaHits: S.mediaHits, hits: S.hits, rejected: S.rejected, pairing: S.pairing && { code: S.pairing.code } });
     case "/__test/set":
       if ("down" in body) S.down = Boolean(body.down);
       if ("revoked" in body) S.revoked = Boolean(body.revoked);
@@ -225,6 +228,13 @@ async function control(req, res, url) {
         else if (body.action === "drop") sock.destroy();
         else if (body.action === "close") wsClose(sock, Number(body.code));
       }
+      return json(res, 200, {});
+    }
+    case "/__test/cmd": {
+      // via: "ws" (trame cmd à tous les sockets) | "http" (renvoyée par le heartbeat jusqu'au résultat).
+      const cmd = { cmd_id: body.cmd_id, name: body.name, args: body.args ?? {}, expires_at: body.expires_at ?? new Date(Date.now() + 600000).toISOString() };
+      if (body.via === "http") S.httpCmds.push(cmd);
+      else for (const sock of [...sockets]) wsSend(sock, "cmd", cmd);
       return json(res, 200, {});
     }
     case "/__test/claim": {
@@ -289,6 +299,10 @@ const upgrade = (req, sock) => {
       if (f.op === 8) return sock.end();
       if (f.op !== 1) continue;
       const m = JSON.parse(f.text);
+      if (authed && m.type === "cmd.result") {
+        S.results.push({ via: "ws", ...m.data });
+        continue;
+      }
       if (!authed) {
         S.ws.auths.push({ type: m.type, token: m.data?.token ?? null, url: req.url });
         if (m.type !== "auth" || m.data?.token !== S.token) return wsClose(sock, 4401);
@@ -380,7 +394,20 @@ const server = http.createServer(async (req, res) => {
     if (!deviceAuth(req, res)) return;
     const body = await readBody(req);
     S.heartbeats.push(body);
-    return json(res, 200, { revision: schedule().revision, server_time: new Date(serverNow()).toISOString(), poll_interval_s: S.pollS, commands: [] });
+    const got = body.command_results ?? [];
+    for (const r of got) S.results.push({ via: "http", ...r });
+    const acked = got.map((r) => r.cmd_id);
+    S.httpCmds = S.httpCmds.filter((c) => !acked.includes(c.cmd_id) && !S.results.some((r) => r.cmd_id === c.cmd_id));
+    return json(res, 200, { revision: schedule().revision, server_time: new Date(serverNow()).toISOString(), poll_interval_s: S.pollS, commands: S.httpCmds, results_acked: acked });
+  }
+  const shot = /^\/api\/v1\/player\/screenshots(?:\/([^/]+))?$/.exec(p);
+  if (shot && req.method === "POST") {
+    if (!deviceAuth(req, res)) return;
+    const chunks = [];
+    for await (const c of req) chunks.push(c);
+    const buf = Buffer.concat(chunks);
+    S.uploads.push({ cmd_id: shot[1] ?? null, type: req.headers["content-type"], bytes: buf.length });
+    return json(res, 201, { id: "shot-" + S.uploads.length });
   }
   const media = /^\/media\/([a-z0-9-]+)\/([a-z0-9-]+)$/.exec(p);
   if (media) {

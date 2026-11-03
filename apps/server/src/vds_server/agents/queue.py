@@ -13,6 +13,7 @@ from vds_server.db.models_power import RemoteCommand
 CHANNEL = "vds_command"
 DEFAULT_TTL_S = 300
 DEVICE_KIND = "device"  # connexion /ws/player d'un appareil (la plus récente gagne)
+SCREEN_KIND = "screen"  # commande player à livrer pour un écran
 MODULES_KIND = "modules"  # signal à tous les workers : l'état des modules a changé
 
 

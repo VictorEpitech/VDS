@@ -666,6 +666,15 @@ Lot 2 : ces trois cas sont documentés ; un profil Compose `https` (service Cadd
 
 Remplace les commandes provisoires du heartbeat et lève le reste de L3-T5 (trames `cmd` sur `/ws/player`). Contrat, droits, captures, rétention, UI et découpage I0–I8 : `docs/architecture-commandes.md`.
 
+**Contraintes de plateforme découvertes (I4, `apps/player`)**
+
+- Journal `cmd_journal` dans le store KV d'IndexedDB (200 entrées, 48 h), **miroir `sessionStorage`** : si IndexedDB est indisponible (repli mémoire, TV), la mémoire est perdue au rechargement et la commande redélivrée bouclerait ; `sessionStorage` survit à `location.reload()`. Il ne survit pas à un redémarrage de l'appareil ni du navigateur : seule la fenêtre de TTL de la commande protège alors. Filet en plus : au plus 3 `reload`/`restart` en 10 min (`rejected`, `cmd.rate_limited`).
+- Un `reload` est conclu `ok` au démarrage suivant (`boot_id` différent) ; `restart.*` non observé après 2 min : `failed` (`cmd.restart_not_observed`), vérifié à chaque heartbeat.
+- Adaptateur web (`player.web`, enregistré seulement si aucun module `player-adapter` ne l'a été) : `cmd.reload`, `cmd.identify`, `cmd.cache.resync`. Pas de capture (aucune API sans geste utilisateur) ni de redémarrage. `adapter.screenshot({maxEdge, quality})` : `quality` est un entier 1..100 (70).
+- `cache.resync` : `AssetCache.verify()` relit les octets et marque les clés corrompues sans supprimer le média ; `ensure` le remplace via la clé d'attente, donc le média courant reste jouable même hors ligne. Mode dégradé (mémoire) : seul le manquant est retéléchargé.
+- Après une coupure serveur, le prochain heartbeat attend `DEFAULT_INTERVAL_S` (60 s) : une commande par le repli HTTP arrive donc jusqu'à 60 s après le retour du réseau (la livraison WS est immédiate à la reconnexion).
+- Capture périodique : timer de 30 s, jamais hors ligne, sans file d'attente ; `screenshot.interval_min` ajouté (optionnel) à `ScheduleDocument`.
+
 ## Données, sécurité, déploiement
 
 - PostgreSQL 17 ; médias disque local via module storage ; cache média sur l'agent.

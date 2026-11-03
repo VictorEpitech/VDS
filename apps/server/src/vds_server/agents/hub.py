@@ -10,7 +10,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from vds_server.agents.queue import CHANNEL, DEVICE_KIND, MODULES_KIND
+from vds_server.agents.queue import CHANNEL, DEVICE_KIND, MODULES_KIND, SCREEN_KIND
 
 log = logging.getLogger("vds.agents")
 
@@ -27,6 +27,7 @@ class AgentHub:
         self._listener: asyncio.Task[None] | None = None
         self._tasks: set[asyncio.Future[None]] = set()
         self._devices: dict[UUID, tuple[str, Callable[[], Awaitable[None]]]] = {}
+        self._screen_wakers: dict[UUID, set[asyncio.Event]] = {}
 
     def is_connected(self, agent_id: UUID) -> bool:
         return agent_id in self._sessions
@@ -63,6 +64,17 @@ class AgentHub:
         if current is not None and current[0] == nonce:
             del self._devices[device_id]
 
+    def watch_screen(self, screen_id: UUID, waker: asyncio.Event) -> None:
+        """Réveille `waker` à chaque NOTIFY `screen:<id>` (commandes player à livrer)."""
+        self._screen_wakers.setdefault(screen_id, set()).add(waker)
+
+    def unwatch_screen(self, screen_id: UUID, waker: asyncio.Event) -> None:
+        wakers = self._screen_wakers.get(screen_id)
+        if wakers is not None:
+            wakers.discard(waker)
+            if not wakers:
+                del self._screen_wakers[screen_id]
+
     def _device_announced(self, raw: str) -> None:
         raw_id, _, nonce = raw.partition(":")
         try:
@@ -86,6 +98,14 @@ class AgentHub:
             return
         if kind == DEVICE_KIND:
             self._device_announced(raw)
+            return
+        if kind == SCREEN_KIND:
+            try:
+                wakers = list(self._screen_wakers.get(UUID(raw), ()))
+            except ValueError:
+                return
+            for waker in wakers:
+                waker.set()
             return
         if kind != "agent":
             return

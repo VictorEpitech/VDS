@@ -41,6 +41,9 @@ def schedule_builder(rt: Runtime, session: AsyncSession) -> ScheduleBuilder:
             max_exclusive_elements=int(cfg.get("player.max_exclusive_elements", 1)),
         )
 
+    async def screenshot_of(screen_id: UUID) -> int:
+        return await screenshot_interval(rt, screen_id)
+
     async def power_of(screen_id: UUID, now: datetime) -> list[dict[str, str]]:
         return await PowerPlanBuilder(session, rt.schemas).player_slots(screen_id, now)
 
@@ -60,4 +63,13 @@ def schedule_builder(rt: Runtime, session: AsyncSession) -> ScheduleBuilder:
         kiosk_of,
         respect_of,
         defaults_of,
+        screenshot_of,
     )
+
+
+async def screenshot_interval(rt: Runtime, screen_id: UUID) -> int:
+    """`player.screenshot_interval_min` résolu pour l'écran (0 = capture périodique désactivée)."""
+    cfg = await ModuleConfigReader(rt.maker, rt.schemas, CORE_NAMESPACE).resolve(
+        ScopeRef(level="screen", id=str(screen_id))
+    )
+    return int(cfg.get("player.screenshot_interval_min", 0))

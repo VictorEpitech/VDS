@@ -6,13 +6,11 @@ import { driftFrom, now, setDrift } from "./clock";
 import { kvSet } from "./db";
 import type { Engine } from "./engine";
 import type { KioskReport } from "./kiosk";
+import type { CmdResult, IncomingCommand } from "./commands";
 import { KV } from "./shared";
 import { allAssets, neededSlots, slotAssets } from "./timeline";
 
-export interface RemoteCommand {
-  type?: string;
-  [key: string]: unknown;
-}
+export type { IncomingCommand as RemoteCommand } from "./commands";
 
 export interface HeartbeatDeps {
   token: () => string;
@@ -20,7 +18,14 @@ export interface HeartbeatDeps {
   assets: AssetStore;
   getActive: () => ScheduleDocument | null;
   onRevisionMismatch: () => void;
-  onCommands: (cmds: RemoteCommand[]) => void;
+  onCommands: (cmds: IncomingCommand[]) => void;
+  /** 1.11 : `boot_id`, capacités et résultats non acquittés ; accusés `results_acked` rendus à l'appelant. */
+  commands?: {
+    bootId: string;
+    capabilities: () => string[];
+    results: () => CmdResult[];
+    acked: (ids: string[]) => void;
+  };
   kiosk?: () => KioskReport;
 }
 
@@ -81,6 +86,13 @@ export async function beat(deps: HeartbeatDeps): Promise<number> {
     stale: deps.engine.stale,
     errors: sentErrors,
     ...(deps.kiosk ? { kiosk: deps.kiosk() } : {}),
+    ...(deps.commands
+      ? {
+          boot_id: deps.commands.bootId,
+          capabilities: deps.commands.capabilities(),
+          command_results: deps.commands.results(),
+        }
+      : {}),
   };
   const sent = Date.now();
   try {
@@ -93,7 +105,8 @@ export async function beat(deps: HeartbeatDeps): Promise<number> {
       revision: string | null;
       server_time: string;
       poll_interval_s: number;
-      commands: RemoteCommand[];
+      commands: IncomingCommand[];
+      results_acked?: string[];
     };
     const d = driftFrom(ack.server_time, sent, Date.now());
     if (d !== null) {
@@ -101,6 +114,7 @@ export async function beat(deps: HeartbeatDeps): Promise<number> {
       void kvSet(KV.drift, d).catch(() => {});
     }
     if (ack.revision !== (doc?.revision ?? null) || missing.length > 0) deps.onRevisionMismatch();
+    if (ack.results_acked?.length) deps.commands?.acked(ack.results_acked);
     if (ack.commands?.length) deps.onCommands(ack.commands);
     return ack.poll_interval_s > 0 ? ack.poll_interval_s : DEFAULT_INTERVAL_S;
   } catch (e) {

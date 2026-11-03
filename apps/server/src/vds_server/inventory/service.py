@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from vds_sdk import Event, EventBus
 
+from vds_server.commands.service import expire_device_commands
 from vds_server.core import audit
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
@@ -348,6 +349,9 @@ class InventoryService:
             delete(Incident).where(
                 Incident.subject_type == "screen", Incident.subject_id == str(screen_id)
             )
+        )
+        self._events.extend(  # commandes player en attente : périmées, jamais exécutées
+            await expire_device_commands(self._s, screen_id=screen_id, code="screen.deleted")
         )
         await self._s.delete(screen)
         self._audit(

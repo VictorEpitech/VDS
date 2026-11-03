@@ -1,8 +1,9 @@
 """`<base>/ws/player` : canal facultatif de réactivité (docs/architecture-lot3.md § 1.3).
 
 Jeton d'appareil dans le premier message (5 s), `welcome`, puis push de `schedule.changed`
-uniquement. Le polling HTTP reste la voie nominale : aucune donnée de programmation ne transite
-ici. Pas de cookie, donc pas de CSWSH : l'`Origin` n'est pas imposé.
+et `cmd` (commandes player, lot I, sur NOTIFY `screen:<id>`). Le polling HTTP reste la voie
+nominale : aucune donnée de programmation ne transite ici. Pas de cookie, donc pas de CSWSH :
+l'`Origin` n'est pas imposé.
 """
 
 import asyncio
@@ -22,6 +23,7 @@ from vds_sdk.wire import (
     CLOSE_UNAUTHORIZED,
     CLOSE_VERSION_UNSUPPORTED,
     SUBPROTOCOL_PLAYER,
+    CmdResult,
     Frame,
     PlayerAuth,
     PlayerWelcome,
@@ -33,6 +35,7 @@ from vds_sdk.wire import (
 )
 
 from vds_server.agents.queue import DEVICE_KIND, notify_raw
+from vds_server.commands.service import CommandCore, ref_of
 from vds_server.core.runtime import Runtime
 from vds_server.db.models import ScreenDevice
 from vds_server.player.device_auth import TOKEN_PREFIX, hash_secret
@@ -156,6 +159,27 @@ def build_router(rt: Runtime) -> APIRouter:
                     data = ScheduleChanged(revision=str(rev)).model_dump()
                     await ws.send_text(encode_frame(Frame(type="schedule.changed", data=data)))
 
+        waker = asyncio.Event()
+
+        async def cmd_pusher() -> None:
+            """Pousse les commandes `queued|sent` non expirées (NOTIFY `screen:<id>` ou sondage)."""
+            pushed: set[UUID] = set()
+            seq = 0  # `cmd` est une trame fiable (contrat 1.2) : seq propre à la connexion
+            while True:
+                waker.clear()
+                async with rt.maker() as s:
+                    core = CommandCore(s, rt.bus)
+                    rows = await core.pending(device_id)
+                    fresh = [r for r in rows if r.id not in pushed]
+                    await core.mark_sent(fresh)
+                pushed &= {r.id for r in rows}
+                for r in fresh:
+                    pushed.add(r.id)
+                    seq += 1
+                    await ws.send_text(encode_frame(Frame(type="cmd", seq=seq, data=ref_of(r))))
+                with contextlib.suppress(TimeoutError):
+                    await asyncio.wait_for(waker.wait(), CHECK_S)
+
         async def reader() -> None:
             window_start, count = asyncio.get_event_loop().time(), 0
             last_hb = float("-inf")
@@ -187,16 +211,30 @@ def build_router(rt: Runtime) -> APIRouter:
                         await heartbeat(
                             s,
                             device_id,
-                            hb.model_dump(mode="json"),
+                            hb.model_dump(mode="json", exclude={"command_results"}),
                             hb.app_version,
                             rt.bus,
                             hb.app_version_code,
                         )
+                        if hb.command_results:
+                            await CommandCore(s, rt.bus).apply_results(
+                                device_id, hb.command_results
+                            )
+                elif f.type == "cmd.result" and isinstance(data, CmdResult):
+                    async with rt.maker() as s:
+                        await CommandCore(s, rt.bus).apply_results(device_id, [data])
+                    await ws.send_text(encode_frame(Frame(type="ack", ack=f.seq)))
 
-        tasks = [asyncio.create_task(pusher()), asyncio.create_task(reader())]
+        rt.agent_hub.watch_screen(screen_id, waker)
+        tasks = [
+            asyncio.create_task(pusher()),
+            asyncio.create_task(reader()),
+            asyncio.create_task(cmd_pusher()),
+        ]
         try:
             await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
         finally:
+            rt.agent_hub.unwatch_screen(screen_id, waker)
             for t in tasks:
                 t.cancel()
             for t in tasks:

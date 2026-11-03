@@ -3,6 +3,7 @@ from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
+from vds_sdk.wire import CmdResult
 
 
 class DeviceInfo(BaseModel):
@@ -86,6 +87,12 @@ class Heartbeat(BaseModel):
     stale: bool = False
     kiosk: KioskReport | None = None
     errors: list[dict[str, Any]] = Field(default_factory=list, max_length=50)
+    # vds-core 1.11.0 (additif) : capacités, démarrage, résultats de commandes
+    capabilities: list[Annotated[str, Field(max_length=40)]] | None = Field(
+        default=None, max_length=20
+    )
+    boot_id: UUID | None = None
+    command_results: list[CmdResult] = Field(default_factory=list, max_length=20)
 
 
 class HeartbeatAck(BaseModel):
@@ -93,6 +100,7 @@ class HeartbeatAck(BaseModel):
     server_time: datetime
     poll_interval_s: int
     commands: list[dict[str, Any]]
+    results_acked: list[UUID] = Field(default_factory=list)  # 1.11.0
 
 
 # --- programmation résolue (SCHEDULE_FORMAT = 1) ------------------------------
@@ -171,6 +179,10 @@ class KioskDoc(BaseModel):
     until: str | None = None  # échéance de la maintenance (UTC), sinon null
 
 
+class ScreenshotDoc(BaseModel):
+    interval_min: int
+
+
 class ScheduleDocument(BaseModel):
     format: Literal[1] = 1
     revision: str
@@ -184,3 +196,4 @@ class ScheduleDocument(BaseModel):
     assets: dict[str, AssetRef]
     content_types: dict[str, ContentTypeEntry]
     kiosk: KioskDoc | None = None  # absent (vieux serveur) = locked
+    screenshot: ScreenshotDoc | None = None  # 1.11.0 : capture périodique ; absent = désactivée

@@ -20,6 +20,7 @@ from vds_server.agents.cache import site_media_ids
 from vds_server.agents.hub import AgentHub
 from vds_server.agents.plan import PlanPusher
 from vds_server.agents.queue import MODULES_KIND, CommandQueue, notify
+from vds_server.commands.screenshots import CaptureSweeper
 from vds_server.config.reader import ModuleConfigReader
 from vds_server.config.registry_schemas import RegistrySchemaProvider
 from vds_server.config.schemas import CORE_NAMESPACE
@@ -101,6 +102,10 @@ class Runtime:
         self.override_sweeper = OverrideSweeper(self.maker, self.bus, self.schemas)
         self.content_sweeper = ContentSweeper(
             self.maker, self.bus, self.schemas, self._storage_by_id
+        )
+        self.screenshot_gate = asyncio.Semaphore(2)  # réencodages d'images simultanés par worker
+        self.capture_sweeper = CaptureSweeper(
+            self.maker, self.bus, self.schemas, self.storage_backend
         )
         self.plan_pusher = PlanPusher(self.maker, self.schemas, self.command_queue)
         self.plan_pusher.register(self.bus.subscribe)
@@ -219,6 +224,7 @@ class Runtime:
                 await asyncio.sleep(SWEEP_INTERVAL_S)
                 await self.override_sweeper.run_once()
                 await self.content_sweeper.run_once()
+                await self.capture_sweeper.run_once()
 
         task = asyncio.create_task(pump())
         sweep_task = asyncio.create_task(sweep())

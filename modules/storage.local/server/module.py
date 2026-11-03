@@ -13,7 +13,7 @@ from vds_sdk import ModuleContext
 from vds_sdk.server.storage import StorageBackend, StoredObject
 
 CHUNK = 1024 * 1024
-_KEY_RE = re.compile(r"^[0-9a-f]{2}/[0-9a-f-]{36}/[a-z0-9-]{1,48}\.[a-z0-9]{1,8}$")
+_KEY_RE = re.compile(r"^(?:screenshots/)?[0-9a-f]{2}/[0-9a-f-]{36}/[a-z0-9-]{1,48}\.[a-z0-9]{1,8}$")
 TMP_DIR = ".tmp"
 
 

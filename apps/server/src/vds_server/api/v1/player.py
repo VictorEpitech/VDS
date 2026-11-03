@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from vds_server.commands.service import CommandCore, ref_of
 from vds_server.core import audit
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
@@ -169,17 +170,22 @@ def build_router(rt: Runtime) -> APIRouter:
         await heartbeat(
             session,
             device.device_id,
-            body.model_dump(mode="json"),
+            body.model_dump(mode="json", exclude={"command_results"}),
             body.app_version,
             rt.bus,
             body.app_version_code,
         )
+        core = CommandCore(session, rt.bus)
+        acked = await core.apply_results(device.device_id, body.command_results)
+        pending = await core.pending(device.device_id)  # repli HTTP de la trame `cmd`
+        await core.mark_sent(pending)
         current = await b.build(device.screen_id)
         return sc.HeartbeatAck(
             revision=str(current["revision"]),
             server_time=datetime.now(UTC),
             poll_interval_s=HEARTBEAT_INTERVAL_S,
-            commands=[],
+            commands=[ref_of(r) for r in pending],
+            results_acked=acked,
         )
 
     @router.get(
