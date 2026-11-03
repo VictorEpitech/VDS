@@ -59,6 +59,8 @@ Conception et découpage L3-T0…T12 : `docs/architecture-lot3.md` (contrat vds-
 - [x] Navigation à 5 entrées, onglets bas mobile, supervision fusionnée dans Écrans, redirections des anciennes URL aux deux `VDS_BASE_PATH` (`ia.test.tsx`, `app.test.tsx`)
 - [x] API `/onboarding`, `/fleet/summary`, `screens?issues` (`test_onboarding.py`)
 - [x] Carte Premiers pas sur l'Accueil, réouverture dans Plus › Aide (`onboarding.test.tsx`)
+- [x] Lot F (assistants contenu et agent) : `/content/media/add` (import multi-fichiers, 2 envois en parallèle, avertissements ratio/résolution côté client, ajout à une playlist), `/sites/connect` (commande copiable, sondage 3 s, détection) ; `media.too_large` renvoie `limit` et `size` (`import.test.tsx`, `connect.test.tsx`, `e2e/import-agent.spec.ts`)
+- [x] Lot G (aide contextuelle) : `HelpButton`/`HelpPanel`, glossaire `Term`, palette Ctrl/Cmd+K côté client, page `/help`, ton via le jeton `--vds-tone` du thème (`help.test.tsx`, `palette.test.tsx`, `e2e/help.spec.ts`, axe AA aux 2 bases x 2 thèmes, clair/sombre V-Tech)
 - [ ] Recette sur écran réel : `docs/demos/refonte-navigation.md`
 
 ### Lot 4 — Mises en page et diffusion complète
@@ -83,6 +85,10 @@ Ce lot peut être avancé avant le lot 3 si le Studio est le premier déploiemen
 - [ ] Déploiement sur les 4 premiers sites
 
 ## Décisions
+
+- 2026-11-03 — Widgets météo et RSS : `content.weather` (MET Norway, sans clé) et `content.rss` (texte seul) ; fetch serveur via `SafeHttp` noyau anti-SSRF, cache `content_feed`, player lit son serveur et garde le dernier état connu ; vds-core 1.12.0 additif. Voir `architecture-widgets.md`.
+- 2026-11-03 — Validation de publication : copie de travail + instantané publié lu seul par le résolveur ; admin auto-publie, éditeur soumet, admin valide ; `diffusion.review_required` ; événements `publication.*` (hook) ; vds-core 1.13.0 additif après 1.12.0. Voir `architecture-validation.md`.
+- 2026-11-03 — Refonte UX lots F et G livrés ensemble (F puis G), sans bump ni migration ; import par URL reporté. Voir `architecture-ux-fg.md`.
 
 - 2026-11-02 — Refonte « écarts Xibo » arbitrée (`docs/refonte/xibo-ecarts.md` §5) : médiathèque grille + tableau sans dossiers (tags légers) ; droits par site/groupe, pas par objet ; forçage avant les mises en page ; pas de campagnes en V1 ; priorité en 3 niveaux (normal, important, forçage), numérique en Avancé ; expiration sur médias et playlists avec purge base + stockage. Lot 1 = forçage avec fin automatique, conçu dans `docs/architecture-forcage.md` (`PlaybackOverride`, gagne toujours sur la programmation, fin obligatoire jouée hors ligne, vds-core 1.7.0 additif).
 
