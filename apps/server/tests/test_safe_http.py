@@ -236,3 +236,62 @@ async def test_set_cookie_not_exposed_and_no_cookie_jar() -> None:
     http, _, _ = make(handler=httpx.MockTransport(handler))
     resp = await http.get("https://feed.example.com/", max_bytes=10)
     assert "set-cookie" not in resp.headers and "cookie" not in sent[1].headers
+
+
+async def test_allow_host_checked_on_every_hop() -> None:
+    table = {"feed.example.com": [["93.184.216.34"]], "other.example.com": [["8.8.8.8"]]}
+    handler = httpx.MockTransport(
+        lambda r: (
+            httpx.Response(302, headers={"location": "https://other.example.com/x"})
+            if r.url.host == "93.184.216.34"
+            else httpx.Response(200, content=b"ok")
+        )
+    )
+    http, _, _ = make(table, handler)
+    only = {"feed.example.com"}
+    code = await code_of(http, "https://feed.example.com/", allow_host=lambda h: h in only)
+    assert code == "net.redirect_refused"
+    asked: list[str] = []
+
+    def both(h: str) -> bool:
+        asked.append(h)
+        return True
+
+    resp = await http.get("https://feed.example.com/", max_bytes=100, allow_host=both)
+    assert resp.body == b"ok" and asked == ["feed.example.com", "other.example.com"]
+    assert await code_of(http, "https://feed.example.com/", allow_host=lambda h: False) == (
+        "net.blocked_address"
+    )
+
+
+async def test_own_origin_resolved_addresses_refused() -> None:
+    table = {"feed.example.com": [["93.184.216.34"]], "vds.example.org": [["93.184.216.34"]]}
+    http, seen, _ = make(table)
+    assert await code_of(http, "https://feed.example.com/") == "net.blocked_address"
+    assert await code_of(http, "https://93.184.216.34/") == "net.blocked_address"
+    assert not seen
+
+
+async def test_accept_is_exact_match() -> None:
+    http, _, _ = make(
+        handler=httpx.MockTransport(
+            lambda r: httpx.Response(200, content=b"x", headers={"content-type": "text/evil+xml"})
+        )
+    )
+    assert await code_of(http, "https://feed.example.com/", accept=("application/xml",)) == (
+        "net.content_type_refused"
+    )
+    http, _, _ = make()
+    ok = await http.get("https://feed.example.com/", max_bytes=100, accept=("Application/XML",))
+    assert ok.status == 200
+
+
+async def test_not_modified_returned_only_when_conditional() -> None:
+    http, _, _ = make(handler=httpx.MockTransport(lambda r: httpx.Response(304)))
+    assert await code_of(http, "https://feed.example.com/") == "net.http_status"
+    resp = await http.get(
+        "https://feed.example.com/",
+        max_bytes=100,
+        headers={"If-Modified-Since": "Mon, 01 Jan 2024 00:00:00 GMT"},
+    )
+    assert resp.status == 304 and resp.body == b""

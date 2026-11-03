@@ -1,6 +1,6 @@
 """Façade `SafeHttp` (cible server), contrat vds-core 1.12.0 : client HTTP sortant anti-SSRF."""
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import Protocol
 
 from pydantic import BaseModel, Field
@@ -33,6 +33,11 @@ class SafeHttp(Protocol):
         timeout_s: float = 10.0,
         headers: Mapping[str, str] | None = None,
         accept: tuple[str, ...] = (),
+        allow_host: Callable[[str], bool] | None = None,
     ) -> SafeResponse:
-        """GET https public uniquement. Exige la permission `net.outbound`."""
+        """GET https public uniquement. Exige la permission `net.outbound`.
+
+        `allow_host` est rappelé pour l'hôte de la requête puis de CHAQUE redirection ; faux =
+        refus. Une réponse 304 est rendue (corps vide) si la requête portait `If-Modified-Since`
+        ou `If-None-Match`."""
         ...

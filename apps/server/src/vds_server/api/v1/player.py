@@ -17,6 +17,7 @@ from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
 from vds_server.core.runtime import Runtime
 from vds_server.feeds import schemas as fsc
+from vds_server.feeds.access import feed_ids_of
 from vds_server.inventory import schemas as isc
 from vds_server.inventory.devices import screens_out
 from vds_server.player import schemas as sc
@@ -206,6 +207,7 @@ def build_router(rt: Runtime) -> APIRouter:
         if format != SCHEDULE_FORMAT:
             raise ApiError("errors.schedule_format_unsupported", 400, supported=[SCHEDULE_FORMAT])
         body = await b.build(device.screen_id)
+        rt.feed_access.put(device.screen_id, feed_ids_of(body))  # alimente le cache des flux
         etag = f'"{body["revision"]}"'
         headers = {"ETag": etag, "Cache-Control": "private, no-cache"}
         if _etag_matches(request.headers.get("if-none-match"), etag):
@@ -232,13 +234,10 @@ def build_router(rt: Runtime) -> APIRouter:
         if row is None:
             raise ApiError("feeds.unknown", 404)
         # le flux doit figurer dans la programmation résolue de CET écran (journée + lendemain)
-        body = await b.build(device.screen_id)
-        allowed = {
-            fid
-            for pl in body["playlists"].values()
-            for item in pl["items"]
-            for fid in item.get("feeds", [])
-        }
+        allowed = rt.feed_access.get(device.screen_id)
+        if allowed is None:  # absent ou périmé : une seule reconstruction, puis cache
+            allowed = frozenset(feed_ids_of(await b.build(device.screen_id)))
+            rt.feed_access.put(device.screen_id, allowed)
         if feed_id not in allowed:
             raise ApiError("feeds.unknown", 404)
         if row.data is None or row.fetched_at is None:

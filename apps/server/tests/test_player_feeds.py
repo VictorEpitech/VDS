@@ -143,3 +143,36 @@ async def test_item_invalid_url_not_in_schedule(
         token = await pair(admin, player, p, screen)
         assert len(set(await feed_ids(player, p, token))) == 1
         assert len(await feed_ids(player, p, token)) == 2
+
+
+async def test_feed_read_does_not_rebuild_schedule(
+    admin: AsyncClient, app: FastAPI, p: str, net: FakeNet, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from vds_server.player.schedule import ScheduleBuilder
+
+    _, screen = await mk_screen(admin, p)
+    pl = await mk_playlist(admin, p)
+    await add_rss(admin, p, pl)
+    await schedule(admin, p, pl, screen)
+    runtime = app.state.runtime
+    async with new_client(app) as player:
+        token = await pair(admin, player, p, screen)
+        (fid,) = await feed_ids(player, p, token)  # la synchro alimente le cache
+        builds = 0
+        real = ScheduleBuilder.build
+
+        async def counted(self: ScheduleBuilder, *a: Any, **k: Any) -> dict[str, Any]:
+            nonlocal builds
+            builds += 1
+            return await real(self, *a, **k)
+
+        monkeypatch.setattr(ScheduleBuilder, "build", counted)
+        url = f"{p}/api/v1/player/feeds/{fid}"
+        for _ in range(3):
+            assert (await player.get(url, headers=hdr(token))).status_code == 204
+        assert builds == 0
+        # invalidation (publication) : une seule reconstruction, puis cache de nouveau
+        runtime.feed_access.invalidate()
+        for _ in range(3):
+            assert (await player.get(url, headers=hdr(token))).status_code == 204
+        assert builds == 1

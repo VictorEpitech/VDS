@@ -35,6 +35,7 @@ from vds_server.diffusion.sweeper import ContentSweeper
 from vds_server.discovery.service import DiscoveryEvents
 from vds_server.enrollment.local import LocalChannel
 from vds_server.events import CoreBus
+from vds_server.feeds.access import FeedAccessCache
 from vds_server.feeds.service import FeedService
 from vds_server.net.safe_http import CoreSafeHttp
 from vds_server.overrides.sweeper import SWEEP_INTERVAL_S, OverrideSweeper
@@ -116,6 +117,15 @@ class Runtime:
         self.feeds = FeedService(
             self.maker, self.bus, self.registry.instance, lambda _module_id: self.safe_http
         )
+        self.feed_access = FeedAccessCache()
+        for name in (
+            "publication.approved",
+            "module.enabled",
+            "module.disabled",
+            "module.quarantined",
+            "screen.unpaired",
+        ):
+            self.bus.subscribe(name, self.feed_access.on_event)
         self.plan_pusher = PlanPusher(self.maker, self.schemas, self.command_queue)
         self.plan_pusher.register(self.bus.subscribe)
         for name in ("module.enabled", "module.disabled", "module.quarantined"):

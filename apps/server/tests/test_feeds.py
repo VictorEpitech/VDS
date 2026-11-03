@@ -117,6 +117,43 @@ async def test_quota_201st_refused(maker: async_sessionmaker[AsyncSession]) -> N
     await service.ensure("content.other", FeedRequest(params={"i": 200}, refresh_s=600))
 
 
+async def test_organization_quota_alerts_instead_of_silent_drop(
+    maker: async_sessionmaker[AsyncSession], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(svc, "MAX_FEEDS_TOTAL", 3)
+    service, _, bus = make(maker)
+    for i in range(3):
+        await service.ensure(f"content.m{i}", FeedRequest(params={"i": i}, refresh_s=600))
+    for _ in range(2):  # le 2e refus ne ré-émet pas (une alerte par heure et par module)
+        with pytest.raises(ContractError) as exc:
+            await service.ensure("content.m9", FeedRequest(params={"i": 9}, refresh_s=600))
+        assert exc.value.code == "feeds.quota_exceeded"
+    failed = [e for e in bus.events if e.name == "feed.failed"]
+    assert len(failed) == 1
+    assert failed[0].payload["error_code"] == "feeds.quota_exceeded"
+    assert failed[0].payload["module_id"] == "content.m9"
+    await service.ensure("content.m0", FeedRequest(params={"i": 0}, refresh_s=600))  # existant
+
+
+async def test_module_quota_also_alerts(maker: async_sessionmaker[AsyncSession]) -> None:
+    service, _, bus = make(maker)
+    for i in range(200):
+        await service.ensure("content.test", FeedRequest(params={"i": i}, refresh_s=600))
+    with pytest.raises(ContractError):
+        await service.ensure("content.test", FeedRequest(params={"i": 200}, refresh_s=600))
+    assert [e.name for e in bus.events] == ["feed.failed"]
+
+
+async def test_host_locks_bounded_and_keep_busy_ones() -> None:
+    locks = svc.HostLocks(limit=3)
+    busy = locks.get("busy")
+    await busy.acquire()
+    for i in range(20):
+        locks.get(f"h{i}")
+    assert len(locks) <= 4 and locks.get("busy") is busy  # un verrou tenu n'est jamais évincé
+    busy.release()
+
+
 async def test_due_refresh_stores_data(maker: async_sessionmaker[AsyncSession]) -> None:
     service, mod, bus = make(maker)
     fid = await service.ensure("content.test", REQ)

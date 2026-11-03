@@ -8,6 +8,7 @@ revérifiées une à une, corps coupé à `max_bytes`, délai total borné, ni c
 import asyncio
 import ipaddress
 import socket
+import time
 from collections.abc import Awaitable, Callable, Mapping
 from http.cookiejar import DefaultCookiePolicy
 from urllib.parse import urljoin, urlsplit
@@ -21,6 +22,8 @@ MAX_REDIRECTS = 3
 _FORBIDDEN_HEADERS = frozenset({"host", "cookie", "authorization", "proxy-authorization"})
 # 6to4 et NAT64 encapsulent une IPv4 arbitraire : refusés par prudence.
 _EMBEDDING_NETS = (ipaddress.ip_network("2002::/16"), ipaddress.ip_network("64:ff9b::/96"))
+
+_OWN_IPS_TTL_S = 60.0
 
 Resolver = Callable[[str, int], Awaitable[list[str]]]
 
@@ -73,10 +76,26 @@ class CoreSafeHttp:
     ) -> None:
         self._origin = public_origin
         self._own_host = _origin_host(public_origin)
+        self._own_ips: tuple[float, frozenset[str]] = (0.0, frozenset())
         self._resolver = resolver
         self._transport = transport
         suffix = f" (+{public_origin})" if public_origin else ""
         self._user_agent = f"VDS/{version}{suffix}"
+
+    async def _own_addresses(self) -> frozenset[str]:
+        """Adresses résolues de l'origine propre (cache 60 s) : un autre nom vers elles est refusé."""
+        if self._own_host is None:
+            return frozenset()
+        now = time.monotonic()
+        stamp, cached = self._own_ips
+        if now - stamp < _OWN_IPS_TTL_S and stamp:
+            return cached
+        try:
+            found = frozenset(await self._resolver(self._own_host, 443))
+        except OSError:
+            found = cached  # échec de résolution : on garde la dernière liste connue
+        self._own_ips = (now, found)
+        return found
 
     async def _check(self, url: str) -> tuple[httpx.URL, str, str]:
         """Valide l'URL ; renvoie (URL épinglée sur l'IP, hôte d'origine, IP)."""
@@ -104,6 +123,8 @@ class CoreSafeHttp:
             raise SafeHttpError("net.dns_failed", host)
         if not all(is_public_ip(a) for a in addresses):  # toutes, pas seulement la première
             raise SafeHttpError("net.blocked_address", host)
+        if self._own_host is not None and set(addresses) & await self._own_addresses():
+            raise SafeHttpError("net.blocked_address", "own_origin")
         ip = addresses[0]
         netloc = f"[{ip}]" if ":" in ip else ip
         path = parts.path or "/"
@@ -120,12 +141,13 @@ class CoreSafeHttp:
         timeout_s: float = MAX_TIMEOUT_S,
         headers: Mapping[str, str] | None = None,
         accept: tuple[str, ...] = (),
+        allow_host: Callable[[str], bool] | None = None,
     ) -> SafeResponse:
         limit = max(1, min(max_bytes, HARD_MAX_BYTES))
         timeout = max(0.1, min(timeout_s, MAX_TIMEOUT_S))
         try:
             async with asyncio.timeout(timeout):
-                return await self._get(url, limit, headers or {}, accept, timeout)
+                return await self._get(url, limit, headers or {}, accept, timeout, allow_host)
         except TimeoutError as exc:
             raise SafeHttpError("net.timeout") from exc
 
@@ -152,6 +174,7 @@ class CoreSafeHttp:
         extra: Mapping[str, str],
         accept: tuple[str, ...],
         timeout: float,  # noqa: ASYNC109 - passé à httpx, le délai global est dans get()
+        allow_host: Callable[[str], bool] | None = None,
     ) -> SafeResponse:
         headers = self._headers(extra, accept)
         current = url
@@ -169,6 +192,11 @@ class CoreSafeHttp:
                     if hop > 0 and exc.code == "net.scheme_refused":
                         raise SafeHttpError("net.redirect_refused", exc.detail) from exc
                     raise
+                if allow_host is not None and not allow_host(host):  # chaque saut, pas que le 1er
+                    raise SafeHttpError(
+                        "net.redirect_refused" if hop > 0 else "net.blocked_address",
+                        host,
+                    )
                 req = client.build_request(
                     "GET",
                     pinned,
@@ -188,14 +216,27 @@ class CoreSafeHttp:
                             raise SafeHttpError("net.redirect_refused", "no_location")
                         current = urljoin(current, location)
                         continue
-                    return await self._read(resp, current, limit, accept)
+                    return await self._read(resp, current, limit, accept, headers)
                 finally:
                     await resp.aclose()
         raise SafeHttpError("net.redirect_refused", "too_many")
 
     async def _read(
-        self, resp: httpx.Response, final_url: str, limit: int, accept: tuple[str, ...]
+        self,
+        resp: httpx.Response,
+        final_url: str,
+        limit: int,
+        accept: tuple[str, ...],
+        sent: Mapping[str, str],
     ) -> SafeResponse:
+        conditional = any(k.lower() in ("if-modified-since", "if-none-match") for k in sent)
+        if resp.status_code == 304 and conditional:  # inchangé : à l'appelant de réutiliser
+            return SafeResponse(
+                status=304,
+                headers={k.lower(): v for k, v in resp.headers.items() if k.lower() != "set-cookie"},
+                body=b"",
+                final_url=final_url,
+            )
         if not 200 <= resp.status_code < 300:
             raise SafeHttpError("net.http_status", str(resp.status_code))
         declared = resp.headers.get("content-length")
@@ -203,9 +244,7 @@ class CoreSafeHttp:
             raise SafeHttpError("net.too_large")
         if accept:
             ctype = resp.headers.get("content-type", "").split(";", 1)[0].strip().lower()
-            if not any(
-                ctype == a.lower() or ctype.endswith("+" + a.split("/")[-1]) for a in accept
-            ):
+            if ctype not in {a.lower() for a in accept}:  # comparaison exacte, pas de suffixe
                 raise SafeHttpError("net.content_type_refused", ctype)
         chunks: list[bytes] = []
         size = 0

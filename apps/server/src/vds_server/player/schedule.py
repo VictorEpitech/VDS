@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import logging
 from collections.abc import Awaitable, Callable, Collection, Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Any, cast
@@ -38,6 +39,7 @@ from vds_server.diffusion.resolver import OverrideSpec, ResolveInput, ScheduleSp
 from vds_server.publication import reader
 from vds_server.publication.snapshots import ItemSnap
 
+log = logging.getLogger("vds.schedule")
 SCHEDULE_FORMAT = 1
 DEFAULT_TZ = "Europe/Paris"
 SchemaLookup = Callable[[str], dict[str, Any] | None]
@@ -550,7 +552,9 @@ class ScheduleBuilder:
         feeds: list[str] = []
         instance = self._instance_of(item.content_type) if self._instance_of else None
         if isinstance(instance, ContentType):
-            resolved = await self._to_player(instance, dict(item.props or {}), schema)
+            resolved = await self._to_player(
+                instance, dict(item.props or {}), schema, item.content_type
+            )
             if resolved is None:
                 return None
             props, refs, found, spec_ms, feeds = resolved
@@ -570,7 +574,11 @@ class ScheduleBuilder:
         return entry, found
 
     async def _to_player(
-        self, instance: ContentType, props: dict[str, Any], schema: dict[str, Any]
+        self,
+        instance: ContentType,
+        props: dict[str, Any],
+        schema: dict[str, Any],
+        item_type: str = "?",
     ) -> tuple[dict[str, Any], list[str], dict[str, Any], int | None, list[str]] | None:
         """Résolution par le module (pages PDF…) ; None si un média manque ou n'est pas prêt."""
         infos: dict[UUID, MediaInfo] = {}
@@ -582,7 +590,10 @@ class ScheduleBuilder:
                 infos[info.id] = info
         try:
             spec_out = await instance.to_player(props, infos)
-        except ContractError:
+        except ContractError as exc:
+            # élément écarté mais jamais en silence (quota de flux, props invalides…)
+            level = logging.WARNING if exc.code == "feeds.quota_exceeded" else logging.INFO
+            log.log(level, "item skipped (%s): %s", item_type, exc.code)
             return None
         found: dict[str, Any] = {}
         for key in spec_out.assets:

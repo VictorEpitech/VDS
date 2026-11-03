@@ -1,7 +1,7 @@
 """Modules content.weather et content.rss (serveur) : manifeste, schémas, i18n, normalisation."""
 
 import json
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any, cast
 
@@ -59,6 +59,7 @@ class FakeHttp:
     def __init__(self, body: bytes = b"", headers: dict[str, str] | None = None) -> None:
         self.body, self.headers = body, headers or {}
         self.calls: list[dict[str, Any]] = []
+        self.not_modified = False
 
     async def get(
         self,
@@ -68,9 +69,20 @@ class FakeHttp:
         timeout_s: float = 10.0,
         headers: Mapping[str, str] | None = None,
         accept: tuple[str, ...] = (),
+        allow_host: Callable[[str], bool] | None = None,
     ) -> SafeResponse:
-        self.calls.append({"url": url, "max_bytes": max_bytes, "headers": headers, "a": accept})
-        return SafeResponse(status=200, headers=self.headers, body=self.body, final_url=url)
+        self.calls.append(
+            {
+                "url": url,
+                "max_bytes": max_bytes,
+                "headers": headers,
+                "a": accept,
+                "allow_host": allow_host,
+            }
+        )
+        status = 304 if self.not_modified and "If-Modified-Since" in (headers or {}) else 200
+        body = b"" if status == 304 else self.body
+        return SafeResponse(status=status, headers=self.headers, body=body, final_url=url)
 
 
 async def ready(mid: str, values: dict[str, Any] | None = None) -> tuple[ContentType, _Ctx]:
@@ -154,6 +166,7 @@ async def test_weather_refresh_never_below_30_min() -> None:
     [
         {"latitude": 91}, {"longitude": -181}, {"latitude": "48"}, {"latitude": True},
         {"label": "  "}, {"days": 4}, {"days": 0}, {"units": "kelvin"}, {"max_age_s": 5},
+        {"max_age_s": 604801},
     ],
 )  # fmt: skip
 async def test_weather_rejects_invalid_item(over: dict[str, Any]) -> None:
@@ -184,7 +197,7 @@ async def test_weather_fetch_normalizes_recorded_response() -> None:
 
 
 async def test_weather_expires_header_lengthens_refresh() -> None:
-    module, _ = await ready("content.weather")
+    module, _ = await ready("content.weather", {"contact": "ops@example.org"})
     body = (FIX / "met_locationforecast.json").read_bytes()
     req = FeedRequest(params={"lat": 1.0, "lon": 2.0}, refresh_s=1800)
     far = FakeHttp(body, {"expires": "Fri, 01 Jan 2100 00:00:00 GMT"})
@@ -196,7 +209,7 @@ async def test_weather_expires_header_lengthens_refresh() -> None:
 
 @pytest.mark.parametrize("body", [b"not json", b"[]", b"{}", b'{"properties":{"timeseries":[]}}'])
 async def test_weather_invalid_response(body: bytes) -> None:
-    module, _ = await ready("content.weather")
+    module, _ = await ready("content.weather", {"contact": "ops@example.org"})
     req = FeedRequest(params={"lat": 1.0, "lon": 2.0}, refresh_s=1800)
     with pytest.raises(ContractError) as exc:
         await module.fetch_feed(req, http(FakeHttp(body)))
@@ -204,7 +217,7 @@ async def test_weather_invalid_response(body: bytes) -> None:
 
 
 async def test_weather_http_error_propagates() -> None:
-    module, _ = await ready("content.weather")
+    module, _ = await ready("content.weather", {"contact": "ops@example.org"})
 
     class Boom:
         async def get(self, url: str, **kw: Any) -> SafeResponse:
@@ -345,3 +358,39 @@ async def test_rss_allowed_hosts_and_own_origin(monkeypatch: pytest.MonkeyPatch)
         await module.fetch_feed(
             FeedRequest(params={"url": "https://evil.test/f"}, refresh_s=900), http(FakeHttp(b""))
         )
+
+
+async def test_weather_without_contact_is_inactive() -> None:
+    module, _ = await ready("content.weather")
+    fake = FakeHttp((FIX / "met_locationforecast.json").read_bytes())
+    req = FeedRequest(params={"lat": 48.8566, "lon": 2.3522}, refresh_s=3600)
+    with pytest.raises(ContractError) as exc:
+        await module.fetch_feed(req, http(fake))
+    assert exc.value.code == "content.weather.contact_required" and not fake.calls
+
+
+async def test_weather_if_modified_since_reuses_known_data() -> None:
+    module, _ = await ready("content.weather", {"contact": "ops@example.org"})
+    stamp = "Mon, 02 Nov 2026 10:00:00 GMT"
+    fake = FakeHttp((FIX / "met_locationforecast.json").read_bytes(), {"last-modified": stamp})
+    req = FeedRequest(params={"lat": 48.8566, "lon": 2.3522}, refresh_s=3600)
+    first = await module.fetch_feed(req, http(fake))
+    assert "If-Modified-Since" not in (fake.calls[0]["headers"] or {})
+    fake.not_modified = True
+    again = await module.fetch_feed(req, http(fake))
+    assert fake.calls[1]["headers"]["If-Modified-Since"] == stamp
+    assert again == first
+
+
+async def test_rss_passes_allow_host_for_redirects_and_empty_means_open() -> None:
+    module, _ = await ready("content.rss", {"allowed_hosts": ["example.org"]})
+    fake = FakeHttp((FIX / "rss2.xml").read_bytes())
+    req = FeedRequest(params={"url": "https://news.example.org/f"}, refresh_s=900)
+    await module.fetch_feed(req, http(fake))
+    allow = fake.calls[0]["allow_host"]
+    assert allow("news.example.org") and allow("example.org")
+    assert not allow("evil.test") and not allow("notexample.org")
+    open_module, _ = await ready("content.rss")
+    fake2 = FakeHttp((FIX / "rss2.xml").read_bytes())
+    await open_module.fetch_feed(req, http(fake2))
+    assert fake2.calls[0]["allow_host"]("anything.test")  # liste vide = tout hôte public

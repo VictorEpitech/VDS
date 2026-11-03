@@ -8,6 +8,7 @@ dans `ContentType.fetch_feed` du module.
 import asyncio
 import json
 import logging
+from collections import OrderedDict
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -29,6 +30,9 @@ log = logging.getLogger("vds.feeds")
 MIN_REFRESH_S = 300
 MAX_REFRESH_S = 86400
 MAX_FEEDS_PER_MODULE = 200
+MAX_FEEDS_TOTAL = 1000  # par organisation (= instance) : tous modules confondus
+MAX_HOST_LOCKS = 256
+QUOTA_ALERT_EVERY = timedelta(hours=1)
 MAX_DATA_BYTES = 64 * 1024
 PARALLEL_FETCHES = 4
 TICK_S = 30.0
@@ -75,10 +79,34 @@ def backoff_s(fail_count: int, refresh_s: int) -> int:
     return min(BACKOFF_BASE_S << min(max(fail_count - 1, 0), 20), refresh_s)
 
 
+class HostLocks:
+    """Un verrou par hôte, en nombre borné : les verrous libres les plus anciens sont évincés."""
+
+    def __init__(self, limit: int = MAX_HOST_LOCKS) -> None:
+        self._limit = limit
+        self._locks: OrderedDict[str, asyncio.Lock] = OrderedDict()
+
+    def __len__(self) -> int:
+        return len(self._locks)
+
+    def get(self, host: str) -> asyncio.Lock:
+        lock = self._locks.get(host)
+        if lock is None:
+            lock = self._locks[host] = asyncio.Lock()
+            for key in list(self._locks):
+                if len(self._locks) <= self._limit:
+                    break
+                if key != host and not self._locks[key].locked():
+                    del self._locks[key]
+        else:
+            self._locks.move_to_end(host)
+        return lock
+
+
 class _HostLimited:
     """`SafeHttp` d'un module : une requête à la fois par hôte (verrous partagés du service)."""
 
-    def __init__(self, inner: SafeHttp, locks: dict[str, asyncio.Lock]) -> None:
+    def __init__(self, inner: SafeHttp, locks: HostLocks) -> None:
         self._inner = inner
         self._locks = locks
 
@@ -90,14 +118,20 @@ class _HostLimited:
         timeout_s: float = 10.0,
         headers: Mapping[str, str] | None = None,
         accept: tuple[str, ...] = (),
+        allow_host: Callable[[str], bool] | None = None,
     ) -> SafeResponse:
         try:
             host = (urlsplit(url).hostname or "").lower()
         except ValueError:
             host = ""
-        async with self._locks.setdefault(host, asyncio.Lock()):
+        async with self._locks.get(host):
             return await self._inner.get(
-                url, max_bytes=max_bytes, timeout_s=timeout_s, headers=headers, accept=accept
+                url,
+                max_bytes=max_bytes,
+                timeout_s=timeout_s,
+                headers=headers,
+                accept=accept,
+                allow_host=allow_host,
             )
 
 
@@ -114,13 +148,40 @@ class FeedService:
         self._instance_of = instance_of
         self._http_for = http_for
         self._gate = asyncio.Semaphore(PARALLEL_FETCHES)
-        self._host_locks: dict[str, asyncio.Lock] = {}
+        self._host_locks: HostLocks = {}
         self._last_purge: datetime | None = None
 
     # --- API module (ctx.core.feeds) -------------------------------------------------
 
     async def ensure(self, module_id: str, req: FeedRequest) -> str:
         feed_id = compute_feed_id(module_id, req.canonical())
+        try:
+            return await self._ensure(module_id, req, feed_id)
+        except ContractError as exc:
+            if exc.code == "feeds.quota_exceeded":  # jamais d'abandon silencieux
+                await self._alert_quota(module_id, feed_id)
+            raise
+
+    async def _alert_quota(self, module_id: str, feed_id: str) -> None:
+        now = datetime.now(UTC)
+        last = self._quota_alerted.get(module_id)
+        if last is not None and now - last < QUOTA_ALERT_EVERY:
+            return
+        if len(self._quota_alerted) > 256:
+            self._quota_alerted.clear()
+        self._quota_alerted[module_id] = now
+        log.warning("feeds quota exceeded (module %s)", module_id)
+        payload = FeedFailedV1(
+            module_id=module_id,
+            feed_id=feed_id,
+            error_code="feeds.quota_exceeded",
+            failing_since=now,
+        )
+        await self._bus.publish(
+            Event(name="feed.failed", payload=payload.model_dump(mode="json"), source="core")
+        )
+
+    async def _ensure(self, module_id: str, req: FeedRequest, feed_id: str) -> str:
         refresh = clamp_refresh(req.refresh_s)
         now = datetime.now(UTC)
         async with self._maker.begin() as s:
@@ -133,6 +194,9 @@ class FeedService:
                 )
                 if (count or 0) >= MAX_FEEDS_PER_MODULE:
                     raise ContractError("feeds.quota_exceeded")
+                total = await s.scalar(select(func.count()).select_from(ContentFeed))
+                if (total or 0) >= MAX_FEEDS_TOTAL:
+                    raise ContractError("feeds.quota_exceeded", "organization")
             stmt = insert(ContentFeed).values(
                 id=feed_id,
                 module_id=module_id,
