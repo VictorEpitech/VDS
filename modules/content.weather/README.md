@@ -23,4 +23,4 @@ Données © MET Norway, licence CC BY 4.0 (https://api.met.no/doc/License). Le p
 
 - Pas de géocodage : latitude et longitude sont saisies à la main (point d'accroche futur : sélecteur de lieu).
 - Les jours sont découpés en UTC (écart d'au plus quelques heures aux latitudes européennes).
-- Le player (pictogrammes, mise en page paysage, portrait, bandeau) est une tâche distincte : `assets/player.js` est pour l'instant un élément qui échoue proprement (`player_pending`), donc l'élément est sauté.
+- Player : trois mises en page selon la zone (paysage, portrait, bandeau si largeur/hauteur ≥ 2,6) ; températures en °C ou °F (`units`), jours via `Intl` et la langue de l'écran. Pictogrammes MET Norway embarqués dans `assets/player.js` (MIT, `assets/ICONS-LICENSE-MIT.txt`), régénérés par `node tools/build-icons.mjs <weathericons>/weather/svg` (trames d'ombrage PNG retirées, rendu à plat ; crépuscule polaire = jour). Hors ligne : dernier état connu si plus récent que `max_age_s`, sinon l'élément est sauté (`feed_stale` / `feed_unavailable` remontés au serveur, rien d'affiché au public).
