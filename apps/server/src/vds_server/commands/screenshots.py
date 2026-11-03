@@ -22,7 +22,7 @@ from vds_sdk import Event, EventBus
 from vds_sdk.server import StorageBackend
 
 from vds_server.commands import schemas as sc
-from vds_server.commands.service import PENDING, terminate
+from vds_server.commands.service import PENDING, SERVER_MARK, terminate
 from vds_server.config.schemas import CORE_NAMESPACE, ConfigSchemaProvider
 from vds_server.config.service import ConfigService
 from vds_server.core.errors import ApiError
@@ -38,6 +38,7 @@ JPEG_QUALITY = 70
 PERIODIC_MIN_INTERVAL_S = 60
 FUTURE_SKEW = timedelta(minutes=5)
 PURGE_BATCH = 500
+ORPHAN_GRACE = timedelta(hours=1)
 DEFAULT_RETENTION_H = 24
 DEFAULT_MAX_PER_SCREEN = 10
 JPEG_MAGIC = b"\xff\xd8\xff"
@@ -205,7 +206,13 @@ class ScreenshotIngest:
             await self._s.flush()
             if cmd is not None:
                 events.append(
-                    terminate(self._s, cmd, "ok", None, result={"screenshot_id": str(shot_id)})
+                    terminate(
+                        self._s,
+                        cmd,
+                        "ok",
+                        None,
+                        result={"screenshot_id": str(shot_id), SERVER_MARK: True},
+                    )
                 )
             events.append(
                 Event(
@@ -351,6 +358,36 @@ class CaptureSweeper:
             await s.commit()
             return done
 
+    async def purge_orphans(self, now: datetime | None = None) -> int:
+        """Supprime les fichiers `screenshots/` sans ligne en base, après un délai de grâce
+        (un envoi en cours a écrit le fichier avant d'insérer la ligne)."""
+        now = now or datetime.now(UTC)
+        storage = self._storage()
+        if storage is None:
+            return 0
+        cutoff = now - ORPHAN_GRACE
+        old = sorted(k for k, mtime in await storage.list_keys("screenshots/") if mtime <= cutoff)
+        done = 0
+        async with self._maker() as s:
+            for i in range(0, len(old), PURGE_BATCH):
+                chunk = old[i : i + PURGE_BATCH]
+                known = set(
+                    (
+                        await s.execute(
+                            select(Screenshot.storage_key).where(Screenshot.storage_key.in_(chunk))
+                        )
+                    ).scalars()
+                )
+                for key in chunk:
+                    if key in known:
+                        continue
+                    try:
+                        await storage.delete(key)
+                        done += 1
+                    except Exception:
+                        log.warning("screenshot.orphan_delete_failed")
+        return done
+
     async def run_once(self) -> None:
         try:
             await self.expire()
@@ -358,5 +395,6 @@ class CaptureSweeper:
             if loop_time - self._last_purge >= self.PURGE_EVERY_S:
                 self._last_purge = loop_time
                 await self.purge()
+                await self.purge_orphans()
         except Exception:
             log.exception("commands.sweep_failed")

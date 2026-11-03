@@ -1,10 +1,8 @@
-// Le seul utilisateur autorisé : "vds", et uniquement pour relancer vds-kiosk.service et redémarrer l'appareil.
-// Le redémarrage de l'appareil n'est de toute façon proposé que si VDS_PI_ALLOW_REBOOT=1 (assistant).
+// Le seul utilisateur autorisé : "vds", et uniquement pour relancer vds-kiosk.service.
+// Le redémarrage de l'appareil est dans 51-vds-reboot.rules, à n'installer que si VDS_PI_ALLOW_REBOOT=1.
 polkit.addRule(function (action, subject) {
   if (subject.user !== "vds") return polkit.Result.NOT_HANDLED;
   if (action.id === "org.freedesktop.systemd1.manage-units" && action.lookup("unit") === "vds-kiosk.service" &&
       action.lookup("verb") === "restart") return polkit.Result.YES;
-  if (action.id === "org.freedesktop.login1.reboot" || action.id === "org.freedesktop.login1.reboot-multiple-sessions")
-    return polkit.Result.YES;
   return polkit.Result.NOT_HANDLED;
 });

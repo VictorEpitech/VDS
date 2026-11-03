@@ -34,6 +34,8 @@ TTL_S: dict[str, tuple[int, int]] = {  # nom -> (défaut, max)
     "cache.resync": (3600, 86400),
 }
 ADMIN_ONLY = frozenset({"restart", "cache.resync"})
+SERVER_MARK = "_server"  # posé uniquement par l'ingestion serveur, retiré des données du player
+SERVER_RESULT_KEYS = frozenset({SERVER_MARK, "screenshot_id"})
 MAX_PENDING_PER_SCREEN = 20
 HEARTBEAT_COMMANDS_MAX = 10
 RESULT_MAX_BYTES = 4096
@@ -169,6 +171,8 @@ class CommandCore:
         model = PLAYER_COMMAND_ARGS.get(name)
         if model is None or name not in TTL_S:
             raise ApiError("cmd.unknown", 422)
+        if actor.kind == "module" and name in ADMIN_ONLY:
+            raise ApiError("cmd.role_required", 403, required="admin")
         try:
             clean = model.model_validate(args).model_dump(mode="json")
         except ValidationError as exc:
@@ -345,6 +349,7 @@ class CommandCore:
             if row is None or row.status not in PENDING:
                 continue
             data = res.data if len(str(res.data)) <= RESULT_MAX_BYTES else {}
+            data = {k: v for k, v in data.items() if k not in SERVER_RESULT_KEYS}
             code = res.code[:80] if res.code else None
             events.append(terminate(self._s, row, res.status, code, result=data or None))
         await self._s.commit()
@@ -405,7 +410,10 @@ class CommandCore:
 
 
 def _shot_id(row: PlayerCommand) -> UUID | None:
-    raw = row.result.get("screenshot_id") if isinstance(row.result, dict) else None
+    """Seul un résultat posé par l'ingestion serveur (marqueur) désigne une capture."""
+    res = row.result
+    trusted = isinstance(res, dict) and res.get(SERVER_MARK) is True
+    raw = res.get("screenshot_id") if trusted and isinstance(res, dict) else None
     try:
         return UUID(str(raw)) if raw else None
     except ValueError:

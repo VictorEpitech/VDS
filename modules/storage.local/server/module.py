@@ -6,6 +6,7 @@ import os
 import re
 import uuid
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -84,3 +85,25 @@ class StorageLocal(StorageBackend):
             await asyncio.to_thread(parent.rmdir)
         except OSError:
             pass
+
+    async def list_keys(self, prefix: str) -> list[tuple[str, datetime]]:
+        if self._root is None:
+            raise RuntimeError("storage.not_ready")
+        root = self._root
+        base = (root / prefix).resolve()
+        if not base.is_relative_to(root):
+            raise ValueError("storage.key_invalid")
+
+        def walk() -> list[tuple[str, datetime]]:
+            found: list[tuple[str, datetime]] = []
+            for dirpath, _dirs, files in os.walk(base):
+                for name in files:
+                    path = Path(dirpath) / name
+                    try:
+                        mtime = datetime.fromtimestamp(path.stat().st_mtime, UTC)
+                    except OSError:
+                        continue
+                    found.append((path.relative_to(root).as_posix(), mtime))
+            return found
+
+        return await asyncio.to_thread(walk)

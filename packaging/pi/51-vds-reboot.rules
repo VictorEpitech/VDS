@@ -1,0 +1,8 @@
+// OPTIONNEL : à copier dans /etc/polkit-1/rules.d/ uniquement si VDS_PI_ALLOW_REBOOT=1 (sinon ne pas
+// l'installer : le droit de redémarrer l'appareil serait ouvert à tout code tournant sous "vds", dont Chromium).
+polkit.addRule(function (action, subject) {
+  if (subject.user !== "vds") return polkit.Result.NOT_HANDLED;
+  if (action.id === "org.freedesktop.login1.reboot" || action.id === "org.freedesktop.login1.reboot-multiple-sessions")
+    return polkit.Result.YES;
+  return polkit.Result.NOT_HANDLED;
+});

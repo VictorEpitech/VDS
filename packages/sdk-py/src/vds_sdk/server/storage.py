@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from collections.abc import AsyncIterator
+from datetime import datetime
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
@@ -46,3 +47,10 @@ class StorageBackend(Module):
         """
         Supprime l'objet correspondant à la clé donnée.
         """
+
+    async def list_keys(self, prefix: str) -> list[tuple[str, datetime]]:
+        """
+        Clés stockées sous `prefix` avec leur date de modification (UTC), pour le balayage des
+        orphelins. Facultatif : un backend qui ne sait pas lister renvoie `[]` (aucun balayage).
+        """
+        return []

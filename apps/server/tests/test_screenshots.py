@@ -316,3 +316,19 @@ async def test_no_cross_perimeter_leak_in_screens(cw: CWorld, admin: AsyncClient
     assert post.status_code == 404
     for token in forbidden:
         assert token not in post.text
+
+
+async def test_orphan_files_swept_after_grace(
+    cw: CWorld, admin: AsyncClient, p: str, migrated_db_url: str
+) -> None:
+    rt: Runtime = cw.app.state.runtime
+    await capture(cw, admin, "sA", size=(64, 64))
+    (row,) = await sql(migrated_db_url, "SELECT storage_key FROM screenshot")
+    kept = storage_file(row[0])
+    orphan = kept.parent / f"{uuid4()}.jpg"
+    orphan.write_bytes(b"x")
+    # dans le délai de grâce : intact ; au-delà : l'orphelin part, le fichier référencé reste
+    assert await rt.capture_sweeper.purge_orphans() == 0 and orphan.exists()
+    later = datetime.now(UTC) + timedelta(hours=2)
+    assert await rt.capture_sweeper.purge_orphans(later) == 1
+    assert not orphan.exists() and kept.exists()

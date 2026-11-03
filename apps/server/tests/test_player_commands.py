@@ -351,6 +351,31 @@ async def test_module_screens_api(cw: CWorld, admin: AsyncClient, p: str) -> Non
         await api.send_command(ScreenCommandRequest(screen_id=uuid4(), name="reload"))
 
 
+async def test_module_cannot_send_admin_only_commands(cw: CWorld) -> None:
+    from vds_server.commands.service import ADMIN_ONLY, Actor, CommandCore
+    from vds_server.db.models import Screen
+
+    rt: Runtime = cw.app.state.runtime
+    async with rt.maker() as session:
+        screen = await session.get(Screen, UUID(cw.screens["sA"]))
+        assert screen is not None
+        for name in sorted(ADMIN_ONLY):
+            args: dict[str, Any] = {"scope": "app"} if name == "restart" else {}
+            with pytest.raises(Exception, match="cmd.role_required"):
+                await CommandCore(session, rt.bus).create(
+                    Actor("module", "notify.test"), screen, name, args
+                )
+
+
+async def test_screenshot_id_only_from_server_ingestion() -> None:
+    from vds_server.commands.service import _shot_id
+
+    sid = uuid4()
+    forged: Any = SimpleNamespace(result={"screenshot_id": str(sid)})
+    real: Any = SimpleNamespace(result={"screenshot_id": str(sid), "_server": True})
+    assert _shot_id(forged) is None and _shot_id(real) == sid
+
+
 # --- livraison WebSocket ---------------------------------------------------------------------
 async def open_authed(c: CWorld, key: str) -> FakeWS:
     ws = await FakeWS(c.app, f"{c.p}/ws/player", {}, [SUBPROTOCOL_PLAYER]).open()

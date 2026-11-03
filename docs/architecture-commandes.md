@@ -206,6 +206,18 @@ Aucune trace visible : pas d'indicateur de capture, pas de message en cas d'éch
 
 La carte affiche un **aperçu théorique** clairement libellé (« Aperçu de la programmation, pas une capture réelle ») : vignette de l'élément en cours d'après `GET /fleet/playback` + vignette média existante. Aucun nouvel endpoint.
 
+Fichiers orphelins : la suppression d'un écran supprime ses fichiers (`DELETE /screens/{id}`) ; le balayage
+périodique (15 min) supprime en plus toute clé `screenshots/` du stockage sans ligne en base, au-delà d'un
+délai de grâce d'1 h (envoi en cours). Le backend expose pour cela `StorageBackend.list_keys(prefix)`
+(facultatif, `[]` par défaut = pas de balayage).
+
+Risques résiduels (revue sécurité I8) :
+- Consultation des captures **non auditée** (décision Victor : non en V1, Q4) ; les captures peuvent contenir
+  des pages tierces affichées par `content.url`.
+- `VDS_PI_ALLOWED_ORIGIN` en mode hébergé = origine du Studio entier : toute page de cette origine peut appeler
+  l'assistant Pi local (relances limitées en fréquence ; reboot seulement si `VDS_PI_ALLOW_REBOOT=1`, avec la
+  règle polkit `51-vds-reboot.rules` installée à cette seule condition). Voir `packaging/pi/README.md`.
+
 ## 7. Bus et audit
 
 Événements noyau (catalogue, payload Pydantic `@1`, émis par le service, jamais par le player directement) :
