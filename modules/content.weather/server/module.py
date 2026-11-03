@@ -142,7 +142,11 @@ class ContentWeather(ContentType):
         if units not in ("metric", "imperial"):
             raise ContractError("content.weather.invalid_units")
         max_age = props.get("max_age_s", 21600)
-        if not isinstance(max_age, int) or isinstance(max_age, bool) or max_age < 600 or max_age > MAX_AGE_S:
+        if (
+            not isinstance(max_age, int)
+            or isinstance(max_age, bool)
+            or not 600 <= max_age <= MAX_AGE_S
+        ):
             raise ContractError("content.weather.invalid_max_age")
         feed_id = await self._ctx.core.feeds.ensure(
             FeedRequest(params={"lat": lat, "lon": lon}, refresh_s=self._refresh_s)

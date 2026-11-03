@@ -148,7 +148,8 @@ class FeedService:
         self._instance_of = instance_of
         self._http_for = http_for
         self._gate = asyncio.Semaphore(PARALLEL_FETCHES)
-        self._host_locks: HostLocks = {}
+        self._host_locks = HostLocks()
+        self._quota_alerted: dict[str, datetime] = {}
         self._last_purge: datetime | None = None
 
     # --- API module (ctx.core.feeds) -------------------------------------------------

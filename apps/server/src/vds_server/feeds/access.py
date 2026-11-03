@@ -4,9 +4,10 @@
 de programmation, invalidé à la publication (bus) et borné (TTL court, nombre d'entrées).
 """
 
-import time
+import time as time
 from collections import OrderedDict
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
+from typing import Any
 from uuid import UUID
 
 from vds_sdk import Event
@@ -46,7 +47,7 @@ class FeedAccessCache:
         self.invalidate()
 
 
-def feed_ids_of(body: dict[str, object]) -> set[str]:
+def feed_ids_of(body: Mapping[str, Any]) -> set[str]:
     """Identifiants de flux référencés par une programmation résolue."""
     playlists = body.get("playlists") or {}
     out: set[str] = set()

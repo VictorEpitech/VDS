@@ -83,7 +83,7 @@ class CoreSafeHttp:
         self._user_agent = f"VDS/{version}{suffix}"
 
     async def _own_addresses(self) -> frozenset[str]:
-        """Adresses résolues de l'origine propre (cache 60 s) : un autre nom vers elles est refusé."""
+        """Adresses résolues de l'origine propre (cache 60 s) ; autre nom refusé."""
         if self._own_host is None:
             return frozenset()
         now = time.monotonic()
@@ -233,7 +233,9 @@ class CoreSafeHttp:
         if resp.status_code == 304 and conditional:  # inchangé : à l'appelant de réutiliser
             return SafeResponse(
                 status=304,
-                headers={k.lower(): v for k, v in resp.headers.items() if k.lower() != "set-cookie"},
+                headers={
+                    k.lower(): v for k, v in resp.headers.items() if k.lower() != "set-cookie"
+                },
                 body=b"",
                 final_url=final_url,
             )

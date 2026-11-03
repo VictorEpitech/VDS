@@ -23,9 +23,9 @@ def test_put_get_invalidate_and_bound() -> None:
     s1, s2, s3 = uuid4(), uuid4(), uuid4()
     cache.put(s1, ["a"])
     cache.put(s2, ["b"])
-    assert cache.get(s1) == {"a"}
+    assert cache.get(s1) == frozenset({"a"})
     cache.put(s3, [])
-    assert cache.get(s1) is None and cache.get(s2) == {"b"}  # le plus ancien évincé : borné à 2
+    assert cache.get(s1) is None and cache.get(s2) == frozenset({"b"})  # borné à 2
     cache.invalidate(s3)
     assert cache.get(s3) is None
     cache.invalidate()
@@ -39,6 +39,6 @@ def test_ttl_expires(monkeypatch: pytest.MonkeyPatch) -> None:
     sid = uuid4()
     cache.put(sid, ["a"])
     now[0] += 59
-    assert cache.get(sid) == {"a"}
+    assert cache.get(sid) == frozenset({"a"})
     now[0] += 2
     assert cache.get(sid) is None
