@@ -55,6 +55,15 @@ async def test_player_index_has_base_href_and_csp(client: AsyncClient, base: str
     assert r.headers["cache-control"] == "private, no-store"
 
 
+async def test_player_csp_loopback_helper_only(client: AsyncClient, base: str) -> None:
+    """Assistant Pi : seule la boucle locale 127.0.0.1:47801 est ajoutée à connect-src."""
+    csp = (await client.get(f"{_p(base)}/player/")).headers["content-security-policy"]
+    connect = next(d for d in csp.split(";") if d.strip().startswith("connect-src")).split()
+    assert connect == ["connect-src", "'self'", "http://127.0.0.1:47801"]
+    script = next(d for d in csp.split(";") if d.strip().startswith("script-src"))
+    assert "unsafe" not in script and "unsafe-eval" not in csp and "object-src 'none'" in csp
+
+
 async def test_player_assets_and_sw(client: AsyncClient, base: str) -> None:
     p = _p(base)
     assert (await client.get(f"{p}/player/assets/app.js")).text == "1"

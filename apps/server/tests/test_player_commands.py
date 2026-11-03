@@ -131,6 +131,18 @@ async def test_http_cycle_idempotence_and_double_delivery(
     assert scr["capabilities"] == CAPS
 
 
+async def test_heartbeat_fallback_caps_at_10_oldest_first(
+    cw: CWorld, admin: AsyncClient, p: str
+) -> None:
+    screen = cw.screens["sA"]
+    ids = [(await send(admin, p, screen, "reload")).json()["id"] for _ in range(12)]
+    first = await beat(cw, "sA")
+    assert [c["cmd_id"] for c in first["commands"]] == ids[:10]
+    res = [{"cmd_id": i, "status": "ok"} for i in ids[:10]]
+    second = await beat(cw, "sA", command_results=res)
+    assert [c["cmd_id"] for c in second["commands"]] == ids[10:]
+
+
 async def test_foreign_device_cannot_complete(cw: CWorld, admin: AsyncClient, p: str) -> None:
     cmd = (await send(admin, p, cw.screens["sA"], "reload")).json()
     ack = await beat(cw, "sB", command_results=[{"cmd_id": cmd["id"], "status": "ok"}])
