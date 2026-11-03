@@ -13,6 +13,7 @@ export function trailFor(pathname: string): Crumb[] | null {
   const p = pathname.replace(/\/+$/, "") || "/";
   const m = (to: string, label: string): Crumb => ({ to, label });
   const trails: [RegExp, Crumb[]][] = [
+    [/^\/screens\/captures$/, [m("/screens", "nav.screens"), { label: "nav.captures" }]],
     [/^\/screens\/add$/, [m("/screens", "nav.screens"), { label: "nav.add_screen" }]],
     [/^\/screens\/add\/android$/, [m("/screens", "nav.screens"), { label: "nav.install_android" }]],
     [/^\/content\/playlists\/[^/]+$/, [m("/content/media", "nav.content"), m("/content/playlists", "nav.playlists"), { label: "nav.playlist_edit" }]],

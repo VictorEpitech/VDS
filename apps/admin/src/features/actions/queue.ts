@@ -1,6 +1,7 @@
 import { ApiError, type Api } from "../../lib/api";
 import type { Command } from "../../lib/queries";
 import { isFinal, newRequestId, POLL_MS } from "../supervision/commands";
+import { isTerminal, pollDelay, type PlayerCommand, type PlayerCommandName } from "../commands/commands";
 
 export const DELAY_MS = 8_000;
 export const MAX_PARALLEL = 4;
@@ -10,7 +11,16 @@ const COMMAND_TIMEOUT_MS = 120 * POLL_MS;
 /** Mise à jour de l'application : délai de commande de l'agent 300 s, plus une marge. */
 const APK_TIMEOUT_MS = 330_000;
 
-export type BatchKind = "on" | "off" | "group" | "delete" | "apk_update";
+export type PlayerKind = "reload" | "identify" | "screenshot" | "restart";
+export type BatchKind = "on" | "off" | "group" | "delete" | "apk_update" | PlayerKind;
+export const PLAYER_KINDS: readonly BatchKind[] = ["reload", "identify", "screenshot", "restart"];
+export const isPlayerKind = (k: BatchKind): k is PlayerKind => PLAYER_KINDS.includes(k);
+const PLAYER_ARGS: Record<PlayerKind, { name: PlayerCommandName; args: Record<string, unknown> }> = {
+  reload: { name: "reload", args: {} },
+  identify: { name: "identify", args: {} },
+  screenshot: { name: "screenshot", args: {} },
+  restart: { name: "restart", args: { scope: "app" } },
+};
 export type Phase = "waiting" | "running" | "done";
 
 export interface Target {
@@ -23,7 +33,7 @@ export interface Target {
   requestId?: string;
 }
 
-export type Outcome = { status: "pending" } | { status: "ok" } | { status: "failed"; command?: Command; error?: unknown; requestId?: string };
+export type Outcome = { status: "pending" } | { status: "ok" } | { status: "failed"; command?: Command; error?: unknown; requestId?: string; playerCommand?: PlayerCommand };
 
 export interface Batch {
   id: number;
@@ -33,6 +43,8 @@ export interface Batch {
   /** Écrans écartés avant l'envoi (agent hors ligne, autre site…). */
   skipped: number;
   phase: Phase;
+  /** Identifiant commun des commandes player d'un même clic (audit). */
+  batchId: string;
   dueAt: number;
   results: Record<string, Outcome>;
 }
@@ -42,6 +54,12 @@ export interface EnqueueOptions {
   skipped?: number;
   /** 0 = envoi immédiat (suppression et mise à jour confirmées, nouvel essai). */
   delayMs?: number;
+}
+
+interface PlayerWaiter {
+  resolve: (c: PlayerCommand | null) => void;
+  deadline: number;
+  startedAt: number;
 }
 
 interface Waiter {
@@ -58,6 +76,8 @@ export class ActionQueue {
   private listeners = new Set<() => void>();
   private timers = new Map<number, ReturnType<typeof setTimeout>>();
   private pollers = new Map<string, { siteId: string; agentId: string; waiters: Map<string, Waiter>; timer: ReturnType<typeof setTimeout> | null }>();
+  private playerWaiters = new Map<string, PlayerWaiter>();
+  private playerTimer: ReturnType<typeof setTimeout> | null = null;
   private active = 0;
   private waitingSlots: (() => void)[] = [];
   private seq = 0;
@@ -89,7 +109,7 @@ export class ActionQueue {
   }
 
   enqueue(kind: BatchKind, targets: Target[], opts: EnqueueOptions = {}): number {
-    const delay = opts.delayMs ?? (kind === "delete" || kind === "apk_update" ? 0 : DELAY_MS);
+    const delay = opts.delayMs ?? (kind === "delete" || kind === "apk_update" || (isPlayerKind(kind) && kind !== "restart") ? 0 : DELAY_MS);
     const id = ++this.seq;
     const batch: Batch = {
       id,
@@ -98,6 +118,7 @@ export class ActionQueue {
       targets,
       skipped: opts.skipped ?? 0,
       phase: delay > 0 ? "waiting" : "running",
+      batchId: newRequestId(),
       dueAt: Date.now() + delay,
       results: Object.fromEntries(targets.map((t) => [t.screenId, { status: "pending" } as Outcome])),
     };
@@ -151,7 +172,7 @@ export class ActionQueue {
       batch.targets.map(async (t) => {
         const requestId = t.requestId ?? newRequestId();
         const settled = await this.slot(() => this.send(batch, t, requestId)).then(
-          (sent) => ("status" in sent ? sent : this.settle(batch, t, sent.command)),
+          (sent) => ("status" in sent ? sent : "playerCommand" in sent ? this.settlePlayer(sent.playerCommand) : this.settle(batch, t, sent.command)),
           (error: unknown): Promise<Outcome> => Promise.resolve({ status: "failed", error, ...(error instanceof ApiError ? {} : { requestId }) }),
         );
         const outcome = await settled;
@@ -163,7 +184,7 @@ export class ActionQueue {
   }
 
   /** Envoie la requête d'un écran ; une commande d'alimentation attend ensuite le sondage de l'agent. */
-  private async send(batch: Batch, t: Target, requestId: string): Promise<Outcome | { command: Command }> {
+  private async send(batch: Batch, t: Target, requestId: string): Promise<Outcome | { command: Command } | { playerCommand: PlayerCommand }> {
     if (batch.kind === "delete") {
       await this.api.delete(`/screens/${t.screenId}`);
       return { status: "ok" };
@@ -171,6 +192,11 @@ export class ActionQueue {
     if (batch.kind === "group") {
       await this.api.patch(`/screens/${t.screenId}`, { group_id: batch.groupId });
       return { status: "ok" };
+    }
+    if (isPlayerKind(batch.kind)) {
+      const spec = PLAYER_ARGS[batch.kind];
+      const playerCommand = await this.api.post<PlayerCommand>(`/screens/${t.screenId}/commands`, { name: spec.name, args: spec.args, request_key: requestId, batch_id: batch.batchId });
+      return { playerCommand };
     }
     if (!t.agentId) return { status: "failed" };
     if (batch.kind === "apk_update") {
@@ -190,6 +216,49 @@ export class ActionQueue {
     const timeout = batch.kind === "apk_update" ? APK_TIMEOUT_MS : COMMAND_TIMEOUT_MS;
     const done = isFinal(sent) || !t.agentId ? sent : await this.poll(t.siteId, t.agentId, sent, timeout);
     return done.status === "ok" ? { status: "ok" } : { status: "failed", command: done };
+  }
+
+  private async settlePlayer(sent: PlayerCommand): Promise<Outcome> {
+    const done = isTerminal(sent) ? sent : await this.pollPlayer(sent);
+    return done.status === "ok" ? { status: "ok" } : { status: "failed", playerCommand: done };
+  }
+
+  /** Un seul `GET /player-commands?ids=` par tour pour toutes les commandes player en attente. */
+  private pollPlayer(sent: PlayerCommand): Promise<PlayerCommand> {
+    return new Promise<PlayerCommand>((resolve) => {
+      const deadline = Math.max(Date.now() + 10_000, new Date(sent.expires_at).getTime());
+      this.playerWaiters.set(sent.id, { resolve: (c) => resolve(c ?? { ...sent, status: "expired" }), deadline, startedAt: Date.now() });
+      if (!this.playerTimer) this.playerTimer = setTimeout(() => void this.tickPlayer(), pollDelay(0));
+    });
+  }
+
+  private async tickPlayer() {
+    this.playerTimer = null;
+    const ids = [...this.playerWaiters.keys()];
+    if (!ids.length) return;
+    try {
+      const list = await this.api.get<PlayerCommand[]>(`/player-commands?ids=${ids.join(",")}`);
+      for (const c of list) {
+        const w = this.playerWaiters.get(c.id);
+        if (w && isTerminal(c)) {
+          this.playerWaiters.delete(c.id);
+          w.resolve(c);
+        }
+      }
+    } catch {
+      /* échec ponctuel du relevé : on réessaie jusqu'à l'échéance */
+    }
+    const now = Date.now();
+    for (const [id, w] of [...this.playerWaiters]) {
+      if (w.deadline <= now) {
+        this.playerWaiters.delete(id);
+        w.resolve(null);
+      }
+    }
+    if (this.playerWaiters.size) {
+      const oldest = Math.min(...[...this.playerWaiters.values()].map((w) => w.startedAt));
+      this.playerTimer = setTimeout(() => void this.tickPlayer(), pollDelay(now - oldest));
+    }
   }
 
   private async slot<T>(fn: () => Promise<T>): Promise<T> {
@@ -249,6 +318,11 @@ export class ActionQueue {
   dispose() {
     this.timers.forEach((t) => clearTimeout(t));
     this.timers.clear();
+    if (this.playerTimer) clearTimeout(this.playerTimer);
+    this.playerTimer = null;
+    const playerWaiters = [...this.playerWaiters.values()];
+    this.playerWaiters.clear();
+    playerWaiters.forEach((w) => w.resolve(null));
     const pollers = [...this.pollers.values()];
     this.pollers.clear();
     for (const p of pollers) {

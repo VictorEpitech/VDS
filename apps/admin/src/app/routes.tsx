@@ -6,6 +6,7 @@ import { AddScreen } from "../routes/AddScreen";
 import { ContentLayout } from "../routes/ContentLayout";
 import { More } from "../routes/More";
 import { Redirect } from "./Redirect";
+import { Captures } from "../routes/Captures";
 import { Bootstrap } from "../routes/Bootstrap";
 import { ChangePassword } from "../routes/ChangePassword";
 import { Home } from "../routes/Home";
@@ -41,6 +42,7 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <Home /> },
           { path: "screens", element: <Screens /> },
+          { path: "screens/captures", element: <Captures /> },
           { path: "screens/add", element: <AddScreen /> },
           { path: "screens/add/android", element: <AddScreen android /> },
           // Anciens parcours (création, appairage, Android) fusionnés dans l'assistant ; la requête (?screen=, ?address=) est conservée.

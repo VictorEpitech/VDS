@@ -4,7 +4,8 @@ import { Icon } from "../../components/Icon";
 import type { Agent, FleetApk, Group, Screen, Site } from "../../lib/queries";
 import { ApkUpdateConfirm, planApkUpdate } from "./apk";
 import { useActionQueue } from "./ActionQueueProvider";
-import { MAX_SELECTION, type BatchKind, type Target } from "./queue";
+import { capabilitiesOf } from "../commands/commands";
+import { MAX_SELECTION, type BatchKind, type PlayerKind, type Target } from "./queue";
 
 interface Props {
   selected: Screen[];
@@ -23,7 +24,7 @@ export function SelectionBar({ selected, agents, groups, sites, apk, onForce, on
   const { t } = useTranslation();
   const { queue } = useActionQueue();
   const uid = useId();
-  const [mode, setMode] = useState<"group" | "delete" | "apk" | null>(null);
+  const [mode, setMode] = useState<"group" | "delete" | "apk" | "restart" | null>(null);
   const [groupId, setGroupId] = useState("");
   const confirmRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -33,6 +34,15 @@ export function SelectionBar({ selected, agents, groups, sites, apk, onForce, on
   const target = (s: Screen): Target => ({ screenId: s.id, name: s.name, siteId: s.site_id, agentId: onlineAgent(agents, s.site_id)?.id });
   const powered = selected.filter((s) => onlineAgent(agents, s.site_id));
   const groupTargets = selected.filter((s) => !groupId || groups.find((g) => g.id === groupId)?.site_id === s.site_id);
+
+  /** Écrans sans la capacité requise (Pi, web, Tizen pour la capture ; sans appareil) : exclus et comptés. */
+  const capable = (kind: PlayerKind) => selected.filter((s) => capabilitiesOf(s).includes(kind === "restart" ? "cmd.restart.app" : `cmd.${kind}`));
+  const playerActions: { kind: PlayerKind; icon: "rotate" | "detect" | "media" | "power"; danger?: boolean }[] = [
+    { kind: "reload", icon: "rotate" },
+    { kind: "identify", icon: "detect" },
+    { kind: "screenshot", icon: "media" },
+    { kind: "restart", icon: "power", danger: true },
+  ];
 
   const apkPlan = planApkUpdate(selected, apk, agents);
   const apkVersion = apk?.available ? `${apk.available.version_name} (${apk.available.version_code})` : "";
@@ -65,6 +75,15 @@ export function SelectionBar({ selected, agents, groups, sites, apk, onForce, on
             {t(`actions.kind.${k}`)}
           </button>
         ))}
+        {playerActions.map(({ kind, icon }) => {
+          const list = capable(kind);
+          return (
+            <button key={kind} type="button" className="btn btn-text" disabled={!list.length} aria-expanded={kind === "restart" ? mode === "restart" : undefined} onClick={() => (kind === "restart" ? setMode(mode === "restart" ? null : "restart") : submit(kind, list))}>
+              <Icon name={icon} />
+              {t(`actions.kind.${kind}`)}
+            </button>
+          );
+        })}
         <button type="button" className="btn btn-text" onClick={onForce}>
           <Icon name="overridden" />
           {t("overrides.force")}
@@ -112,6 +131,23 @@ export function SelectionBar({ selected, agents, groups, sites, apk, onForce, on
             <button type="button" className="btn btn-filled" disabled={!groupTargets.length} onClick={() => submit("group", groupTargets, { groupId: groupId || null })}>
               <Icon name="check" />
               {t("actions.group.apply", { count: groupTargets.length })}
+            </button>
+            <button type="button" className="btn btn-text" onClick={() => setMode(null)}>
+              {t("common.cancel")}
+            </button>
+          </div>
+        </div>
+      ) : null}
+      {mode === "restart" ? (
+        <div className="selection-panel" role="alertdialog" aria-label={t("actions.restart.title", { count: capable("restart").length })}>
+          <p role="alert">
+            <Icon name="warning" /> {t("actions.restart.warning", { count: capable("restart").length })}
+          </p>
+          {capable("restart").length < selected.length ? <p className="meta">{t("actions.unsupported", { count: selected.length - capable("restart").length })}</p> : null}
+          <div className="actions">
+            <button type="button" className="btn btn-danger-filled" disabled={!capable("restart").length} onClick={() => submit("restart", capable("restart"))}>
+              <Icon name="power" />
+              {t("actions.restart.confirm", { count: capable("restart").length })}
             </button>
             <button type="button" className="btn btn-text" onClick={() => setMode(null)}>
               {t("common.cancel")}

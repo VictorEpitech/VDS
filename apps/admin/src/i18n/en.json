@@ -29,7 +29,8 @@
     "site_detail": "Site details",
     "layouts": "Layouts",
     "users": "Users",
-    "user_detail": "User details"
+    "user_detail": "User details",
+    "captures": "Captures"
   },
   "language": {
     "label": "Language",
@@ -158,6 +159,82 @@
     "select": {
       "all": "{count, plural, one {Select the listed screen} other {Select all (# listed screens)}}",
       "one": "Select {name}"
+    },
+    "commands": {
+      "title": "Remote screen",
+      "group": "Commands for {name}",
+      "none": "No command is available for this device.",
+      "advanced": "More commands",
+      "action_for": "{action}: {name}",
+      "action": {
+        "reload": "Reload",
+        "identify": "Identify",
+        "screenshot": "Refresh capture",
+        "restart_app": "Restart the app",
+        "restart_device": "Restart the device",
+        "cache_resync": "Resync the cache"
+      },
+      "confirm": {
+        "restart_app": "Confirm restarting the app on {name} (black screen for about 30 s)",
+        "restart_device": "Confirm restarting the device of {name} (black screen for about 30 s)"
+      },
+      "name": {
+        "reload": "Reload",
+        "identify": "Identify",
+        "screenshot": "Capture",
+        "restart": "Restart",
+        "cache_resync": "Cache resync"
+      },
+      "status": {
+        "queued": "Pending",
+        "sent": "Sent",
+        "ok": "Done",
+        "failed": "Failed",
+        "rejected": "Rejected",
+        "expired": "Expired",
+        "cancelled": "Cancelled",
+        "queued_hint": "Capture requested: waiting for the screen…"
+      },
+      "cause": {
+        "unknown": "unknown cause",
+        "failed": "the device could not run it",
+        "rejected": "the device rejected it",
+        "expired": "the screen did not answer in time",
+        "cmd_failed": "the device could not run it",
+        "cmd_invalid_args": "parameters rejected by the device",
+        "cmd_rate_limited": "too many requests, try again later",
+        "cmd_restart_failed": "the restart failed",
+        "cmd_restart_not_observed": "the restart was not observed",
+        "screenshot_offline": "capture impossible: screen offline"
+      },
+      "announce": "{action}: {status}",
+      "cancel": "Cancel",
+      "cancel_for": "Cancel the command: {action}",
+      "recent": "{count, plural, one {# older command} other {# older commands}}",
+      "recent_label": "Recent commands",
+      "shot": {
+        "alt": "Capture of {name}, {age}",
+        "taken": "Captured {age}",
+        "periodic": "automatic",
+        "none": "No capture yet",
+        "history": "Latest captures",
+        "theoretical": "Schedule preview, not a real capture",
+        "no_item": "Nothing scheduled",
+        "previous": "Earlier capture of {name}, {age}"
+      }
+    },
+    "captures": {
+      "title": "Screen captures",
+      "link": "Captures",
+      "back": "Back to screens",
+      "intro": "Latest image of each screen in your scope. Captures are kept for a short time.",
+      "filters": "Filter captures",
+      "site": "Site",
+      "group": "Group",
+      "all_sites": "All sites",
+      "all_groups": "All groups",
+      "empty": "No screen to show.",
+      "age": "Captured {age}"
     }
   },
   "errors": {
@@ -369,6 +446,22 @@
       "role_managed_by_provider": "This person's role is managed by the sign-in service.",
       "last_admin": "At least one active administrator must remain.",
       "self_demotion": "You cannot remove your own administrator rights."
+    },
+    "cmd": {
+      "unknown": "This command does not exist.",
+      "args_invalid": "The command parameters are invalid.",
+      "ttl_invalid": "The command delay is invalid.",
+      "no_device": "This screen has no paired device.",
+      "unsupported": "This device does not support this command.",
+      "too_many_pending": "Too many pending commands for this screen. Try again shortly.",
+      "conflict": "An identical command is already running.",
+      "device_changed": "The screen's device changed: command dropped.",
+      "request_key_reused": "This request was already used. Try again.",
+      "expired": "The command expired.",
+      "not_cancellable": "This command has already been sent and can no longer be cancelled.",
+      "not_found": "This command no longer exists.",
+      "role_required": "Only an administrator can run this command.",
+      "ids_invalid": "Invalid command list."
     }
   },
   "auth": {
@@ -1519,14 +1612,22 @@
       "off": "Turn off",
       "group": "Change group",
       "delete": "Delete",
-      "apk_update": "Update player"
+      "apk_update": "Update player",
+      "reload": "Reload",
+      "identify": "Identify",
+      "screenshot": "Refresh captures",
+      "restart": "Restart the app"
     },
     "summary": {
       "on": "Turn on {count, plural, one {# screen} other {# screens}}",
       "off": "Turn off {count, plural, one {# screen} other {# screens}}",
       "group": "Change group for {count, plural, one {# screen} other {# screens}}",
       "delete": "Delete {count, plural, one {# screen} other {# screens}}",
-      "apk_update": "Update the player on {count, plural, one {# screen} other {# screens}}"
+      "apk_update": "Update the player on {count, plural, one {# screen} other {# screens}}",
+      "reload": "Reload {count, plural, one {# screen} other {# screens}}",
+      "identify": "Identify {count, plural, one {# screen} other {# screens}}",
+      "screenshot": "Refresh the capture of {count, plural, one {# screen} other {# screens}}",
+      "restart": "Restart the app on {count, plural, one {# screen} other {# screens}}"
     },
     "bar": {
       "label": "Actions on the selection",
@@ -1554,7 +1655,14 @@
     "done_partial": "{summary}: {ok, plural, =0 {none succeeded} one {# succeeded} other {# succeeded}}, {failed, plural, one {# failed} other {# failed}}.",
     "failure_line": "{name}: {reason}",
     "retry_failed": "Retry {count, plural, one {the failure} other {the # failures}}",
-    "skipped": "{count, plural, one {# screen skipped (site agent offline, missing or other site)} other {# screens skipped (site agent offline, missing or other site)}}"
+    "skipped": "{count, plural, one {# screen skipped (site agent offline, missing or other site)} other {# screens skipped (site agent offline, missing or other site)}}",
+    "restart": {
+      "title": "Restart {count, plural, one {# screen} other {# screens}}",
+      "warning": "{count, plural, one {The screen will go black for about 30 seconds.} other {These # screens will go black for about 30 seconds.}} Playback resumes by itself.",
+      "confirm": "Restart {count, plural, one {# screen} other {# screens}}"
+    },
+    "skipped_player": "{count, plural, one {# screen skipped: not supported by this device} other {# screens skipped: not supported by this device}}",
+    "unsupported": "{count, plural, one {# screen skipped: not supported} other {# screens skipped: not supported}}"
   },
   "apk": {
     "installed": "App",

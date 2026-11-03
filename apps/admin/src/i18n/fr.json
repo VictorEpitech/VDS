@@ -29,7 +29,8 @@
     "site_detail": "Détail du site",
     "layouts": "Mises en page",
     "users": "Utilisateurs",
-    "user_detail": "Fiche utilisateur"
+    "user_detail": "Fiche utilisateur",
+    "captures": "Captures"
   },
   "language": {
     "label": "Langue",
@@ -158,6 +159,82 @@
     "select": {
       "all": "{count, plural, one {Sélectionner l'écran listé} other {Tout sélectionner (# écrans listés)}}",
       "one": "Sélectionner {name}"
+    },
+    "commands": {
+      "title": "Écran à distance",
+      "group": "Commandes de {name}",
+      "none": "Aucune commande disponible pour cet appareil.",
+      "advanced": "Autres commandes",
+      "action_for": "{action} : {name}",
+      "action": {
+        "reload": "Recharger",
+        "identify": "Identifier",
+        "screenshot": "Actualiser la capture",
+        "restart_app": "Redémarrer l'application",
+        "restart_device": "Redémarrer l'appareil",
+        "cache_resync": "Resynchroniser le cache"
+      },
+      "confirm": {
+        "restart_app": "Confirmer le redémarrage de l'application de {name} (écran noir environ 30 s)",
+        "restart_device": "Confirmer le redémarrage de l'appareil de {name} (écran noir environ 30 s)"
+      },
+      "name": {
+        "reload": "Recharger",
+        "identify": "Identifier",
+        "screenshot": "Capture",
+        "restart": "Redémarrage",
+        "cache_resync": "Resynchronisation du cache"
+      },
+      "status": {
+        "queued": "En attente",
+        "sent": "Envoyée",
+        "ok": "Réussie",
+        "failed": "Échec",
+        "rejected": "Refusée",
+        "expired": "Expirée",
+        "cancelled": "Annulée",
+        "queued_hint": "Capture demandée : en attente de l'écran…"
+      },
+      "cause": {
+        "unknown": "cause inconnue",
+        "failed": "l'appareil n'a pas pu l'exécuter",
+        "rejected": "l'appareil l'a refusée",
+        "expired": "l'écran n'a pas répondu à temps",
+        "cmd_failed": "l'appareil n'a pas pu l'exécuter",
+        "cmd_invalid_args": "paramètres refusés par l'appareil",
+        "cmd_rate_limited": "trop de demandes, réessayez plus tard",
+        "cmd_restart_failed": "le redémarrage a échoué",
+        "cmd_restart_not_observed": "le redémarrage n'a pas été constaté",
+        "screenshot_offline": "capture impossible : écran hors ligne"
+      },
+      "announce": "{action} : {status}",
+      "cancel": "Annuler",
+      "cancel_for": "Annuler la commande : {action}",
+      "recent": "{count, plural, one {# commande plus ancienne} other {# commandes plus anciennes}}",
+      "recent_label": "Commandes récentes",
+      "shot": {
+        "alt": "Capture de {name}, {age}",
+        "taken": "Capturée {age}",
+        "periodic": "automatique",
+        "none": "Aucune capture pour l'instant",
+        "history": "Dernières captures",
+        "theoretical": "Aperçu de la programmation, pas une capture réelle",
+        "no_item": "Aucun élément programmé",
+        "previous": "Capture précédente de {name}, {age}"
+      }
+    },
+    "captures": {
+      "title": "Captures d'écran",
+      "link": "Captures",
+      "back": "Retour aux écrans",
+      "intro": "Dernière image de chaque écran de votre périmètre. Les captures sont conservées peu de temps.",
+      "filters": "Filtrer les captures",
+      "site": "Site",
+      "group": "Groupe",
+      "all_sites": "Tous les sites",
+      "all_groups": "Tous les groupes",
+      "empty": "Aucun écran à afficher.",
+      "age": "Capturée {age}"
     }
   },
   "errors": {
@@ -369,6 +446,22 @@
       "role_managed_by_provider": "Le rôle de cette personne est géré par le service de connexion.",
       "last_admin": "Il doit rester au moins un administrateur actif.",
       "self_demotion": "Vous ne pouvez pas retirer vos propres droits d'administrateur."
+    },
+    "cmd": {
+      "unknown": "Cette commande n'existe pas.",
+      "args_invalid": "Les paramètres de la commande sont invalides.",
+      "ttl_invalid": "Le délai de la commande est invalide.",
+      "no_device": "Cet écran n'a pas d'appareil appairé.",
+      "unsupported": "Cet appareil ne prend pas en charge cette commande.",
+      "too_many_pending": "Trop de commandes en attente pour cet écran. Réessayez dans quelques instants.",
+      "conflict": "Une commande identique est déjà en cours.",
+      "device_changed": "L'appareil de l'écran a changé : commande abandonnée.",
+      "request_key_reused": "Cette demande a déjà été utilisée. Recommencez.",
+      "expired": "La commande a expiré.",
+      "not_cancellable": "Cette commande est déjà partie et ne peut plus être annulée.",
+      "not_found": "Cette commande n'existe plus.",
+      "role_required": "Seul un administrateur peut lancer cette commande.",
+      "ids_invalid": "Liste de commandes invalide."
     }
   },
   "auth": {
@@ -1519,14 +1612,22 @@
       "off": "Éteindre",
       "group": "Changer de groupe",
       "delete": "Supprimer",
-      "apk_update": "Mettre à jour le player"
+      "apk_update": "Mettre à jour le player",
+      "reload": "Recharger",
+      "identify": "Identifier",
+      "screenshot": "Actualiser les captures",
+      "restart": "Redémarrer l'application"
     },
     "summary": {
       "on": "Allumer {count, plural, one {# écran} other {# écrans}}",
       "off": "Éteindre {count, plural, one {# écran} other {# écrans}}",
       "group": "Changer de groupe pour {count, plural, one {# écran} other {# écrans}}",
       "delete": "Supprimer {count, plural, one {# écran} other {# écrans}}",
-      "apk_update": "Mettre à jour le player de {count, plural, one {# écran} other {# écrans}}"
+      "apk_update": "Mettre à jour le player de {count, plural, one {# écran} other {# écrans}}",
+      "reload": "Recharger {count, plural, one {# écran} other {# écrans}}",
+      "identify": "Identifier {count, plural, one {# écran} other {# écrans}}",
+      "screenshot": "Actualiser la capture de {count, plural, one {# écran} other {# écrans}}",
+      "restart": "Redémarrer l'application de {count, plural, one {# écran} other {# écrans}}"
     },
     "bar": {
       "label": "Actions sur la sélection",
@@ -1554,7 +1655,14 @@
     "done_partial": "{summary} : {ok, plural, =0 {aucun succès} one {# réussi} other {# réussis}}, {failed, plural, one {# échec} other {# échecs}}.",
     "failure_line": "{name} : {reason}",
     "retry_failed": "Réessayer {count, plural, one {l'échec} other {les # échecs}}",
-    "skipped": "{count, plural, one {# écran ignoré (agent du site hors ligne, absent ou autre site)} other {# écrans ignorés (agent du site hors ligne, absent ou autre site)}}"
+    "skipped": "{count, plural, one {# écran ignoré (agent du site hors ligne, absent ou autre site)} other {# écrans ignorés (agent du site hors ligne, absent ou autre site)}}",
+    "restart": {
+      "title": "Redémarrer {count, plural, one {# écran} other {# écrans}}",
+      "warning": "{count, plural, one {L'écran sera noir environ 30 secondes.} other {Ces # écrans seront noirs environ 30 secondes.}} La diffusion reprend d'elle-même.",
+      "confirm": "Redémarrer {count, plural, one {# écran} other {# écrans}}"
+    },
+    "skipped_player": "{count, plural, one {# écran ignoré : non pris en charge par cet appareil} other {# écrans ignorés : non pris en charge par cet appareil}}",
+    "unsupported": "{count, plural, one {# écran ignoré : non pris en charge} other {# écrans ignorés : non pris en charge}}"
   },
   "apk": {
     "installed": "Application",

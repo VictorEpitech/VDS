@@ -11,6 +11,7 @@ import { ApkUpdateConfirm, needsUpdate, planApkUpdate } from "../actions/apk";
 import { useActionQueue } from "../actions/ActionQueueProvider";
 import { OverrideControls, OverrideUntil } from "../overrides/OverrideControls";
 import type { Override } from "../overrides/overrides";
+import { CommandPanel } from "../commands/CommandPanel";
 import { KioskControls } from "../kiosk/KioskControls";
 import { KioskSetting } from "../kiosk/KioskSetting";
 import { ExclusiveSetting } from "../layouts/ExclusiveSetting";
@@ -184,6 +185,7 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
           {override && canForce ? <OverrideControls override={override} screens={allScreens} label={screen.name} isAdmin={isAdmin} onDone={onNotice} /> : null}
         </div>
       ) : null}
+      <CommandPanel screen={screen} playback={playback} isAdmin={isAdmin} />
       <KioskControls screen={screen} />
       {isAdmin ? <KioskSetting level="screen" id={screen.id} /> : null}
       {isAdmin ? <ExclusiveSetting level="screen" id={screen.id} /> : null}

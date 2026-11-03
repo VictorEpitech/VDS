@@ -78,6 +78,10 @@ export function Screens() {
               {t("overrides.force")}
             </button>
           ) : null}
+          <Link className="btn btn-text" to="/screens/captures">
+            <Icon name="media" />
+            {t("screens.captures.link")}
+          </Link>
           <Link className="btn btn-filled" to="/screens/add">
             <Icon name="add" />
             {t("screens.pair")}

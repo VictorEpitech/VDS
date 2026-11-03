@@ -3,9 +3,10 @@ import { useTranslation } from "react-i18next";
 import { useErrorText } from "../../auth/error-text";
 import { Icon } from "../../components/Icon";
 import { ApiError } from "../../lib/api";
+import { causeOf } from "../commands/CommandPanel";
 import { reasonOf } from "../supervision/DetectPanel";
 import { useActionQueue } from "./ActionQueueProvider";
-import type { Batch, Outcome } from "./queue";
+import { isPlayerKind, type Batch, type Outcome } from "./queue";
 
 /** Bandeau des actions en cours : attente annulable, progression, résultat par écran. Visible sur toutes les pages. */
 export function ActionTray() {
@@ -32,7 +33,7 @@ function BatchView({ batch }: { batch: Batch }) {
   }, [batch.phase]);
 
   const summary = t(`actions.summary.${batch.kind}`, { count: batch.targets.length });
-  const skipped = batch.skipped > 0 ? <p className="meta">{t("actions.skipped", { count: batch.skipped })}</p> : null;
+  const skipped = batch.skipped > 0 ? <p className="meta">{t(isPlayerKind(batch.kind) ? "actions.skipped_player" : "actions.skipped", { count: batch.skipped })}</p> : null;
   const outcomes = batch.targets.map((x) => [x, batch.results[x.screenId]] as const);
   const failed = outcomes.filter((o): o is readonly [(typeof o)[0], Extract<Outcome, { status: "failed" }>] => o[1]?.status === "failed");
   const finished = outcomes.filter((o) => o[1]?.status !== "pending").length;
@@ -73,7 +74,7 @@ function BatchView({ batch }: { batch: Batch }) {
   }
 
   const reason = (o: Extract<Outcome, { status: "failed" }>) =>
-    o.command ? reasonOf(t, o.command) : o.error instanceof ApiError ? errorText(o.error.code, o.error.params) : t("supervision.command.reasons.unknown");
+    o.playerCommand ? (causeOf(t, o.playerCommand) ?? t("supervision.command.reasons.unknown")) : o.command ? reasonOf(t, o.command) : o.error instanceof ApiError ? errorText(o.error.code, o.error.params) : t("supervision.command.reasons.unknown");
   const ok = batch.targets.length - failed.length;
   return (
     <section className={`alert ${failed.length ? "alert-error" : "alert-success"}`} aria-label={summary} role={failed.length ? "alert" : "status"}>

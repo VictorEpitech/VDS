@@ -2676,3 +2676,84 @@ fieldset.field > legend {
 .owner-badge {
   max-inline-size: 100%;
 }
+
+/* Commandes player et captures (lot I) : tokens uniquement, aucune ombre. */
+.command-panel {
+  display: grid;
+  gap: var(--vds-space-2);
+  margin-block: var(--vds-space-2);
+}
+
+.command-panel h3 {
+  margin: 0;
+}
+
+.shot {
+  display: grid;
+  gap: var(--vds-space-1);
+  margin: 0;
+}
+
+.shot-img {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  max-block-size: 20rem;
+  object-fit: contain;
+  border: 1px solid var(--vds-outline);
+  border-radius: var(--vds-radius-md);
+  background: var(--vds-surface-2);
+}
+
+.shot-empty,
+.shot-theory {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--vds-space-2);
+  min-block-size: 6rem;
+  padding: var(--vds-space-3);
+  border: 1px dashed var(--vds-outline);
+  border-radius: var(--vds-radius-md);
+  background: var(--vds-surface-2);
+  color: var(--vds-on-surface);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.shot-compact .shot-img {
+  max-block-size: 10rem;
+}
+
+.shot-history {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+  gap: var(--vds-space-2);
+}
+
+.shot-history .shot-img {
+  max-block-size: 3.5rem;
+}
+
+.command-list {
+  display: grid;
+  gap: var(--vds-space-2);
+}
+
+.command-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vds-space-2);
+}
+
+.command-list .btn {
+  min-block-size: var(--vds-touch-target);
+}
+
+.command-recent summary {
+  min-block-size: var(--vds-touch-target);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}

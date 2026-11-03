@@ -170,7 +170,14 @@ export function createDiffusionMock() {
     const requested = active ? "maintenance" : "locked";
     return { requested, until: active ? until : null, applied: requested, enforcement: s.id === screens[0]!.id ? "soft" : null };
   };
-  const screenOut = (s: (typeof screens)[number]) => ({ ...s, device: devices.has(s.id) ? deviceOut(devices.get(s.id)!) : null, kiosk: kioskOut(s) });
+  /** Captures simulées (les plus récentes d'abord), alimentées par le mock de commandes. */
+  const shots = new Map<string, { id: string; screen_id: string; trigger: "on_demand" | "periodic"; captured_at: string; width: number; height: number; bytes: number; image_url: string }[]>();
+  const capabilitiesOf = (id: string): string[] => {
+    const d = devices.get(id);
+    if (!d || d.revoked_at) return [];
+    return d.platform === "android" ? ["cmd.reload", "cmd.identify", "cmd.screenshot", "cmd.restart.app", "cmd.restart.device", "cmd.cache.resync"] : ["cmd.reload", "cmd.identify"];
+  };
+  const screenOut = (s: (typeof screens)[number]) => ({ ...s, device: devices.has(s.id) ? deviceOut(devices.get(s.id)!) : null, kiosk: kioskOut(s), capabilities: capabilitiesOf(s.id), last_screenshot: shots.get(s.id)?.[0] ?? null });
   const claimed = new Set<string>();
 
   const mediaOut = (m: MediaRow) => {
@@ -541,7 +548,7 @@ export function createDiffusionMock() {
     }
     return false;
   };
-  return Object.assign(handle, { world: { sites, group, groups, screens, schedules, playlists } });
+  return Object.assign(handle, { world: { sites, group, groups, screens, schedules, playlists, shots, devices } });
 
   function validateProps(type: string, props: Json): [number, string, Json?] | null {
     const field = ITEM_MEDIA_FIELD[type];
