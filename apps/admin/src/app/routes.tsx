@@ -9,6 +9,8 @@ import { Redirect } from "./Redirect";
 import { Bootstrap } from "../routes/Bootstrap";
 import { ChangePassword } from "../routes/ChangePassword";
 import { Home } from "../routes/Home";
+import { LayoutEditorPage } from "../routes/LayoutEditorPage";
+import { Layouts } from "../routes/Layouts";
 import { Login } from "../routes/Login";
 import { MediaLibrary } from "../routes/MediaLibrary";
 import { NotFound } from "../routes/NotFound";
@@ -50,6 +52,8 @@ export const routes: RouteObject[] = [
               { path: "media", element: <MediaLibrary /> },
               { path: "playlists", element: <Playlists /> },
               { path: "playlists/:id", element: <PlaylistEditor /> },
+              { path: "layouts", element: <Layouts /> },
+              { path: "layouts/:id", element: <LayoutEditorPage /> },
             ],
           },
           { path: "playback", element: <Schedules /> },

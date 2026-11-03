@@ -24,7 +24,8 @@ export interface SimulateDraft {
   name: string;
   target_type: TargetType;
   target_id: string;
-  playlist_id: string;
+  playlist_id: string | null;
+  layout_id: string | null;
   priority: number;
   rules: { weekdays: number; start: string; end: string }[];
   starts_on: string | null;

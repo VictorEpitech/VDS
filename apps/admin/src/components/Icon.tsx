@@ -43,6 +43,7 @@ export const ICON_NAMES = [
   "priority_high",
   "expiry",
   "next",
+  "layout",
 ] as const;
 export type IconName = (typeof ICON_NAMES)[number];
 

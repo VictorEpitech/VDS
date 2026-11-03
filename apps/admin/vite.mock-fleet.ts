@@ -14,6 +14,8 @@ interface OverrideRow {
   id: string;
   name: string;
   playlist_id: string | null;
+  layout_id?: string | null;
+  zone_ids?: string[] | null;
   target_type: string;
   target_id: string;
   starts_at: string;
@@ -34,7 +36,7 @@ const readJson = (req: IncomingMessage): Promise<Record<string, unknown>> =>
     });
   });
 
-export function createFleetMock(world: World) {
+export function createFleetMock(world: World, zoneCandidates: () => { key: string; name: string; layouts: number }[] = () => []) {
   const now = () => new Date().toISOString();
   // Forçages simulés (mêmes formes que /api/v1/overrides) : en mémoire, le temps réel fait foi.
   const overrides: OverrideRow[] = [];
@@ -43,7 +45,7 @@ export function createFleetMock(world: World) {
     world.screens.filter((s) => (o.target_type === "screen" ? s.id === o.target_id : o.target_type === "group" ? s.group_id === o.target_id : o.target_type === "site" ? s.site_id === o.target_id : true));
   const targetName = (o: Pick<OverrideRow, "target_type" | "target_id">) => touched(o)[0]?.name ?? o.target_id;
   const out = (o: OverrideRow) => ({
-    id: o.id, name: o.name, kind: "playlist", playlist_id: o.playlist_id, ephemeral: false, target_type: o.target_type, target_id: o.target_id,
+    id: o.id, name: o.name, kind: "playlist", playlist_id: o.playlist_id, layout_id: o.layout_id ?? null, zone_ids: o.zone_ids ?? null, warnings: [] as string[], screens_missing: 0, ephemeral: false, target_type: o.target_type, target_id: o.target_id,
     target_name: o.target_type === "screen" ? targetName(o) : o.target_type === "group" ? "Accueil" : "Site", starts_at: o.starts_at, ends_at: o.ends_at, ended_at: o.ended_at,
     end_reason: o.ended_at ? "stopped" : null, status: o.ended_at || new Date(o.ends_at).getTime() <= Date.now() ? "ended" : new Date(o.starts_at).getTime() > Date.now() ? "scheduled" : "active",
     priority: 0, respect_scheduled_off: false, note: null, created_by: null, created_by_module: null, created_at: o.starts_at,
@@ -82,15 +84,16 @@ export function createFleetMock(world: World) {
       if (!ends) return send(422, { code: "override.end_required", params: {} }), true;
       if (new Date(ends).getTime() <= Date.now()) return send(422, { code: "override.end_in_past", params: {} }), true;
       const list = touched({ target_type: String(b.target_type), target_id: String(b.target_id) });
-      return send(200, { screens_total: list.length, screens_offline: 0, screens_in_scheduled_off: 0, ends_at: ends, superseded_override_ids: overrides.filter((o) => active(o) && touched(o).some((s) => list.includes(s))).map((o) => o.id) }), true;
+      return send(200, { screens_total: list.length, screens_offline: 0, screens_in_scheduled_off: 0, ends_at: ends, zone_candidates: zoneCandidates(), zone_coverage: Array.isArray(b.zone_ids) ? (b.zone_ids as string[]).map((z) => ({ zone_id: z, screens_total: list.length, screens_missing: zoneCandidates().some((c) => c.key === z) ? 0 : list.length })) : [], superseded_override_ids: overrides.filter((o) => active(o) && touched(o).some((s) => list.includes(s))).map((o) => o.id) }), true;
     }
     if (route === "/overrides" && method === "POST") {
       const b = await readJson(req);
       const ends = endOf(b);
       if (!ends) return send(422, { code: "override.end_required", params: {} }), true;
-      const row: OverrideRow = { id: randomUUID(), name: typeof b.name === "string" && b.name ? b.name : "Forçage", playlist_id: typeof b.playlist_id === "string" ? b.playlist_id : null, target_type: String(b.target_type), target_id: String(b.target_id), starts_at: now(), ends_at: ends, ended_at: null };
+      const row: OverrideRow = { id: randomUUID(), name: typeof b.name === "string" && b.name ? b.name : "Forçage", playlist_id: typeof b.playlist_id === "string" ? b.playlist_id : null, layout_id: typeof b.layout_id === "string" ? b.layout_id : null, zone_ids: Array.isArray(b.zone_ids) ? (b.zone_ids as string[]) : null, target_type: String(b.target_type), target_id: String(b.target_id), starts_at: now(), ends_at: ends, ended_at: null };
       overrides.push(row);
-      return send(201, out(row)), true;
+      const missing = row.zone_ids?.some((z) => !zoneCandidates().some((c) => c.key === z)) ? touched(row).length : 0;
+      return send(201, { ...out(row), warnings: missing ? ["override_zone_missing"] : [], screens_missing: missing }), true;
     }
     const ov = /^\/overrides\/([^/]+)(\/stop)?$/.exec(route);
     if (ov) {

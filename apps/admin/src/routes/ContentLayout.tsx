@@ -16,6 +16,10 @@ export function ContentLayout() {
           <Icon name="playlist" />
           {t("nav.playlists")}
         </NavLink>
+        <NavLink to="/content/layouts">
+          <Icon name="layout" />
+          {t("nav.layouts")}
+        </NavLink>
       </nav>
       <Outlet />
     </>

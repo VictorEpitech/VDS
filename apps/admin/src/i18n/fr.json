@@ -26,7 +26,8 @@
     "add_screen": "Ajouter un écran",
     "install_android": "Installer sur Android TV",
     "playlist_edit": "Modifier la playlist",
-    "site_detail": "Détail du site"
+    "site_detail": "Détail du site",
+    "layouts": "Mises en page"
   },
   "language": {
     "label": "Langue",
@@ -226,7 +227,9 @@
       "playlist_not_found": "Cette playlist n'existe plus.",
       "target_incomplete": "Choisissez une cible.",
       "target_not_found": "Cette cible n'existe plus.",
-      "rule_range_invalid": "L'heure de fin doit être après l'heure de début."
+      "rule_range_invalid": "L'heure de fin doit être après l'heure de début.",
+      "content_target_ambiguous": "Choisissez une playlist ou une mise en page, pas les deux.",
+      "layout_not_found": "Cette mise en page n'existe plus."
     },
     "planning": {
       "window_too_large": "La période est trop longue. Choisissez {max_days} jours au plus.",
@@ -332,11 +335,26 @@
       "too_many_active": "Il y a déjà trop de forçages actifs sur cette cible. Arrêtez-en un avant d'en créer un autre.",
       "preview_too_many_screens": "Trop d'écrans pour l'aperçu (maximum {max}). Choisissez une cible plus petite.",
       "start_too_far": "Le début du forçage est trop éloigné. Choisissez une date plus proche.",
-      "already_ended": "Ce forçage est déjà terminé."
+      "already_ended": "Ce forçage est déjà terminé.",
+      "zone_requires_playlist": "Un forçage de zone affiche une playlist, pas une mise en page.",
+      "zone_not_content": "Un forçage de zone ne peut pas éteindre l'écran.",
+      "zone_ids_invalid": "Les zones choisies ne sont pas valides."
     },
     "tags": {
       "too_many": "Au maximum {max} tags.",
       "invalid": "Ce tag n'est pas valide."
+    },
+    "layout": {
+      "in_use": "Cette mise en page est programmée ou forcée : retirez-la d'abord de la programmation.",
+      "revision_conflict": "Cette mise en page a été modifiée ailleurs. Rechargez la dernière version avant d'enregistrer.",
+      "zone_out_of_bounds": "Une zone dépasse de l'écran.",
+      "zone_key_duplicate": "Deux zones ont le même identifiant.",
+      "too_many_zones": "Trop de zones pour cette mise en page.",
+      "background_not_image": "Le fond doit être une image.",
+      "name_conflict": "Une mise en page porte déjà ce nom.",
+      "if_match_required": "Rechargez la mise en page avant d'enregistrer.",
+      "if_match_invalid": "Rechargez la mise en page avant d'enregistrer.",
+      "not_found": "Cette mise en page n'existe plus."
     }
   },
   "auth": {
@@ -809,6 +827,15 @@
         "new_conflicts": "{count, plural, one {# point à vérifier créé} other {# points à vérifier créés}}",
         "resolved": "{count, plural, one {# point à vérifier résolu} other {# points à vérifier résolus}}"
       }
+    },
+    "content": {
+      "label": "Que programmer",
+      "playlist": "Une playlist",
+      "layout": "Mise en page",
+      "layout_pick": "Mise en page",
+      "no_layouts": "Aucune mise en page. Créez-en une dans Contenus.",
+      "orientation_mismatch": "{count, plural, one {# écran ciblé a} other {# écrans ciblés ont}} une orientation différente de la mise en page ({orientation}). Vous pouvez enregistrer, l'affichage ne sera pas adapté.",
+      "saved_mismatch": "Programmation enregistrée. {count, plural, one {# écran a} other {# écrans ont}} une orientation différente de la mise en page."
     }
   },
   "provenance": {
@@ -1193,6 +1220,10 @@
         "kiosk_maintenance_until": {
           "title": "Fin de la maintenance du kiosque",
           "description": "Lecture seule : renseignée par le mode maintenance de l'écran."
+        },
+        "max_exclusive_elements": {
+          "title": "Éléments lus en même temps",
+          "description": "Nombre maximal de vidéos lues simultanément par un écran (1 à 4). Au-delà, les vidéos en trop sont sautées."
         }
       }
     }
@@ -1581,7 +1612,8 @@
       "search": "Rechercher une playlist ou un média",
       "playlists": "Playlists",
       "media": "Médias",
-      "off_help": "L'extinction forcée n'affiche aucun contenu."
+      "off_help": "L'extinction forcée n'affiche aucun contenu.",
+      "layouts": "Mises en page"
     },
     "where": {
       "label": "Où",
@@ -1635,6 +1667,23 @@
     "status": {
       "scheduled": "Forçage prévu",
       "active": "Forçage en cours"
+    },
+    "zones": {
+      "scope": "Portée du forçage",
+      "scope_screen": "Tout l'écran",
+      "scope_zones": "Certaines zones",
+      "help": "Seules les zones choisies changent de playlist ; le reste de la mise en page continue de jouer.",
+      "pick": "Zones à forcer",
+      "need_playlist": "Choisissez une playlist et une cible pour lister les zones.",
+      "none": "Aucune zone trouvée dans les mises en page des écrans ciblés.",
+      "in_layouts": "{count, plural, one {dans # mise en page} other {dans # mises en page}}",
+      "required": "Choisissez au moins une zone.",
+      "coverage": "s'applique à {applied, plural, one {# écran} other {# écrans}} sur {total}",
+      "missing": "Sur {count, plural, one {# écran} other {# écrans}}, la zone n'existe pas : le forçage y sera ignoré.",
+      "orientation": "{count, plural, one {# écran ciblé a} other {# écrans ciblés ont}} une orientation différente de la mise en page.",
+      "badge": "Zone forcée :",
+      "not_applied": "{count, plural, =0 {non appliqué} one {non appliqué sur # écran} other {non appliqué sur # écrans}}",
+      "created_missing": "Attention : la zone est absente sur {count, plural, one {# écran} other {# écrans}}, le forçage y est ignoré."
     }
   },
   "expiry": {
@@ -1820,6 +1869,141 @@
       "more": "+{count}",
       "conflicts": "{count, plural, one {# point à vérifier} other {# points à vérifier}}",
       "expiries": "{count, plural, one {# expiration} other {# expirations}}"
+    }
+  },
+  "layouts": {
+    "title": "Mises en page",
+    "intro": "Découpez l'écran en zones, chacune avec sa playlist. Une mise en page se programme ou se force comme une playlist.",
+    "create": "Créer une mise en page",
+    "create_template": "Modèle de départ",
+    "create_submit": "Créer et ouvrir l'éditeur",
+    "list": "Toutes les mises en page",
+    "empty": "Aucune mise en page. Créer à partir d'un modèle.",
+    "empty_action": "Créer à partir d'un modèle",
+    "no_match": "Aucune mise en page ne correspond.",
+    "zone_count": "{count, plural, one {# zone} other {# zones}}",
+    "usage_count": "{count, plural, =0 {non utilisée} one {utilisée # fois} other {utilisée # fois}}",
+    "duplicate": "Dupliquer",
+    "back": "Retour aux mises en page",
+    "orientation": {
+      "landscape": "Paysage",
+      "portrait": "Portrait"
+    },
+    "filters": {
+      "label": "Filtrer les mises en page",
+      "search": "Rechercher",
+      "orientation": "Orientation",
+      "any": "Toutes"
+    },
+    "templates": {
+      "full": {
+        "name": "Plein écran",
+        "main": "Principale"
+      },
+      "two_columns": {
+        "name": "2 colonnes",
+        "left": "Gauche",
+        "right": "Droite"
+      },
+      "two_rows": {
+        "name": "2 lignes",
+        "top": "Haut",
+        "bottom": "Bas"
+      },
+      "bottom_banner": {
+        "name": "Bandeau bas",
+        "main": "Principale",
+        "banner": "Bandeau"
+      },
+      "l_shape": {
+        "name": "En L",
+        "main": "Principale",
+        "side": "Côté",
+        "banner": "Bandeau"
+      },
+      "corner_inset": {
+        "name": "Incrustation coin",
+        "main": "Principale",
+        "inset": "Incrustation"
+      }
+    },
+    "editor": {
+      "label": "Éditeur de mise en page",
+      "name": "Nom",
+      "orientation": "Orientation",
+      "background": "Couleur de fond",
+      "background_clear": "Revenir au noir",
+      "background_default": "Noir par défaut",
+      "saved": "Mise en page enregistrée.",
+      "unsaved": "Modifications non enregistrées.",
+      "reload": "Recharger la dernière version"
+    },
+    "canvas": {
+      "label": "Canevas de la mise en page",
+      "zone": "Zone {name}, position {x} % {y} %, taille {w} % sur {h} %",
+      "position": "{name} : position {x} % {y} %, taille {w} % sur {h} %",
+      "help": "Glissez une zone pour la déplacer et sa poignée pour la redimensionner. Au clavier : flèches pour déplacer, Maj + flèches pour redimensionner.",
+      "readonly": "Sur petit écran, le canevas est en lecture seule : modifiez les zones avec les champs ci-dessous."
+    },
+    "zones": {
+      "title": "{count, plural, one {# zone} other {# zones}}",
+      "add": "Ajouter une zone",
+      "max": "Maximum atteint ({max} zones).",
+      "new_name": "Zone {n}",
+      "up": "Monter la zone {name}",
+      "down": "Descendre la zone {name}",
+      "remove": "Supprimer la zone {name}"
+    },
+    "props": {
+      "title": "Propriétés : {name}",
+      "name": "Nom de la zone",
+      "playlist": "Playlist",
+      "no_playlist": "Aucune playlist",
+      "no_playlist_help": "Une zone sans playlist laisse voir le fond.",
+      "position": "Position et taille (en %)",
+      "x": "Gauche",
+      "y": "Haut",
+      "w": "Largeur",
+      "h": "Hauteur",
+      "key": "Identifiant",
+      "key_help": "Utilisé par les forçages de zone. Lettres minuscules, chiffres, tiret et souligné.",
+      "fit": "Ajustement",
+      "fits": {
+        "contain": "Contenir",
+        "cover": "Remplir en rognant",
+        "stretch": "Étirer"
+      },
+      "duration": "Durée par défaut des éléments (secondes)",
+      "duration_help": "Pour les éléments sans durée propre. Vide : valeur héritée.",
+      "active_from": "Zone affichée à partir du",
+      "active_until": "Zone affichée jusqu'au"
+    },
+    "warnings": {
+      "videos": "{count, plural, one {# zone contient des vidéos} other {# zones contiennent des vidéos}} : cet écran n'en lit que {max} à la fois, les autres vidéos seront sautées. Retirez des vidéos ou relevez la limite."
+    },
+    "errors": {
+      "invalid": "{count, plural, =0 {Le nom est obligatoire.} one {# zone est invalide.} other {# zones sont invalides.}} Corrigez les champs signalés.",
+      "key_format": "Utilisez 1 à 32 caractères : a-z, 0-9, tiret, souligné.",
+      "key_duplicate": "Cet identifiant est déjà pris par une autre zone.",
+      "out_of_bounds": "La zone doit rester dans l'écran (position + taille ≤ 100 %).",
+      "window": "La fin doit être après le début."
+    },
+    "delete": {
+      "action": "Supprimer",
+      "confirm": "Supprimer « {name} »"
+    },
+    "usage": {
+      "title": "Utilisation",
+      "none": "Cette mise en page n'est ni programmée ni forcée.",
+      "schedules": "Programmations",
+      "overrides": "Forçages d'écran",
+      "zone_overrides": "Forçages de zone",
+      "mismatch": "{count, plural, one {# écran sur {total} a} other {# écrans sur {total} ont}} une orientation différente de cette mise en page."
+    },
+    "exclusive": {
+      "title": "Éléments lus en même temps",
+      "intro": "Nombre de vidéos qu'un écran peut lire simultanément. La plupart des TV n'en lisent qu'une.",
+      "form_label": "Éléments lus en même temps"
     }
   }
 }

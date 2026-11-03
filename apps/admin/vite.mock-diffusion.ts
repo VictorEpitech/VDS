@@ -549,7 +549,8 @@ export function createDiffusionMock() {
   }
 
   function validateSchedule(body: Json): [number, string, Json?] | null {
-    if (!playlists.some((p) => p.id === body.playlist_id)) return [422, "schedule.playlist_not_found"];
+    if (body.layout_id && body.playlist_id) return [422, "schedule.content_target_ambiguous"];
+    if (!body.layout_id && !playlists.some((p) => p.id === body.playlist_id)) return [422, "schedule.playlist_not_found"];
     const pool = body.target_type === "screen" ? screens : body.target_type === "group" ? [group] : body.target_type === "site" ? [site] : [];
     if (!pool.some((x) => x.id === body.target_id)) return [422, "schedule.target_not_found"];
     if (body.starts_on && body.ends_on && String(body.ends_on) < String(body.starts_on)) return [422, "schedule.period_invalid"];

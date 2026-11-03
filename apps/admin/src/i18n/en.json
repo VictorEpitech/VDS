@@ -26,7 +26,8 @@
     "add_screen": "Add a screen",
     "install_android": "Install on Android TV",
     "playlist_edit": "Edit playlist",
-    "site_detail": "Site details"
+    "site_detail": "Site details",
+    "layouts": "Layouts"
   },
   "language": {
     "label": "Language",
@@ -226,7 +227,9 @@
       "playlist_not_found": "This playlist no longer exists.",
       "target_incomplete": "Choose a target.",
       "target_not_found": "This target no longer exists.",
-      "rule_range_invalid": "The end time must be after the start time."
+      "rule_range_invalid": "The end time must be after the start time.",
+      "content_target_ambiguous": "Choose a playlist or a layout, not both.",
+      "layout_not_found": "This layout no longer exists."
     },
     "planning": {
       "window_too_large": "The period is too long. Choose {max_days} days at most.",
@@ -332,11 +335,26 @@
       "too_many_active": "There are already too many active overrides on this target. Stop one before creating another.",
       "preview_too_many_screens": "Too many screens to preview (maximum {max}). Choose a smaller target.",
       "start_too_far": "The override start is too far away. Pick a closer date.",
-      "already_ended": "This override has already ended."
+      "already_ended": "This override has already ended.",
+      "zone_requires_playlist": "A zone override shows a playlist, not a layout.",
+      "zone_not_content": "A zone override cannot turn the screen off.",
+      "zone_ids_invalid": "The chosen zones are not valid."
     },
     "tags": {
       "too_many": "At most {max} tags.",
       "invalid": "This tag is not valid."
+    },
+    "layout": {
+      "in_use": "This layout is scheduled or overridden: remove it from the schedule first.",
+      "revision_conflict": "This layout was changed elsewhere. Reload the latest version before saving.",
+      "zone_out_of_bounds": "A zone goes beyond the screen.",
+      "zone_key_duplicate": "Two zones share the same identifier.",
+      "too_many_zones": "Too many zones for this layout.",
+      "background_not_image": "The background must be an image.",
+      "name_conflict": "A layout already has this name.",
+      "if_match_required": "Reload the layout before saving.",
+      "if_match_invalid": "Reload the layout before saving.",
+      "not_found": "This layout no longer exists."
     }
   },
   "auth": {
@@ -809,6 +827,15 @@
         "new_conflicts": "{count, plural, one {# new item to check} other {# new items to check}}",
         "resolved": "{count, plural, one {# item to check resolved} other {# items to check resolved}}"
       }
+    },
+    "content": {
+      "label": "What to schedule",
+      "playlist": "A playlist",
+      "layout": "Layout",
+      "layout_pick": "Layout",
+      "no_layouts": "No layouts yet. Create one under Content.",
+      "orientation_mismatch": "{count, plural, one {# targeted screen has} other {# targeted screens have}} an orientation different from the layout ({orientation}). You can still save; the display will not be adapted.",
+      "saved_mismatch": "Schedule saved. {count, plural, one {# screen has} other {# screens have}} an orientation different from the layout."
     }
   },
   "provenance": {
@@ -1193,6 +1220,10 @@
         "kiosk_maintenance_until": {
           "title": "Kiosk maintenance end",
           "description": "Read-only: filled in by the screen's maintenance mode."
+        },
+        "max_exclusive_elements": {
+          "title": "Simultaneous elements",
+          "description": "Maximum number of videos a screen plays at once (1 to 4). Extra videos are skipped."
         }
       }
     }
@@ -1581,7 +1612,8 @@
       "search": "Search a playlist or a media",
       "playlists": "Playlists",
       "media": "Media",
-      "off_help": "A forced power-off shows no content."
+      "off_help": "A forced power-off shows no content.",
+      "layouts": "Layouts"
     },
     "where": {
       "label": "Where",
@@ -1635,6 +1667,23 @@
     "status": {
       "scheduled": "Override scheduled",
       "active": "Override running"
+    },
+    "zones": {
+      "scope": "Override scope",
+      "scope_screen": "Whole screen",
+      "scope_zones": "Some zones",
+      "help": "Only the chosen zones switch playlist; the rest of the layout keeps playing.",
+      "pick": "Zones to override",
+      "need_playlist": "Choose a playlist and a target to list the zones.",
+      "none": "No zone found in the layouts of the targeted screens.",
+      "in_layouts": "{count, plural, one {in # layout} other {in # layouts}}",
+      "required": "Choose at least one zone.",
+      "coverage": "applies to {applied, plural, one {# screen} other {# screens}} out of {total}",
+      "missing": "On {count, plural, one {# screen} other {# screens}} the zone does not exist: the override is ignored there.",
+      "orientation": "{count, plural, one {# targeted screen has} other {# targeted screens have}} an orientation different from the layout.",
+      "badge": "Zone overridden:",
+      "not_applied": "{count, plural, =0 {not applied} one {not applied on # screen} other {not applied on # screens}}",
+      "created_missing": "Note: the zone is missing on {count, plural, one {# screen} other {# screens}}, the override is ignored there."
     }
   },
   "expiry": {
@@ -1820,6 +1869,141 @@
       "more": "+{count}",
       "conflicts": "{count, plural, one {# item to check} other {# items to check}}",
       "expiries": "{count, plural, one {# expiry} other {# expiries}}"
+    }
+  },
+  "layouts": {
+    "title": "Layouts",
+    "intro": "Split the screen into zones, each with its own playlist. A layout is scheduled or overridden like a playlist.",
+    "create": "Create a layout",
+    "create_template": "Starting template",
+    "create_submit": "Create and open the editor",
+    "list": "All layouts",
+    "empty": "No layouts yet. Create one from a template.",
+    "empty_action": "Create from a template",
+    "no_match": "No layout matches.",
+    "zone_count": "{count, plural, one {# zone} other {# zones}}",
+    "usage_count": "{count, plural, =0 {unused} one {used # time} other {used # times}}",
+    "duplicate": "Duplicate",
+    "back": "Back to layouts",
+    "orientation": {
+      "landscape": "Landscape",
+      "portrait": "Portrait"
+    },
+    "filters": {
+      "label": "Filter layouts",
+      "search": "Search",
+      "orientation": "Orientation",
+      "any": "All"
+    },
+    "templates": {
+      "full": {
+        "name": "Full screen",
+        "main": "Main"
+      },
+      "two_columns": {
+        "name": "2 columns",
+        "left": "Left",
+        "right": "Right"
+      },
+      "two_rows": {
+        "name": "2 rows",
+        "top": "Top",
+        "bottom": "Bottom"
+      },
+      "bottom_banner": {
+        "name": "Bottom banner",
+        "main": "Main",
+        "banner": "Banner"
+      },
+      "l_shape": {
+        "name": "L shape",
+        "main": "Main",
+        "side": "Side",
+        "banner": "Banner"
+      },
+      "corner_inset": {
+        "name": "Corner inset",
+        "main": "Main",
+        "inset": "Inset"
+      }
+    },
+    "editor": {
+      "label": "Layout editor",
+      "name": "Name",
+      "orientation": "Orientation",
+      "background": "Background color",
+      "background_clear": "Back to black",
+      "background_default": "Black by default",
+      "saved": "Layout saved.",
+      "unsaved": "Unsaved changes.",
+      "reload": "Reload the latest version"
+    },
+    "canvas": {
+      "label": "Layout canvas",
+      "zone": "Zone {name}, position {x}% {y}%, size {w}% by {h}%",
+      "position": "{name}: position {x}% {y}%, size {w}% by {h}%",
+      "help": "Drag a zone to move it and its handle to resize it. With the keyboard: arrow keys to move, Shift + arrow keys to resize.",
+      "readonly": "On small screens the canvas is read-only: edit zones with the fields below."
+    },
+    "zones": {
+      "title": "{count, plural, one {# zone} other {# zones}}",
+      "add": "Add a zone",
+      "max": "Maximum reached ({max} zones).",
+      "new_name": "Zone {n}",
+      "up": "Move zone {name} up",
+      "down": "Move zone {name} down",
+      "remove": "Remove zone {name}"
+    },
+    "props": {
+      "title": "Properties: {name}",
+      "name": "Zone name",
+      "playlist": "Playlist",
+      "no_playlist": "No playlist",
+      "no_playlist_help": "A zone without a playlist shows the background.",
+      "position": "Position and size (in %)",
+      "x": "Left",
+      "y": "Top",
+      "w": "Width",
+      "h": "Height",
+      "key": "Identifier",
+      "key_help": "Used by zone overrides. Lowercase letters, digits, hyphen and underscore.",
+      "fit": "Fit",
+      "fits": {
+        "contain": "Contain",
+        "cover": "Fill and crop",
+        "stretch": "Stretch"
+      },
+      "duration": "Default item duration (seconds)",
+      "duration_help": "For items without their own duration. Empty: inherited value.",
+      "active_from": "Zone shown from",
+      "active_until": "Zone shown until"
+    },
+    "warnings": {
+      "videos": "{count, plural, one {# zone contains videos} other {# zones contain videos}}: this screen plays only {max} at a time, the other videos will be skipped. Remove videos or raise the limit."
+    },
+    "errors": {
+      "invalid": "{count, plural, =0 {The name is required.} one {# zone is invalid.} other {# zones are invalid.}} Fix the highlighted fields.",
+      "key_format": "Use 1 to 32 characters: a-z, 0-9, hyphen, underscore.",
+      "key_duplicate": "Another zone already uses this identifier.",
+      "out_of_bounds": "The zone must stay inside the screen (position + size ≤ 100%).",
+      "window": "The end must be after the start."
+    },
+    "delete": {
+      "action": "Delete",
+      "confirm": "Delete “{name}”"
+    },
+    "usage": {
+      "title": "Usage",
+      "none": "This layout is neither scheduled nor overridden.",
+      "schedules": "Schedules",
+      "overrides": "Screen overrides",
+      "zone_overrides": "Zone overrides",
+      "mismatch": "{count, plural, one {# screen of {total} has} other {# screens of {total} have}} an orientation different from this layout."
+    },
+    "exclusive": {
+      "title": "Simultaneous elements",
+      "intro": "How many videos a screen can play at once. Most TVs play only one.",
+      "form_label": "Simultaneous elements"
     }
   }
 }

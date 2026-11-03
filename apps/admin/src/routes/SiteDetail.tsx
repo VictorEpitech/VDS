@@ -6,6 +6,7 @@ import { Icon } from "../components/Icon";
 import { GroupsPanel } from "../features/sites/GroupsPanel";
 import { SiteDiscoverySettings } from "../features/discovery/SiteDiscoverySettings";
 import { AgentsPanel } from "../features/sites/AgentsPanel";
+import { ExclusiveSetting } from "../features/layouts/ExclusiveSetting";
 import { AttachmentPanel } from "../features/power/AttachmentSection";
 import { useApi } from "../lib/api";
 import { keys, useSites } from "../lib/queries";
@@ -52,6 +53,7 @@ export function SiteDetail() {
           <GroupsPanel siteId={site.id} />
           <AgentsPanel siteId={site.id} />
           <SiteDiscoverySettings siteId={site.id} />
+          <ExclusiveSetting level="site" id={site.id} />
           <section className="section" aria-labelledby="site-power-h">
             <h2 id="site-power-h">
               <Icon name="power" />

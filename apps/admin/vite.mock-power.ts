@@ -39,7 +39,7 @@ interface CommandRow extends Json {
 
 /** Valeurs par défaut des clés de config simulées (core et notify.mail). */
 const DEFAULTS: Record<string, Record<string, unknown>> = {
-  core: { "power.plan_id": null, "power.calendars": [], "player.kiosk": "locked" },
+  core: { "power.plan_id": null, "power.calendars": [], "player.kiosk": "locked", "player.max_exclusive_elements": 1, "layout.max_zones": 12 },
   "notify.mail": {
     smtp_host: "",
     smtp_port: 587,

@@ -6,9 +6,10 @@ import { Icon } from "../../components/Icon";
 import { ProvenanceBadge } from "../../components/Provenance";
 import { useApi } from "../../lib/api";
 import { useConfig, useMedia, usePlaylists, type Group, type Screen, type Site } from "../../lib/queries";
+import { useLayouts } from "../layouts/layouts";
 import { newRequestId } from "../supervision/commands";
 import { useDurationText, useTimeText } from "./OverrideControls";
-import { FALLBACK_DEFAULT_MINUTES, FALLBACK_PRESETS, mediaContent, refreshAfterOverride, wholeGroup, type OverrideCreate, type OverridePreview, type OverrideTargetType } from "./overrides";
+import { FALLBACK_DEFAULT_MINUTES, FALLBACK_PRESETS, mediaContent, refreshAfterOverride, wholeGroup, type Override, type OverrideCreate, type OverridePreview, type OverrideTargetType } from "./overrides";
 
 type NodeType = Exclude<OverrideTargetType, "organization">;
 interface Target {
@@ -47,6 +48,7 @@ export function OverrideForm({ screens, groups, sites, initial, isAdmin, onClose
   const dur = useDurationText();
   const playlists = usePlaylists();
   const media = useMedia();
+  const layouts = useLayouts();
 
   const selection = initial && "selection" in initial ? initial.selection : null;
   const liveScreens = screens.filter((s) => !s.archived_at);
@@ -56,6 +58,8 @@ export function OverrideForm({ screens, groups, sites, initial, isAdmin, onClose
   const [targetId, setTargetId] = useState(initial && "id" in initial ? initial.id : "");
 
   const [what, setWhat] = useState("");
+  const [scope, setScope] = useState<"screen" | "zones">("screen");
+  const [zoneKeys, setZoneKeys] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [durChoice, setDurChoice] = useState<string | null>(null);
   const [date, setDate] = useState("");
@@ -97,12 +101,16 @@ export function OverrideForm({ screens, groups, sites, initial, isAdmin, onClose
   const choice = durChoice ?? String(defaultMinutes);
 
   const playlistList = (playlists.data?.items ?? []).filter((p) => !search.trim() || p.name.toLowerCase().includes(search.trim().toLowerCase()) || what === `p:${p.id}`);
+  const layoutList = (layouts.data?.items ?? []).filter((l) => !search.trim() || l.name.toLowerCase().includes(search.trim().toLowerCase()) || what === `l:${l.id}`);
   const mediaList = (media.data?.items ?? []).filter((m) => m.status === "ready" && !m.expired && (!search.trim() || m.title.toLowerCase().includes(search.trim().toLowerCase()) || what === `m:${m.id}`));
 
-  const build = (target: Target, withRequestId: boolean): OverrideCreate | null => {
+  const zoned = scope === "zones";
+  const build = (target: Target, withRequestId: boolean, withZones = true): OverrideCreate | null => {
     const body: OverrideCreate = { target_type: target.type, target_id: target.id, kind: off ? "off" : "playlist", priority: 0 };
+    if (zoned && withZones && zoneKeys.length > 0) body.zone_ids = zoneKeys;
     if (!off) {
-      if (what.startsWith("p:")) body.playlist_id = what.slice(2);
+      if (what.startsWith("l:") && !zoned) body.layout_id = what.slice(2);
+      else if (what.startsWith("p:")) body.playlist_id = what.slice(2);
       else if (what.startsWith("m:")) {
         const m = media.data?.items.find((x) => x.id === what.slice(2));
         if (!m) return null;
@@ -134,6 +142,18 @@ export function OverrideForm({ screens, groups, sites, initial, isAdmin, onClose
       return { queryKey: ["overrides", "preview", body] as const, enabled: body !== null, retry: false, gcTime: 0, queryFn: () => api.post<OverridePreview>("/overrides/preview", body) };
     }),
   });
+  // Zones proposées : clés rencontrées dans les mises en page des écrans ciblés (aperçu sans sélection de zone).
+  const candidateQueries = useQueries({
+    queries: targets.map((target) => {
+      const body = zoned ? build(target, false, false) : null;
+      return { queryKey: ["overrides", "preview", "zones", body] as const, enabled: body !== null, retry: false, gcTime: 0, queryFn: () => api.post<OverridePreview>("/overrides/preview", body) };
+    }),
+  });
+  const candidates = useMemo(() => {
+    const byKey = new Map<string, { key: string; name: string; layouts: number }>();
+    for (const q of candidateQueries) for (const c of q.data?.zone_candidates ?? []) byKey.set(c.key, { ...c, layouts: Math.max(c.layouts, byKey.get(c.key)?.layouts ?? 0) });
+    return [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [candidateQueries]);
   const ready = previews.length > 0 && previews.every((p) => p.isSuccess);
   const failed = previews.find((p) => p.isError);
   const sum = ready
@@ -143,23 +163,31 @@ export function OverrideForm({ screens, groups, sites, initial, isAdmin, onClose
           acc.total += d.screens_total;
           acc.offline += d.screens_offline;
           acc.off += d.screens_in_scheduled_off;
+          acc.mismatch += d.screens_orientation_mismatch ?? 0;
+          for (const c of d.zone_coverage ?? []) {
+            const prev = acc.coverage.get(c.zone_id) ?? { total: 0, missing: 0 };
+            acc.coverage.set(c.zone_id, { total: prev.total + c.screens_total, missing: prev.missing + c.screens_missing });
+          }
           d.superseded_override_ids.forEach((i) => acc.superseded.add(i));
           return acc;
         },
-        { total: 0, offline: 0, off: 0, superseded: new Set<string>() },
+        { total: 0, offline: 0, off: 0, mismatch: 0, superseded: new Set<string>(), coverage: new Map<string, { total: number; missing: number }>() },
       )
     : null;
   const endsAt = ready ? (previews[0]?.data as OverridePreview).ends_at : null;
 
   const create = useMutation({
     mutationFn: async () => {
-      const results = await Promise.allSettled(targets.map((target) => api.post(`/overrides`, build(target, true))));
+      const results = await Promise.allSettled(targets.map((target) => api.post<Override>(`/overrides`, build(target, true))));
       const bad = results.find((r): r is PromiseRejectedResult => r.status === "rejected");
       if (bad) throw bad.reason;
+      return results.map((r) => (r as PromiseFulfilledResult<Override>).value);
     },
-    onSuccess: async () => {
+    onSuccess: async (created) => {
       await refreshAfterOverride(qc);
-      onDone(t("overrides.created", { count: sum?.total ?? targets.length, when: endsAt ? time(endsAt) : "" }));
+      const missing = created.reduce((n, o) => n + (o.warnings?.includes("override_zone_missing") ? o.screens_missing : 0), 0);
+      const base = t("overrides.created", { count: sum?.total ?? targets.length, when: endsAt ? time(endsAt) : "" });
+      onDone(missing > 0 ? `${base} ${t("overrides.zones.created_missing", { count: missing })}` : base);
     },
   });
 
@@ -168,6 +196,7 @@ export function OverrideForm({ screens, groups, sites, initial, isAdmin, onClose
     const bad = new Set<string>();
     if (!targets.length) bad.add("target");
     if (!off && !what) bad.add("what");
+    if (zoned && zoneKeys.length === 0) bad.add("zones");
     if (choice === "date" && (!date || new Date(date).getTime() <= Date.now())) bad.add("date");
     const prio = Number(priority);
     if (!Number.isInteger(prio) || prio < -1000 || prio > 1000) bad.add("priority");
@@ -197,6 +226,32 @@ export function OverrideForm({ screens, groups, sites, initial, isAdmin, onClose
       </h2>
       <p className="meta">{t("overrides.form.rule")}</p>
 
+      <fieldset className="field">
+        <legend>{t("overrides.zones.scope")}</legend>
+        <div className="seg" role="radiogroup" aria-label={t("overrides.zones.scope")}>
+          {(["screen", "zones"] as const).map((s) => (
+            <label key={s} className="seg-item">
+              <input
+                type="radio"
+                name={`${uid}-scope`}
+                value={s}
+                checked={scope === s}
+                onChange={() => {
+                  setScope(s);
+                  setZoneKeys([]);
+                  if (s === "zones") {
+                    setOff(false);
+                    if (!what.startsWith("p:")) setWhat("");
+                  }
+                }}
+              />
+              <span>{t(`overrides.zones.scope_${s}`)}</span>
+            </label>
+          ))}
+        </div>
+        {zoned ? <p className="field-help">{t("overrides.zones.help")}</p> : null}
+      </fieldset>
+
       <div className="field">
         <label htmlFor={`${uid}-what`}>{t("overrides.what.label")}</label>
         <input id={`${uid}-search`} type="search" className="override-search" value={search} disabled={off} aria-label={t("overrides.what.search")} placeholder={t("overrides.what.search")} onChange={(e) => setSearch(e.target.value)} />
@@ -211,7 +266,16 @@ export function OverrideForm({ screens, groups, sites, initial, isAdmin, onClose
               ))}
             </optgroup>
           ) : null}
-          {mediaList.length ? (
+          {layoutList.length && !zoned ? (
+            <optgroup label={t("overrides.what.layouts")}>
+              {layoutList.map((l) => (
+                <option key={l.id} value={`l:${l.id}`}>
+                  {l.name}
+                </option>
+              ))}
+            </optgroup>
+          ) : null}
+          {mediaList.length && !zoned ? (
             <optgroup label={t("overrides.what.media")}>
               {mediaList.map((m) => (
                 <option key={m.id} value={`m:${m.id}`}>
@@ -224,6 +288,22 @@ export function OverrideForm({ screens, groups, sites, initial, isAdmin, onClose
         {off ? <p className="field-help">{t("overrides.what.off_help")}</p> : null}
         {err("what", t("errors.field_required"), `${uid}-what-e`)}
       </div>
+
+      {zoned ? (
+        <fieldset className="field zone-pick" aria-describedby={invalid.has("zones") ? `${uid}-zones-e` : undefined}>
+          <legend>{t("overrides.zones.pick")}</legend>
+          {candidates.length === 0 ? <p className="field-help">{what.startsWith("p:") && targets.length > 0 ? t("overrides.zones.none") : t("overrides.zones.need_playlist")}</p> : null}
+          {candidates.map((c) => (
+            <label key={c.key} className="field-check">
+              <input type="checkbox" checked={zoneKeys.includes(c.key)} onChange={(e) => setZoneKeys(e.target.checked ? [...zoneKeys, c.key] : zoneKeys.filter((k) => k !== c.key))} />
+              <span>
+                {c.name} <span className="mono">{c.key}</span> <span className="meta">{t("overrides.zones.in_layouts", { count: c.layouts })}</span>
+              </span>
+            </label>
+          ))}
+          {err("zones", t("overrides.zones.required"), `${uid}-zones-e`)}
+        </fieldset>
+      ) : null}
 
       <fieldset className="field target">
         <legend>{t("overrides.where.label")}</legend>
@@ -338,7 +418,7 @@ export function OverrideForm({ screens, groups, sites, initial, isAdmin, onClose
           {isAdmin ? (
             <div className="field field-check">
               <label>
-                <input type="checkbox" checked={off} onChange={(e) => setOff(e.target.checked)} />
+                <input type="checkbox" checked={off} disabled={zoned} onChange={(e) => setOff(e.target.checked)} />
                 <span>{t("overrides.advanced.off")}</span>
               </label>
               <p className="field-help">{t("overrides.advanced.off_help")}</p>
@@ -366,6 +446,27 @@ export function OverrideForm({ screens, groups, sites, initial, isAdmin, onClose
             <p>
               <Icon name="check" /> {t("overrides.preview.summary", { count: sum.total, when: time(endsAt) })}
             </p>
+            {zoned
+              ? zoneKeys.map((k) => {
+                  const c = sum.coverage.get(k);
+                  if (!c) return null;
+                  return (
+                    <p key={k} className={c.missing > 0 ? "alert alert-warning" : "meta"}>
+                      <Icon name={c.missing > 0 ? "warning" : "check"} />{" "}
+                      <span>
+                        <span className="mono">{k}</span> : {t("overrides.zones.coverage", { applied: c.total - c.missing, total: c.total })}
+                        {c.missing > 0 ? ` ${t("overrides.zones.missing", { count: c.missing })}` : ""}
+                      </span>
+                    </p>
+                  );
+                })
+              : null}
+            {sum.mismatch > 0 && what.startsWith("l:") ? (
+              <p className="alert alert-warning">
+                <Icon name="warning" />
+                <span>{t("overrides.zones.orientation", { count: sum.mismatch })}</span>
+              </p>
+            ) : null}
             {sum.offline > 0 ? (
               <p className="alert alert-warning">
                 <Icon name="warning" />

@@ -24,6 +24,29 @@ export function useTimeText() {
   };
 }
 
+/** Pastille « Zone forcée : bandeau » (couleur + icône + libellé) ; « non appliqué » si des écrans n'ont pas la zone. */
+export function ZoneBadge({ override }: { override: Pick<Override, "zone_ids" | "screens_missing" | "warnings"> }) {
+  const { t } = useTranslation();
+  if (!override.zone_ids?.length) return null;
+  const missing = override.screens_missing > 0 || override.warnings?.includes("override_zone_missing");
+  return (
+    <>
+      <span className="status-badge" data-state="overridden">
+        <Icon name="overridden" />
+        <span>
+          {t("overrides.zones.badge")} <span className="mono">{override.zone_ids.join(", ")}</span>
+        </span>
+      </span>
+      {missing ? (
+        <span className="status-badge" data-state="power_failed">
+          <Icon name="warning" />
+          <span>{t("overrides.zones.not_applied", { count: override.screens_missing })}</span>
+        </span>
+      ) : null}{" "}
+    </>
+  );
+}
+
 /** « Forcé jusqu'à 14:30 » + temps restant, annoncé poliment et mis à jour à la minute seulement. */
 export function OverrideUntil({ override }: { override: Override }) {
   const { t } = useTranslation();
@@ -33,6 +56,7 @@ export function OverrideUntil({ override }: { override: Override }) {
   const scheduled = override.status === "scheduled";
   return (
     <>
+      <ZoneBadge override={override} />
       <span>{scheduled ? t("overrides.from", { when: time(override.starts_at) }) : t("overrides.until", { when: time(override.ends_at) })}</span>
       {!scheduled ? (
         <span className="meta" role="status" aria-live="polite">

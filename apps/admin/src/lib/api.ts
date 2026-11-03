@@ -17,20 +17,21 @@ export class ApiError extends Error {
 export interface Api {
   get<T>(path: string): Promise<T>;
   post<T>(path: string, body?: unknown): Promise<T>;
-  put<T>(path: string, body?: unknown): Promise<T>;
+  /** `headers` : en-têtes ajoutés (par ex. `If-Match` pour l'écriture conditionnelle d'une mise en page). */
+  put<T>(path: string, body?: unknown, headers?: Record<string, string>): Promise<T>;
   patch<T>(path: string, body?: unknown): Promise<T>;
   delete<T = void>(path: string): Promise<T>;
   /** Envoi multipart avec progression (0..1) ; `fields` s'ajoute au fichier (champ `file`). */
   upload<T>(path: string, file: File, fields?: Record<string, string>, onProgress?: (ratio: number) => void): Promise<T>;
 }
 
-async function send<T>(url: string, method: string, body?: unknown): Promise<T> {
+async function send<T>(url: string, method: string, body?: unknown, extra?: Record<string, string>): Promise<T> {
   let res: Response;
   try {
     res = await fetch(url, {
       method,
       credentials: "same-origin",
-      headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+      headers: body === undefined && !extra ? undefined : { ...(body === undefined ? {} : { "Content-Type": "application/json" }), ...extra },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
@@ -84,7 +85,7 @@ export function createApi(apiBase: string): Api {
   return {
     get: (path) => send(`${apiBase}${path}`, "GET"),
     post: (path, body) => send(`${apiBase}${path}`, "POST", body),
-    put: (path, body) => send(`${apiBase}${path}`, "PUT", body),
+    put: (path, body, headers) => send(`${apiBase}${path}`, "PUT", body, headers),
     patch: (path, body) => send(`${apiBase}${path}`, "PATCH", body),
     delete: (path) => send(`${apiBase}${path}`, "DELETE"),
     upload: (path, file, fields = {}, onProgress) => sendUpload(`${apiBase}${path}`, file, fields, onProgress),

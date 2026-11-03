@@ -310,6 +310,10 @@ code, kbd, samp, .vds-mono { font-family: var(--vds-font-mono); }
   -webkit-mask-image: url("icons/expiry.svg");
   mask-image: url("icons/expiry.svg");
 }
+.vds-icon[data-icon="layout"] {
+  -webkit-mask-image: url("icons/layout.svg");
+  mask-image: url("icons/layout.svg");
+}
 .vds-icon[data-icon="next"] {
   -webkit-mask-image: url("icons/next.svg");
   mask-image: url("icons/next.svg");

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { ErrorAlert } from "../../components/feedback";
 import { Icon } from "../../components/Icon";
 import type { Group, Playlist, Rule, Schedule, Screen, Site } from "../../lib/queries";
+import type { LayoutSummary } from "../layouts/layouts";
 import { useMinuteNow } from "../overrides/overrides";
 import type { Target } from "../planning/planning";
 import { PriorityPicker } from "../planning/PriorityPicker";
@@ -16,7 +17,9 @@ export interface ScheduleDraft {
   name: string;
   target_type: TargetType;
   target_id: string;
-  playlist_id: string;
+  /** Une seule cible de contenu : playlist ou mise en page (l'autre vaut null). */
+  playlist_id: string | null;
+  layout_id: string | null;
   priority: number;
   rules: { weekdays: number; start: string; end: string }[];
   starts_on: string | null;
@@ -39,32 +42,45 @@ interface Props {
   groups: Group[];
   sites: Site[];
   playlists: Playlist[];
+  layouts?: LayoutSummary[];
   pending: boolean;
   error: unknown;
   onSubmit: (d: ScheduleDraft) => void;
   onCancel: () => void;
 }
 
+/** Écrans touchés par une cible. */
+export function targetScreens(type: TargetType, id: string, screens: readonly Screen[]): Screen[] {
+  const live = screens.filter((s) => !s.archived_at);
+  if (type === "screen") return live.filter((s) => s.id === id);
+  if (type === "group") return live.filter((s) => s.group_id === id);
+  return live.filter((s) => s.site_id === id);
+}
+
 /** Nombre d'écrans touchés par une cible (sélecteur de cible avec compteur). */
 export function countTargets(type: TargetType, id: string, screens: Screen[]): number {
-  const live = screens.filter((s) => !s.archived_at);
-  if (type === "screen") return live.some((s) => s.id === id) ? 1 : 0;
-  if (type === "group") return live.filter((s) => s.group_id === id).length;
-  return live.filter((s) => s.site_id === id).length;
+  return targetScreens(type, id, screens).length;
+}
+
+/** Écrans touchés dont l'orientation diffère de celle de la mise en page (avertissement, jamais bloquant). */
+export function orientationMismatches(type: TargetType, id: string, screens: readonly Screen[], orientation: string | undefined): number {
+  return orientation && id ? targetScreens(type, id, screens).filter((s) => s.orientation !== orientation).length : 0;
 }
 
 /** Modèles de créneaux : des préréglages de formulaire, aucune donnée serveur. */
 const TEMPLATES = ["everyday", "weekdays", "single_date"] as const;
 type Template = (typeof TEMPLATES)[number];
 
-export function ScheduleWizard({ schedule, prefill, screens, groups, sites, playlists, pending, error, onSubmit, onCancel }: Props) {
+export function ScheduleWizard({ schedule, prefill, screens, groups, sites, playlists, layouts = [], pending, error, onSubmit, onCancel }: Props) {
   const { t } = useTranslation();
   const uid = useId();
   const formRef = useRef<HTMLFormElement>(null);
   const [name, setName] = useState(schedule?.name ?? "");
   const [targetType, setTargetType] = useState<TargetType>(schedule?.target_type === "organization" ? "site" : (schedule?.target_type ?? prefill?.target.type ?? "screen"));
   const [targetId, setTargetId] = useState(schedule?.target_id ?? prefill?.target.id ?? "");
+  const [contentKind, setContentKind] = useState<"playlist" | "layout">(schedule?.layout_id ? "layout" : "playlist");
   const [playlistId, setPlaylistId] = useState(schedule?.playlist_id ?? "");
+  const [layoutId, setLayoutId] = useState(schedule?.layout_id ?? "");
   const [priority, setPriority] = useState(String(schedule?.priority ?? 0));
   const [rules, setRules] = useState<Rule[]>(schedule?.rules ?? (prefill ? [prefill.rule] : []));
   const [startsOn, setStartsOn] = useState(schedule?.starts_on ?? "");
@@ -87,24 +103,29 @@ export function ScheduleWizard({ schedule, prefill, screens, groups, sites, play
         ? groups.map((g) => ({ id: g.id, name: g.name }))
         : sites.filter((s) => !s.archived_at).map((s) => ({ id: s.id, name: s.name }));
   const touched = targetId ? countTargets(targetType, targetId, screens) : null;
+  const chosenLayout = contentKind === "layout" ? layouts.find((l) => l.id === layoutId) : undefined;
+  const mismatch = orientationMismatches(targetType, targetId, screens, chosenLayout?.orientation);
+  const contentId = contentKind === "layout" ? layoutId : playlistId;
+  const contentIds = { playlist_id: contentKind === "playlist" ? playlistId : null, layout_id: contentKind === "layout" ? layoutId : null };
   const nowMs = useMinuteNow().getTime();
 
   // Brouillon soumis à la simulation : seulement quand les champs obligatoires sont valides (le nom absent est remplacé pour l'aperçu).
   const candidate = useMemo(() => {
     const prio = Number(priority);
-    if (!targetId || !playlistId || !Number.isInteger(prio) || prio < -1000 || prio > 1000 || rules.some((r) => ruleProblem(r))) return null;
+    if (!targetId || !contentId || !Number.isInteger(prio) || prio < -1000 || prio > 1000 || rules.some((r) => ruleProblem(r))) return null;
     return {
       name: name.trim() || t("schedules.wizard.draft_name"),
       target_type: targetType,
       target_id: targetId,
-      playlist_id: playlistId,
+      playlist_id: contentKind === "playlist" ? playlistId : null,
+      layout_id: contentKind === "layout" ? layoutId : null,
       priority: prio,
       rules,
       starts_on: startsOn || null,
       ends_on: endsOn || null,
       enabled,
     } satisfies ScheduleDraft;
-  }, [name, targetType, targetId, playlistId, priority, rules, startsOn, endsOn, enabled, t]);
+  }, [name, targetType, targetId, contentKind, contentId, playlistId, layoutId, priority, rules, startsOn, endsOn, enabled, t]);
 
   const singleDate = startsOn !== "" && startsOn === endsOn && rules.length === 0;
   const same = (r: Rule, weekdays: number) => r.weekdays === weekdays && r.start === "08:00" && r.end === "18:00";
@@ -128,7 +149,7 @@ export function ScheduleWizard({ schedule, prefill, screens, groups, sites, play
     const bad = new Set<string>();
     if (!name.trim()) bad.add("name");
     if (!targetId) bad.add("target");
-    if (!playlistId) bad.add("playlist");
+    if (!contentId) bad.add("playlist");
     const prio = Number(priority);
     if (!Number.isInteger(prio) || prio < -1000 || prio > 1000) bad.add("priority");
     rules.forEach((r, i) => {
@@ -144,7 +165,7 @@ export function ScheduleWizard({ schedule, prefill, screens, groups, sites, play
       name: name.trim(),
       target_type: targetType,
       target_id: targetId,
-      playlist_id: playlistId,
+      ...contentIds,
       priority: prio,
       rules,
       starts_on: startsOn || null,
@@ -174,16 +195,34 @@ export function ScheduleWizard({ schedule, prefill, screens, groups, sites, play
         {err("name", t("errors.field_required"), `${uid}-name-e`)}
       </div>
 
+      <fieldset className="field">
+        <legend>{t("schedules.content.label")}</legend>
+        <div className="seg" role="radiogroup" aria-label={t("schedules.content.label")}>
+          {(["playlist", "layout"] as const).map((k) => (
+            <label key={k} className="seg-item">
+              <input type="radio" name={`${uid}-ckind`} value={k} checked={contentKind === k} onChange={() => setContentKind(k)} />
+              <span>{t(`schedules.content.${k}`)}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
       <div className="field">
-        <label htmlFor={`${uid}-playlist`}>{t("schedules.playlist")}</label>
-        <select id={`${uid}-playlist`} value={playlistId} onChange={(e) => setPlaylistId(e.target.value)} required aria-invalid={invalid.has("playlist") ? true : undefined}>
+        <label htmlFor={`${uid}-playlist`}>{contentKind === "layout" ? t("schedules.content.layout_pick") : t("schedules.playlist")}</label>
+        <select
+          id={`${uid}-playlist`}
+          value={contentId}
+          onChange={(e) => (contentKind === "layout" ? setLayoutId(e.target.value) : setPlaylistId(e.target.value))}
+          required
+          aria-invalid={invalid.has("playlist") ? true : undefined}
+        >
           <option value="">{t("form.choose")}</option>
-          {playlists.map((p) => (
+          {(contentKind === "layout" ? layouts : playlists).map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
             </option>
           ))}
         </select>
+        {contentKind === "layout" && layouts.length === 0 ? <p className="field-help">{t("schedules.content.no_layouts")}</p> : null}
         {err("playlist", t("errors.field_required"), `${uid}-playlist-e`)}
       </div>
 
@@ -225,6 +264,12 @@ export function ScheduleWizard({ schedule, prefill, screens, groups, sites, play
         {touched !== null ? (
           <p className="field-help" role="status">
             {t("schedules.target.touches", { count: touched })}
+          </p>
+        ) : null}
+        {mismatch > 0 && chosenLayout ? (
+          <p className="alert alert-warning" role="status">
+            <Icon name="warning" />
+            <span>{t("schedules.content.orientation_mismatch", { count: mismatch, orientation: t(`layouts.orientation.${chosenLayout.orientation}`) })}</span>
           </p>
         ) : null}
         {err("target", t("errors.field_required"), `${uid}-target-e`)}

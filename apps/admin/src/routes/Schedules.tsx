@@ -9,8 +9,15 @@ import { planningKeys } from "../features/planning/planning";
 import { PriorityBadge } from "../features/planning/parts";
 import { dayRanges } from "../features/schedule/rules";
 import { ScheduleWizard, type ScheduleDraft, type SchedulePrefill } from "../features/schedule/ScheduleWizard";
+import { useLayouts } from "../features/layouts/layouts";
 import { useApi } from "../lib/api";
 import { keys, useAllGroups, usePlaylists, useSchedules, useScreens, useSites, type Schedule } from "../lib/queries";
+
+/** À la création, seul l'identifiant de contenu utilisé est envoyé (l'autre est omis plutôt que nul). */
+function withoutUnusedTarget(d: ScheduleDraft): Partial<ScheduleDraft> {
+  const { playlist_id, layout_id, ...rest } = d;
+  return { ...rest, ...(playlist_id ? { playlist_id } : {}), ...(layout_id ? { layout_id } : {}) };
+}
 
 export function Schedules() {
   const { t, i18n } = useTranslation();
@@ -21,6 +28,7 @@ export function Schedules() {
   const sites = useSites();
   const groups = useAllGroups();
   const playlists = usePlaylists();
+  const layouts = useLayouts();
   const [form, setForm] = useState<"new" | Schedule | null>(null);
   const [prefill, setPrefill] = useState<SchedulePrefill | undefined>(undefined);
 
@@ -29,9 +37,14 @@ export function Schedules() {
     setPrefill(undefined);
     await Promise.all([qc.invalidateQueries({ queryKey: keys.schedules }), qc.invalidateQueries({ queryKey: planningKeys.all })]);
   };
+  const [warned, setWarned] = useState(0);
   const save = useMutation({
-    mutationFn: (d: ScheduleDraft) => (form && form !== "new" ? api.patch(`/schedules/${form.id}`, d) : api.post("/schedules", d)),
-    onSuccess: done,
+    onMutate: () => setWarned(0),
+    mutationFn: (d: ScheduleDraft) => (form && form !== "new" ? api.patch<Schedule>(`/schedules/${form.id}`, d) : api.post<Schedule>("/schedules", withoutUnusedTarget(d))),
+    onSuccess: async (saved) => {
+      setWarned(saved.screens_orientation_mismatch ?? 0);
+      await done();
+    },
   });
   const remove = useMutation({
     mutationFn: (s: Schedule) => api.delete(`/schedules/${s.id}`),
@@ -68,6 +81,12 @@ export function Schedules() {
         ) : null}
       </div>
       <p className="lead">{t("schedules.intro")}</p>
+      {warned > 0 ? (
+        <p className="alert alert-warning" role="status">
+          <Icon name="warning" />
+          <span>{t("schedules.content.saved_mismatch", { count: warned })}</span>
+        </p>
+      ) : null}
       <ActiveOverrides />
       <PlanningPage
         onCreate={(p) => {
@@ -92,6 +111,7 @@ export function Schedules() {
           groups={groups.data ?? []}
           sites={sites.data ?? []}
           playlists={playlists.data?.items ?? []}
+          layouts={layouts.data?.items ?? []}
           pending={save.isPending}
           error={save.error}
           onSubmit={(d) => save.mutate(d)}
@@ -122,7 +142,7 @@ export function Schedules() {
             <div className="row-main">
               <h2 id={`sch-${s.id}`}>{s.name}</h2>
               <p className="meta">
-                {t(`schedules.target.${s.target_type}`)} : {targetName(s)} · {playlists.data?.items.find((p) => p.id === s.playlist_id)?.name ?? ""}
+                {t(`schedules.target.${s.target_type}`)} : {targetName(s)} · {s.layout_id ? `${t("schedules.content.layout")} : ${layouts.data?.items.find((l) => l.id === s.layout_id)?.name ?? ""}` : (playlists.data?.items.find((p) => p.id === s.playlist_id)?.name ?? "")}
               </p>
               <p className="meta">
                 {rulesText(s)} · <PriorityBadge level={s.priority_level} value={s.priority} />

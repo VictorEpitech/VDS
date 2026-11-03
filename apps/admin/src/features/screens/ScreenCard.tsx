@@ -13,6 +13,7 @@ import { OverrideControls, OverrideUntil } from "../overrides/OverrideControls";
 import type { Override } from "../overrides/overrides";
 import { KioskControls } from "../kiosk/KioskControls";
 import { KioskSetting } from "../kiosk/KioskSetting";
+import { ExclusiveSetting } from "../layouts/ExclusiveSetting";
 import { powerSetArgs, useRemoteCommand } from "../supervision/commands";
 import { DetectPanel, reasonOf } from "../supervision/DetectPanel";
 import { currentOffSlot, type DisplayState } from "../supervision/status";
@@ -185,6 +186,7 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
       ) : null}
       <KioskControls screen={screen} />
       {isAdmin ? <KioskSetting level="screen" id={screen.id} /> : null}
+      {isAdmin ? <ExclusiveSetting level="screen" id={screen.id} /> : null}
       <div className="actions">
         {isAdmin
           ? (["on", "off"] as const).map((s) => (
