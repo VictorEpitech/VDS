@@ -732,3 +732,20 @@ async def test_preview_superseded_and_purge_audit_ids(
         ).scalar_one()
     assert sorted(det["ids"]) == sorted([a["id"], g["id"]]) and det["count"] == 2
     await engine.dispose()
+
+
+async def test_preview_superseded_follows_resolver(
+    admin: AsyncClient, app: FastAPI, p: str
+) -> None:
+    w = await world(admin, p)
+    high = (await create(admin, p, target_type="screen", target_id=w["alone"],
+                         playlist_id=w["pl_force"], duration_minutes=30,
+                         priority=50)).json()  # fmt: skip
+    low = (await create(admin, p, target_type="group", target_id=w["group"],
+                        playlist_id=w["pl_force"], duration_minutes=30)).json()  # fmt: skip
+    r = await admin.post(f"{p}/api/v1/overrides/preview", json={
+        "target_type": "site", "target_id": w["site"], "playlist_id": w["pl_force"],
+        "duration_minutes": 10, "priority": 10}, headers=SAME)  # fmt: skip
+    assert r.status_code == 200
+    assert r.json()["superseded_override_ids"] == [low["id"]]  # le plus prioritaire reste
+    assert high["id"] not in r.json()["superseded_override_ids"]

@@ -1,9 +1,10 @@
 """Service du forçage : création, aperçu, prolongation, arrêt ; lecture de la config héritée."""
 
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import func, or_, select
@@ -19,10 +20,17 @@ from vds_server.db.models_override import PlaybackOverride
 from vds_server.diffusion.base import ServiceBase
 from vds_server.diffusion.expiry import is_expired
 from vds_server.diffusion.playlists import ItemSchemaLookup, PlaylistService
-from vds_server.diffusion.resolver import wall_to_instant
+from vds_server.diffusion.resolver import (
+    WINDOW_DAYS,
+    OverrideSpec,
+    Slot,
+    resolve_input,
+    wall_to_instant,
+)
 from vds_server.diffusion.schedules import TARGET_MODELS
 from vds_server.fleet.health import evaluate
 from vds_server.overrides import schemas as sc
+from vds_server.player.schedule import _on_chain, load_inputs
 from vds_server.power.plan import PowerPlanBuilder
 from vds_server.supervision.status import Thresholds
 
@@ -332,40 +340,51 @@ class OverrideService(ServiceBase):
         ends: datetime,
         now: datetime,
     ) -> list[UUID]:
-        mine = {s.id for s in screens}
-        all_screens = await screens_of(self._s, "organization", UUID(int=0))
-        by_site: dict[UUID, set[UUID]] = {}
-        by_group: dict[UUID, set[UUID]] = {}
-        for sr in all_screens:
-            by_site.setdefault(sr.site_id, set()).add(sr.id)
-            if sr.group_id is not None:
-                by_group.setdefault(sr.group_id, set()).add(sr.id)
-        rows = (
-            await self._s.execute(
-                select(PlaybackOverride).where(
-                    PlaybackOverride.ended_at.is_(None),
-                    PlaybackOverride.ends_at > now,
-                    PlaybackOverride.starts_at < ends,
-                    PlaybackOverride.ends_at > starts,
-                    PlaybackOverride.priority <= body.priority,
-                )
-            )
-        ).scalars()
-        out: list[UUID] = []
-        for r in rows:
-            theirs = (
-                {s.id for s in all_screens}
-                if r.target_type == "organization"
-                else by_site.get(r.target_id, set())
-                if r.target_type == "site"
-                else by_group.get(r.target_id, set())
-                if r.target_type == "group"
-                else {r.target_id}
-                if r.target_type == "screen"
-                else set()
-            )
-            if mine & theirs:
-                out.append(r.id)
+        """Forçages existants que le nouveau masque : ils gagnaient un créneau de [starts, ends)
+        avant, plus après (même résolveur que /planning/simulate, fenêtre J et J+1)."""
+        cfgs: dict[UUID, dict[str, Any]] = {}
+
+        async def cfg_of(sid: UUID) -> dict[str, Any]:
+            if sid not in cfgs:
+                cfgs[sid] = await self._config("screen", sid)
+            return cfgs[sid]
+
+        async def timezone_of(sid: UUID) -> object:
+            return (await cfg_of(sid)).get("timezone") or DEFAULT_TZ
+
+        async def respect_of(sid: UUID) -> object:
+            return (await cfg_of(sid)).get("override.respect_scheduled_off", False)
+
+        inputs = await load_inputs(
+            self._s, screens, now, timezone_of=timezone_of, respect_of=respect_of
+        )
+        draft_id = uuid4()
+        playlist_id = (
+            None
+            if body.kind == "off"
+            else (body.playlist_id or uuid4())  # contenu : playlist à venir
+        )
+        out: set[UUID] = set()
+        for sid, inp in inputs.items():
+            respect = body.respect_scheduled_off
+            spec = OverrideSpec(
+                id=draft_id, target_type=body.target_type, target_id=body.target_id,
+                starts_at=starts, ends_at=ends, playlist_id=playlist_id,
+                priority=body.priority, created_at=now,
+                respect_scheduled_off=(
+                    bool((await cfg_of(sid)).get("override.respect_scheduled_off", False))
+                    if respect is None
+                    else respect
+                ),
+            )  # fmt: skip
+            if not _on_chain(dict(inp.chain), spec.target_type, spec.target_id):
+                continue
+            after_inp = replace(inp, overrides=(*inp.overrides, spec))
+            for offset in range(WINDOW_DAYS):
+                day = inp.day + timedelta(days=offset)
+                before = _winners(resolve_input(replace(inp, day=day)), starts, ends)
+                after = _winners(resolve_input(replace(after_inp, day=day)), starts, ends)
+                out |= before - after
         return sorted(out)
 
     # --- lecture ---------------------------------------------------------------------
@@ -494,3 +513,11 @@ class OverrideService(ServiceBase):
         )
         await self._commit("override.conflict")
         return await self._out(row, now)
+
+
+def _winners(slots: list[Slot], starts: datetime, ends: datetime) -> set[UUID]:
+    return {
+        s.override_id
+        for s in slots
+        if s.override_id is not None and s.start < ends and s.end > starts
+    }
