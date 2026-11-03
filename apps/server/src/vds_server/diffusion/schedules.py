@@ -19,6 +19,7 @@ from vds_server.db.models import (
 from vds_server.diffusion import schemas as sc
 from vds_server.diffusion.base import ServiceBase
 from vds_server.diffusion.expiry import is_expired
+from vds_server.diffusion.priority import priority_level
 
 TARGET_MODELS: dict[str, Any] = {
     "organization": Organization,
@@ -66,6 +67,7 @@ class ScheduleService(ServiceBase):
             target_type=s.target_type,  # type: ignore[arg-type]
             target_id=s.target_id,
             priority=s.priority,
+            priority_level=priority_level(s.priority),
             starts_on=s.starts_on,
             ends_on=s.ends_on,
             enabled=s.enabled,

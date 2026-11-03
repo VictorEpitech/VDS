@@ -13,13 +13,35 @@ puis le plus récent (`created_at`), puis l'id. Un forçage
 `respect_scheduled_off` ne s'applique pas là où la programmation est hors plage (`off`).
 Une programmation avec `until` (expiration de sa playlist) est inactive à partir de cet instant.
 Un forçage sans playlist (`playlist_id is None`) force l'extinction.
+
+Mode `explain=True` (planning admin) : même calcul, mais chaque créneau porte en plus le code de
+raison du gagnant et la liste des perdants ; le découpage ajoute les minuits locaux. Le document
+player n'active jamais ce mode (`explain=False` : créneaux strictement identiques).
+Point d'accroche (non implémenté) : `CandidateFilter` ; `condition_unmet` est réservé.
 """
 
-from collections.abc import Collection, Mapping
+from collections.abc import Callable, Collection, Mapping
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta, tzinfo
 from typing import Literal
 from uuid import UUID
+from zoneinfo import ZoneInfo
+
+ReasonCode = Literal[
+    "override_active",
+    "scheduled_off",
+    "higher_priority",
+    "more_specific",
+    "tie_break",
+    "outside_rules",
+    "outside_period",
+    "disabled",
+    "content_expired",
+    "content_empty",
+    "no_candidate",
+    "only_candidate",
+    "condition_unmet",  # réservé (diffusion conditionnelle), jamais émis en V1
+]
 
 SPECIFICITY = {"organization": 0, "site": 1, "group": 2, "screen": 3}
 WINDOW_DAYS = 2  # J et J+1
@@ -62,12 +84,32 @@ class OverrideSpec:
 
 
 @dataclass(frozen=True)
+class Ref:
+    """Candidat (programmation ou forçage) cité par une explication."""
+
+    kind: Literal["schedule", "override"]
+    id: UUID
+    target_type: str
+    target_id: UUID
+    priority: int
+    playlist_id: UUID | None
+
+
+@dataclass(frozen=True)
+class Loser:
+    ref: Ref
+    reason: ReasonCode  # pourquoi il ne joue pas sur ce créneau
+
+
+@dataclass(frozen=True)
 class Slot:
     start: datetime
     end: datetime
     schedule_id: UUID | None  # None = hors service (off) ou forçage
     playlist_id: UUID | None
     override_id: UUID | None = None
+    reason: ReasonCode | None = None  # explain=True seulement : pourquoi ce gagnant
+    losers: tuple[Loser, ...] = ()  # explain=True seulement
 
     @property
     def source(self) -> Literal["schedule", "override", "off"]:
@@ -128,33 +170,138 @@ def winning_override(
     return max(active, key=_override_rank) if active else None
 
 
+CandidateFilter = Callable[[ScheduleSpec | OverrideSpec, Mapping[str, UUID], datetime], bool]
+# Point d'accroche (diffusion conditionnelle) : liste vide en V1, aucun module ne s'y enregistre.
+CANDIDATE_FILTERS: tuple[CandidateFilter, ...] = ()
+
+
+@dataclass(frozen=True)
+class ResolveInput:
+    """Entrées complètes du résolveur pour un écran (chargées par `player.schedule.load_inputs`)."""
+
+    chain: Mapping[str, UUID]
+    schedules: Collection[ScheduleSpec]
+    overrides: Collection[OverrideSpec]
+    tz: ZoneInfo
+    day: date
+
+
+def resolve_input(inp: ResolveInput, *, explain: bool = False) -> list[Slot]:
+    return resolve(inp.chain, inp.schedules, inp.tz, inp.day, inp.overrides, explain=explain)
+
+
+def _intervals(
+    spec: ScheduleSpec, tz: tzinfo, day: date, *, with_until: bool
+) -> list[tuple[datetime, datetime]]:
+    out: list[tuple[datetime, datetime]] = []
+    for offset in range(WINDOW_DAYS):
+        d = day + timedelta(days=offset)
+        if (spec.starts_on and d < spec.starts_on) or (spec.ends_on and d > spec.ends_on):
+            continue
+        rules = spec.rules or (Rule(127, 0, DAY_MINUTES),)
+        for rule in rules:
+            if rule.weekdays & (1 << d.weekday()):
+                start = wall_to_instant(tz, d, rule.start_minute)
+                end = wall_to_instant(tz, d, rule.end_minute)
+                if with_until and spec.until is not None:
+                    end = min(end, spec.until)
+                if start < end:
+                    out.append((start, end))
+    return out
+
+
+def _spec_ref(spec: ScheduleSpec) -> Ref:
+    return Ref(
+        "schedule", spec.id, spec.target_type, spec.target_id, spec.priority, spec.playlist_id
+    )
+
+
+def _override_ref(o: OverrideSpec) -> Ref:
+    return Ref("override", o.id, o.target_type, o.target_id, o.priority, o.playlist_id)
+
+
+def _vs_schedule(win: ScheduleSpec, other: ScheduleSpec) -> ReasonCode:
+    """Pourquoi `other` perd contre `win` (même ordre que `_rank`)."""
+    if SPECIFICITY[win.target_type] != SPECIFICITY[other.target_type]:
+        return "more_specific"
+    return "higher_priority" if win.priority != other.priority else "tie_break"
+
+
+def _vs_override(win: OverrideSpec, other: OverrideSpec) -> ReasonCode:
+    if (win.playlist_id is None) != (other.playlist_id is None) or win.priority != other.priority:
+        return "higher_priority"
+    return "tie_break"
+
+
+def _explain_slot(
+    a: datetime,
+    b: datetime,
+    tz: tzinfo,
+    chain: Mapping[str, UUID],
+    mine: Collection[ScheduleSpec],
+    full: Mapping[UUID, list[tuple[datetime, datetime]]],
+    active: Collection[ScheduleSpec],
+    win: ScheduleSpec | None,
+    overrides: Collection[OverrideSpec],
+    forced: OverrideSpec | None,
+) -> tuple[ReasonCode, tuple[Loser, ...]]:
+    losers: list[Loser] = []
+    day = a.astimezone(tz).date()
+    for spec in sorted(mine, key=lambda x: str(x.id)):
+        if win is not None and forced is None and spec.id == win.id:
+            continue
+        if spec in active:
+            reason: ReasonCode = (
+                "override_active" if forced is not None or win is None else _vs_schedule(win, spec)
+            )
+        elif not spec.enabled:
+            reason = "disabled"
+        elif any(x <= a and y >= b for x, y in full[spec.id]):
+            reason = "content_expired"
+        elif (spec.starts_on and day < spec.starts_on) or (spec.ends_on and day > spec.ends_on):
+            reason = "outside_period"
+        else:
+            reason = "outside_rules"
+        losers.append(Loser(_spec_ref(spec), reason))
+    schedule_off = win is None
+    for o in sorted(overrides, key=lambda x: str(x.id)):
+        if forced is not None and o.id == forced.id:
+            continue
+        if not (o.starts_at <= a and o.ends_at >= b):
+            continue
+        if o.respect_scheduled_off and schedule_off:
+            losers.append(Loser(_override_ref(o), "scheduled_off"))
+        elif forced is not None:
+            losers.append(Loser(_override_ref(o), _vs_override(forced, o)))
+    if forced is not None:
+        return "override_active", tuple(losers)
+    if win is None:
+        return "no_candidate", tuple(losers)
+    rivals = [spec for spec in active if spec.id != win.id]
+    if not rivals:
+        return "only_candidate", tuple(losers)
+    return _vs_schedule(win, max(rivals, key=_rank)), tuple(losers)
+
+
 def resolve(
     chain: Mapping[str, UUID],
     schedules: Collection[ScheduleSpec],
     tz: tzinfo,
     day: date,
     overrides: Collection[OverrideSpec] = (),
+    *,
+    explain: bool = False,
 ) -> list[Slot]:
     """Créneaux contigus couvrant [minuit local de `day`, minuit local de `day`+2 j)."""
     lo = wall_to_instant(tz, day, 0)
     hi = wall_to_instant(tz, day + timedelta(days=WINDOW_DAYS), 0)
     intervals: list[tuple[datetime, datetime, ScheduleSpec]] = []
-    for spec in schedules:
-        if not spec.enabled or not _targets(chain, spec):
+    mine_specs = [spec for spec in schedules if _targets(chain, spec)]
+    for spec in mine_specs:
+        if not spec.enabled:
             continue
-        for offset in range(WINDOW_DAYS):
-            d = day + timedelta(days=offset)
-            if (spec.starts_on and d < spec.starts_on) or (spec.ends_on and d > spec.ends_on):
-                continue
-            rules = spec.rules or (Rule(127, 0, DAY_MINUTES),)
-            for rule in rules:
-                if rule.weekdays & (1 << d.weekday()):
-                    start = wall_to_instant(tz, d, rule.start_minute)
-                    end = wall_to_instant(tz, d, rule.end_minute)
-                    if spec.until is not None:
-                        end = min(end, spec.until)
-                    if start < end:
-                        intervals.append((max(start, lo), min(end, hi), spec))
+        for start, end in _intervals(spec, tz, day, with_until=True):
+            intervals.append((max(start, lo), min(end, hi), spec))
     mine = [
         o
         for o in overrides
@@ -166,7 +313,21 @@ def resolve(
     ]
     bounds = (p for a, b, _ in intervals for p in (a, b))
     obounds = (p for o in mine for p in (o.starts_at, o.ends_at))
-    points = sorted({lo, hi, *(p for p in (*bounds, *obounds) if lo <= p <= hi)})
+    extra: list[datetime] = []
+    full: dict[UUID, list[tuple[datetime, datetime]]] = {}
+    if explain:
+        full = {
+            spec.id: [
+                (max(x, lo), min(y, hi)) for x, y in _intervals(spec, tz, day, with_until=False)
+            ]
+            for spec in mine_specs
+            if spec.enabled
+        }
+        full.update({spec.id: [] for spec in mine_specs if not spec.enabled})
+        extra = [wall_to_instant(tz, day + timedelta(days=n), 0) for n in range(WINDOW_DAYS)]
+        extra += [spec.until for spec in mine_specs if spec.until is not None]
+        extra += [p for ivs in full.values() for iv in ivs for p in iv]
+    points = sorted({lo, hi, *(p for p in (*bounds, *obounds, *extra) if lo <= p <= hi)})
     slots: list[Slot] = []
     for a, b in zip(points, points[1:], strict=False):
         active = [s for start, end, s in intervals if start <= a and end >= b]
@@ -176,9 +337,21 @@ def resolve(
             cur = Slot(a, b, None, forced.playlist_id, forced.id)
         else:
             cur = Slot(a, b, win.id if win else None, win.playlist_id if win else None)
+        if explain:
+            reason, losers = _explain_slot(
+                a, b, tz, chain, mine_specs, full, active, win, mine, forced
+            )
+            cur = Slot(a, b, cur.schedule_id, cur.playlist_id, cur.override_id, reason, losers)
         last = slots[-1] if slots else None
-        if last and (last.schedule_id, last.override_id) == (cur.schedule_id, cur.override_id):
-            slots[-1] = Slot(last.start, b, last.schedule_id, last.playlist_id, last.override_id)
+        if (
+            last
+            and (last.schedule_id, last.override_id) == (cur.schedule_id, cur.override_id)
+            and (last.reason, last.losers) == (cur.reason, cur.losers)
+        ):
+            slots[-1] = Slot(
+                last.start, b, last.schedule_id, last.playlist_id, last.override_id,
+                last.reason, last.losers,
+            )  # fmt: skip
         else:
             slots.append(cur)
     return [
@@ -188,6 +361,8 @@ def resolve(
             s.schedule_id,
             s.playlist_id,
             s.override_id,
+            s.reason,
+            s.losers,
         )
         for s in slots
     ]

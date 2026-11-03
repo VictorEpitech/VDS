@@ -3443,6 +3443,11 @@ export interface components {
             playlist_id: string;
             /** Priority */
             priority: number;
+            /**
+             * Priority Level
+             * @enum {string}
+             */
+            priority_level: "background" | "normal" | "high";
             /** Rules */
             rules: components["schemas"]["RuleOut"][];
             /** Starts On */

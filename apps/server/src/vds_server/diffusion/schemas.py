@@ -7,6 +7,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from vds_server.diffusion.priority import PriorityLevel
+
 MediaKind = Literal["image", "video", "document"]
 MediaStatus = Literal["processing", "ready", "failed"]
 MediaState = Literal[
@@ -267,6 +269,7 @@ class ScheduleOut(BaseModel):
     target_type: TargetType
     target_id: UUID
     priority: int
+    priority_level: PriorityLevel  # bande d'affichage calculée par le serveur
     starts_on: date | None
     ends_on: date | None
     enabled: bool

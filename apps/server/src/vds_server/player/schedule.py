@@ -2,8 +2,8 @@
 
 import hashlib
 import json
-from collections.abc import Callable
-from datetime import UTC, date, datetime, timedelta
+from collections.abc import Callable, Sequence
+from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -29,7 +29,7 @@ from vds_server.db.models import (
 from vds_server.db.models_override import PlaybackOverride
 from vds_server.diffusion import resolver
 from vds_server.diffusion.expiry import is_expired
-from vds_server.diffusion.resolver import OverrideSpec, ScheduleSpec, Slot
+from vds_server.diffusion.resolver import OverrideSpec, ResolveInput, ScheduleSpec, Slot
 
 SCHEDULE_FORMAT = 1
 DEFAULT_TZ = "Europe/Paris"
@@ -50,17 +50,22 @@ async def screen_chain(session: AsyncSession, screen: Screen) -> dict[str, UUID]
     return chain
 
 
-async def load_specs(session: AsyncSession, chain: dict[str, UUID]) -> list[ScheduleSpec]:
-    """Schedules activés dont la cible est dans la chaîne de l'écran, règles incluses."""
-    conds = [
-        (Schedule.target_type == level) & (Schedule.target_id == target)
-        for level, target in chain.items()
-    ]
+def _chain_conds(chains: Sequence[dict[str, UUID]], model: Any) -> list[Any]:
+    pairs = sorted({(lvl, tid) for c in chains for lvl, tid in c.items()}, key=str)
+    return [(model.target_type == lvl) & (model.target_id == tid) for lvl, tid in pairs]
+
+
+async def _fetch_specs(
+    session: AsyncSession, chains: Sequence[dict[str, UUID]]
+) -> list[ScheduleSpec]:
+    """Schedules activés ciblant l'une des chaînes, règles incluses : 2 requêtes quel que soit N."""
+    if not chains:
+        return []
     found_rows = (
         await session.execute(
             select(Schedule, Playlist.expires_at)
             .join(Playlist, Playlist.id == Schedule.playlist_id)
-            .where(Schedule.enabled.is_(True), or_(*conds))
+            .where(Schedule.enabled.is_(True), or_(*_chain_conds(chains, Schedule)))
         )
     ).all()
     rows = [r for r, _ in found_rows]
@@ -92,6 +97,19 @@ async def load_specs(session: AsyncSession, chain: dict[str, UUID]) -> list[Sche
     ]
 
 
+def _on_chain(chain: dict[str, UUID], target_type: str, target_id: UUID) -> bool:
+    return chain.get(target_type) == target_id
+
+
+async def load_specs(session: AsyncSession, chain: dict[str, UUID]) -> list[ScheduleSpec]:
+    """Schedules activés dont la cible est dans la chaîne de l'écran, règles incluses."""
+    return [
+        sp
+        for sp in await _fetch_specs(session, [chain])
+        if _on_chain(chain, sp.target_type, sp.target_id)
+    ]
+
+
 OVERRIDE_LOOKBACK = timedelta(days=2)
 
 
@@ -119,6 +137,41 @@ def override_spec(
     )
 
 
+async def _fetch_override_rows(
+    session: AsyncSession, chains: Sequence[dict[str, UUID]], now: datetime
+) -> list[tuple[PlaybackOverride, datetime | None]]:
+    if not chains:
+        return []
+    rows = (
+        await session.execute(
+            select(PlaybackOverride, Playlist.expires_at)
+            .outerjoin(Playlist, Playlist.id == PlaybackOverride.playlist_id)
+            .where(
+                PlaybackOverride.ends_at > now - OVERRIDE_LOOKBACK,
+                or_(*_chain_conds(chains, PlaybackOverride)),
+            )
+        )
+    ).all()
+    return [(r, e) for r, e in rows]
+
+
+def _override_specs(
+    rows: Sequence[tuple[PlaybackOverride, datetime | None]],
+    chain: dict[str, UUID],
+    respect_default: bool,
+) -> list[OverrideSpec]:
+    specs = (
+        override_spec(
+            r,
+            respect_default if r.respect_scheduled_off is None else r.respect_scheduled_off,
+            expires_at,
+        )
+        for r, expires_at in rows
+        if _on_chain(chain, r.target_type, r.target_id)
+    )
+    return [s for s in specs if s is not None]
+
+
 async def load_overrides(
     session: AsyncSession,
     chain: dict[str, UUID],
@@ -128,26 +181,54 @@ async def load_overrides(
     """Forçages de la chaîne de l'écran pouvant toucher la fenêtre J/J+1 (fin tronquée si arrêté).
 
     `respect_default` : valeur de config résolue pour l'écran quand le forçage ne la fixe pas."""
-    conds = [
-        (PlaybackOverride.target_type == level) & (PlaybackOverride.target_id == target)
-        for level, target in chain.items()
-    ]
-    rows = (
-        await session.execute(
-            select(PlaybackOverride, Playlist.expires_at)
-            .outerjoin(Playlist, Playlist.id == PlaybackOverride.playlist_id)
-            .where(PlaybackOverride.ends_at > now - OVERRIDE_LOOKBACK, or_(*conds))
-        )
-    ).all()
-    specs = (
-        override_spec(
-            r,
-            respect_default if r.respect_scheduled_off is None else r.respect_scheduled_off,
-            expires_at,
-        )
-        for r, expires_at in rows
+    return _override_specs(
+        await _fetch_override_rows(session, [chain], now), chain, respect_default
     )
-    return [s for s in specs if s is not None]
+
+
+async def load_inputs(
+    session: AsyncSession,
+    screens: Sequence[Screen],
+    now: datetime,
+    *,
+    timezone_of: TimezoneLookup,
+    respect_of: TimezoneLookup | None = None,
+) -> dict[UUID, ResolveInput]:
+    """Entrées du résolveur pour plusieurs écrans : requêtes SQL en nombre constant.
+
+    Seuls le fuseau et le défaut `respect_scheduled_off` (configuration) sont lus par écran."""
+    if not screens:
+        return {}
+    site_ids = {sc.site_id for sc in screens}
+    orgs = dict(
+        (await session.execute(select(Site.id, Site.organization_id).where(Site.id.in_(site_ids))))
+        .tuples()
+        .all()
+    )
+    chains: dict[UUID, dict[str, UUID]] = {}
+    for sc in screens:
+        if sc.site_id not in orgs:  # FK : ne peut pas arriver
+            raise ApiError("errors.screen_not_found", 404)
+        chain = {"organization": orgs[sc.site_id], "site": sc.site_id, "screen": sc.id}
+        if sc.group_id is not None:
+            chain["group"] = sc.group_id
+        chains[sc.id] = chain
+    all_chains = list(chains.values())
+    specs = await _fetch_specs(session, all_chains)
+    rows = await _fetch_override_rows(session, all_chains, now)
+    out: dict[UUID, ResolveInput] = {}
+    for sc in screens:
+        chain = chains[sc.id]
+        tz = _zone(await timezone_of(sc.id))
+        respect = bool(await respect_of(sc.id)) if respect_of is not None else False
+        out[sc.id] = ResolveInput(
+            chain=chain,
+            schedules=tuple(s for s in specs if _on_chain(chain, s.target_type, s.target_id)),
+            overrides=tuple(_override_specs(rows, chain, respect)),
+            tz=tz,
+            day=now.astimezone(tz).date(),
+        )
+    return out
 
 
 async def screen_media_ids(
@@ -220,13 +301,13 @@ class ScheduleBuilder:
         screen = await self._s.get(Screen, screen_id)
         if screen is None or screen.archived_at is not None:
             raise ApiError("errors.screen_not_found", 404)
-        tz = _zone(await self._tz_of(screen_id))
-        day: date = now.astimezone(tz).date()
-        chain = await screen_chain(self._s, screen)
-        overrides = await load_overrides(
-            self._s, chain, now, await self._respect_default(screen_id)
-        )
-        slots = resolver.resolve(chain, await load_specs(self._s, chain), tz, day, overrides)
+        inp = (
+            await load_inputs(
+                self._s, [screen], now, timezone_of=self._tz_of, respect_of=self._respect_of
+            )
+        )[screen_id]
+        tz = inp.tz
+        slots = resolver.resolve_input(inp)
         playlists, assets, types = await self._playlists(
             {s.playlist_id for s in slots if s.playlist_id}, now
         )
@@ -252,11 +333,6 @@ class ScheduleBuilder:
             body["kiosk"] = await self._kiosk_of(screen, now)
         body["revision"] = revision_of(body)
         return body
-
-    async def _respect_default(self, screen_id: UUID) -> bool:
-        if self._respect_of is None:
-            return False
-        return bool(await self._respect_of(screen_id))
 
     async def _playlists(
         self, ids: set[UUID], now: datetime
