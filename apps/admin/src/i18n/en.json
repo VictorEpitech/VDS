@@ -69,6 +69,11 @@
       "playback": "Playback",
       "playback_action": "Open playback",
       "sites": "{count, plural, =0 {No sites} one {# site} other {# sites}}"
+    },
+    "next_changes": {
+      "title": "Next changes",
+      "now": "playing “{name}”",
+      "at": "changes {when}"
     }
   },
   "screens": {
@@ -144,7 +149,8 @@
       "power_no_plan": "No power plan",
       "schedule": "Schedule",
       "no_schedule": "No schedule",
-      "until": "until {when}"
+      "until": "until {when}",
+      "next_change": "Next change"
     },
     "select": {
       "all": "{count, plural, one {Select the listed screen} other {Select all (# listed screens)}}",
@@ -767,7 +773,40 @@
       "action": "Delete",
       "confirm": "Delete {name}"
     },
-    "all": "All schedules"
+    "all": "All schedules",
+    "wizard": {
+      "intro": "What to show, where, when: the preview at the bottom shows the effect before you save.",
+      "prefilled": "Target, day and hours come from the slot you chose. Fill in the name and the playlist.",
+      "draft_name": "New schedule",
+      "step": {
+        "what": "1. What to show",
+        "where": "2. Where",
+        "when": "3. When",
+        "preview": "4. Preview before saving"
+      },
+      "templates": {
+        "label": "Slot templates",
+        "help": "A template fills in the slots below; you can edit them afterwards.",
+        "everyday": "Every day 8am–6pm",
+        "weekdays": "Weekdays 8am–6pm",
+        "single_date": "One date"
+      },
+      "date": "Date",
+      "when_same": "{day}, from {from} to {to}",
+      "when_span": "from {from} to {to}",
+      "on_screen": "on {name}",
+      "on_screens": "on {count, plural, one {# screen} other {# screens}}",
+      "change": "{kind, select, replace {Replaces “{before}” with “{after}”} add {Adds “{after}”} remove {Removes “{before}”} other {Changes what is displayed}} {where}, {when}.",
+      "preview": {
+        "incomplete": "Pick a target and a playlist to see the preview.",
+        "loading": "Computing the preview…",
+        "touches": "{count, plural, =0 {No screen affected over the next 7 days} one {# screen affected over the next 7 days} other {# screens affected over the next 7 days}}",
+        "no_change": "No visible change over this period.",
+        "more": "…and {count, plural, one {# more change} other {# more changes}}",
+        "new_conflicts": "{count, plural, one {# new item to check} other {# new items to check}}",
+        "resolved": "{count, plural, one {# item to check resolved} other {# items to check resolved}}"
+      }
+    }
   },
   "provenance": {
     "here": "Set here",
@@ -1689,7 +1728,8 @@
     },
     "block": {
       "range": "from {range}",
-      "source": "Source:"
+      "source": "Source:",
+      "create_hint": "Activate to schedule this slot"
     },
     "chain": {
       "title": "Why",
@@ -1716,7 +1756,8 @@
       "label": "View",
       "day": "Day",
       "week": "Week",
-      "list": "List"
+      "list": "List",
+      "month": "Month"
     },
     "nav": {
       "prev": "Previous",
@@ -1726,7 +1767,9 @@
       "prev_week": "Previous week",
       "next_week": "Next week",
       "date": "Date",
-      "now": "Now"
+      "now": "Now",
+      "prev_month": "Previous month",
+      "next_month": "Next month"
     },
     "legend": {
       "title": "Legend",
@@ -1746,7 +1789,9 @@
       "content": "Content",
       "source": "Source",
       "level": "Level",
-      "state": "State"
+      "state": "State",
+      "create": "Schedule this slot",
+      "create_for": "Schedule the empty slot of {when}"
     },
     "grid": {
       "help": "Planning grid: left and right arrows to change slot, up and down to change track, Home and End for the edges, Page Up and Page Down to change day, Enter to see what plays, N for now.",
@@ -1754,6 +1799,24 @@
     },
     "track": {
       "effective": "Effective"
+    },
+    "resources": {
+      "help": "One row per screen. Up and down arrows change row, left and right arrows change slot (left of the first slot: the screen name), Enter shows what plays or schedules an empty slot, N jumps to now.",
+      "open_screen": "Show the schedule of screen {name}",
+      "pager": "Screen pages",
+      "prev_page": "Previous screens",
+      "next_page": "Next screens",
+      "page": "Page {page}: {count, plural, one {# screen} other {# screens}}"
+    },
+    "month": {
+      "help": "Month calendar: arrow keys change day, Page Up and Page Down change month, Enter opens the Day view.",
+      "aria": "Calendar for {month}",
+      "today": "Today",
+      "nothing": "Nothing scheduled",
+      "segments": "{count, plural, one {# slot} other {# slots}}",
+      "more": "+{count}",
+      "conflicts": "{count, plural, one {# item to check} other {# items to check}}",
+      "expiries": "{count, plural, one {# expiry} other {# expiries}}"
     }
   }
 }

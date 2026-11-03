@@ -54,7 +54,7 @@ export function createFleetMock(world: World) {
     if (b.until === "end_of_day") return new Date(new Date().setHours(24, 0, 0, 0)).toISOString();
     return null;
   };
-  return async function handle(req: IncomingMessage, res: ServerResponse, route: string): Promise<boolean> {
+  const handle = async function handle(req: IncomingMessage, res: ServerResponse, route: string): Promise<boolean> {
     const method = req.method ?? "GET";
     const send = (status: number, payload: unknown) => {
       res.statusCode = status;
@@ -144,4 +144,7 @@ export function createFleetMock(world: World) {
     }
     return false;
   };
+  /** Forçage actif sur un écran (le plus récent), pour que `/planning/at` du mock de planning en tienne compte. */
+  const forcedOn = (screenId: string): OverrideRow | undefined => overrides.filter(active).filter((o) => touched(o).some((sc) => sc.id === screenId)).at(-1);
+  return Object.assign(handle, { forcedOn });
 }

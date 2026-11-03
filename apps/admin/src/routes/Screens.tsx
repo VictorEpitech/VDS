@@ -15,7 +15,8 @@ import { ScreenCard } from "../features/screens/ScreenCard";
 import { IncidentsList } from "../features/supervision/IncidentsList";
 import { displayState, ISSUE_STATES } from "../features/supervision/status";
 import { useApi } from "../lib/api";
-import { powerKeys, useAllAgents, useAllGroups, useFleetApk, useIncidents, usePlayback, useScreens, useSites, type Agent, type ScreenPower } from "../lib/queries";
+import { usePlayback } from "../features/planning/now";
+import { powerKeys, useAllAgents, useAllGroups, useFleetApk, useIncidents, useScreens, useSites, type Agent, type ScreenPower } from "../lib/queries";
 
 /** Agent qui pilote l'alimentation du site : un agent en ligne de préférence, sinon un agent non révoqué. */
 function agentOf(agents: readonly Agent[], siteId: string): Agent | undefined {

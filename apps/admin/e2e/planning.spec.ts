@@ -102,7 +102,7 @@ test("thème sombre V-Tech : semaine et inspecteur sans violation de contraste",
   await page.emulateMedia({ colorScheme: "dark" });
   await page.goto(url(info, "/playback?view=week&date=2026-11-02"));
   await expect(page.getByRole("grid")).toHaveCount(7);
-  await page.locator('.tl-block[tabindex="0"]').click();
+  await page.locator('.tl-row[data-kind="effective"] .tl-block:not([data-state="off"])').first().click();
   await expect(page.getByRole("complementary")).toBeVisible();
   await axe(page, "sombre");
 });
@@ -116,7 +116,7 @@ for (const lang of ["fr", "en"] as const) {
     await expect(page.getByRole("grid")).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await axe(page, "375 liste");
-    await page.getByRole("table").getByRole("button").nth(1).click();
+    await page.getByRole("table").getByRole("button", { name: /^(Voir ce qui joue|See what plays)/ }).nth(1).click();
     const panel = page.getByRole("complementary");
     await expect(panel).toBeVisible();
     const box = (await panel.boundingBox())!;

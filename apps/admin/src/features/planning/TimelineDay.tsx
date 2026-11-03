@@ -18,6 +18,8 @@ export interface TimelineProps {
   /** Appelé avec l'instant (ms) du bloc choisi (clic ou Entrée). */
   onSelect: (ms: number) => void;
   onNow: () => void;
+  /** Clic sur un créneau vide : ouvre l'assistant de programmation pré-rempli (début et fin en ms). */
+  onEmpty?: (startMs: number, endMs: number) => void;
 }
 
 const TICKS = [0, 3, 6, 9, 12, 15, 18, 21];
@@ -53,7 +55,7 @@ export function TimelineBase({ dates, ...p }: TimelineProps & { dates: string[] 
     to?.focus();
   };
 
-  const select = (b: Block) => p.onSelect(b.startMs);
+  const select = (b: Block) => (p.onEmpty && b.segment?.state === "off" ? p.onEmpty(b.startMs, b.endMs) : p.onSelect(b.startMs));
 
   return (
     <div className="timeline" ref={root}>
@@ -113,6 +115,7 @@ export function TimelineBase({ dates, ...p }: TimelineProps & { dates: string[] 
                                 selected={track.kind === "effective" && p.atMs !== null && p.atMs >= b.startMs && p.atMs < b.endMs}
                                 onSelect={select}
                                 onFocusBlock={setActive}
+                                creates={!!p.onEmpty}
                               />
                             ))}
                           </div>

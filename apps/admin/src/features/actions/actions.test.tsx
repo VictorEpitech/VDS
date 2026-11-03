@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { atOut } from "../../../test/planning-at";
 import { errorResponse, mockApi, renderRoutes } from "../../../test/render";
 import { routes } from "../../app/routes";
 import { ApiError, type Api } from "../../lib/api";
@@ -196,7 +197,7 @@ describe.each(["", "/espace/affichage"])("liste des écrans : actions, base « %
     "GET /sites": [SITE],
     "GET /screens": screens,
     "GET /incidents": [],
-    "GET /fleet/playback": screens.map((s) => ({ screen_id: (s as { id: string }).id, source: "none", schedule_id: null, schedule_name: null, playlist_id: null, playlist_name: null, until: null, next_change_at: null })),
+    "GET /planning/at": atOut(screens.map((s) => ({ screen_id: (s as { id: string }).id, source: "none", schedule_id: null, schedule_name: null, playlist_id: null, playlist_name: null, until: null, next_change_at: null }))),
     [`GET /sites/${SITE.id}/groups`]: [],
     [`GET /sites/${SITE.id}/agents`]: [AGENT],
     ...extra,
@@ -266,7 +267,7 @@ describe.each(["", "/espace/affichage"])("liste des écrans : mise à jour de l'
         "GET /sites": [SITE],
         "GET /screens": list,
         "GET /incidents": [],
-        "GET /fleet/playback": [],
+        "GET /planning/at": atOut([]),
         "GET /fleet/apk": fleet(rows),
         [`GET /sites/${SITE.id}/groups`]: [],
         [`GET /sites/${SITE.id}/agents`]: [AGENT],
@@ -317,7 +318,7 @@ describe.each(["", "/espace/affichage"])("liste des écrans : mise à jour de l'
     const a = mkScreen(1);
     mockApi(
       {
-        "GET /sites": [SITE], "GET /screens": [a], "GET /incidents": [], "GET /fleet/playback": [],
+        "GET /sites": [SITE], "GET /screens": [a], "GET /incidents": [], "GET /planning/at": atOut([]),
         "GET /fleet/apk": { available: null, screens: [apkRow(a, { updatable: false, reason: "apk_unavailable" })] },
         [`GET /sites/${SITE.id}/groups`]: [], [`GET /sites/${SITE.id}/agents`]: [AGENT],
         [`GET /power/screens/${a.id}`]: { screen_id: a.id, timezone: "Europe/Paris", plan_id: null, plan_id_origin: { level: "default", id: null, name: null }, calendars: [], calendars_origin: { level: "default", id: null, name: null }, slots: [] },

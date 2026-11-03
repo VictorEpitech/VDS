@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import { atOut } from "../../../test/planning-at";
 import { errorResponse, mockApi, renderRoutes } from "../../../test/render";
 import { routes } from "../../app/routes";
 import { displayState } from "../supervision/status";
@@ -30,7 +31,7 @@ const base = (extra: Record<string, unknown> = {}) => ({
   "GET /playlists": { items: [PLAYLIST], total: 1 },
   "GET /media": { items: [], total: 0 },
   "GET /incidents": [],
-  "GET /fleet/playback": [playbackFor(S1, false), playbackFor(S2, false)],
+  "GET /planning/at": atOut([playbackFor(S1, false), playbackFor(S2, false)]),
   "GET /overrides": [],
   "POST /overrides/preview": PREVIEW,
   [`GET /config/group/${GROUP.id}/core`]: { values: {}, warnings: [] },
@@ -102,7 +103,7 @@ describe.each([
   it("carte forcée : fin visible, prolonger (+1 h) et arrêter avec l'avertissement hors ligne", async () => {
     const calls = mockApi(
       base({
-        "GET /fleet/playback": [playbackFor(S1, true), playbackFor(S2, true)],
+        "GET /planning/at": atOut([playbackFor(S1, true), playbackFor(S2, true)]),
         "GET /overrides": [OVERRIDE],
         [`PATCH /overrides/${OVERRIDE.id}`]: OVERRIDE,
         [`POST /overrides/${OVERRIDE.id}/stop`]: { ...OVERRIDE, status: "ended" },
@@ -138,7 +139,7 @@ describe.each([
     mockApi(
       base({
         "GET /me": { id: "u2", display_name: "Eli", email: null, role: "editor", provider: "auth.local", locale: null },
-        "GET /fleet/playback": [playbackFor(S1, true), playbackFor(S2, true)],
+        "GET /planning/at": atOut([playbackFor(S1, true), playbackFor(S2, true)]),
         "GET /overrides": [{ ...OVERRIDE, kind: "off", playlist_id: null }],
       }),
       b,

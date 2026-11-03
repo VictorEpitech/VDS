@@ -1,7 +1,7 @@
 import { useId } from "react";
 import { useTranslation } from "react-i18next";
 import { Icon } from "../../components/Icon";
-import { countTargets } from "../schedule/ScheduleForm";
+import { countTargets } from "../schedule/ScheduleWizard";
 import type { Group, Screen, Site } from "../../lib/queries";
 import { LEVELS, VIEWS, type PlanningView, type Target, type TargetType } from "./planning";
 import { PriorityBadge } from "./parts";
@@ -16,7 +16,7 @@ interface Props {
   onView: (v: PlanningView) => void;
   date: string;
   onDate: (d: string) => void;
-  /** Décale la date de n jours (vue Jour) ou de 7 (Semaine). */
+  /** Décale la date d'un jour (vue Jour), de 7 (Semaine) ou d'un mois (Mois). */
   onStep: (direction: -1 | 1) => void;
   onNow: () => void;
   /** Fuseau du site si différent de celui du navigateur (ou plusieurs fuseaux). */
@@ -88,7 +88,7 @@ export function PlanningToolbar({ target, onTarget, screens, groups, sites, view
       </fieldset>
 
       <div className="planning-nav">
-        <button type="button" className="btn btn-text" onClick={() => onStep(-1)} aria-label={view === "day" ? t("planning.nav.prev_day") : t("planning.nav.prev_week")}>
+        <button type="button" className="btn btn-text" onClick={() => onStep(-1)} aria-label={t(`planning.nav.prev_${view === "day" ? "day" : view === "month" ? "month" : "week"}`)}>
           <Icon name="back" />
           <span className="nav-text">{t("planning.nav.prev")}</span>
         </button>
@@ -96,7 +96,7 @@ export function PlanningToolbar({ target, onTarget, screens, groups, sites, view
           <label htmlFor={`${uid}-date`}>{t("planning.nav.date")}</label>
           <input id={`${uid}-date`} type="date" value={date} onChange={(e) => e.target.value && onDate(e.target.value)} />
         </div>
-        <button type="button" className="btn btn-text" onClick={() => onStep(1)} aria-label={view === "day" ? t("planning.nav.next_day") : t("planning.nav.next_week")}>
+        <button type="button" className="btn btn-text" onClick={() => onStep(1)} aria-label={t(`planning.nav.next_${view === "day" ? "day" : view === "month" ? "month" : "week"}`)}>
           <span className="nav-text">{t("planning.nav.next")}</span>
           <Icon name="next" />
         </button>

@@ -1,13 +1,14 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Empty } from "../../components/feedback";
+import { Icon } from "../../components/Icon";
 import { StatusBadge } from "../../components/StatusBadge";
 import { PriorityBadge, SourceOrigin } from "./parts";
 import type { ScreenTimeline } from "./planning";
 import { timeFormatter } from "./time";
 
 /** Vue Liste : les mêmes segments que la grille, en tableau (alternative textuelle, vue par défaut sous 600 px). */
-export function PlanningList({ screen, tz, from, to, onSelect }: { screen: ScreenTimeline | undefined; tz: string; from: number; to: number; onSelect: (ms: number) => void }) {
+export function PlanningList({ screen, tz, from, to, onSelect, onEmpty }: { screen: ScreenTimeline | undefined; tz: string; from: number; to: number; onSelect: (ms: number) => void; onEmpty?: (startMs: number, endMs: number) => void }) {
   const { t, i18n } = useTranslation();
   const fmt = useMemo(() => timeFormatter(i18n.language, tz), [i18n.language, tz]);
   const rows = (screen?.segments ?? []).filter((s) => Date.parse(s.end) > from && Date.parse(s.start) < to);
@@ -46,6 +47,12 @@ export function PlanningList({ screen, tz, from, to, onSelect }: { screen: Scree
                 <td data-label={head("level")}>{s.source.priority_level && s.state !== "off" && s.state !== "scheduled_off" ? <PriorityBadge level={s.source.priority_level} value={s.source.priority} /> : "–"}</td>
                 <td data-label={head("state")}>
                   {s.state === "overridden" || s.state === "scheduled_off" ? <StatusBadge state={s.state} /> : <span>{t(`planning.segment_state.${s.state}`)}</span>}
+                  {s.state === "off" && onEmpty ? (
+                    <button type="button" className="btn btn-text" onClick={() => onEmpty(startMs, Date.parse(s.end))} aria-label={t("planning.list.create_for", { when: fmt.full(startMs) })}>
+                      <Icon name="add" />
+                      {t("planning.list.create")}
+                    </button>
+                  ) : null}
                 </td>
               </tr>
             );

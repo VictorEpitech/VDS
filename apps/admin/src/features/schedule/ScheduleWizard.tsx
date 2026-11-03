@@ -1,11 +1,15 @@
-import { useId, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { ErrorAlert } from "../../components/feedback";
 import { Icon } from "../../components/Icon";
-import type { Group, Playlist, Schedule, Screen, Site } from "../../lib/queries";
+import type { Group, Playlist, Rule, Schedule, Screen, Site } from "../../lib/queries";
+import { useMinuteNow } from "../overrides/overrides";
+import type { Target } from "../planning/planning";
 import { PriorityPicker } from "../planning/PriorityPicker";
+import { SimulationPreview } from "../planning/SimulationPreview";
+import { browserTimeZone, todayIn } from "../planning/time";
 import { RulesEditor } from "./RulesEditor";
-import { ruleProblem } from "./rules";
+import { ALL_DAYS, WEEKDAYS, defaultRule, ruleProblem } from "./rules";
 
 export type TargetType = "screen" | "group" | "site";
 export interface ScheduleDraft {
@@ -20,8 +24,17 @@ export interface ScheduleDraft {
   enabled: boolean;
 }
 
+/** Pré-remplissage depuis un créneau vide cliqué dans le planning (cible, jour et heures du site). */
+export interface SchedulePrefill {
+  target: Target;
+  rule: Rule;
+  /** Jour cliqué (`YYYY-MM-DD`), proposé par le modèle « Une date ». */
+  date: string;
+}
+
 interface Props {
   schedule?: Schedule;
+  prefill?: SchedulePrefill;
   screens: Screen[];
   groups: Group[];
   sites: Site[];
@@ -40,21 +53,32 @@ export function countTargets(type: TargetType, id: string, screens: Screen[]): n
   return live.filter((s) => s.site_id === id).length;
 }
 
-export function ScheduleForm({ schedule, screens, groups, sites, playlists, pending, error, onSubmit, onCancel }: Props) {
+/** Modèles de créneaux : des préréglages de formulaire, aucune donnée serveur. */
+const TEMPLATES = ["everyday", "weekdays", "single_date"] as const;
+type Template = (typeof TEMPLATES)[number];
+
+export function ScheduleWizard({ schedule, prefill, screens, groups, sites, playlists, pending, error, onSubmit, onCancel }: Props) {
   const { t } = useTranslation();
   const uid = useId();
   const formRef = useRef<HTMLFormElement>(null);
   const [name, setName] = useState(schedule?.name ?? "");
-  const [targetType, setTargetType] = useState<TargetType>(schedule?.target_type === "organization" ? "site" : (schedule?.target_type ?? "screen"));
-  const [targetId, setTargetId] = useState(schedule?.target_id ?? "");
+  const [targetType, setTargetType] = useState<TargetType>(schedule?.target_type === "organization" ? "site" : (schedule?.target_type ?? prefill?.target.type ?? "screen"));
+  const [targetId, setTargetId] = useState(schedule?.target_id ?? prefill?.target.id ?? "");
   const [playlistId, setPlaylistId] = useState(schedule?.playlist_id ?? "");
   const [priority, setPriority] = useState(String(schedule?.priority ?? 0));
-  const [rules, setRules] = useState(schedule?.rules ?? []);
+  const [rules, setRules] = useState<Rule[]>(schedule?.rules ?? (prefill ? [prefill.rule] : []));
   const [startsOn, setStartsOn] = useState(schedule?.starts_on ?? "");
   const [endsOn, setEndsOn] = useState(schedule?.ends_on ?? "");
   const [enabled, setEnabled] = useState(schedule?.enabled ?? true);
   const [invalid, setInvalid] = useState<Set<string>>(new Set());
   const [advancedOpen, setAdvancedOpen] = useState(false);
+
+  // Ouvert depuis un créneau vide du planning : l'assistant prend le focus (premier champ à compléter).
+  useEffect(() => {
+    if (!prefill || schedule) return;
+    formRef.current?.scrollIntoView?.({ block: "start" });
+    formRef.current?.querySelector<HTMLElement>("input")?.focus();
+  }, [prefill, schedule]);
 
   const options: { id: string; name: string }[] =
     targetType === "screen"
@@ -63,6 +87,41 @@ export function ScheduleForm({ schedule, screens, groups, sites, playlists, pend
         ? groups.map((g) => ({ id: g.id, name: g.name }))
         : sites.filter((s) => !s.archived_at).map((s) => ({ id: s.id, name: s.name }));
   const touched = targetId ? countTargets(targetType, targetId, screens) : null;
+  const nowMs = useMinuteNow().getTime();
+
+  // Brouillon soumis à la simulation : seulement quand les champs obligatoires sont valides (le nom absent est remplacé pour l'aperçu).
+  const candidate = useMemo(() => {
+    const prio = Number(priority);
+    if (!targetId || !playlistId || !Number.isInteger(prio) || prio < -1000 || prio > 1000 || rules.some((r) => ruleProblem(r))) return null;
+    return {
+      name: name.trim() || t("schedules.wizard.draft_name"),
+      target_type: targetType,
+      target_id: targetId,
+      playlist_id: playlistId,
+      priority: prio,
+      rules,
+      starts_on: startsOn || null,
+      ends_on: endsOn || null,
+      enabled,
+    } satisfies ScheduleDraft;
+  }, [name, targetType, targetId, playlistId, priority, rules, startsOn, endsOn, enabled, t]);
+
+  const singleDate = startsOn !== "" && startsOn === endsOn && rules.length === 0;
+  const same = (r: Rule, weekdays: number) => r.weekdays === weekdays && r.start === "08:00" && r.end === "18:00";
+  const activeTemplate: Template | null =
+    singleDate ? "single_date" : startsOn || endsOn || rules.length !== 1 ? null : same(rules[0]!, ALL_DAYS) ? "everyday" : same(rules[0]!, WEEKDAYS) ? "weekdays" : null;
+  const applyTemplate = (tpl: Template) => {
+    if (tpl === "single_date") {
+      const day = prefill?.date ?? todayIn(browserTimeZone(), nowMs);
+      setRules([]);
+      setStartsOn(day);
+      setEndsOn(day);
+      return;
+    }
+    setStartsOn("");
+    setEndsOn("");
+    setRules([{ ...defaultRule(), weekdays: tpl === "everyday" ? ALL_DAYS : WEEKDAYS }]);
+  };
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -105,12 +164,34 @@ export function ScheduleForm({ schedule, screens, groups, sites, playlists, pend
   return (
     <form ref={formRef} className="card schedule-form" onSubmit={submit} noValidate aria-label={schedule ? t("schedules.edit") : t("schedules.create")}>
       <h2>{schedule ? t("schedules.edit") : t("schedules.create")}</h2>
+      <p className="lead">{prefill && !schedule ? t("schedules.wizard.prefilled") : t("schedules.wizard.intro")}</p>
+
+      <fieldset className="wizard-step">
+        <legend>{t("schedules.wizard.step.what")}</legend>
       <div className="field">
         <label htmlFor={`${uid}-name`}>{t("schedules.name")}</label>
         <input id={`${uid}-name`} value={name} maxLength={120} onChange={(e) => setName(e.target.value)} required aria-invalid={invalid.has("name") ? true : undefined} />
         {err("name", t("errors.field_required"), `${uid}-name-e`)}
       </div>
 
+      <div className="field">
+        <label htmlFor={`${uid}-playlist`}>{t("schedules.playlist")}</label>
+        <select id={`${uid}-playlist`} value={playlistId} onChange={(e) => setPlaylistId(e.target.value)} required aria-invalid={invalid.has("playlist") ? true : undefined}>
+          <option value="">{t("form.choose")}</option>
+          {playlists.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+        {err("playlist", t("errors.field_required"), `${uid}-playlist-e`)}
+      </div>
+
+      <PriorityPicker value={priority} onChange={setPriority} savedLevel={schedule?.priority_level} savedValue={schedule?.priority} />
+      </fieldset>
+
+      <fieldset className="wizard-step">
+        <legend>{t("schedules.wizard.step.where")}</legend>
       <fieldset className="field target">
         <legend>{t("schedules.target.label")}</legend>
         <div className="seg" role="radiogroup" aria-label={t("schedules.target.type")}>
@@ -149,21 +230,37 @@ export function ScheduleForm({ schedule, screens, groups, sites, playlists, pend
         {err("target", t("errors.field_required"), `${uid}-target-e`)}
       </fieldset>
 
-      <div className="field">
-        <label htmlFor={`${uid}-playlist`}>{t("schedules.playlist")}</label>
-        <select id={`${uid}-playlist`} value={playlistId} onChange={(e) => setPlaylistId(e.target.value)} required aria-invalid={invalid.has("playlist") ? true : undefined}>
-          <option value="">{t("form.choose")}</option>
-          {playlists.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-        {err("playlist", t("errors.field_required"), `${uid}-playlist-e`)}
-      </div>
 
-      <PriorityPicker value={priority} onChange={setPriority} savedLevel={schedule?.priority_level} savedValue={schedule?.priority} />
+      </fieldset>
 
+      <fieldset className="wizard-step">
+        <legend>{t("schedules.wizard.step.when")}</legend>
+        <div className="field">
+          <p className="field-help" id={`${uid}-tpl-h`}>
+            {t("schedules.wizard.templates.help")}
+          </p>
+          <div className="templates" role="group" aria-label={t("schedules.wizard.templates.label")} aria-describedby={`${uid}-tpl-h`}>
+            {TEMPLATES.map((tpl) => (
+              <button key={tpl} type="button" className="btn btn-day" aria-pressed={activeTemplate === tpl} onClick={() => applyTemplate(tpl)}>
+                {t(`schedules.wizard.templates.${tpl}`)}
+              </button>
+            ))}
+          </div>
+        </div>
+        {singleDate ? (
+          <div className="field">
+            <label htmlFor={`${uid}-date`}>{t("schedules.wizard.date")}</label>
+            <input
+              id={`${uid}-date`}
+              type="date"
+              value={startsOn}
+              onChange={(e) => {
+                setStartsOn(e.target.value);
+                setEndsOn(e.target.value);
+              }}
+            />
+          </div>
+        ) : null}
       <RulesEditor
         rules={rules}
         onChange={setRules}
@@ -172,6 +269,8 @@ export function ScheduleForm({ schedule, screens, groups, sites, playlists, pend
         emptyHelp={t("schedules.rules.all_day")}
         help={t("schedules.rules.help")}
       />
+
+      </fieldset>
 
       <details className="advanced" open={advancedOpen} onToggle={(e) => setAdvancedOpen((e.currentTarget as HTMLDetailsElement).open)}>
         <summary>{t("form.advanced")}</summary>
@@ -200,6 +299,8 @@ export function ScheduleForm({ schedule, screens, groups, sites, playlists, pend
           </div>
         </div>
       </details>
+
+      <SimulationPreview draft={candidate} scheduleId={schedule?.id} nowMs={nowMs} />
 
       {error ? <ErrorAlert error={error} /> : null}
       <div className="actions">

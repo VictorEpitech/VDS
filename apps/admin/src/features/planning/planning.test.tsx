@@ -91,7 +91,7 @@ describe.each(["", "/espace/affichage"])("planning, base « %s »", (b) => {
     expect(within(rows[4]!).getAllByText("Hors service prévu").length).toBeGreaterThan(0);
     expect(within(rows[1]!).getAllByText("Rien à diffuser").length).toBeGreaterThan(0);
     const tl = calls.find((c) => c.path.startsWith("/planning/timeline"));
-    expect(tl?.path).toBe(`/planning/timeline?target_type=screen&target_id=${SCREEN.id}&from=2026-11-02&to=2026-11-08&explain=true`);
+    expect(tl?.path).toBe(`/planning/timeline?target_type=screen&target_id=${SCREEN.id}&from=2026-11-02&to=2026-11-08&explain=true&limit=100`);
     expect((globalThis.fetch as unknown as { mock: { calls: string[][] } }).mock.calls.some((c) => String(c[0]).startsWith(`${b}/api/v1/planning/timeline`))).toBe(true);
   });
 

@@ -69,6 +69,11 @@
       "playback": "Diffusion",
       "playback_action": "Ouvrir la diffusion",
       "sites": "{count, plural, =0 {Aucun site} one {# site} other {# sites}}"
+    },
+    "next_changes": {
+      "title": "Prochains changements",
+      "now": "joue « {name} »",
+      "at": "change le {when}"
     }
   },
   "screens": {
@@ -144,7 +149,8 @@
       "power_no_plan": "Aucun plan d'alimentation",
       "schedule": "Programmation",
       "no_schedule": "Aucune programmation",
-      "until": "jusqu'à {when}"
+      "until": "jusqu'à {when}",
+      "next_change": "Prochain changement"
     },
     "select": {
       "all": "{count, plural, one {Sélectionner l'écran listé} other {Tout sélectionner (# écrans listés)}}",
@@ -767,7 +773,40 @@
       "action": "Supprimer",
       "confirm": "Supprimer {name}"
     },
-    "all": "Toutes les programmations"
+    "all": "Toutes les programmations",
+    "wizard": {
+      "intro": "Quoi afficher, où, quand : l'aperçu en bas montre l'effet avant d'enregistrer.",
+      "prefilled": "Cible, jour et heures sont repris du créneau choisi. Complétez le nom et la playlist.",
+      "draft_name": "Nouvelle programmation",
+      "step": {
+        "what": "1. Quoi afficher",
+        "where": "2. Où",
+        "when": "3. Quand",
+        "preview": "4. Aperçu avant d'enregistrer"
+      },
+      "templates": {
+        "label": "Modèles de créneaux",
+        "help": "Un modèle remplit les créneaux ci-dessous ; vous pouvez ensuite les modifier.",
+        "everyday": "Tous les jours 8h–18h",
+        "weekdays": "En semaine 8h–18h",
+        "single_date": "Une date"
+      },
+      "date": "Date",
+      "when_same": "{day}, de {from} à {to}",
+      "when_span": "du {from} au {to}",
+      "on_screen": "sur {name}",
+      "on_screens": "sur {count, plural, one {# écran} other {# écrans}}",
+      "change": "{kind, select, replace {Remplace « {before} » par « {after} »} add {Ajoute « {after} »} remove {Retire « {before} »} other {Modifie l'affichage}} {where}, {when}.",
+      "preview": {
+        "incomplete": "Choisissez une cible et une playlist pour voir l'aperçu.",
+        "loading": "Calcul de l'aperçu…",
+        "touches": "{count, plural, =0 {Aucun écran touché sur les 7 prochains jours} one {# écran touché sur les 7 prochains jours} other {# écrans touchés sur les 7 prochains jours}}",
+        "no_change": "Aucun changement visible sur cette période.",
+        "more": "…et {count, plural, one {# autre modification} other {# autres modifications}}",
+        "new_conflicts": "{count, plural, one {# point à vérifier créé} other {# points à vérifier créés}}",
+        "resolved": "{count, plural, one {# point à vérifier résolu} other {# points à vérifier résolus}}"
+      }
+    }
   },
   "provenance": {
     "here": "Défini ici",
@@ -1689,7 +1728,8 @@
     },
     "block": {
       "range": "de {range}",
-      "source": "Source :"
+      "source": "Source :",
+      "create_hint": "Activer pour programmer ce créneau"
     },
     "chain": {
       "title": "Pourquoi",
@@ -1716,7 +1756,8 @@
       "label": "Vue",
       "day": "Jour",
       "week": "Semaine",
-      "list": "Liste"
+      "list": "Liste",
+      "month": "Mois"
     },
     "nav": {
       "prev": "Précédent",
@@ -1726,7 +1767,9 @@
       "prev_week": "Semaine précédente",
       "next_week": "Semaine suivante",
       "date": "Date",
-      "now": "Maintenant"
+      "now": "Maintenant",
+      "prev_month": "Mois précédent",
+      "next_month": "Mois suivant"
     },
     "legend": {
       "title": "Légende",
@@ -1746,7 +1789,9 @@
       "content": "Contenu",
       "source": "Provenance",
       "level": "Niveau",
-      "state": "État"
+      "state": "État",
+      "create": "Programmer ce créneau",
+      "create_for": "Programmer le créneau vide du {when}"
     },
     "grid": {
       "help": "Grille du planning : flèches gauche et droite pour changer de créneau, haut et bas pour changer de piste, Début et Fin pour les bords, Page précédente et suivante pour changer de jour, Entrée pour voir ce qui joue, N pour maintenant.",
@@ -1754,6 +1799,24 @@
     },
     "track": {
       "effective": "Effectif"
+    },
+    "resources": {
+      "help": "Une ligne par écran. Flèches haut et bas pour changer de ligne, gauche et droite pour changer de créneau (à gauche du premier créneau : le nom de l'écran), Entrée pour voir ce qui joue ou pour programmer un créneau vide, N pour maintenant.",
+      "open_screen": "Voir le planning de l'écran {name}",
+      "pager": "Pages d'écrans",
+      "prev_page": "Écrans précédents",
+      "next_page": "Écrans suivants",
+      "page": "Page {page} : {count, plural, one {# écran} other {# écrans}}"
+    },
+    "month": {
+      "help": "Calendrier du mois : flèches pour changer de jour, Page précédente et suivante pour changer de mois, Entrée pour ouvrir la vue Jour.",
+      "aria": "Calendrier de {month}",
+      "today": "Aujourd'hui",
+      "nothing": "Rien de programmé",
+      "segments": "{count, plural, one {# créneau} other {# créneaux}}",
+      "more": "+{count}",
+      "conflicts": "{count, plural, one {# point à vérifier} other {# points à vérifier}}",
+      "expiries": "{count, plural, one {# expiration} other {# expirations}}"
     }
   }
 }

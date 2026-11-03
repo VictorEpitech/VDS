@@ -7,6 +7,7 @@ import { Icon, type IconName } from "../components/Icon";
 import { StatusBadge, type ScreenState } from "../components/StatusBadge";
 import { ActiveOverrides } from "../features/overrides/ActiveOverrides";
 import { OnboardingCard } from "../features/onboarding/OnboardingCard";
+import { NextChanges } from "../features/planning/NextChanges";
 import { useAppUrl } from "../lib/runtime-config";
 import { useFleetSummary, useMedia, usePlaylists, useSchedules, useSites } from "../lib/queries";
 
@@ -116,6 +117,7 @@ export function Home() {
           <p className="meta">{t("home.stats.sites", { count: sites.data?.length ?? 0 })}</p>
         </Stat>
       </div>
+      <NextChanges />
       <ActiveOverrides />
     </>
   );

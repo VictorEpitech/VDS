@@ -108,3 +108,32 @@ export function timeFormatter(lang: string, tz: string) {
   };
 }
 export type Fmt = ReturnType<typeof timeFormatter>;
+
+/** Ajoute n mois à une date en conservant le jour (borné au dernier jour du mois d'arrivée). */
+export function addMonths(date: string, n: number): string {
+  const [y, mo, d] = date.split("-").map(Number) as [number, number, number];
+  const total = y * 12 + (mo - 1) + n;
+  const ny = Math.floor(total / 12);
+  const nm = (total % 12) + 1;
+  const last = new Date(Date.UTC(ny, nm, 0)).getUTCDate();
+  return dateKey({ y: ny, mo: nm, d: Math.min(d, last) });
+}
+
+/** Les 6 semaines (42 jours) qui couvrent le mois de `date`, la première commençant le jour `first` de la semaine. */
+export function monthGridDays(date: string, first: number): string[] {
+  const [y, mo] = date.split("-").map(Number) as [number, number];
+  const start = weekStart(dateKey({ y, mo, d: 1 }), first);
+  return Array.from({ length: 42 }, (_, i) => addDays(start, i));
+}
+
+/** `HH:MM` (heure murale du fuseau) d'un instant. */
+export function wallTime(ms: number, tz: string): string {
+  const w = wallClock(ms, tz);
+  return `${pad(w.h)}:${pad(w.mi)}`;
+}
+
+/** Jour de la semaine murale (0 = lundi ... 6 = dimanche) d'un instant, pour pré-remplir un créneau. */
+export function wallWeekdayIndex(ms: number, tz: string): number {
+  const w = wallClock(ms, tz);
+  return (new Date(Date.UTC(w.y, w.mo - 1, w.d)).getUTCDay() + 6) % 7;
+}

@@ -101,7 +101,7 @@ export function vdsMockServer(): Plugin {
   const powerMock = createPowerMock(diffusionMock.world);
   const provisionMock = createProvisionMock(diffusionMock.world);
   const fleetMock = createFleetMock(diffusionMock.world);
-  const planningMock = createPlanningMock(diffusionMock.world);
+  const planningMock = createPlanningMock(diffusionMock.world, fleetMock.forcedOn);
   const diffusion = async (req: IncomingMessage, res: ServerResponse, route: string, query: URLSearchParams): Promise<boolean> =>
     (await fleetMock(req, res, route)) || (await planningMock(req, res, route, query)) || (await provisionMock(req, res, route, query)) || (await powerMock(req, res, route, query)) || diffusionMock(req, res, route, query);
 

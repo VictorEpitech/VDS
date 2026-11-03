@@ -15,6 +15,7 @@ export type SourceRef = S["SourceRef"];
 export type ContentRef = S["ContentRef"];
 export type Loser = S["Loser"];
 export type PlanningAt = S["AtOut"];
+export type ChangeOut = S["ChangeOut"];
 export type PriorityLevel = NonNullable<SourceRef["priority_level"]>;
 export type ReasonCode = Segment["reason"] extends infer R ? Exclude<R, null> : never;
 export type TargetType = "screen" | "group" | "site";
@@ -30,8 +31,8 @@ export const parseTarget = (raw: string | null): Target | null => {
 };
 export const targetParam = (t: Target): string => `${t.type}:${t.id}`;
 
-export type PlanningView = "day" | "week" | "list";
-export const VIEWS: readonly PlanningView[] = ["day", "week", "list"];
+export type PlanningView = "day" | "week" | "month" | "list";
+export const VIEWS: readonly PlanningView[] = ["day", "week", "month", "list"];
 
 /** Valeurs créées par défaut pour chaque niveau (docs/architecture-planning.md §3) ; la bande reste calculée par le serveur. */
 export const LEVEL_DEFAULT: Record<PriorityLevel, number> = { background: -100, normal: 0, high: 100 };
@@ -43,11 +44,23 @@ export const planningKeys = {
   at: (t: Target, at: string) => ["planning", "at", targetParam(t), at] as const,
 };
 
-export function usePlanningTimeline(target: Target | null, from: string, to: string) {
+export interface TimelineOptions {
+  /** Écrans par page (100 maximum côté serveur). */
+  limit?: number;
+  cursor?: string | null;
+  /** Explications des perdants : inutile pour les lignes de ressources (l'inspecteur les donne à la demande). */
+  explain?: boolean;
+}
+
+export function usePlanningTimeline(target: Target | null, from: string, to: string, opts: TimelineOptions = {}) {
   const api = useApi();
+  const { limit = 100, cursor = null, explain = true } = opts;
   return useQuery({
-    queryKey: target ? planningKeys.timeline(target, from, to) : ["planning", "timeline", "none"],
-    queryFn: () => api.get<Timeline>(`/planning/timeline?target_type=${target!.type}&target_id=${target!.id}&from=${from}&to=${to}&explain=true`),
+    queryKey: target ? [...planningKeys.timeline(target, from, to), limit, cursor, explain] : ["planning", "timeline", "none"],
+    queryFn: () =>
+      api.get<Timeline>(
+        `/planning/timeline?target_type=${target!.type}&target_id=${target!.id}&from=${from}&to=${to}&explain=${explain}&limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
+      ),
     enabled: target !== null,
     placeholderData: keepPreviousData,
   });

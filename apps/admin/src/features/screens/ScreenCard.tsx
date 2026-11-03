@@ -168,6 +168,11 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
             <dt>{t("screens.card.schedule")}</dt> <dd>{schedule}</dd>
           </div>
         ) : null}
+        {playback?.next_change_at ? (
+          <div>
+            <dt>{t("screens.card.next_change")}</dt> <dd>{fmt(playback.next_change_at, { timeStyle: "short", dateStyle: "short" })}</dd>
+          </div>
+        ) : null}
       </dl>
       {playback?.source === "override" ? (
         <div className="override-line">

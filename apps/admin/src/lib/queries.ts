@@ -253,12 +253,6 @@ export function useFleetSummary(opts: { refetchInterval?: number } = {}) {
   return useQuery({ queryKey: keys.fleetSummary, queryFn: () => api.get<FleetSummary>("/fleet/summary"), refetchInterval: opts.refetchInterval });
 }
 
-/** Programmation active de chaque écran (résolue côté serveur, aucune résolution dans le front). */
-export function usePlayback() {
-  const api = useApi();
-  return useQuery({ queryKey: ["fleet", "playback"] as const, queryFn: () => api.get<ScreenPlayback[]>("/fleet/playback"), refetchInterval: 60_000 });
-}
-
 /** Version d'application disponible et état de chaque écran (administrateur seulement). */
 export function useFleetApk(enabled: boolean) {
   const api = useApi();

@@ -8,7 +8,7 @@ import { PlanningPage } from "../features/planning/PlanningPage";
 import { planningKeys } from "../features/planning/planning";
 import { PriorityBadge } from "../features/planning/parts";
 import { dayRanges } from "../features/schedule/rules";
-import { ScheduleForm, type ScheduleDraft } from "../features/schedule/ScheduleForm";
+import { ScheduleWizard, type ScheduleDraft, type SchedulePrefill } from "../features/schedule/ScheduleWizard";
 import { useApi } from "../lib/api";
 import { keys, useAllGroups, usePlaylists, useSchedules, useScreens, useSites, type Schedule } from "../lib/queries";
 
@@ -22,9 +22,11 @@ export function Schedules() {
   const groups = useAllGroups();
   const playlists = usePlaylists();
   const [form, setForm] = useState<"new" | Schedule | null>(null);
+  const [prefill, setPrefill] = useState<SchedulePrefill | undefined>(undefined);
 
   const done = async () => {
     setForm(null);
+    setPrefill(undefined);
     await Promise.all([qc.invalidateQueries({ queryKey: keys.schedules }), qc.invalidateQueries({ queryKey: planningKeys.all })]);
   };
   const save = useMutation({
@@ -59,7 +61,7 @@ export function Schedules() {
       <div className="page-head">
         <h1>{t("schedules.title")}</h1>
         {form === null ? (
-          <button type="button" className="btn btn-filled" onClick={() => { save.reset(); setForm("new"); }}>
+          <button type="button" className="btn btn-filled" onClick={() => { save.reset(); setPrefill(undefined); setForm("new"); }}>
             <Icon name="add" />
             {t("schedules.create")}
           </button>
@@ -68,6 +70,11 @@ export function Schedules() {
       <p className="lead">{t("schedules.intro")}</p>
       <ActiveOverrides />
       <PlanningPage
+        onCreate={(p) => {
+          save.reset();
+          setPrefill(p);
+          setForm("new");
+        }}
         onEdit={(id) => {
           const found = schedules.data?.find((x) => x.id === id);
           if (found) {
@@ -77,8 +84,9 @@ export function Schedules() {
         }}
       />
       {form !== null ? (
-        <ScheduleForm
-          key={form === "new" ? "new" : form.id}
+        <ScheduleWizard
+          key={form === "new" ? `new-${prefill ? `${prefill.target.id}-${prefill.date}-${prefill.rule.start}` : ""}` : form.id}
+          prefill={form === "new" ? prefill : undefined}
           schedule={form === "new" ? undefined : form}
           screens={screens.data ?? []}
           groups={groups.data ?? []}
@@ -87,7 +95,7 @@ export function Schedules() {
           pending={save.isPending}
           error={save.error}
           onSubmit={(d) => save.mutate(d)}
-          onCancel={() => setForm(null)}
+          onCancel={() => { setForm(null); setPrefill(undefined); }}
         />
       ) : null}
       <h2>{t("schedules.all")}</h2>
@@ -98,7 +106,7 @@ export function Schedules() {
           icon="schedule"
           action={
             form === null ? (
-              <button type="button" className="btn btn-filled" onClick={() => { save.reset(); setForm("new"); }}>
+              <button type="button" className="btn btn-filled" onClick={() => { save.reset(); setPrefill(undefined); setForm("new"); }}>
                 <Icon name="add" />
                 {t("schedules.create")}
               </button>

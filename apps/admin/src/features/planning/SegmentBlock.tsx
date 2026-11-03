@@ -13,13 +13,15 @@ interface Props {
   row: number;
   onSelect: (block: Block) => void;
   onFocusBlock: (key: string) => void;
+  /** Un clic sur un créneau vide ouvre l'assistant de programmation (pas de glisser-déposer). */
+  creates?: boolean;
 }
 
 /**
  * Bloc de la grille : aplat tonal + bordure, aucune ombre. L'état se lit par l'icône et le libellé, jamais par la couleur seule :
  * `scheduled_off` atténué (Secondary), `overridden` (Tertiary + icône), `off` vide bordé, brouillon pointillé, masqué hachuré.
  */
-export function SegmentBlock({ block, fmt, tabbable, selected, row, onSelect, onFocusBlock }: Props) {
+export function SegmentBlock({ block, fmt, tabbable, selected, row, onSelect, onFocusBlock, creates = false }: Props) {
   const { t } = useTranslation();
   const src = useSourceText();
   const { segment, lane } = block;
@@ -35,7 +37,7 @@ export function SegmentBlock({ block, fmt, tabbable, selected, row, onSelect, on
     state = segment.state;
     stateLabel = t(`planning.segment_state.${segment.state}`);
     name = segment.state === "scheduled_off" ? t("states.scheduled_off") : segment.state === "off" ? t("planning.segment_state.off") : (segment.content?.name ?? segment.source.name ?? stateLabel);
-    icon = segment.state === "overridden" ? "overridden" : segment.state === "scheduled_off" ? "scheduled_off" : null;
+    icon = segment.state === "overridden" ? "overridden" : segment.state === "scheduled_off" ? "scheduled_off" : creates && segment.state === "off" ? "add" : null;
     if (segment.state === "off" || segment.state === "scheduled_off") level = null;
   } else {
     state = lane?.effective_ratio === 0 || block.maskedBy ? "masked" : "candidate";
@@ -50,6 +52,7 @@ export function SegmentBlock({ block, fmt, tabbable, selected, row, onSelect, on
     stateLabel,
     source && source.kind !== "none" ? `${t("planning.block.source")} ${src.label(source)}, ${src.origin(source)}` : "",
     draft ? t("planning.draft") : "",
+    creates && segment?.state === "off" ? t("planning.block.create_hint") : "",
   ]
     .filter(Boolean)
     .join(". ");

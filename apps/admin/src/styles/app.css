@@ -1146,7 +1146,7 @@ fieldset.field > legend {
   justify-content: space-between;
   gap: var(--vds-space-3);
   padding: var(--vds-space-3) var(--vds-space-4);
-  border: 1px solid var(--vds-outline-variant);
+  border: 1px solid var(--vds-outline);
   border-radius: var(--vds-radius-md);
   background: var(--vds-surface);
 }
@@ -2126,4 +2126,211 @@ fieldset.field > legend {
     position: sticky;
     inset-block-start: var(--vds-space-4);
   }
+}
+
+/* --- Planning P2 : lignes de ressources, vue Mois, assistant de programmation --- */
+.rt-viewport {
+  max-block-size: 28rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.rt-body {
+  margin-block-end: 0;
+}
+
+.rt-row {
+  position: absolute;
+  inset-inline: 0;
+  box-sizing: border-box;
+}
+
+.rt-row .tl-label {
+  justify-content: center;
+  padding-block: 0;
+}
+
+.rt-row .tl-label .link-like {
+  padding-inline: 0;
+}
+
+.tz-id {
+  font-family: var(--vds-font-mono);
+  font-size: 0.75rem;
+}
+
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vds-space-3);
+}
+
+.month-grid {
+  min-inline-size: 38rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.month-row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.month-head > div {
+  padding: var(--vds-space-2);
+  color: var(--vds-on-surface-variant);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  text-align: center;
+}
+
+.month-cell {
+  min-inline-size: 0;
+  border-block-start: 1px solid var(--vds-outline);
+  border-inline-start: 1px solid var(--vds-outline);
+}
+
+.month-cell[data-out] .month-day {
+  background: var(--vds-surface-2);
+}
+
+.month-day {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--vds-space-1);
+  inline-size: 100%;
+  min-block-size: 6.5rem;
+  padding: var(--vds-space-1);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--vds-on-surface);
+  font: inherit;
+  font-size: 0.8125rem;
+  text-align: start;
+  cursor: pointer;
+}
+
+.month-cell[data-today] .month-day {
+  outline: 2px solid var(--vds-primary);
+  outline-offset: -2px;
+}
+
+.month-num {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.month-cell[data-today] .month-num::after {
+  content: " •";
+}
+
+.month-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-inline-size: 0;
+}
+
+.month-seg {
+  display: flex;
+  align-items: center;
+  gap: var(--vds-space-1);
+  min-inline-size: 0;
+  padding-inline: var(--vds-space-1);
+  border-inline-start: 3px solid var(--vds-primary);
+  background: color-mix(in srgb, var(--vds-primary) 16%, var(--vds-surface));
+  color: var(--vds-on-surface);
+}
+
+.month-seg[data-state="overridden"] {
+  border-inline-start-color: var(--vds-tertiary);
+  background: color-mix(in srgb, var(--vds-tertiary) 24%, var(--vds-surface));
+}
+
+.month-seg .vds-icon {
+  flex: none;
+  inline-size: 1em;
+  block-size: 1em;
+}
+
+.month-more {
+  color: var(--vds-on-surface-variant);
+  font-variant-numeric: tabular-nums;
+}
+
+.month-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vds-space-1);
+  margin-block-start: auto;
+}
+
+.month-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding-inline: var(--vds-space-1);
+  border: 1px solid var(--vds-outline);
+  border-radius: var(--vds-radius-pill);
+  background: var(--vds-surface);
+  font-variant-numeric: tabular-nums;
+}
+
+.month-badge .vds-icon {
+  inline-size: 1em;
+  block-size: 1em;
+}
+
+.wizard-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-3);
+  margin: 0;
+  padding: var(--vds-space-3) 0 0;
+  border: 0;
+  border-block-start: 1px solid var(--vds-outline);
+}
+
+.wizard-step > legend {
+  padding-inline-end: var(--vds-space-2);
+  font-weight: 700;
+}
+
+.templates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vds-space-2);
+}
+
+.templates .btn-day {
+  min-block-size: var(--vds-touch-target);
+}
+
+.wizard-preview {
+  padding: var(--vds-space-3);
+  border: 1px solid var(--vds-outline);
+  border-radius: var(--vds-radius-md);
+  background: var(--vds-surface-2);
+}
+
+.wizard-preview h3,
+.wizard-preview h4 {
+  margin-block: 0 var(--vds-space-2);
+}
+
+.preview-changes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-2);
+  margin-block-end: var(--vds-space-3);
+}
+
+.rows-compact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-2);
 }
