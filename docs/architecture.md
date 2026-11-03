@@ -356,6 +356,8 @@ Mises en page multi-zones, calques et forçage de zone (lot 4, vds-core 1.9.0 ad
 ### Planning : calendrier, aperçu, simulation (décision 2 novembre 2026)
 Voir `docs/architecture-planning.md`. Résolveur unique extrait de `ScheduleBuilder` (`resolve()` pur, mode `explain`), endpoints admin `/api/v1/planning/{timeline,at,simulate}`, niveaux de priorité par bandes, aucune résolution dans l'admin. Sans bump vds-core.
 
+Droits par site et groupe (lot J, décisions du 2026-11-03) : périmètre éditeur par nœuds organisation/site/groupe, contenus partitionnés par propriétaire, nouvel éditeur sans périmètre, pas d'admin de site en V1 ; voir `docs/architecture-droits.md`.
+
 | Objet | Contenu |
 | --- | --- |
 | Media | image, vidéo ≤ 4K (son on/off), PDF → pages, URL |
