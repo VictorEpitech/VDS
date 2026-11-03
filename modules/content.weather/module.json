@@ -1,0 +1,52 @@
+{
+  "id": "content.weather",
+  "version": "0.1.0",
+  "core": ">=1.12 <2.0",
+  "kind": "content-type",
+  "name": {
+    "fr": "Météo",
+    "en": "Weather"
+  },
+  "description": {
+    "fr": "Affiche la météo d'un lieu (MET Norway, sans clé). Le serveur récupère les données ; le player garde le dernier état connu hors ligne.",
+    "en": "Shows the weather for a place (MET Norway, no key). The server fetches the data; the player keeps the last known state offline."
+  },
+  "targets": [
+    "server",
+    "player",
+    "admin"
+  ],
+  "entrypoints": {
+    "server": "server.module:ContentWeather"
+  },
+  "requires": {},
+  "capabilities": [
+    "content.weather"
+  ],
+  "permissions": [
+    "net.outbound",
+    "content.feeds"
+  ],
+  "events": {
+    "listens": [],
+    "emits": []
+  },
+  "config": {
+    "$ref": "config.schema.json"
+  },
+  "assets": "assets",
+  "content": {
+    "item_schema": "item.schema.json",
+    "player": {
+      "element": "vds-content-weather",
+      "script": "assets/player.js"
+    },
+    "requires_network": false
+  },
+  "i18n": [
+    "fr",
+    "en"
+  ],
+  "author": "V-Tech",
+  "signature": null
+}

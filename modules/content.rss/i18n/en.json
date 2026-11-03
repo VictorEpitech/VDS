@@ -1,0 +1,65 @@
+{
+  "module": {
+    "name": "RSS feed",
+    "description": "Shows the headlines of an RSS or Atom feed (text only). The server fetches the feed; the player keeps the last known state offline."
+  },
+  "config": {
+    "content_rss": {
+      "allowed_hosts": {
+        "title": "Allowed domains",
+        "description": "List of allowed domain names. Empty: any public https host is accepted."
+      },
+      "refresh_min": {
+        "title": "Refresh (min)",
+        "description": "Interval between two fetches of a feed (5 minutes minimum)."
+      },
+      "max_bytes": {
+        "title": "Maximum feed size (bytes)",
+        "description": "A larger feed is refused (2 MiB at most)."
+      }
+    }
+  },
+  "item": {
+    "content_rss": {
+      "url": {
+        "title": "Feed address",
+        "description": "https address of an RSS 2.0 or Atom feed. Feeds on a private network are not reachable."
+      },
+      "max_items": {
+        "title": "Number of articles",
+        "description": "Number of articles shown (1 to 10)."
+      },
+      "display": {
+        "title": "Display",
+        "description": "Article list or scrolling ticker."
+      },
+      "item_duration_s": {
+        "title": "Time per article (s)",
+        "description": "In list mode, the item duration is the number of articles multiplied by this time."
+      },
+      "show_date": {
+        "title": "Show date",
+        "description": "Shows each article's publication date."
+      },
+      "max_age_s": {
+        "title": "Maximum age (s)",
+        "description": "Beyond this, when offline, data is considered stale and the item is skipped."
+      }
+    }
+  },
+  "errors": {
+    "content_rss": {
+      "invalid_url": "Invalid address (https required).",
+      "host_not_allowed": "Domain not allowed.",
+      "same_origin": "The address points to the VDS server itself.",
+      "invalid_feed": "Unreadable feed (RSS 2.0 or Atom expected).",
+      "xml_refused": "Feed refused (dangerous XML content).",
+      "invalid_max_items": "Invalid number of articles (1 to 10).",
+      "invalid_duration": "Invalid time per article.",
+      "invalid_max_age": "Invalid maximum age.",
+      "invalid_display": "Invalid display mode.",
+      "invalid_show_date": "Invalid value for the date display.",
+      "not_ready": "Module not initialised."
+    }
+  }
+}

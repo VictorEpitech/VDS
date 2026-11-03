@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "label",
+    "latitude",
+    "longitude"
+  ],
+  "properties": {
+    "label": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "title": "item.content_weather.label.title",
+      "description": "item.content_weather.label.description",
+      "x-vds-level": "simple"
+    },
+    "latitude": {
+      "type": "number",
+      "minimum": -90,
+      "maximum": 90,
+      "title": "item.content_weather.latitude.title",
+      "description": "item.content_weather.latitude.description",
+      "x-vds-level": "simple"
+    },
+    "longitude": {
+      "type": "number",
+      "minimum": -180,
+      "maximum": 180,
+      "title": "item.content_weather.longitude.title",
+      "description": "item.content_weather.longitude.description",
+      "x-vds-level": "simple"
+    },
+    "days": {
+      "type": "integer",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 3,
+      "title": "item.content_weather.days.title",
+      "description": "item.content_weather.days.description",
+      "x-vds-level": "simple"
+    },
+    "units": {
+      "type": "string",
+      "enum": [
+        "metric",
+        "imperial"
+      ],
+      "default": "metric",
+      "title": "item.content_weather.units.title",
+      "description": "item.content_weather.units.description",
+      "x-vds-level": "advanced"
+    },
+    "max_age_s": {
+      "type": "integer",
+      "default": 21600,
+      "minimum": 600,
+      "maximum": 604800,
+      "title": "item.content_weather.max_age_s.title",
+      "description": "item.content_weather.max_age_s.description",
+      "x-vds-level": "advanced"
+    }
+  }
+}

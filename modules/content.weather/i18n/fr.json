@@ -1,0 +1,57 @@
+{
+  "module": {
+    "name": "Météo",
+    "description": "Affiche la météo d'un lieu (MET Norway, sans clé). Le serveur récupère les données ; le player garde le dernier état connu hors ligne."
+  },
+  "config": {
+    "content_weather": {
+      "refresh_min": {
+        "title": "Rafraîchissement (min)",
+        "description": "Intervalle entre deux mises à jour des prévisions (30 minutes au minimum, conformément aux conditions de MET Norway)."
+      },
+      "contact": {
+        "title": "Contact (conditions MET Norway)",
+        "description": "Adresse e-mail ou site ajouté à l'identifiant envoyé à MET Norway, qui l'exige pour joindre l'exploitant en cas de problème."
+      }
+    }
+  },
+  "item": {
+    "content_weather": {
+      "label": {
+        "title": "Nom du lieu",
+        "description": "Libellé affiché (le lieu n'est pas déduit des coordonnées)."
+      },
+      "latitude": {
+        "title": "Latitude",
+        "description": "En degrés décimaux, de -90 à 90 (ex. 48.8566)."
+      },
+      "longitude": {
+        "title": "Longitude",
+        "description": "En degrés décimaux, de -180 à 180 (ex. 2.3522)."
+      },
+      "days": {
+        "title": "Nombre de jours",
+        "description": "Aujourd'hui seulement (1) ou jusqu'à 3 jours de prévisions."
+      },
+      "units": {
+        "title": "Unités",
+        "description": "Métriques (°C) ou impériales (°F)."
+      },
+      "max_age_s": {
+        "title": "Ancienneté maximale (s)",
+        "description": "Au-delà, hors ligne, les données sont jugées périmées et l'élément est sauté."
+      }
+    }
+  },
+  "errors": {
+    "content_weather": {
+      "invalid_location": "Coordonnées invalides.",
+      "invalid_label": "Nom du lieu requis.",
+      "invalid_days": "Nombre de jours invalide (1 à 3).",
+      "invalid_units": "Unités invalides.",
+      "invalid_max_age": "Ancienneté maximale invalide.",
+      "invalid_response": "Réponse de MET Norway inexploitable.",
+      "not_ready": "Module non initialisé."
+    }
+  }
+}

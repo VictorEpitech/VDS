@@ -1,0 +1,57 @@
+{
+  "module": {
+    "name": "Weather",
+    "description": "Shows the weather for a place (MET Norway, no key). The server fetches the data; the player keeps the last known state offline."
+  },
+  "config": {
+    "content_weather": {
+      "refresh_min": {
+        "title": "Refresh (min)",
+        "description": "Interval between two forecast updates (30 minutes minimum, as required by MET Norway terms)."
+      },
+      "contact": {
+        "title": "Contact (MET Norway terms)",
+        "description": "Email address or website appended to the identifier sent to MET Norway, which requires it to reach the operator if needed."
+      }
+    }
+  },
+  "item": {
+    "content_weather": {
+      "label": {
+        "title": "Place name",
+        "description": "Displayed label (the place is not derived from the coordinates)."
+      },
+      "latitude": {
+        "title": "Latitude",
+        "description": "In decimal degrees, from -90 to 90 (e.g. 48.8566)."
+      },
+      "longitude": {
+        "title": "Longitude",
+        "description": "In decimal degrees, from -180 to 180 (e.g. 2.3522)."
+      },
+      "days": {
+        "title": "Number of days",
+        "description": "Today only (1) or up to 3 days of forecast."
+      },
+      "units": {
+        "title": "Units",
+        "description": "Metric (°C) or imperial (°F)."
+      },
+      "max_age_s": {
+        "title": "Maximum age (s)",
+        "description": "Beyond this, when offline, data is considered stale and the item is skipped."
+      }
+    }
+  },
+  "errors": {
+    "content_weather": {
+      "invalid_location": "Invalid coordinates.",
+      "invalid_label": "Place name required.",
+      "invalid_days": "Invalid number of days (1 to 3).",
+      "invalid_units": "Invalid units.",
+      "invalid_max_age": "Invalid maximum age.",
+      "invalid_response": "Unusable response from MET Norway.",
+      "not_ready": "Module not initialised."
+    }
+  }
+}

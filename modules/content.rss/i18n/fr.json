@@ -1,0 +1,65 @@
+{
+  "module": {
+    "name": "Flux RSS",
+    "description": "Affiche les titres d'un flux RSS ou Atom (texte seul). Le serveur récupère le flux ; le player garde le dernier état connu hors ligne."
+  },
+  "config": {
+    "content_rss": {
+      "allowed_hosts": {
+        "title": "Domaines autorisés",
+        "description": "Liste de noms de domaine autorisés. Vide : tout hôte public en https est accepté."
+      },
+      "refresh_min": {
+        "title": "Rafraîchissement (min)",
+        "description": "Intervalle entre deux récupérations d'un flux (5 minutes au minimum)."
+      },
+      "max_bytes": {
+        "title": "Taille maximale d'un flux (octets)",
+        "description": "Un flux plus gros est refusé (2 Mio au maximum)."
+      }
+    }
+  },
+  "item": {
+    "content_rss": {
+      "url": {
+        "title": "Adresse du flux",
+        "description": "Adresse https d'un flux RSS 2.0 ou Atom. Les flux d'un réseau privé ne sont pas accessibles."
+      },
+      "max_items": {
+        "title": "Nombre d'articles",
+        "description": "Nombre d'articles affichés (1 à 10)."
+      },
+      "display": {
+        "title": "Affichage",
+        "description": "Liste d'articles ou bandeau défilant."
+      },
+      "item_duration_s": {
+        "title": "Durée par article (s)",
+        "description": "En mode liste, la durée de l'élément est le nombre d'articles multiplié par cette durée."
+      },
+      "show_date": {
+        "title": "Afficher la date",
+        "description": "Affiche la date de publication de chaque article."
+      },
+      "max_age_s": {
+        "title": "Ancienneté maximale (s)",
+        "description": "Au-delà, hors ligne, les données sont jugées périmées et l'élément est sauté."
+      }
+    }
+  },
+  "errors": {
+    "content_rss": {
+      "invalid_url": "Adresse invalide (https requis).",
+      "host_not_allowed": "Domaine non autorisé.",
+      "same_origin": "L'adresse pointe vers le serveur VDS lui-même.",
+      "invalid_feed": "Flux illisible (RSS 2.0 ou Atom attendu).",
+      "xml_refused": "Flux refusé (contenu XML dangereux).",
+      "invalid_max_items": "Nombre d'articles invalide (1 à 10).",
+      "invalid_duration": "Durée par article invalide.",
+      "invalid_max_age": "Ancienneté maximale invalide.",
+      "invalid_display": "Mode d'affichage invalide.",
+      "invalid_show_date": "Valeur invalide pour l'affichage de la date.",
+      "not_ready": "Module non initialisé."
+    }
+  }
+}

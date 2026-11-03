@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "allowed_hosts": {
+      "type": "array",
+      "default": [],
+      "title": "config.content_rss.allowed_hosts.title",
+      "description": "config.content_rss.allowed_hosts.description",
+      "x-vds-level": "advanced",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "x-vds-scopes": [
+        "organization"
+      ]
+    },
+    "refresh_min": {
+      "type": "integer",
+      "default": 15,
+      "minimum": 5,
+      "maximum": 1440,
+      "title": "config.content_rss.refresh_min.title",
+      "description": "config.content_rss.refresh_min.description",
+      "x-vds-level": "advanced",
+      "x-vds-scopes": [
+        "organization"
+      ]
+    },
+    "max_bytes": {
+      "type": "integer",
+      "default": 1048576,
+      "minimum": 10240,
+      "maximum": 2097152,
+      "title": "config.content_rss.max_bytes.title",
+      "description": "config.content_rss.max_bytes.description",
+      "x-vds-level": "advanced",
+      "x-vds-scopes": [
+        "organization"
+      ]
+    }
+  }
+}
