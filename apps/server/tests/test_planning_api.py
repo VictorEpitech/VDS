@@ -200,6 +200,40 @@ async def test_at(admin: AsyncClient, p: str) -> None:
     )
 
 
+async def test_at_override_wins_then_expires(admin: AsyncClient, p: str) -> None:
+    """Forçage actif : état overridden, source override, retour à la programmation à l'échéance."""
+    w = await world(admin, p)
+    await sched(admin, p, w["pl_site"], "site", w["site"], "Site")
+    r = await admin.post(
+        f"{p}/api/v1/overrides",
+        json={
+            "target_type": "screen",
+            "target_id": w["scr"],
+            "playlist_id": w["pl_scr"],
+            "duration_minutes": 60,
+        },
+        headers=SAME,
+    )
+    assert r.status_code == 201, r.text
+    ov = r.json()
+    try:
+        q = {"target_type": "screen", "target_id": w["scr"]}
+        row = (await admin.get(f"{p}/api/v1/planning/at", params=q)).json()["screens"][0]
+        seg = row["segment"]
+        assert seg["state"] == "overridden" and seg["source"]["kind"] == "override"
+        assert seg["source"]["id"] == ov["id"] and seg["content"]["name"] == "PlEcran"
+        assert row["next_change_at"] is not None
+        after = datetime.fromisoformat(row["next_change_at"]) + timedelta(minutes=1)
+        later = (
+            await admin.get(
+                f"{p}/api/v1/planning/at", params={**q, "at": after.isoformat()}
+            )
+        ).json()["screens"][0]["segment"]
+        assert later["state"] != "overridden" and later["source"]["kind"] != "override"
+    finally:
+        await admin.post(f"{p}/api/v1/overrides/{ov['id']}/stop", headers=SAME)
+
+
 class Counter:
     def __init__(self) -> None:
         self.n = 0
