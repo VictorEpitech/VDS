@@ -14,7 +14,7 @@ NEW = {"user.scope_changed", "user.role_changed"}
 
 
 def test_version() -> None:
-    assert CORE_API_VERSION in {"1.10.0", "1.11.0", "1.12.0"}
+    assert CORE_API_VERSION in {"1.10.0", "1.11.0", "1.12.0", "1.13.0"}
 
 
 def test_events_1_10_additive() -> None:

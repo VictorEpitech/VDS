@@ -84,7 +84,8 @@ class UploadLimitMiddleware:
                 await send(m)
             return
         if int(raw) > maximum:
-            for m in _error(413, "media.too_large", {"limit": maximum - OVERHEAD, "size": int(raw)}):
+            params = {"limit": maximum - OVERHEAD, "size": int(raw)}
+            for m in _error(413, "media.too_large", params):
                 await send(m)
             return
         received = 0

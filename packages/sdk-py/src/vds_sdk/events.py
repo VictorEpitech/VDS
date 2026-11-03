@@ -279,3 +279,38 @@ CORE_EVENTS_1_12: frozenset[str] = CORE_EVENTS_1_11 | frozenset(
 )
 
 CRITICAL_EVENTS_1_12: frozenset[str] = CRITICAL_EVENTS_1_11
+
+# --- vds-core 1.13.0 (additif) : validation de publication ------------------------------
+# Payloads `v: 1`. Nouveau domaine `publication`. Aucun événement critique, aucun abonné par
+# défaut (point d'accroche notifier). `entity_type` : playlist | layout | schedule.
+CORE_EVENT_DOMAINS_1_13: frozenset[str] = CORE_EVENT_DOMAINS_1_12 | {"publication"}
+
+CORE_EVENT_PAYLOAD_1_13: dict[str, tuple[str, ...]] = {
+    **CORE_EVENT_PAYLOAD_1_12,
+    "publication.submitted": ("v", "entity_type", "entity_id", "rev", "actor_id", "comment"),
+    "publication.withdrawn": ("v", "entity_type", "entity_id", "rev", "actor_id"),
+    "publication.approved": (
+        "v",
+        "entity_type",
+        "entity_id",
+        "rev",
+        "actor_id",
+        "author_id",
+        "auto",
+    ),
+    "publication.rejected": (
+        "v",
+        "entity_type",
+        "entity_id",
+        "rev",
+        "actor_id",
+        "author_id",
+        "comment",
+    ),
+}
+
+CORE_EVENTS_1_13: frozenset[str] = CORE_EVENTS_1_12 | frozenset(
+    set(CORE_EVENT_PAYLOAD_1_13) - set(CORE_EVENT_PAYLOAD_1_12)
+)
+
+CRITICAL_EVENTS_1_13: frozenset[str] = CRITICAL_EVENTS_1_12
