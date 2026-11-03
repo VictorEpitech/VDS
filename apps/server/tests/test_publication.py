@@ -206,6 +206,10 @@ async def test_dependencies_and_blocked_publication(
     assert blocked.json()["code"] == "publication.dependency_unpublished"
     assert blocked.json()["params"]["deps"] == [{"entity_type": "playlist", "entity_id": pl}]
     url = pub_url(p, "schedule", sid, "/approve")
+    # la dépendance doit être soumise : un brouillon n'est jamais publié d'office
+    still = await post(admin, url, expected_rev=rev, include_dependencies=True)
+    assert still.status_code == 409 and still.json()["code"] == "publication.dependency_unpublished"
+    await post(editor, pub_url(p, "playlist", pl, "/submit"))
     ok = await post(admin, url, expected_rev=rev, include_dependencies=True)
     assert ok.status_code == 200 and ok.json()["state"] == "published"
     assert (await state(admin, p, "playlist", pl))["state"] == "published"

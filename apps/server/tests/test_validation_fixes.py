@@ -81,7 +81,10 @@ async def test_ephemeral_playlist_not_reachable_via_playlists(
     assert (add.status_code, add.json()["code"]) == (404, "playlist.not_found")
     assert (await admin.patch(url, json={"name": "x"}, headers=SAME)).status_code == 404
     assert (await admin.delete(url, headers=SAME)).status_code == 404
-    assert await live.items() == 1  # le forçage joue toujours
+    rows = await sql(
+        migrated_db_url, "SELECT count(*) FROM playlist_item WHERE playlist_id = :i", i=UUID(eph)
+    )
+    assert rows[0][0] == 1  # la playlist éphémère est intacte (l'élément du forçage seulement)
 
 
 # --- 2 : approve + include_dependencies n'approuve que les dépendances soumises ------------------
@@ -199,20 +202,30 @@ async def test_blocked_by_hides_out_of_scope_ids(
     world: World, admin: AsyncClient, p: str, migrated_db_url: str
 ) -> None:
     ids, cl = world.ids, world.clients
+    pa = UUID(ids["pA"])
     await sql(
         migrated_db_url,
         "UPDATE publication SET snapshot = NULL, state = 'draft' "
         "WHERE entity_type = 'playlist' AND entity_id = :i",
-        i=UUID(ids["pB"]),
-    )  # playlist du site B jamais publiée
+        i=pa,
+    )  # playlist du site A jamais publiée
     r = await admin.post(
         f"{p}/api/v1/schedules",
-        json={"name": "S", "playlist_id": ids["pB"], "target_type": "site", "target_id": ids["A"]},
+        json={"name": "S", "playlist_id": ids["pA"], "target_type": "site", "target_id": ids["A"]},
         headers=SAME,
     )
     assert r.status_code == 201, r.text
     sid = r.json()["id"]
+    inside = await cl["ed_A"].get(pub_url(p, "schedule", sid))
+    assert inside.json()["blocked_by"] == [{"entity_type": "playlist", "entity_id": ids["pA"]}]
+    # la playlist change de site (hors du périmètre de ed_A) : son identifiant n'est plus exposé
+    await sql(
+        migrated_db_url,
+        "UPDATE playlist SET owner_site_id = :b WHERE id = :i",
+        b=UUID(ids["B"]),
+        i=pa,
+    )
+    hidden = await cl["ed_A"].get(pub_url(p, "schedule", sid))
+    assert hidden.status_code == 200, hidden.text
+    assert hidden.json()["blocked_by"] == []
     assert (await state(admin, p, "schedule", sid))["blocked_by"] != []
-    seen = await cl["ed_A"].get(pub_url(p, "schedule", sid))
-    assert seen.status_code == 200, seen.text
-    assert seen.json()["blocked_by"] == []

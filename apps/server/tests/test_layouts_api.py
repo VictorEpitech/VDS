@@ -248,19 +248,15 @@ async def test_playlist_and_media_purge_detach_and_bump_revision(
     pl = await mk_playlist(admin, p, "Zone")
     media = await make_media(migrated_db_url)
     lay = await mk_layout(admin, p, "L", zone("a", playlist_id=pl), background_media_id=str(media))
-    seen: list[Event] = []
-
-    async def on(e: Event) -> None:
-        seen.append(e)
-
-    app.state.runtime.bus.subscribe("layout.updated", on)
-    assert (await admin.delete(f"{p}/api/v1/playlists/{pl}", headers=SAME)).status_code == 204
+    # l'instantané publié de la mise en page référence la playlist (zone) et le média (fond) :
+    # ni l'un ni l'autre ne se supprime tant que la mise en page est publiée
+    r = await admin.delete(f"{p}/api/v1/playlists/{pl}", headers=SAME)
+    assert (r.status_code, r.json()["code"]) == (409, "playlist.in_use")
+    assert r.json()["params"]["layouts"] == [lay["id"]]
+    r = await admin.delete(f"{p}/api/v1/media/{media}", headers=SAME)
+    assert (r.status_code, r.json()["code"]) == (409, "media.in_use")
     got = (await admin.get(f"{p}/api/v1/layouts/{lay['id']}")).json()
-    assert got["zones"][0]["playlist_id"] is None and got["revision"] == 2
-    assert (await admin.delete(f"{p}/api/v1/media/{media}", headers=SAME)).status_code == 204
-    got = (await admin.get(f"{p}/api/v1/layouts/{lay['id']}")).json()
-    assert got["background_media_id"] is None and got["revision"] == 3
-    assert [e.payload["revision"] for e in seen] == [2, 3]
+    assert got["zones"][0]["playlist_id"] == pl and got["revision"] == 1
 
 
 # --- document player ------------------------------------------------------------------

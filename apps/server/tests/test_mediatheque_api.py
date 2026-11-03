@@ -350,7 +350,7 @@ async def test_playlists_page_tags_expiry(
     assert "playlist.restored" in await audit_actions(migrated_db_url)
     assert (await editor.post(f"{p}/api/v1/schedules", json=body, headers=SAME)).status_code == 201
     # le forçage de contenu isolé ne laisse pas de playlist éphémère dans la liste
-    eph = await editor.post(
+    eph = await admin.post(
         f"{p}/api/v1/overrides",
         json={
             "target_type": "site",
