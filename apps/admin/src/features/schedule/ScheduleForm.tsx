@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { ErrorAlert } from "../../components/feedback";
 import { Icon } from "../../components/Icon";
 import type { Group, Playlist, Schedule, Screen, Site } from "../../lib/queries";
+import { PriorityPicker } from "../planning/PriorityPicker";
 import { RulesEditor } from "./RulesEditor";
 import { ruleProblem } from "./rules";
 
@@ -160,6 +161,8 @@ export function ScheduleForm({ schedule, screens, groups, sites, playlists, pend
         </select>
         {err("playlist", t("errors.field_required"), `${uid}-playlist-e`)}
       </div>
+
+      <PriorityPicker value={priority} onChange={setPriority} savedLevel={schedule?.priority_level} savedValue={schedule?.priority} />
 
       <RulesEditor
         rules={rules}

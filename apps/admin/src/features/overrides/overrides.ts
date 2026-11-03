@@ -36,6 +36,7 @@ export function refreshAfterOverride(qc: QueryClient): Promise<unknown> {
   return Promise.all([
     qc.invalidateQueries({ queryKey: ["overrides"] }),
     qc.invalidateQueries({ queryKey: ["fleet"] }),
+    qc.invalidateQueries({ queryKey: ["planning"] }),
     qc.invalidateQueries({ queryKey: ["power", "screen"] }),
   ]);
 }

@@ -742,8 +742,19 @@
     },
     "priority": {
       "label": "Priority",
-      "help": "When several schedules overlap on a target, the highest priority wins.",
-      "short": "Priority {priority}"
+      "help": "In a conflict, the most specific target wins (screen before group, group before site). Priority then decides between two schedules of equal specificity.",
+      "level": {
+        "label": "Priority level",
+        "background": "Background",
+        "normal": "Normal",
+        "high": "High"
+      },
+      "level_help": {
+        "background": "Plays only when nothing else is planned at the same target level.",
+        "normal": "Usual level.",
+        "high": "Wins over Normal and Background schedules at the same target level."
+      },
+      "custom": "Custom value: {value}. The level is shown after saving."
     },
     "period": {
       "from": "Valid from",
@@ -755,7 +766,8 @@
     "delete": {
       "action": "Delete",
       "confirm": "Delete {name}"
-    }
+    },
+    "all": "All schedules"
   },
   "provenance": {
     "here": "Set here",
@@ -1601,5 +1613,147 @@
     "add": "Add tag",
     "help": "Letters, digits, spaces, dashes; 32 characters at most.",
     "list": "Tags: {tags}"
+  },
+  "planning": {
+    "title": "Planning",
+    "intro": "What plays, when, and why. The server computes the result: this view only displays it.",
+    "toolbar": "Planning settings",
+    "no_target": "Choose a screen, a group or a site to see its planning.",
+    "no_screen": "No screen on this target.",
+    "screen_picker": "Screen shown",
+    "precedence": "The most specific target comes before priority: screen, then group, then site, then organization. Priority only decides between schedules at the same level of specificity.",
+    "now_at": "Now {time}",
+    "masked_by": "Masked by {name}",
+    "never_wins": "Masked: never plays",
+    "draft": "Draft",
+    "scope": {
+      "screen": "screen",
+      "group": "group",
+      "site": "site",
+      "organization": "organization"
+    },
+    "source": {
+      "none": "No schedule",
+      "here": "Set here",
+      "inherited": "Inherited: {scope}",
+      "kind": {
+        "schedule": "Schedule",
+        "override": "Override",
+        "power_plan": "Power plan",
+        "none": "None",
+        "draft": "Draft"
+      }
+    },
+    "segment_state": {
+      "play": "Playing",
+      "off": "Nothing to play",
+      "scheduled_off": "Scheduled off",
+      "overridden": "Override active",
+      "candidate": "Scheduled"
+    },
+    "reason": {
+      "override_active": "An override is active.",
+      "scheduled_off": "Scheduled off.",
+      "higher_priority": "Higher priority.",
+      "more_specific": "More specific target.",
+      "tie_break": "Exact tie: automatic tie-break.",
+      "outside_rules": "Outside the weekly time slots.",
+      "outside_period": "Outside the validity period.",
+      "disabled": "Schedule disabled.",
+      "content_expired": "Content expired.",
+      "content_empty": "Playlist has nothing playable.",
+      "no_candidate": "No applicable schedule.",
+      "only_candidate": "Only applicable schedule.",
+      "condition_unmet": "Condition not met."
+    },
+    "conflicts": {
+      "title": "{count, plural, one {# thing to check} other {# things to check}}"
+    },
+    "conflict": {
+      "never_plays": "“{name}” never plays in this period{hasOther, select, yes {: masked by “{other}”} other {}}.",
+      "partially_masked": "“{name}” is partly masked{hasOther, select, yes { by “{other}”} other {}} ({count, plural, one {# time} other {# times}}, first on {when}).",
+      "ambiguous_tie": "“{name}” and “{other}” have the same priority and the same target specificity on overlapping slots: the choice is arbitrary ({count, plural, one {# time} other {# times}}, first on {when}).",
+      "content_expires": "The content of “{name}” expires during a slot (first on {when}).",
+      "content_empty": "“{name}” has nothing playable ({count, plural, one {# slot} other {# slots}}, first on {when}).",
+      "gap": "Gap in playback after “{name}” ({count, plural, one {# time} other {# times}}, first on {when}).",
+      "severity": {
+        "info": "Information",
+        "warning": "To check"
+      },
+      "action": {
+        "edit_priority": "Change the priority",
+        "extend_expiry": "Extend the playlist expiry",
+        "open_media": "Open the media library",
+        "edit": "Edit the schedule"
+      }
+    },
+    "block": {
+      "range": "from {range}",
+      "source": "Source:"
+    },
+    "chain": {
+      "title": "Why",
+      "none": "No other schedule competing.",
+      "line": "{loser} is masked by {winner}: {reason}"
+    },
+    "expiry": {
+      "label": "{kind, select, playlist_expires {Playlist “{name}” expires} media_expires {Media “{name}” expires} other {Expiry}}",
+      "aria": "{kind, select, playlist_expires {Playlist “{name}” expires} media_expires {Media “{name}” expires} other {Expiry}} at {time}{impact, select, gap {: playback gap} fallback {: falls back to another schedule} other {}}. Open."
+    },
+    "inspector": {
+      "title": "What plays on {when}",
+      "instant": "Date and time",
+      "open_schedule": "Open the schedule",
+      "next_change": "Next change: {when}",
+      "no_change": "No change planned"
+    },
+    "tz": {
+      "differs": "Times shown in the site time zone ({tz}), which differs from this browser.",
+      "mixed": "Screens on this target do not all share a time zone. Times shown in {tz}.",
+      "shown_in": "Site time ({tz})"
+    },
+    "views": {
+      "label": "View",
+      "day": "Day",
+      "week": "Week",
+      "list": "List"
+    },
+    "nav": {
+      "prev": "Previous",
+      "next": "Next",
+      "prev_day": "Previous day",
+      "next_day": "Next day",
+      "prev_week": "Previous week",
+      "next_week": "Next week",
+      "date": "Date",
+      "now": "Now"
+    },
+    "legend": {
+      "title": "Legend",
+      "overridden": "Override active",
+      "scheduled_off": "Scheduled off (muted)",
+      "off": "Nothing to play (empty outlined block)",
+      "masked": "Masked by another schedule (hatched)",
+      "draft": "Draft (dotted border)",
+      "expiry": "Content expiry"
+    },
+    "list": {
+      "empty": "Nothing scheduled in this period.",
+      "caption": "What plays on {name}",
+      "inspect": "See what plays on {when}: {name}",
+      "start": "Start",
+      "end": "End",
+      "content": "Content",
+      "source": "Source",
+      "level": "Level",
+      "state": "State"
+    },
+    "grid": {
+      "help": "Planning grid: left and right arrows to change slot, up and down to change track, Home and End for the edges, Page Up and Page Down to change day, Enter to see what plays, N for now.",
+      "aria": "Planning for {day}"
+    },
+    "track": {
+      "effective": "Effective"
+    }
   }
 }

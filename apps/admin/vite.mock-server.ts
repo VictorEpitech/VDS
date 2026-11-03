@@ -10,6 +10,7 @@ import path from "node:path";
 import type { Connect, Plugin } from "vite";
 import { createDiffusionMock } from "./vite.mock-diffusion";
 import { createFleetMock } from "./vite.mock-fleet";
+import { createPlanningMock } from "./vite.mock-planning";
 import { createPowerMock } from "./vite.mock-power";
 import { createProvisionMock } from "./vite.mock-provision";
 
@@ -100,8 +101,9 @@ export function vdsMockServer(): Plugin {
   const powerMock = createPowerMock(diffusionMock.world);
   const provisionMock = createProvisionMock(diffusionMock.world);
   const fleetMock = createFleetMock(diffusionMock.world);
+  const planningMock = createPlanningMock(diffusionMock.world);
   const diffusion = async (req: IncomingMessage, res: ServerResponse, route: string, query: URLSearchParams): Promise<boolean> =>
-    (await fleetMock(req, res, route)) || (await provisionMock(req, res, route, query)) || (await powerMock(req, res, route, query)) || diffusionMock(req, res, route, query);
+    (await fleetMock(req, res, route)) || (await planningMock(req, res, route, query)) || (await provisionMock(req, res, route, query)) || (await powerMock(req, res, route, query)) || diffusionMock(req, res, route, query);
 
   async function api(req: IncomingMessage, res: ServerResponse, route: string, query: URLSearchParams): Promise<void> {
     const method = req.method ?? "GET";

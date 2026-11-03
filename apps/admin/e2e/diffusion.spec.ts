@@ -79,9 +79,11 @@ test("parcours éditeur : média, playlist, programmation, appairage et révocat
   // Programmation : cible écran, playlist, créneau en semaine.
   await page.goto(url(info, "/schedules"));
   await page.getByRole("button", { name: "Nouvelle programmation" }).first().click();
+  // Le formulaire est distinct de la barre d'outils du planning, qui a aussi un sélecteur de cible.
+  const sform = page.getByRole("form", { name: "Nouvelle programmation" });
   await page.getByLabel("Nom", { exact: true }).fill(schedule);
-  await page.getByRole("combobox", { name: "Écran" }).selectOption({ label: "Hall d'accueil" });
-  await expect(page.getByText("1 écran touché")).toBeVisible();
+  await sform.getByRole("combobox", { name: "Écran" }).selectOption({ label: "Hall d'accueil" });
+  await expect(sform.getByText("1 écran touché")).toBeVisible();
   await page.getByLabel("Playlist", { exact: true }).selectOption({ label: playlist });
   await page.getByRole("button", { name: "Ajouter un créneau" }).click();
   await page.getByRole("button", { name: "samedi" }).click();
@@ -173,7 +175,7 @@ test("anglais : médiathèque, programmation et appairage", async ({ page }, inf
   await page.goto(url(info, "/schedules"));
   await expect(page.getByRole("heading", { level: 1, name: "Schedule" })).toBeVisible();
   await page.getByRole("button", { name: "New schedule" }).first().click();
-  await expect(page.getByRole("radio", { name: "Screen" })).toBeChecked();
+  await expect(page.getByRole("form", { name: "New schedule" }).getByRole("radio", { name: "Screen" })).toBeChecked();
   await page.getByRole("button", { name: "Add a slot" }).click();
   await expect(page.getByRole("button", { name: "Saturday" })).toBeVisible();
   await page.goto(url(info, "/pairing"));

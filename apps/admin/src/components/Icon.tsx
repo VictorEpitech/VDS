@@ -39,6 +39,10 @@ export const ICON_NAMES = [
   "maintenance",
   "home",
   "more",
+  "priority_low",
+  "priority_high",
+  "expiry",
+  "next",
 ] as const;
 export type IconName = (typeof ICON_NAMES)[number];
 

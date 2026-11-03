@@ -742,8 +742,19 @@
     },
     "priority": {
       "label": "Priorité",
-      "help": "En cas de conflit sur une même cible, la priorité la plus haute l'emporte.",
-      "short": "Priorité {priority}"
+      "help": "En cas de conflit, la cible la plus précise l'emporte (écran avant groupe, groupe avant site). La priorité départage ensuite deux programmations de même précision.",
+      "level": {
+        "label": "Niveau de priorité",
+        "background": "Fond",
+        "normal": "Normale",
+        "high": "Prioritaire"
+      },
+      "level_help": {
+        "background": "Joue seulement si rien d'autre n'est prévu au même niveau de cible.",
+        "normal": "Niveau habituel.",
+        "high": "L'emporte sur les programmations Normale et Fond du même niveau de cible."
+      },
+      "custom": "Valeur personnalisée : {value}. Le niveau s'affiche après l'enregistrement."
     },
     "period": {
       "from": "Valable à partir du",
@@ -755,7 +766,8 @@
     "delete": {
       "action": "Supprimer",
       "confirm": "Supprimer {name}"
-    }
+    },
+    "all": "Toutes les programmations"
   },
   "provenance": {
     "here": "Défini ici",
@@ -1601,5 +1613,147 @@
     "add": "Ajouter le tag",
     "help": "Lettres, chiffres, espaces, tirets ; 32 caractères au maximum.",
     "list": "Tags : {tags}"
+  },
+  "planning": {
+    "title": "Planning",
+    "intro": "Ce qui joue, quand, et pourquoi. Le serveur calcule le résultat : cette vue ne fait que l'afficher.",
+    "toolbar": "Réglages du planning",
+    "no_target": "Choisissez un écran, un groupe ou un site pour voir son planning.",
+    "no_screen": "Aucun écran sur cette cible.",
+    "screen_picker": "Écran affiché",
+    "precedence": "La cible la plus précise passe avant la priorité : écran, puis groupe, puis site, puis organisation. La priorité ne départage que des programmations de même précision.",
+    "now_at": "Maintenant {time}",
+    "masked_by": "Masqué par {name}",
+    "never_wins": "Masqué : ne joue jamais",
+    "draft": "Brouillon",
+    "scope": {
+      "screen": "écran",
+      "group": "groupe",
+      "site": "site",
+      "organization": "organisation"
+    },
+    "source": {
+      "none": "Aucune programmation",
+      "here": "Défini ici",
+      "inherited": "Hérité : {scope}",
+      "kind": {
+        "schedule": "Programmation",
+        "override": "Forçage",
+        "power_plan": "Plan d'alimentation",
+        "none": "Aucune",
+        "draft": "Brouillon"
+      }
+    },
+    "segment_state": {
+      "play": "Diffusion",
+      "off": "Rien à diffuser",
+      "scheduled_off": "Hors service prévu",
+      "overridden": "Forçage en cours",
+      "candidate": "Programmé"
+    },
+    "reason": {
+      "override_active": "Un forçage est en cours.",
+      "scheduled_off": "Hors service prévu.",
+      "higher_priority": "Priorité plus haute.",
+      "more_specific": "Cible plus précise.",
+      "tie_break": "Égalité parfaite : départage automatique.",
+      "outside_rules": "Hors des créneaux de la semaine.",
+      "outside_period": "Hors de la période de validité.",
+      "disabled": "Programmation désactivée.",
+      "content_expired": "Contenu expiré.",
+      "content_empty": "Playlist sans élément jouable.",
+      "no_candidate": "Aucune programmation applicable.",
+      "only_candidate": "Seule programmation applicable.",
+      "condition_unmet": "Condition non remplie."
+    },
+    "conflicts": {
+      "title": "{count, plural, one {# point à vérifier} other {# points à vérifier}}"
+    },
+    "conflict": {
+      "never_plays": "« {name} » ne joue jamais sur cette période{hasOther, select, yes { : masquée par « {other} »} other {}}.",
+      "partially_masked": "« {name} » est masquée en partie{hasOther, select, yes { par « {other} »} other {}} ({count, plural, one {# fois} other {# fois}}, la première le {when}).",
+      "ambiguous_tie": "« {name} » et « {other} » ont la même priorité et la même précision de cible sur des créneaux qui se chevauchent : le choix est arbitraire ({count, plural, one {# fois} other {# fois}}, la première le {when}).",
+      "content_expires": "Le contenu de « {name} » expire pendant un créneau (première fois le {when}).",
+      "content_empty": "« {name} » n'a aucun élément jouable ({count, plural, one {# créneau} other {# créneaux}}, le premier le {when}).",
+      "gap": "Trou de diffusion après « {name} » ({count, plural, one {# fois} other {# fois}}, la première le {when}).",
+      "severity": {
+        "info": "Information",
+        "warning": "À vérifier"
+      },
+      "action": {
+        "edit_priority": "Modifier la priorité",
+        "extend_expiry": "Prolonger l'expiration de la playlist",
+        "open_media": "Ouvrir la médiathèque",
+        "edit": "Modifier la programmation"
+      }
+    },
+    "block": {
+      "range": "de {range}",
+      "source": "Source :"
+    },
+    "chain": {
+      "title": "Pourquoi",
+      "none": "Aucune autre programmation en concurrence.",
+      "line": "{loser} est masqué par {winner} : {reason}"
+    },
+    "expiry": {
+      "label": "{kind, select, playlist_expires {Playlist « {name} » expire} media_expires {Média « {name} » expire} other {Expiration}}",
+      "aria": "{kind, select, playlist_expires {Playlist « {name} » expire} media_expires {Média « {name} » expire} other {Expiration}} à {time}{impact, select, gap { : trou de diffusion} fallback { : bascule sur une autre programmation} other {}}. Ouvrir."
+    },
+    "inspector": {
+      "title": "Ce qui joue le {when}",
+      "instant": "Date et heure",
+      "open_schedule": "Ouvrir la programmation",
+      "next_change": "Prochain changement : {when}",
+      "no_change": "Aucun changement prévu"
+    },
+    "tz": {
+      "differs": "Heures affichées dans le fuseau du site ({tz}), différent de celui de ce navigateur.",
+      "mixed": "Les écrans de cette cible n'ont pas tous le même fuseau. Heures affichées dans le fuseau {tz}.",
+      "shown_in": "Heure du site ({tz})"
+    },
+    "views": {
+      "label": "Vue",
+      "day": "Jour",
+      "week": "Semaine",
+      "list": "Liste"
+    },
+    "nav": {
+      "prev": "Précédent",
+      "next": "Suivant",
+      "prev_day": "Jour précédent",
+      "next_day": "Jour suivant",
+      "prev_week": "Semaine précédente",
+      "next_week": "Semaine suivante",
+      "date": "Date",
+      "now": "Maintenant"
+    },
+    "legend": {
+      "title": "Légende",
+      "overridden": "Forçage en cours",
+      "scheduled_off": "Hors service prévu (atténué)",
+      "off": "Rien à diffuser (bloc vide bordé)",
+      "masked": "Masqué par une autre programmation (hachures)",
+      "draft": "Brouillon (bordure pointillée)",
+      "expiry": "Expiration d'un contenu"
+    },
+    "list": {
+      "empty": "Rien de programmé sur cette période.",
+      "caption": "Ce qui joue sur {name}",
+      "inspect": "Voir ce qui joue le {when} : {name}",
+      "start": "Début",
+      "end": "Fin",
+      "content": "Contenu",
+      "source": "Provenance",
+      "level": "Niveau",
+      "state": "État"
+    },
+    "grid": {
+      "help": "Grille du planning : flèches gauche et droite pour changer de créneau, haut et bas pour changer de piste, Début et Fin pour les bords, Page précédente et suivante pour changer de jour, Entrée pour voir ce qui joue, N pour maintenant.",
+      "aria": "Planning du {day}"
+    },
+    "track": {
+      "effective": "Effectif"
+    }
   }
 }

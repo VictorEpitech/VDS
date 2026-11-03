@@ -107,6 +107,8 @@ function loadContentTypes(): Json[] {
 }
 
 const now = () => new Date().toISOString();
+/** Bande d'affichage de la priorité (le vrai serveur la calcule ; ici pour la démo seulement). */
+const withLevel = (row: Json): Json => ({ ...row, priority_level: Number(row.priority ?? 0) < 0 ? "background" : Number(row.priority ?? 0) >= 100 ? "high" : "normal" });
 
 function readRaw(req: IncomingMessage): Promise<Buffer> {
   return new Promise((resolve) => {
@@ -505,26 +507,26 @@ export function createDiffusionMock() {
     }
 
     // --- programmations --------------------------------------------------
-    if (route === "/schedules" && method === "GET") return send(200, schedules), true;
+    if (route === "/schedules" && method === "GET") return send(200, schedules.map(withLevel)), true;
     if (route === "/schedules" && method === "POST") {
       const body = await json();
       const err = validateSchedule(body);
       if (err) return fail(...err), true;
       const row: ScheduleRow = { id: randomUUID(), enabled: true, priority: 0, rules: [], starts_on: null, ends_on: null, ...body, created_at: now(), updated_at: now() };
       schedules.push(row);
-      return send(201, row), true;
+      return send(201, withLevel(row)), true;
     }
     const sc = m(/^\/schedules\/([^/]+)$/);
     if (sc) {
       const row = schedules.find((s) => s.id === sc[1]);
       if (!row) return fail(404, "schedule.not_found"), true;
-      if (method === "GET") return send(200, row), true;
+      if (method === "GET") return send(200, withLevel(row)), true;
       if (method === "PATCH") {
         const body = await json();
         const err = validateSchedule({ ...row, ...body });
         if (err) return fail(...err), true;
         Object.assign(row, body, { updated_at: now() });
-        return send(200, row), true;
+        return send(200, withLevel(row)), true;
       }
       if (method === "DELETE") {
         schedules.splice(schedules.indexOf(row), 1);
@@ -533,7 +535,7 @@ export function createDiffusionMock() {
     }
     return false;
   };
-  return Object.assign(handle, { world: { sites, group, screens } });
+  return Object.assign(handle, { world: { sites, group, screens, schedules, playlists } });
 
   function validateProps(type: string, props: Json): [number, string, Json?] | null {
     const field = ITEM_MEDIA_FIELD[type];

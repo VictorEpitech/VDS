@@ -4,6 +4,9 @@ import { useTranslation } from "react-i18next";
 import { ConfirmAction, Empty, ErrorAlert, QueryStatus } from "../components/feedback";
 import { Icon } from "../components/Icon";
 import { ActiveOverrides } from "../features/overrides/ActiveOverrides";
+import { PlanningPage } from "../features/planning/PlanningPage";
+import { planningKeys } from "../features/planning/planning";
+import { PriorityBadge } from "../features/planning/parts";
 import { dayRanges } from "../features/schedule/rules";
 import { ScheduleForm, type ScheduleDraft } from "../features/schedule/ScheduleForm";
 import { useApi } from "../lib/api";
@@ -22,7 +25,7 @@ export function Schedules() {
 
   const done = async () => {
     setForm(null);
-    await qc.invalidateQueries({ queryKey: keys.schedules });
+    await Promise.all([qc.invalidateQueries({ queryKey: keys.schedules }), qc.invalidateQueries({ queryKey: planningKeys.all })]);
   };
   const save = useMutation({
     mutationFn: (d: ScheduleDraft) => (form && form !== "new" ? api.patch(`/schedules/${form.id}`, d) : api.post("/schedules", d)),
@@ -30,7 +33,7 @@ export function Schedules() {
   });
   const remove = useMutation({
     mutationFn: (s: Schedule) => api.delete(`/schedules/${s.id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.schedules }),
+    onSuccess: () => Promise.all([qc.invalidateQueries({ queryKey: keys.schedules }), qc.invalidateQueries({ queryKey: planningKeys.all })]),
   });
 
   const targetName = (s: Schedule): string => {
@@ -64,6 +67,15 @@ export function Schedules() {
       </div>
       <p className="lead">{t("schedules.intro")}</p>
       <ActiveOverrides />
+      <PlanningPage
+        onEdit={(id) => {
+          const found = schedules.data?.find((x) => x.id === id);
+          if (found) {
+            save.reset();
+            setForm(found);
+          }
+        }}
+      />
       {form !== null ? (
         <ScheduleForm
           key={form === "new" ? "new" : form.id}
@@ -78,6 +90,7 @@ export function Schedules() {
           onCancel={() => setForm(null)}
         />
       ) : null}
+      <h2>{t("schedules.all")}</h2>
       <QueryStatus query={schedules} />
       {remove.isError ? <ErrorAlert error={remove.error} /> : null}
       {schedules.isSuccess && schedules.data.length === 0 ? (
@@ -104,7 +117,7 @@ export function Schedules() {
                 {t(`schedules.target.${s.target_type}`)} : {targetName(s)} · {playlists.data?.items.find((p) => p.id === s.playlist_id)?.name ?? ""}
               </p>
               <p className="meta">
-                {rulesText(s)} · {t("schedules.priority.short", { priority: s.priority })}
+                {rulesText(s)} · <PriorityBadge level={s.priority_level} value={s.priority} />
                 {s.enabled ? "" : ` · ${t("schedules.disabled")}`}
               </p>
             </div>
