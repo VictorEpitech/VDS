@@ -157,8 +157,8 @@ const SVG_OPEN = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" 
 /** Code MET (avec ou sans suffixe jour/nuit) -> clé de ICONS ; repli sur « cloudy ». */
 function iconKey(code) {
   const c = String(code ?? "").replace("_polartwilight", "_day");
-  if (ICONS[c]) return c;
-  if (ICONS[`${c}_day`]) return `${c}_day`;
+  if (Object.hasOwn(ICONS, c)) return c;
+  if (Object.hasOwn(ICONS, `${c}_day`)) return `${c}_day`;
   return "cloudy";
 }
 

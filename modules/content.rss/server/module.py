@@ -193,12 +193,20 @@ class ContentRss(ContentType):
         limit = limit if isinstance(limit, int) and not isinstance(limit, bool) else None
         self._max_bytes = min(limit or DEFAULT_MAX_BYTES, HARD_MAX_BYTES)
 
+    def host_allowed(self, host: str) -> bool:
+        """`allowed_hosts` vide = tout hôte https public est accepté (comportement documenté) ;
+        sinon l'hôte doit être, ou dépendre d'un, hôte listé. Vérifié à chaque redirection."""
+        host = host.lower().rstrip(".")
+        if not self._allowed:
+            return True
+        return any(host == a or host.endswith("." + a) for a in self._allowed)
+
     def check_url(self, url: str) -> str:
         """Mêmes règles que content.url : https, liste blanche, jamais l'origine du VDS."""
         host = _host(url)
         if self._own_origin is not None and _origin(url) == self._own_origin:
             raise ContractError("content.rss.same_origin", host)
-        if self._allowed and not any(host == a or host.endswith("." + a) for a in self._allowed):
+        if not self.host_allowed(host):
             raise ContractError("content.rss.host_not_allowed", host)
         return url
 
@@ -237,5 +245,7 @@ class ContentRss(ContentType):
     async def fetch_feed(self, req: FeedRequest, http: SafeHttp) -> dict[str, Any]:
         await self._read_config()
         url = self.check_url(str(req.params.get("url") or ""))
-        resp = await http.get(url, max_bytes=self._max_bytes, accept=ACCEPT)
+        resp = await http.get(
+            url, max_bytes=self._max_bytes, accept=ACCEPT, allow_host=self.host_allowed
+        )
         return parse_feed(resp.body)

@@ -22,6 +22,8 @@ MAX_BYTES = 512 * 1024
 DEFAULT_REFRESH_MIN = 60
 MIN_REFRESH_MIN = 30
 MAX_DAYS = 3
+MAX_AGE_S = 604800
+MAX_CACHED = 200
 ATTRIBUTION = "MET Norway"
 _SUFFIXES = ("_day", "_night", "_polartwilight")
 
@@ -105,6 +107,8 @@ class ContentWeather(ContentType):
     def __init__(self) -> None:
         self._ctx: ModuleContext | None = None
         self._refresh_s = DEFAULT_REFRESH_MIN * 60
+        # (Last-Modified, données) par lieu : pour `If-Modified-Since` (conditions d'usage MET)
+        self._cache: dict[tuple[float, float], tuple[str, dict[str, Any]]] = {}
 
     async def setup(self, ctx: ModuleContext) -> None:
         self._ctx = ctx
@@ -138,7 +142,7 @@ class ContentWeather(ContentType):
         if units not in ("metric", "imperial"):
             raise ContractError("content.weather.invalid_units")
         max_age = props.get("max_age_s", 21600)
-        if not isinstance(max_age, int) or isinstance(max_age, bool) or max_age < 600:
+        if not isinstance(max_age, int) or isinstance(max_age, bool) or max_age < 600 or max_age > MAX_AGE_S:
             raise ContractError("content.weather.invalid_max_age")
         feed_id = await self._ctx.core.feeds.ensure(
             FeedRequest(params={"lat": lat, "lon": lon}, refresh_s=self._refresh_s)
@@ -160,12 +164,21 @@ class ContentWeather(ContentType):
         lat = _number(req.params.get("lat"), -90, 90, "content.weather.invalid_location")
         lon = _number(req.params.get("lon"), -180, 180, "content.weather.invalid_location")
         contact = str(cfg.get("contact") or "").strip()
+        if not contact:  # MET exige un contact identifiable : sans lui le module reste inactif
+            raise ContractError("content.weather.contact_required")
+        key = (lat, lon)
+        headers = {"User-Agent": contact}
+        known = self._cache.get(key)
+        if known is not None:
+            headers["If-Modified-Since"] = known[0]
         resp = await http.get(
             MET_URL.format(lat=lat, lon=lon),
             max_bytes=MAX_BYTES,
-            headers={"User-Agent": contact} if contact else None,
+            headers=headers,
             accept=("application/json",),
         )
+        if resp.status == 304 and known is not None:
+            return self._with_expiry(dict(known[1]), resp.headers.get("expires"))
         try:
             payload = json.loads(resp.body)
         except ValueError as exc:
@@ -173,7 +186,15 @@ class ContentWeather(ContentType):
         if not isinstance(payload, dict):
             raise ContractError("content.weather.invalid_response")
         data = normalize(payload)
-        expires = resp.headers.get("expires")
+        modified = resp.headers.get("last-modified")
+        if modified:
+            if len(self._cache) >= MAX_CACHED:
+                self._cache.clear()
+            self._cache[key] = (modified, dict(data))
+        return self._with_expiry(data, resp.headers.get("expires"))
+
+    @staticmethod
+    def _with_expiry(data: dict[str, Any], expires: str | None) -> dict[str, Any]:
         if expires:  # MET : ne pas redemander avant `Expires` (le noyau prend le maximum)
             try:
                 delta = (parsedate_to_datetime(expires) - datetime.now(UTC)).total_seconds()

@@ -10,7 +10,7 @@ Le serveur récupère le flux via le client sortant anti-SSRF du noyau, l'analys
 
 Organisation (niveau Avancé) :
 
-- `allowed_hosts` (défaut vide = tout hôte public en https) : liste blanche de domaines, sous-domaines compris. Relue à chaque récupération.
+- `allowed_hosts` (défaut vide = tout hôte public en https) : liste blanche de domaines, sous-domaines compris. Vide = aucune restriction d'hôte (comportement voulu). Relue à chaque récupération et vérifiée à chaque redirection.
 - `refresh_min` (défaut 15, minimum 5) : intervalle entre deux récupérations.
 - `max_bytes` (défaut 1 Mio, maximum 2 Mio) : taille maximale du flux.
 

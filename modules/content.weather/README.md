@@ -11,7 +11,7 @@ Le serveur interroge **MET Norway Locationforecast 2.0** (`api.met.no`, aucune c
 Organisation (niveau Avancé) :
 
 - `refresh_min` (défaut 60, minimum 30) : intervalle entre deux récupérations. Le serveur respecte aussi l'en-tête `Expires` de MET (jamais plus tôt).
-- `contact` (défaut vide) : adresse e-mail ou site ajouté au `User-Agent` envoyé à MET, qui l'exige pour joindre l'exploitant. Le `User-Agent` de base est `VDS/<version> (+<VDS_PUBLIC_ORIGIN>)`.
+- `contact` (**obligatoire** : sans lui le module reste inactif, `content.weather.contact_required`) : adresse e-mail ou site ajouté au `User-Agent` envoyé à MET, qui l'exige. `If-Modified-Since` est envoyé quand une réponse précédente a un `Last-Modified`. Le `User-Agent` de base est `VDS/<version> (+<VDS_PUBLIC_ORIGIN>)`.
 
 Élément : `label` (nom affiché), `latitude`, `longitude` (arrondies à 4 décimales), `days` (1 à 3), `units` (`metric` ou `imperial`, Avancé), `max_age_s` (défaut 21600, Avancé). Deux éléments au même lieu partagent le même flux.
 

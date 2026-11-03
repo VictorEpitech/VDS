@@ -51,6 +51,7 @@
       "invalid_units": "Unités invalides.",
       "invalid_max_age": "Ancienneté maximale invalide.",
       "invalid_response": "Réponse de MET Norway inexploitable.",
+      "contact_required": "Contact exigé par MET Norway : renseignez l'adresse de contact dans les réglages du module.",
       "not_ready": "Module non initialisé."
     }
   }
