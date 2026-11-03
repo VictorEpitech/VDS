@@ -662,6 +662,10 @@ Lot 2 : ces trois cas sont documentés ; un profil Compose `https` (service Cadd
 - Audit : `screen.kiosk.unlocked`, `screen.kiosk.locked`, `screen.kiosk.maintenance_started` (durée, motif), `screen.kiosk.maintenance_ended` (`actor_kind=user` ou `system` à expiration, détectée à la résolution). Pas de nouvel événement de bus : `config.changed` suffit.
 - Admin : badge « Kiosque déverrouillé » / « Maintenance jusqu'à HH:MM » dans la liste et la fiche écran, filtre, et avertissement « kiosque doux (Device Owner absent) » si `enforcement = soft` alors que `requested = locked`.
 
+### Commandes player et captures (lot I, vds-core 1.11.0, décision 2026-11-03)
+
+Remplace les commandes provisoires du heartbeat et lève le reste de L3-T5 (trames `cmd` sur `/ws/player`). Contrat, droits, captures, rétention, UI et découpage I0–I8 : `docs/architecture-commandes.md`.
+
 ## Données, sécurité, déploiement
 
 - PostgreSQL 17 ; médias disque local via module storage ; cache média sur l'agent.
