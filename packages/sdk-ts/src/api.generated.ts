@@ -702,6 +702,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/player/feeds/{feed_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Player Feed
+         * @description Dernier état connu d'un flux, lu par le player sur son propre serveur.
+         */
+        get: operations["player_feed_api_v1_player_feeds__feed_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/player/heartbeat": {
         parameters: {
             query?: never;
@@ -2546,6 +2566,23 @@ export interface components {
              */
             state: "on" | "off";
         };
+        /**
+         * FeedOut
+         * @description Réponse de `GET /api/v1/player/feeds/{feed_id}` (données déjà normalisées par le module).
+         */
+        FeedOut: {
+            /** Data */
+            data?: {
+                [key: string]: unknown;
+            };
+            /** Feed Id */
+            feed_id: string;
+            /**
+             * Fetched At
+             * Format: date-time
+             */
+            fetched_at: string;
+        };
         /** FleetApkOut */
         FleetApkOut: {
             available: components["schemas"]["AvailableApkOut"] | null;
@@ -3903,6 +3940,8 @@ export interface components {
             content_type: string;
             /** Duration Ms */
             duration_ms: number | null;
+            /** Feeds */
+            feeds?: string[];
             /** Id */
             id: string;
             /** Props */
@@ -6687,6 +6726,58 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PlayerCommandOut"][];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    player_feed_api_v1_player_feeds__feed_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                feed_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedOut"];
+                };
+            };
+            /** @description Flux connu mais jamais récupéré avec succès */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Données inchangées (If-None-Match) */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description feeds.unknown : flux absent de la programmation de l'écran */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

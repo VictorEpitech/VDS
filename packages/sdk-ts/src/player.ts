@@ -119,6 +119,8 @@ export interface PlaylistItem {
   requires_network: boolean;
   /** vds-core 1.8.0 : instant UTC (ISO 8601) à partir duquel l'élément est sauté (média expiré). */
   until?: string | null;
+  /** vds-core 1.12.0 : identifiants de flux de données à précharger (absent = aucun). */
+  feeds?: string[];
 }
 
 export interface AssetRef {
