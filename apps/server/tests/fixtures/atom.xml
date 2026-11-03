@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Flux Atom</title>
+  <updated>2026-11-03T09:00:00Z</updated>
+  <entry>
+    <title type="html">Entrée &lt;em&gt;un&lt;/em&gt;</title>
+    <link href="https://example.org/a"/>
+    <updated>2026-11-03T09:00:00Z</updated>
+    <summary type="html">&lt;p&gt;Résumé Atom&lt;/p&gt;</summary>
+  </entry>
+  <entry>
+    <title>Entrée deux</title>
+    <published>2026-11-02T08:00:00+02:00</published>
+    <content type="text">Contenu texte</content>
+  </entry>
+</feed>

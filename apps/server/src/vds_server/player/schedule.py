@@ -589,12 +589,13 @@ class ScheduleBuilder:
             found[key] = asset
         info = self._entry(item.content_type) or {}
         duration = item.duration_ms
+        feeds: list[str] = []
         instance = self._instance_of(item.content_type) if self._instance_of else None
         if isinstance(instance, ContentType):
             resolved = await self._to_player(instance, dict(item.props or {}), schema)
             if resolved is None:
                 return None
-            props, refs, found, spec_ms = resolved
+            props, refs, found, spec_ms, feeds = resolved
             duration = duration or spec_ms
         entry = {
             "id": f"it_{item.id}",
@@ -604,13 +605,15 @@ class ScheduleBuilder:
             "assets": refs,
             "requires_network": bool(info.get("requires_network", False)),
         }
+        if feeds:  # vds-core 1.12.0 : flux à précharger (absent = aucun)
+            entry["feeds"] = feeds
         if until is not None:
             entry["until"] = until.astimezone(UTC).isoformat().replace("+00:00", "Z")
         return entry, found
 
     async def _to_player(
         self, instance: ContentType, props: dict[str, Any], schema: dict[str, Any]
-    ) -> tuple[dict[str, Any], list[str], dict[str, Any], int | None] | None:
+    ) -> tuple[dict[str, Any], list[str], dict[str, Any], int | None, list[str]] | None:
         """Résolution par le module (pages PDF…) ; None si un média manque ou n'est pas prêt."""
         infos: dict[UUID, MediaInfo] = {}
         for name, spec in (schema.get("properties") or {}).items():
@@ -630,7 +633,8 @@ class ScheduleBuilder:
             if asset is None:
                 return None
             found[key] = asset
-        return spec_out.props, list(spec_out.assets), found, spec_out.duration_ms
+        feeds = list(dict.fromkeys(spec_out.feeds))
+        return spec_out.props, list(spec_out.assets), found, spec_out.duration_ms, feeds
 
     async def _media_info(self, media_id: UUID) -> MediaInfo | None:
         media = await self._s.get(Media, media_id)

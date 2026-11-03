@@ -537,6 +537,7 @@ class ScheduleRule(Base, Timestamps):
 
 from vds_server.db import (  # noqa: E402,F401  (tables lots 3, Premiers pas, forçage, commandes)
     models_command,
+    models_feed,
     models_onboarding,
     models_override,
     models_power,

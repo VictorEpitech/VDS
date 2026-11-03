@@ -9,6 +9,8 @@ from sqlalchemy import event, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from vds_sdk import Event, ModuleManifest, PermissionDenied
 from vds_sdk.server import Identity
+from vds_sdk.server.feeds import FeedRequest
+from vds_sdk.server.http import SafeHttp
 from vds_sdk.server.screens import ScreenCommandRequest
 
 from vds_server.commands.service import Actor, CommandCore
@@ -177,6 +179,17 @@ class _Screens:
             return row.id
 
 
+class _Feeds:
+    """`FeedsApi` (permission `content.feeds`) : le flux appartient au module appelant."""
+
+    def __init__(self, rt: "Runtime", module_id: str) -> None:
+        self._rt = rt
+        self._module_id = module_id
+
+    async def ensure(self, req: FeedRequest) -> str:
+        return await self._rt.feeds.ensure(self._module_id, req)
+
+
 class ModuleCore:
     def __init__(self, rt: "Runtime", manifest: ModuleManifest) -> None:
         self._rt = rt
@@ -217,3 +230,13 @@ class ModuleCore:
     def incidents(self) -> _Incidents:
         self._need("incidents.read")
         return _Incidents(self._rt)
+
+    @property
+    def safe_http(self) -> SafeHttp:
+        self._need("net.outbound")
+        return self._rt.safe_http
+
+    @property
+    def feeds(self) -> _Feeds:
+        self._need("content.feeds")
+        return _Feeds(self._rt, self._m.id)

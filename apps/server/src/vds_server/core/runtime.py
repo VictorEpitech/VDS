@@ -35,6 +35,8 @@ from vds_server.diffusion.sweeper import ContentSweeper
 from vds_server.discovery.service import DiscoveryEvents
 from vds_server.enrollment.local import LocalChannel
 from vds_server.events import CoreBus
+from vds_server.feeds.service import FeedService
+from vds_server.net.safe_http import CoreSafeHttp
 from vds_server.overrides.sweeper import SWEEP_INTERVAL_S, OverrideSweeper
 from vds_server.player.device_auth import DeviceAuth, bearer
 from vds_server.player.ratelimit import FailureLimiter
@@ -106,6 +108,12 @@ class Runtime:
         self.screenshot_gate = asyncio.Semaphore(2)  # réencodages d'images simultanés par worker
         self.capture_sweeper = CaptureSweeper(
             self.maker, self.bus, self.schemas, self.storage_backend
+        )
+        self.safe_http = CoreSafeHttp(
+            version=settings.version, public_origin=settings.public_origin
+        )  # client sortant anti-SSRF des modules (permission net.outbound)
+        self.feeds = FeedService(
+            self.maker, self.bus, self.registry.instance, lambda _module_id: self.safe_http
         )
         self.plan_pusher = PlanPusher(self.maker, self.schemas, self.command_queue)
         self.plan_pusher.register(self.bus.subscribe)
@@ -228,16 +236,20 @@ class Runtime:
 
         task = asyncio.create_task(pump())
         sweep_task = asyncio.create_task(sweep())
+        feeds_task = asyncio.create_task(self.feeds.run_forever())
         try:
             app.state.runtime = self
             yield
         finally:
             task.cancel()
             sweep_task.cancel()
+            feeds_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await task
             with contextlib.suppress(asyncio.CancelledError):
                 await sweep_task
+            with contextlib.suppress(asyncio.CancelledError):
+                await feeds_task
             await self.power_state.stop()
             await self.supervisor.stop()
             await self.agent_hub.stop()

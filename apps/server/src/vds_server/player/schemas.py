@@ -156,6 +156,7 @@ class PlayerItem(BaseModel):
     assets: list[str]
     requires_network: bool
     until: datetime | None = None  # vds-core 1.8.0 : fin de diffusion (média expirant)
+    feeds: list[str] = Field(default_factory=list)  # vds-core 1.12.0 : flux à précharger
 
 
 class PlayerPlaylist(BaseModel):

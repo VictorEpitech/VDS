@@ -1,5 +1,7 @@
 """Appairage, révocation et heartbeat des appareils."""
 
+import hashlib
+import re
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Annotated
@@ -14,6 +16,7 @@ from vds_server.core import audit
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
 from vds_server.core.runtime import Runtime
+from vds_server.feeds import schemas as fsc
 from vds_server.inventory import schemas as isc
 from vds_server.inventory.devices import screens_out
 from vds_server.player import schemas as sc
@@ -31,6 +34,7 @@ from vds_server.player.service import (
 )
 from vds_server.security.client_ip import client_ip
 
+FEED_ID_RE = re.compile(r"[0-9a-f]{32}")
 CLAIM_FAILURES = frozenset({404, 409, 410})
 
 
@@ -207,6 +211,45 @@ def build_router(rt: Runtime) -> APIRouter:
         if _etag_matches(request.headers.get("if-none-match"), etag):
             return Response(status_code=304, headers=headers)
         return JSONResponse(body, headers=headers)
+
+    @router.get(
+        "/player/feeds/{feed_id}",
+        response_model=fsc.FeedOut,
+        responses={
+            204: {"description": "Flux connu mais jamais récupéré avec succès"},
+            304: {"description": "Données inchangées (If-None-Match)"},
+            404: {"description": "feeds.unknown : flux absent de la programmation de l'écran"},
+        },
+    )
+    async def player_feed(
+        feed_id: str,
+        request: Request,
+        device: Device,
+        b: Builder,
+    ) -> Response:
+        """Dernier état connu d'un flux, lu par le player sur son propre serveur."""
+        row = await rt.feeds.get(feed_id) if FEED_ID_RE.fullmatch(feed_id) else None
+        if row is None:
+            raise ApiError("feeds.unknown", 404)
+        # le flux doit figurer dans la programmation résolue de CET écran (journée + lendemain)
+        body = await b.build(device.screen_id)
+        allowed = {
+            fid
+            for pl in body["playlists"].values()
+            for item in pl["items"]
+            for fid in item.get("feeds", [])
+        }
+        if feed_id not in allowed:
+            raise ApiError("feeds.unknown", 404)
+        if row.data is None or row.fetched_at is None:
+            return Response(status_code=204, headers={"Cache-Control": "private, no-cache"})
+        stamp = row.fetched_at.astimezone(UTC).isoformat().replace("+00:00", "Z")
+        etag = '"' + hashlib.sha256(f"{feed_id}:{stamp}".encode()).hexdigest()[:24] + '"'
+        headers = {"ETag": etag, "Cache-Control": "private, no-cache"}
+        if _etag_matches(request.headers.get("if-none-match"), etag):
+            return Response(status_code=304, headers=headers)
+        out = fsc.FeedOut(feed_id=feed_id, fetched_at=row.fetched_at, data=row.data)
+        return JSONResponse(out.model_dump(mode="json"), headers=headers)
 
     return router
 

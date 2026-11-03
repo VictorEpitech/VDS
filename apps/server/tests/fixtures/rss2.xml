@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Le Journal &amp; Co</title>
+    <link>https://example.org/</link>
+    <description>Actualités</description>
+    <item>
+      <title>Premier titre</title>
+      <link>https://example.org/1</link>
+      <description>&lt;p&gt;Un &lt;b&gt;résumé&lt;/b&gt; avec &lt;a href="javascript:alert(1)"&gt;lien&lt;/a&gt; et &lt;script&gt;alert(2)&lt;/script&gt;des entités &amp;amp; &amp;eacute;.&lt;/p&gt;&lt;img src="https://tracker.example/x.png"&gt;</description>
+      <pubDate>Tue, 03 Nov 2026 10:30:00 +0100</pubDate>
+    </item>
+    <item>
+      <title><![CDATA[Titre <i>CDATA</i> avec balises]]></title>
+      <description><![CDATA[<div>Texte <br/>CDATA <style>p{color:red}</style>propre</div>]]></description>
+      <pubDate>not a date</pubDate>
+    </item>
+    <item>
+      <title></title>
+      <description></description>
+    </item>
+    <item><title>Troisième</title></item>
+  </channel>
+</rss>
