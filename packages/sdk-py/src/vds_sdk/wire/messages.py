@@ -5,7 +5,7 @@ from __future__ import annotations
 import ipaddress
 from datetime import datetime
 from ipaddress import IPv4Network
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -29,7 +29,22 @@ AGENT_COMMANDS = (
     "discovery.scan",  # 1.5 : un agent 1.4 répond unknown_command
     "apk.update",  # 1.6 : un agent 1.5 répond unknown_command
 )
-PLAYER_COMMANDS = ("reload", "identify", "screenshot", "power.set", "power.probe")
+PLAYER_COMMANDS_1_2 = ("reload", "identify", "screenshot", "power.set", "power.probe")
+PLAYER_COMMANDS = (
+    *PLAYER_COMMANDS_1_2,
+    "restart",  # 1.11 : un player 1.10 ne l'annonce pas (capacités), répond unknown_command
+    "cache.resync",  # 1.11
+)
+# 1.11 : capacités annoncées par le player (heartbeat) ; absent = ("cmd.reload",)
+PlayerCapability = Literal[
+    "cmd.reload",
+    "cmd.identify",
+    "cmd.screenshot",
+    "cmd.restart.app",
+    "cmd.restart.device",
+    "cmd.cache.resync",
+]
+PLAYER_CAPABILITIES: tuple[str, ...] = get_args(PlayerCapability)
 CMD_STATUSES = ("ok", "failed", "expired", "rejected")
 POWER_REASONS = ("manual", "schedule", "exception", "alert")
 
@@ -231,6 +246,10 @@ class IdentifyArgs(_M):
     seconds: int = Field(10, ge=1, le=30)
 
 
+class RestartArgs(_M):
+    scope: Literal["app", "device"]
+
+
 class PlayerPowerSetArgs(_M):
     state: Literal["on", "off"]
     request_id: str
@@ -251,6 +270,8 @@ PLAYER_COMMAND_ARGS: dict[str, type[_M]] = {
     "reload": EmptyArgs,
     "identify": IdentifyArgs,
     "screenshot": EmptyArgs,
+    "restart": RestartArgs,
+    "cache.resync": EmptyArgs,
     "power.set": PlayerPowerSetArgs,
     "power.probe": EmptyArgs,
 }
@@ -302,6 +323,37 @@ class PlayerWelcome(_M):
 
 class ScheduleChanged(_M):
     revision: str
+
+
+# --- Player 1.11 : champs additifs du heartbeat (HTTP et WS), commandes, captures -------
+class PlayerCommandRef(_M):
+    """Élément de `commands` dans la réponse du heartbeat HTTP (même contenu que la trame `cmd`)."""
+
+    cmd_id: UUID
+    name: str
+    args: dict[str, Any] = {}
+    expires_at: datetime
+
+
+class PlayerHeartbeatExt(_M):
+    """Champs optionnels ajoutés par un player 1.11 à sa requête de heartbeat."""
+
+    capabilities: list[PlayerCapability] | None = None
+    boot_id: UUID | None = None
+    command_results: list[CmdResult] = Field(default=[], max_length=20)
+
+
+class PlayerHeartbeatAckExt(_M):
+    """Champs de la réponse du heartbeat HTTP (1.11)."""
+
+    commands: list[PlayerCommandRef] = Field(default=[], max_length=10)
+    results_acked: list[UUID] = []
+
+
+class ScreenshotSchedule(_M):
+    """Champ optionnel `screenshot` de la programmation résolue ; absent = désactivé."""
+
+    interval_min: int = Field(ge=5, le=1440)
 
 
 # type de trame -> modèle de data

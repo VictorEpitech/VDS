@@ -92,3 +92,28 @@ describe("contrat 1.10.0 (additif, droits par périmètre)", () => {
     expect(media.owner).toBeUndefined();
   });
 });
+
+describe("contrat 1.11.0 (additif, commandes player et captures)", () => {
+  it("sans adaptateur : capacités minimales ; adaptateur enregistré puis réinitialisé", async () => {
+    const a = await import("./adapter");
+    a.resetPlayerAdapter();
+    expect(a.getPlayerAdapter()).toBeNull();
+    expect(a.MINIMAL_CAPABILITIES).toEqual(["cmd.reload"]);
+    const adapter: import("./adapter").PlayerAdapter = {
+      id: "player.web",
+      capabilities: async () => ["cmd.reload", "cmd.identify"],
+      restart: async () => undefined,
+      screenshot: async () => { throw new Error("unavailable"); },
+    };
+    a.registerPlayerAdapter(adapter);
+    expect(await a.getPlayerAdapter()?.capabilities()).toContain("cmd.identify");
+    a.resetPlayerAdapter();
+  });
+
+  it("les payloads d'événements sont typés", () => {
+    const done: import("./events").PlayerCommandCompletedV1 = {
+      version: 1, command_id: "c", screen_id: null, name: "restart", status: "expired", code: null,
+    };
+    expect(done.status).toBe("expired");
+  });
+});

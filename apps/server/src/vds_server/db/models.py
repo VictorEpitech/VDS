@@ -535,5 +535,10 @@ class ScheduleRule(Base, Timestamps):
     end_minute: Mapped[int] = mapped_column(SmallInteger)
 
 
+from vds_server.db import (  # noqa: E402,F401  (tables lots 3, Premiers pas, forçage, commandes)
+    models_command,
+    models_onboarding,
+    models_override,
+    models_power,
+)
 from vds_server.db import models_layout as _models_layout  # noqa: E402,F401
-from vds_server.db import models_onboarding, models_override, models_power  # noqa: E402,F401  (tables lots 3, Premiers pas, forçage)

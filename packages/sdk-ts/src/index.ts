@@ -7,3 +7,4 @@ export * from "./content";
 export * from "./player";
 export * from "./power";
 export type * from "./events";
+export * from "./adapter";

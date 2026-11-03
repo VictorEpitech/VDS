@@ -16,6 +16,15 @@ def render() -> str:
     found: set[type[BaseModel]] = {Frame}
     for table in (messages.AGENT_FRAME_DATA, messages.PLAYER_FRAME_DATA):
         found.update(m for m in table.values() if m is not BaseModel)
+    found.update(
+        (
+            messages.PlayerCommandRef,
+            messages.PlayerHeartbeatExt,
+            messages.PlayerHeartbeatAckExt,
+            messages.ScreenshotSchedule,
+            messages.RestartArgs,
+        )
+    )
     models = sorted(found, key=lambda m: m.__name__)
     _, schema = models_json_schema([(m, "validation") for m in models], title="vds wire v1")
     schema["x-agent-commands"] = list(messages.AGENT_COMMANDS)

@@ -241,3 +241,23 @@ CORE_EVENTS_1_10: frozenset[str] = CORE_EVENTS_1_9 | frozenset(
 )
 
 CRITICAL_EVENTS_1_10: frozenset[str] = CRITICAL_EVENTS_1_9
+
+# --- vds-core 1.11.0 (additif) : commandes player et captures (lot I) -------------------
+# Payloads `version: 1`, émis par le service du noyau (jamais par le player). Nouveau domaine
+# `player`. `player.command_completed` : `status` in ok|failed|expired|rejected|cancelled,
+# `code` optionnel ; `screen.screenshot_captured` : `trigger` in on_demand|periodic.
+# Aucun événement critique ajouté. Aucun abonné en V1 (points d'accroche alertes/statistiques).
+CORE_EVENT_DOMAINS_1_11: frozenset[str] = CORE_EVENT_DOMAINS_1_10 | {"player"}
+
+CORE_EVENT_PAYLOAD_1_11: dict[str, tuple[str, ...]] = {
+    **CORE_EVENT_PAYLOAD_1_10,
+    "player.command_requested": ("command_id", "screen_id", "name", "actor_kind", "batch_id"),
+    "player.command_completed": ("command_id", "screen_id", "name", "status", "code"),
+    "screen.screenshot_captured": ("screenshot_id", "screen_id", "trigger", "captured_at"),
+}
+
+CORE_EVENTS_1_11: frozenset[str] = CORE_EVENTS_1_10 | frozenset(
+    set(CORE_EVENT_PAYLOAD_1_11) - set(CORE_EVENT_PAYLOAD_1_10)
+)
+
+CRITICAL_EVENTS_1_11: frozenset[str] = CRITICAL_EVENTS_1_10

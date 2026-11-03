@@ -576,6 +576,118 @@
       "title": "PlayerAuth",
       "type": "object"
     },
+    "PlayerCommandRef": {
+      "additionalProperties": false,
+      "description": "\u00c9l\u00e9ment de `commands` dans la r\u00e9ponse du heartbeat HTTP (m\u00eame contenu que la trame `cmd`).",
+      "properties": {
+        "args": {
+          "additionalProperties": true,
+          "default": {},
+          "title": "Args",
+          "type": "object"
+        },
+        "cmd_id": {
+          "format": "uuid",
+          "title": "Cmd Id",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "cmd_id",
+        "name",
+        "expires_at"
+      ],
+      "title": "PlayerCommandRef",
+      "type": "object"
+    },
+    "PlayerHeartbeatAckExt": {
+      "additionalProperties": false,
+      "description": "Champs de la r\u00e9ponse du heartbeat HTTP (1.11).",
+      "properties": {
+        "commands": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/PlayerCommandRef"
+          },
+          "maxItems": 10,
+          "title": "Commands",
+          "type": "array"
+        },
+        "results_acked": {
+          "default": [],
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Results Acked",
+          "type": "array"
+        }
+      },
+      "title": "PlayerHeartbeatAckExt",
+      "type": "object"
+    },
+    "PlayerHeartbeatExt": {
+      "additionalProperties": false,
+      "description": "Champs optionnels ajout\u00e9s par un player 1.11 \u00e0 sa requ\u00eate de heartbeat.",
+      "properties": {
+        "boot_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Boot Id"
+        },
+        "capabilities": {
+          "anyOf": [
+            {
+              "items": {
+                "enum": [
+                  "cmd.reload",
+                  "cmd.identify",
+                  "cmd.screenshot",
+                  "cmd.restart.app",
+                  "cmd.restart.device",
+                  "cmd.cache.resync"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Capabilities"
+        },
+        "command_results": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/CmdResult"
+          },
+          "maxItems": 20,
+          "title": "Command Results",
+          "type": "array"
+        }
+      },
+      "title": "PlayerHeartbeatExt",
+      "type": "object"
+    },
     "PlayerWelcome": {
       "additionalProperties": false,
       "properties": {
@@ -665,6 +777,24 @@
       "title": "PowerObserved",
       "type": "object"
     },
+    "RestartArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "scope": {
+          "enum": [
+            "app",
+            "device"
+          ],
+          "title": "Scope",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope"
+      ],
+      "title": "RestartArgs",
+      "type": "object"
+    },
     "ScheduleChanged": {
       "additionalProperties": false,
       "properties": {
@@ -697,6 +827,23 @@
       ],
       "title": "ScreenPower",
       "type": "object"
+    },
+    "ScreenshotSchedule": {
+      "additionalProperties": false,
+      "description": "Champ optionnel `screenshot` de la programmation r\u00e9solue ; absent = d\u00e9sactiv\u00e9.",
+      "properties": {
+        "interval_min": {
+          "maximum": 1440,
+          "minimum": 5,
+          "title": "Interval Min",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "interval_min"
+      ],
+      "title": "ScreenshotSchedule",
+      "type": "object"
     }
   },
   "title": "vds wire v1",
@@ -716,6 +863,8 @@
     "identify",
     "screenshot",
     "power.set",
-    "power.probe"
+    "power.probe",
+    "restart",
+    "cache.resync"
   ]
 }

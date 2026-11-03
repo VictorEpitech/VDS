@@ -305,7 +305,8 @@
           "network.discover",
           "override.write",
           "layouts.read",
-          "layouts.write"
+          "layouts.write",
+          "screens.command"
         ],
         "type": "string"
       },

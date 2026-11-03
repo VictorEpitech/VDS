@@ -67,6 +67,11 @@ export interface components {
              * @default []
              */
             modules: components["schemas"]["ModuleRef"][];
+            /**
+             * Out Seq
+             * @default null
+             */
+            out_seq: number | null;
         };
         /** AgentWelcome */
         AgentWelcome: {
@@ -78,6 +83,7 @@ export interface components {
             /**
              * @default {
              *       "enabled": false,
+             *       "key": null,
              *       "key_id": null
              *     }
              */
@@ -125,6 +131,11 @@ export interface components {
              * @default false
              */
             enabled: boolean;
+            /**
+             * Key
+             * @default null
+             */
+            key: string | null;
             /**
              * Key Id
              * @default null
@@ -321,6 +332,68 @@ export interface components {
             /** Token */
             token: string;
         };
+        /**
+         * PlayerCommandRef
+         * @description Élément de `commands` dans la réponse du heartbeat HTTP (même contenu que la trame `cmd`).
+         */
+        PlayerCommandRef: {
+            /**
+             * Args
+             * @default {}
+             */
+            args: {
+                [key: string]: unknown;
+            };
+            /**
+             * Cmd Id
+             * Format: uuid
+             */
+            cmd_id: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Name */
+            name: string;
+        };
+        /**
+         * PlayerHeartbeatAckExt
+         * @description Champs de la réponse du heartbeat HTTP (1.11).
+         */
+        PlayerHeartbeatAckExt: {
+            /**
+             * Commands
+             * @default []
+             */
+            commands: components["schemas"]["PlayerCommandRef"][];
+            /**
+             * Results Acked
+             * @default []
+             */
+            results_acked: string[];
+        };
+        /**
+         * PlayerHeartbeatExt
+         * @description Champs optionnels ajoutés par un player 1.11 à sa requête de heartbeat.
+         */
+        PlayerHeartbeatExt: {
+            /**
+             * Boot Id
+             * @default null
+             */
+            boot_id: string | null;
+            /**
+             * Capabilities
+             * @default null
+             */
+            capabilities: ("cmd.reload" | "cmd.identify" | "cmd.screenshot" | "cmd.restart.app" | "cmd.restart.device" | "cmd.cache.resync")[] | null;
+            /**
+             * Command Results
+             * @default []
+             */
+            command_results: components["schemas"]["CmdResult"][];
+        };
         /** PlayerWelcome */
         PlayerWelcome: {
             /**
@@ -367,6 +440,14 @@ export interface components {
              */
             observed: "on" | "off" | "standby" | "unknown";
         };
+        /** RestartArgs */
+        RestartArgs: {
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "app" | "device";
+        };
         /** ScheduleChanged */
         ScheduleChanged: {
             /** Revision */
@@ -380,6 +461,14 @@ export interface components {
              * Format: uuid
              */
             screen_id: string;
+        };
+        /**
+         * ScreenshotSchedule
+         * @description Champ optionnel `screenshot` de la programmation résolue ; absent = désactivé.
+         */
+        ScreenshotSchedule: {
+            /** Interval Min */
+            interval_min: number;
         };
     };
     responses: never;

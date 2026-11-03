@@ -10,6 +10,7 @@ from .bus import ScopedBus
 
 if TYPE_CHECKING:
     from .server.media import MediaFacade
+    from .server.screens import ScreensApi
 
 ScopeLevel = Literal["organization", "site", "group", "screen"]
 
@@ -32,6 +33,7 @@ class CoreApi(Protocol):
     """Façade du noyau filtrée par permissions (méthodes ajoutées par les lots)."""
 
     media: "MediaFacade"  # permissions media.read / media.write (aucune nouvelle)
+    screens: "ScreensApi"  # vds-core 1.11.0 ; permission screens.command
 
 
 class ModuleContext(Protocol):

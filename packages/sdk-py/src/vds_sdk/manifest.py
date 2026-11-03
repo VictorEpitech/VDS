@@ -1,4 +1,4 @@
-"""Modèles Pydantic du manifeste `module.json` (contrat vds-core 1.10.0)."""
+"""Modèles Pydantic du manifeste `module.json` (contrat vds-core 1.11.0)."""
 
 import json
 import re
@@ -228,6 +228,7 @@ class ModuleManifest(_Strict):
                     "1.8.0",
                     "1.9.0",
                     "1.10.0",
+                    "1.11.0",
                 )
             ) or (satisfies("1.1.0", self.core)):
                 raise ValueError("contract.kind_requires_1_2")
@@ -261,6 +262,8 @@ class ModuleManifest(_Strict):
                         "1.8.0",
                         "1.9.0",
                         "1.10.0",
+                        "1.11.0",
+                    "1.11.0",
                     )
                 ) or (satisfies("1.2.0", self.core)):
                     raise ValueError("contract.provision_requires_1_3")
