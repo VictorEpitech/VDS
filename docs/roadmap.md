@@ -235,6 +235,9 @@ Zone = calque (coordonnées relatives 0..1, ordre `z`, fenêtre `active_from`/`a
 
 - 2026-11-02 — Mises en page : orientation discordante = avertissement ; un seul décodeur vidéo par défaut, relevable par écran ; forçage de zone (`override.zone_ids`) dans la V1, zone absente = ignoré + avertissement (décision Victor).
 
+### 3 novembre 2026 — Lot J4 : API des périmètres (vds-core 1.10.0 additif)
+Note de compatibilité : additif, aucun module existant impacté. Nouveaux événements `user.scope_changed@1` et `user.role_changed@1` (domaine `user`, non critiques) ; clé optionnelle `owner` (NodeRef | null) sur `media.*`, `playlist.*`, `layout.*`. `Identity`, manifeste et permissions inchangés ; les modules 1.0 à 1.9 chargent tels quels. Routes : `/me` (+ `role_source`, `perimeter`), `/scope-tree`, `/users`, `/users/{id}`, `PUT /users/{id}/scopes` (If-Match = `scopes_version`).
+
 ### 2 novembre 2026 — Refonte du planning (architecte, sans bump vds-core, sans migration)
 Vue calendrier jour/semaine/mois/liste par écran, groupe ou site ; un seul résolveur serveur (`resolve()` extrait de `ScheduleBuilder`, documents player inchangés) servant la timeline, l'aperçu « à l'instant » et la simulation d'un brouillon ; conflits et provenance calculés côté serveur ; 3 niveaux de priorité par bandes (−100/0/100) + numérique en Avancé ; points d'accroche diffusion conditionnelle (`CandidateFilter`, `condition_unmet`) et alertes non implémentés. Détail : `docs/architecture-planning.md`.
 

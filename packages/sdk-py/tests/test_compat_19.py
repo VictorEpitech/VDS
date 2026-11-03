@@ -15,7 +15,7 @@ NEW = {"layout.created", "layout.updated", "layout.deleted"}
 
 
 def test_version() -> None:
-    assert CORE_API_VERSION == "1.9.0"
+    assert CORE_API_VERSION.startswith("1.")  # 1.10.0 : voir test_compat_110
 
 
 def test_events_1_9_additive() -> None:

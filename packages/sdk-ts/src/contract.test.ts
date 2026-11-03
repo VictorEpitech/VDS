@@ -74,3 +74,21 @@ describe("contrat 1.9.0 (additif, compat player 1.8)", () => {
     expect(old.layout.zones[0].playlist).toBe("p1");
   });
 });
+
+describe("contrat 1.10.0 (additif, droits par périmètre)", () => {
+  it("les payloads user.* et NodeRef sont typés, owner reste optionnel", () => {
+    const scope: import("./events").UserScopeChangedV1 = {
+      version: 1,
+      user_id: "u1",
+      scopes: [{ type: "site", id: "s1" }],
+    };
+    const role: import("./events").UserRoleChangedV1 = {
+      version: 1, user_id: "u1", from_role: "editor", to_role: "admin", source: "provider",
+    };
+    // un consommateur 1.9 ignore `owner` : un payload sans owner reste valide
+    const media: { media_id: string; owner?: import("./events").NodeRef | null } = { media_id: "m1" };
+    expect(scope.scopes[0]?.type).toBe("site");
+    expect(role.source).toBe("provider");
+    expect(media.owner).toBeUndefined();
+  });
+});

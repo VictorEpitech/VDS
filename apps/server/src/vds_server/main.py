@@ -31,6 +31,7 @@ from vds_server.api.v1 import (
     power,
     provisioning,
     registry,
+    users,
 )
 from vds_server.config.api import ConfigDeps
 from vds_server.config.api import build_router as build_config_router
@@ -86,6 +87,7 @@ def create_app(
     if runtime is not None:
         pipeline = runtime.pipeline
         inner.include_router(me.build_router(runtime))
+        inner.include_router(users.build_router(runtime))
         inner.include_router(inventory.build_router(runtime))
         inner.include_router(diffusion.build_router(runtime))
         inner.include_router(layouts.build_router(runtime))

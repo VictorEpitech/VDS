@@ -1,4 +1,4 @@
-"""Modèles Pydantic du manifeste `module.json` (contrat vds-core 1.9.0)."""
+"""Modèles Pydantic du manifeste `module.json` (contrat vds-core 1.10.0)."""
 
 import json
 import re
@@ -218,7 +218,17 @@ class ModuleManifest(_Strict):
         if self.kind in ("power-driver", "notifier"):
             if not any(
                 satisfies(v, self.core)
-                for v in ("1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.8.0", "1.9.0")
+                for v in (
+                    "1.2.0",
+                    "1.3.0",
+                    "1.4.0",
+                    "1.5.0",
+                    "1.6.0",
+                    "1.7.0",
+                    "1.8.0",
+                    "1.9.0",
+                    "1.10.0",
+                )
             ) or (satisfies("1.1.0", self.core)):
                 raise ValueError("contract.kind_requires_1_2")
         if self.kind == "power-driver":
@@ -242,7 +252,16 @@ class ModuleManifest(_Strict):
                     raise ValueError("module.provision_capability_invalid")
                 if not any(
                     satisfies(v, self.core)
-                    for v in ("1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.8.0", "1.9.0")
+                    for v in (
+                        "1.3.0",
+                        "1.4.0",
+                        "1.5.0",
+                        "1.6.0",
+                        "1.7.0",
+                        "1.8.0",
+                        "1.9.0",
+                        "1.10.0",
+                    )
                 ) or (satisfies("1.2.0", self.core)):
                     raise ValueError("contract.provision_requires_1_3")
                 if "screens.provision" not in self.permissions:

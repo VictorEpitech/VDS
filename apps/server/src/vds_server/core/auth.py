@@ -67,18 +67,23 @@ class AuthPipeline:
 
     async def resolve(self, request: Request) -> Principal:
         provider = self.provider()
+        role_events: list[Event] = []
         try:
             identity = await provider.authenticate(to_auth_request(request))
             if identity is None:
                 raise ApiError("auth.unauthenticated", 401)
             async with self._maker() as session:
-                row, created = await users.upsert_identity(session, identity)
+                row, created = await users.upsert_identity(
+                    session, identity, events=role_events
+                )
                 perimeter = await load_perimeter(
                     session, row.id, "admin" if row.role == "admin" else "editor"
                 )
                 await session.commit()
         except AccessDenied as exc:
             raise ApiError(exc.code, 403) from exc
+        for role_event in role_events:
+            await self._bus.publish(role_event)
         if created:
             await self._bus.publish(
                 Event(name="user.created", payload={"id": str(row.id)}, source="core")

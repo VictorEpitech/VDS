@@ -54,7 +54,7 @@ def presence(**over: Any) -> dict[str, Any]:
 
 
 def test_version() -> None:
-    assert CORE_API_VERSION in {"1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.8.0", "1.9.0"}
+    assert CORE_API_VERSION in {"1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.8.0", "1.9.0", "1.10.0"}
 
 
 def test_events_1_4_additive() -> None:

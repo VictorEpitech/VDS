@@ -123,6 +123,7 @@ SCOPE_ROUTES: dict[str, ScopeClass] = {
     "DELETE /api/v1/screens/{screen_id}/kiosk/maintenance": "admin_only",
     "POST /api/v1/screens/{screen_id}/kiosk/maintenance": "admin_only",
     "POST /api/v1/screens/{screen_id}/provision": "admin_only",
+    "GET /api/v1/scope-tree": "scoped",
     "GET /api/v1/sites": "scoped",
     "POST /api/v1/sites": "admin_only",
     "DELETE /api/v1/sites/{site_id}": "admin_only",
@@ -144,4 +145,8 @@ SCOPE_ROUTES: dict[str, ScopeClass] = {
     "GET /api/v1/sites/{site_id}/discovery/scans/{scan_id}": "admin_only",
     "GET /api/v1/sites/{site_id}/groups": "scoped",
     "POST /api/v1/sites/{site_id}/groups": "admin_only",
+    "GET /api/v1/users": "admin_only",
+    "GET /api/v1/users/{user_id}": "admin_only",
+    "PATCH /api/v1/users/{user_id}": "admin_only",
+    "PUT /api/v1/users/{user_id}/scopes": "admin_only",
 }

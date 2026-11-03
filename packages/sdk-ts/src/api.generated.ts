@@ -1227,6 +1227,23 @@ export interface paths {
         patch: operations["patch_schedule_api_v1_schedules__schedule_id__patch"];
         trace?: never;
     };
+    "/api/v1/scope-tree": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Scope Tree */
+        get: operations["scope_tree_api_v1_scope_tree_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/screens": {
         parameters: {
             query?: never;
@@ -1572,6 +1589,58 @@ export interface paths {
         put?: never;
         /** Create Group */
         post: operations["create_group_api_v1_sites__site_id__groups_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Users */
+        get: operations["list_users_api_v1_users_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get User */
+        get: operations["get_user_api_v1_users__user_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Patch User */
+        patch: operations["patch_user_api_v1_users__user_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/users/{user_id}/scopes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Put Scopes */
+        put: operations["put_scopes_api_v1_users__user_id__scopes_put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2952,10 +3021,16 @@ export interface components {
             id: string;
             /** Locale */
             locale: string | null;
+            perimeter: components["schemas"]["PerimeterOut"];
             /** Provider */
             provider: string;
             /** Role */
             role: string;
+            /**
+             * Role Source
+             * @enum {string}
+             */
+            role_source: "vds" | "provider";
         };
         /** MediaBulkIn */
         MediaBulkIn: {
@@ -3545,6 +3620,15 @@ export interface components {
              */
             status: "claimed" | "consumed";
         };
+        /** PerimeterOut */
+        PerimeterOut: {
+            /** Can Share */
+            can_share: boolean;
+            /** Nodes */
+            nodes: components["schemas"]["ScopeNodeOut"][];
+            /** Unrestricted */
+            unrestricted: boolean;
+        };
         /** PlanCreate */
         PlanCreate: {
             /** Description */
@@ -4033,6 +4117,59 @@ export interface components {
             /** Target Type */
             target_type?: ("organization" | "site" | "group" | "screen") | null;
         };
+        /** ScopeNodeOut */
+        ScopeNodeOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "organization" | "site" | "group";
+        };
+        /** ScopeTree */
+        ScopeTree: {
+            /** Can Share */
+            can_share: boolean;
+            /** Sites */
+            sites: components["schemas"]["ScopeTreeSite"][];
+        };
+        /** ScopeTreeGroup */
+        ScopeTreeGroup: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Writable */
+            writable: boolean;
+        };
+        /** ScopeTreeSite */
+        ScopeTreeSite: {
+            /** Groups */
+            groups: components["schemas"]["ScopeTreeGroup"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Writable */
+            writable: boolean;
+        };
+        /** ScopesIn */
+        ScopesIn: {
+            /** Scopes */
+            scopes: components["schemas"]["NodeRef"][];
+        };
         /** ScreenApkOut */
         ScreenApkOut: {
             /** Installed Version Code */
@@ -4509,6 +4646,50 @@ export interface components {
             target_name: string;
             /** Target Type */
             target_type: string;
+        };
+        /** UserOut */
+        UserOut: {
+            /** Display Name */
+            display_name: string;
+            /** Email */
+            email: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Active */
+            is_active: boolean;
+            /** Last Seen At */
+            last_seen_at: string | null;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "admin" | "editor";
+            /**
+             * Role Source
+             * @enum {string}
+             */
+            role_source: "vds" | "provider";
+            /** Scopes */
+            scopes: components["schemas"]["ScopeNodeOut"][];
+            /** Scopes Version */
+            scopes_version: string;
+        };
+        /** UserPage */
+        UserPage: {
+            /** Items */
+            items: components["schemas"]["UserOut"][];
+            /** Total */
+            total: number;
+        };
+        /** UserPatch */
+        UserPatch: {
+            /** Is Active */
+            is_active?: boolean | null;
+            /** Role */
+            role?: ("admin" | "editor") | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -7696,6 +7877,26 @@ export interface operations {
             };
         };
     };
+    scope_tree_api_v1_scope_tree_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScopeTree"];
+                };
+            };
+        };
+    };
     list_screens_api_v1_screens_get: {
         parameters: {
             query?: {
@@ -8695,6 +8896,144 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GroupOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_users_api_v1_users_get: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                role?: ("admin" | "editor") | null;
+                site_id?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_user_api_v1_users__user_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_user_api_v1_users__user_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_scopes_api_v1_users__user_id__scopes_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "if-match"?: string | null;
+            };
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScopesIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
                 };
             };
             /** @description Validation Error */

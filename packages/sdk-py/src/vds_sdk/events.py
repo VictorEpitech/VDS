@@ -222,3 +222,22 @@ CORE_EVENTS_1_9: frozenset[str] = CORE_EVENTS_1_8 | frozenset(
 )
 
 CRITICAL_EVENTS_1_9: frozenset[str] = CRITICAL_EVENTS_1_8
+
+# --- vds-core 1.10.0 (additif) : droits par périmètre (lot J) ---------------------------
+# Payloads `version: 1`. `user.scope_changed` : `scopes` = liste de `{type, id}` (NodeRef),
+# `actor_id` optionnel. `user.role_changed` : `source` = "vds" | "provider". Les payloads
+# `media.*`, `playlist.*`, `layout.*` gagnent la clé optionnelle `owner` (NodeRef | None).
+# Aucun événement critique ajouté.
+CORE_EVENT_DOMAINS_1_10: frozenset[str] = CORE_EVENT_DOMAINS_1_9 | {"user"}
+
+CORE_EVENT_PAYLOAD_1_10: dict[str, tuple[str, ...]] = {
+    **CORE_EVENT_PAYLOAD_1_9,
+    "user.scope_changed": ("user_id", "scopes"),
+    "user.role_changed": ("user_id", "from_role", "to_role", "source"),
+}
+
+CORE_EVENTS_1_10: frozenset[str] = CORE_EVENTS_1_9 | frozenset(
+    set(CORE_EVENT_PAYLOAD_1_10) - set(CORE_EVENT_PAYLOAD_1_9)
+)
+
+CRITICAL_EVENTS_1_10: frozenset[str] = CRITICAL_EVENTS_1_9

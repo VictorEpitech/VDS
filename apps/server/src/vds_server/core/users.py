@@ -7,7 +7,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from vds_sdk import AccessDenied
+from vds_sdk import AccessDenied, Event
 from vds_sdk.server import Identity
 
 from vds_server.core import audit
@@ -19,10 +19,15 @@ LAST_SEEN_STEP = timedelta(seconds=60)
 
 
 async def upsert_identity(
-    session: AsyncSession, identity: Identity, *, role_if_new: Role | None = None
+    session: AsyncSession,
+    identity: Identity,
+    *,
+    role_if_new: Role | None = None,
+    events: list[Event] | None = None,
 ) -> tuple[UserAccount, bool]:
     """Crée ou met à jour le compte. Le rôle du provider (s'il en donne un) fait foi ;
-    sinon le rôle stocké dans VDS est conservé. Ne commit pas. Retourne (compte, créé)."""
+    sinon le rôle stocké dans VDS est conservé. Ne commit pas. Retourne (compte, créé).
+    `events` reçoit `user.role_changed` (à publier par l'appelant après le commit)."""
     new_role = identity.role or role_if_new or DEFAULT_ROLE
     stmt = (
         insert(UserAccount)
@@ -73,6 +78,20 @@ async def upsert_identity(
             target_id=str(row.id),
             details={"from": row.role, "to": identity.role},
         )
+        if events is not None:
+            events.append(
+                Event(
+                    name="user.role_changed",
+                    payload={
+                        "version": 1,
+                        "user_id": str(row.id),
+                        "from_role": row.role,
+                        "to_role": identity.role,
+                        "source": "provider",
+                    },
+                    source="core",
+                )
+            )
         row.role = identity.role
     if identity.email and row.email != identity.email:
         row.email = identity.email
