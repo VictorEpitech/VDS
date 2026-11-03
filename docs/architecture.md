@@ -351,6 +351,11 @@ Règles : assistant de détection à l'ajout ; vérification après chaque ordre
 
 ## Contenus et diffusion
 
+Mises en page multi-zones, calques et forçage de zone (lot 4, vds-core 1.9.0 additif) : voir `docs/architecture-mises-en-page.md`.
+
+### Planning : calendrier, aperçu, simulation (décision 2 novembre 2026)
+Voir `docs/architecture-planning.md`. Résolveur unique extrait de `ScheduleBuilder` (`resolve()` pur, mode `explain`), endpoints admin `/api/v1/planning/{timeline,at,simulate}`, niveaux de priorité par bandes, aucune résolution dans l'admin. Sans bump vds-core.
+
 | Objet | Contenu |
 | --- | --- |
 | Media | image, vidéo ≤ 4K (son on/off), PDF → pages, URL |
@@ -663,6 +668,8 @@ Lot 2 : ces trois cas sont documentés ; un profil Compose `https` (service Cadd
 - Notifications mail : écran hors ligne hors plage prévue, pilote en échec, module en quarantaine.
 
 ## Points d'accroche des modules futurs
+
+Points d'accroche liés aux zones (tactile, murs d'écrans, statistiques par zone, diffusion conditionnelle, alertes sur calque) : `docs/architecture-mises-en-page.md` §11.
 
 | Module | Ce que le noyau prévoit en V1 |
 | --- | --- |
