@@ -101,6 +101,8 @@ const fresh = () => ({
   results: [], // cmd.result reçus (WS) et command_results (heartbeat)
   uploads: [], // POST player/screenshots[/id]
   mediaHits: {},
+  feeds: {}, // feed_id -> { fetched_at, data } ; absent = jamais récupéré (204)
+  feedHits: 0,
   hits: 0,
   rejected: 0,
 });
@@ -108,7 +110,18 @@ let S = fresh();
 const serverNow = () => (S.clock ? S.clock.base + (Date.now() - S.clock.at) : Date.now());
 const iso = (ms) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, "+00:00");
 
-const mapItem = (i) => ({
+/** Élément widget (météo, RSS) : `{ id, kind: "weather"|"rss", feed, props, ms }` ; les données viennent de S.feeds[feed]. */
+const mapWidget = (i) => ({
+  id: i.id,
+  content_type: `content.${i.kind}`,
+  duration_ms: i.ms ?? null,
+  props: { ...i.props, feed_id: i.feed },
+  assets: [],
+  requires_network: false,
+  feeds: [i.feed],
+});
+
+const mapItem = (i) => i.kind ? mapWidget(i) : ({
   id: i.id,
   content_type: mediaOf(i.media).mime.startsWith("video") ? "content.video" : "content.image",
   duration_ms: i.ms ?? null,
@@ -135,7 +148,7 @@ function schedule() {
         },
   );
   const lists = S.layout ? S.layout.playlists : { pl_1: S.items };
-  const used = [...new Set([...Object.values(lists).flat().map((i) => i.media), ...(S.layout?.bgMedia ? [S.layout.bgMedia] : [])])];
+  const used = [...new Set([...Object.values(lists).flat().filter((i) => !i.kind).map((i) => i.media), ...(S.layout?.bgMedia ? [S.layout.bgMedia] : [])])];
   const doc = {
     format: 1,
     screen: { id: "screen-1", name: "Accueil", orientation: "landscape" },
@@ -150,6 +163,8 @@ function schedule() {
     content_types: {
       "content.image": { version: "0.1.0", element: "vds-content-image", script: "modules/content.image/assets/player.js" },
       "content.video": { version: "0.1.0", element: "vds-content-video", script: "modules/content.video/assets/player.js" },
+      "content.weather": { version: "0.1.0", element: "vds-content-weather", script: "modules/content.weather/assets/player.js" },
+      "content.rss": { version: "0.1.0", element: "vds-content-rss", script: "modules/content.rss/assets/player.js" },
     },
   };
   if (S.layout?.player) doc.player = S.layout.player;
@@ -207,7 +222,7 @@ async function control(req, res, url) {
       S = fresh();
       return json(res, 200, {});
     case "/__test/state":
-      return json(res, 200, { ws: { ...S.ws, open: sockets.size }, down: S.down, heartbeats: S.heartbeats, results: S.results, uploads: S.uploads, mediaHits: S.mediaHits, hits: S.hits, rejected: S.rejected, pairing: S.pairing && { code: S.pairing.code } });
+      return json(res, 200, { ws: { ...S.ws, open: sockets.size }, down: S.down, heartbeats: S.heartbeats, results: S.results, uploads: S.uploads, mediaHits: S.mediaHits, feedHits: S.feedHits, hits: S.hits, rejected: S.rejected, pairing: S.pairing && { code: S.pairing.code } });
     case "/__test/set":
       if ("down" in body) S.down = Boolean(body.down);
       if ("revoked" in body) S.revoked = Boolean(body.revoked);
@@ -219,6 +234,7 @@ async function control(req, res, url) {
       if ("wsBlocked" in body) S.wsBlocked = Boolean(body.wsBlocked);
       if ("alias" in body) S.alias = body.alias;
       if ("items" in body) S.items = body.items;
+      if ("feeds" in body) S.feeds = body.feeds;
       if ("clock" in body) S.clock = body.clock ? { base: Date.parse(body.clock), at: Date.now() } : null;
       return json(res, 200, {});
     case "/__test/ws": {
@@ -408,6 +424,24 @@ const server = http.createServer(async (req, res) => {
     const buf = Buffer.concat(chunks);
     S.uploads.push({ cmd_id: shot[1] ?? null, type: req.headers["content-type"], bytes: buf.length });
     return json(res, 201, { id: "shot-" + S.uploads.length });
+  }
+  const feed = /^\/api\/v1\/player\/feeds\/([a-f0-9]+)$/.exec(p);
+  if (feed) {
+    if (!deviceAuth(req, res)) return;
+    const known = Object.values(schedule().playlists).some((pl) => pl.items.some((i) => (i.feeds ?? []).includes(feed[1])));
+    if (!known) return json(res, 404, { code: "feeds.unknown", params: {} });
+    S.feedHits++;
+    const f = S.feeds[feed[1]];
+    if (!f) {
+      res.writeHead(204);
+      return res.end();
+    }
+    const etag = `"${createHash("sha256").update(JSON.stringify(f)).digest("hex").slice(0, 16)}"`;
+    if (req.headers["if-none-match"] === etag) {
+      res.writeHead(304, { ETag: etag });
+      return res.end();
+    }
+    return json(res, 200, { feed_id: feed[1], fetched_at: f.fetched_at, data: f.data }, { ETag: etag });
   }
   const media = /^\/media\/([a-z0-9-]+)\/([a-z0-9-]+)$/.exec(p);
   if (media) {

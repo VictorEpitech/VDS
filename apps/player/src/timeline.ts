@@ -91,3 +91,10 @@ export function slotAssets(doc: ScheduleDocument, slots: ScheduleSlot[]): string
 export function allAssets(doc: ScheduleDocument): string[] {
   return slotAssets(doc, doc.slots);
 }
+
+/** Identifiants de flux de données référencés par les éléments de la programmation (journée + lendemain). */
+export function allFeeds(doc: ScheduleDocument): string[] {
+  const ids = new Set<string>();
+  for (const pl of Object.values(doc.playlists)) for (const it of pl.items) it.feeds?.forEach((f) => ids.add(f));
+  return [...ids];
+}

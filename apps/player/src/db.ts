@@ -1,5 +1,5 @@
 import type { ScheduleDocument } from "@vds/sdk-ts";
-import { DB_NAME, DB_VERSION, LOG_RING, STORE_KV, STORE_LOG, STORE_SCHEDULE } from "./shared";
+import { DB_NAME, DB_VERSION, LOG_RING, STORE_FEEDS, STORE_KV, STORE_LOG, STORE_SCHEDULE } from "./shared";
 
 export const OPEN_TIMEOUT_MS = 3_000;
 
@@ -7,6 +7,7 @@ export const OPEN_TIMEOUT_MS = 3_000;
 const memKv = new Map<string, unknown>();
 let memSchedule: ScheduleDocument | undefined;
 let memLog: LogEntry[] = [];
+const memFeeds = new Map<string, FeedRecord>();
 let opened: Promise<IDBDatabase | null> | null = null;
 
 let memOnly = false;
@@ -21,6 +22,7 @@ export function resetDbForTests(): void {
   memKv.clear();
   memSchedule = undefined;
   memLog = [];
+  memFeeds.clear();
 }
 
 function fallback(): null {
@@ -44,7 +46,7 @@ export function openDb(): Promise<IDBDatabase | null> {
       const req = indexedDB.open(DB_NAME, DB_VERSION);
       req.onupgradeneeded = () => {
         const db = req.result;
-        for (const name of [STORE_KV, STORE_SCHEDULE]) {
+        for (const name of [STORE_KV, STORE_SCHEDULE, STORE_FEEDS]) {
           if (!db.objectStoreNames.contains(name)) db.createObjectStore(name);
         }
         if (!db.objectStoreNames.contains(STORE_LOG)) db.createObjectStore(STORE_LOG, { autoIncrement: true });
@@ -155,18 +157,46 @@ export async function logAdd(entry: LogEntry): Promise<void> {
   });
 }
 
+/** Dernier état connu d'un flux de données (clé `feedId`) ; `etag` sert aux requêtes conditionnelles. */
+export interface FeedRecord {
+  feedId: string;
+  fetchedAt: string;
+  data: unknown;
+  etag?: string;
+}
+
+export async function feedGet(id: string): Promise<FeedRecord | undefined> {
+  return (await run(STORE_FEEDS, "readonly", (s) => s.get(id), () => memFeeds.get(id))) as FeedRecord | undefined;
+}
+
+export async function feedPut(rec: FeedRecord): Promise<void> {
+  // Repli mémoire seulement si IndexedDB est indisponible (jusqu'à 64 Kio par flux : pas de double stockage).
+  await run(STORE_FEEDS, "readwrite", (s) => s.put(rec, rec.feedId), () => memFeeds.set(rec.feedId, rec));
+}
+
+export async function feedKeys(): Promise<string[]> {
+  const keys = await run(STORE_FEEDS, "readonly", (s) => s.getAllKeys(), () => [...memFeeds.keys()]);
+  return (keys as IDBValidKey[]).map(String);
+}
+
+export async function feedDel(id: string): Promise<void> {
+  await run(STORE_FEEDS, "readwrite", (s) => s.delete(id), () => memFeeds.delete(id));
+}
+
 /** Efface jeton, programmation et journal (réponse à une révocation) ; le SW vide ses caches côté page. */
 export async function clearAll(): Promise<void> {
   memKv.clear();
   memSchedule = undefined;
   memLog = [];
+  memFeeds.clear();
   const db = await openDb();
   if (!db) return;
   await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction([STORE_KV, STORE_SCHEDULE, STORE_LOG], "readwrite");
+    const tx = db.transaction([STORE_KV, STORE_SCHEDULE, STORE_LOG, STORE_FEEDS], "readwrite");
     tx.objectStore(STORE_KV).clear();
     tx.objectStore(STORE_SCHEDULE).clear();
     tx.objectStore(STORE_LOG).clear();
+    tx.objectStore(STORE_FEEDS).clear();
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error ?? new Error("idb_clear"));
   });

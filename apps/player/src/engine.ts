@@ -1,5 +1,6 @@
 import type {
   ContentContext,
+  FeedSnapshot,
   LayoutZone,
   Locale,
   PlaySlot,
@@ -22,6 +23,7 @@ const MAX_UNBOUNDED_MS = 30 * 60_000;
 const IDLE_RETRY_MS = 5_000;
 const ERROR_RING = 50;
 const MIN_ITEM_MS = 1_000;
+const FEED_CODES = new Set(["feed_unavailable", "feed_stale"]);
 
 export interface PlayerError {
   at: string;
@@ -76,6 +78,8 @@ export interface EngineDeps {
   server: string;
   locale: Locale;
   isOnline: () => boolean;
+  /** Flux de données (météo, RSS) : alimente `ctx.feed`. */
+  feeds?: { get(feedId: string): Promise<FeedSnapshot | null> };
   /** Appelé à chaque tick (1 s), après l'application du créneau : plan d'alimentation hors ligne. */
   onTick?: () => void;
 }
@@ -157,6 +161,8 @@ class PlaylistLoop {
       orientation: this.doc.screen.orientation,
       zone: { width: this.root.clientWidth, height: this.root.clientHeight, id: this.zoneId },
       resolveUrl: (rel) => this.deps.assets.urlFor?.(rel) ?? resolveServer(rel, this.deps.server),
+      now,
+      ...(this.deps.feeds ? { feed: (id: string) => this.deps.feeds!.get(id) } : {}),
     };
   }
 
@@ -204,9 +210,11 @@ class PlaylistLoop {
       this.root.append(el);
       await withTimeout(el.prepare(), PREPARE_TIMEOUT_MS, "prepare_timeout");
       return { el, item };
-    } catch {
+    } catch (e) {
       this.discard(el);
-      this.report("prepare_failed", item.id);
+      // Flux absent ou trop ancien : code précis remonté au serveur, jamais affiché au public.
+      const msg = e instanceof Error ? e.message : "";
+      this.report(FEED_CODES.has(msg) ? msg : "prepare_failed", item.id);
       return null;
     }
   }
@@ -360,6 +368,8 @@ class ZoneRunner {
     return { key: "base", items: this.m.base };
   }
 
+  /** Flux de données (météo, RSS) : alimente `ctx.feed`. */
+  feeds?: { get(feedId: string): Promise<FeedSnapshot | null> };
   /** Appelé à chaque tick : bascule de lecteur à `from`, `until` et aux bornes des forçages ; sinon ne touche à rien. */
   update(at: number): void {
     const mode = this.mode(at);

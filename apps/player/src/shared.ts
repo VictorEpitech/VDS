@@ -1,9 +1,10 @@
 /** Constantes partagées entre la page et le Service Worker (aucune dépendance DOM). */
 export const DB_NAME = "vds-player";
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 export const STORE_KV = "kv";
 export const STORE_SCHEDULE = "schedule";
 export const STORE_LOG = "log";
+export const STORE_FEEDS = "feeds";
 export const LOG_RING = 500;
 
 export const CACHE_MEDIA = "vds-media-v1";

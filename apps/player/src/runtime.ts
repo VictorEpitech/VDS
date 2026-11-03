@@ -5,6 +5,7 @@ import type { AssetStore } from "./assets";
 import { MemoryAssetCache, degradedMode } from "./degraded";
 import { DeviceRevokedError } from "./api";
 import { setDrift } from "./clock";
+import { FeedService } from "./feeds";
 import { ContentLoader } from "./content-loader";
 import { clearAll, kvGet, scheduleGet } from "./db";
 import { now } from "./clock";
@@ -53,7 +54,9 @@ export async function startRuntime(d: RuntimeDeps): Promise<Runtime> {
   // Kiosque : demande servie dans la programmation, reverrouillage autonome à l'échéance (même hors ligne).
   const kiosk = new KioskController({ now });
   const applyDoc = (doc: ScheduleDocument | null): void => kiosk.apply(doc?.kiosk, doc?.server_time);
+  const feeds = new FeedService({ token: () => d.token });
   const engine = new Engine({
+    feeds,
     onTick: () => {
       kiosk.tick();
       power?.tick();
@@ -79,6 +82,7 @@ export async function startRuntime(d: RuntimeDeps): Promise<Runtime> {
     life.abort();
     socket.stop();
     engine.stop();
+    feeds.stop();
     // Jeton, programmation, journal, révision et cache média : retour à l'appairage.
     await clearAll().catch(() => {});
     await assets.clear().catch(() => {});
@@ -105,6 +109,7 @@ export async function startRuntime(d: RuntimeDeps): Promise<Runtime> {
       engine.setDoc(doc);
     },
     report: () => {},
+    preloadFeeds: (ids) => feeds.preload(ids),
   });
   const sync = (): Promise<void> => guard(() => syncer.trigger());
 
@@ -222,6 +227,7 @@ export async function startRuntime(d: RuntimeDeps): Promise<Runtime> {
       life.abort();
       socket.stop();
       engine.stop();
+      feeds.stop();
     },
   };
 }

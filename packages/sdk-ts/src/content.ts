@@ -19,6 +19,8 @@ export interface ContentContext {
   zone: { width: number; height: number; /** vds-core 1.9.0 : clé de la zone (absente hors scène multi-zones). */ id?: string };
   /** Transforme une URL relative à l'URL serveur en URL servie par le Service Worker. */
   resolveUrl(relative: string): string;
+  /** Horloge du player (corrigée de la dérive serveur), en ms epoch : à préférer à `Date.now()` pour juger de l'âge d'une donnée. */
+  now?(): number;
   /** vds-core 1.12.0 : dernier état connu du flux (réseau si possible, sinon IndexedDB) ; null si jamais reçu. */
   feed?(feedId: string): Promise<FeedSnapshot | null>;
 }

@@ -6,7 +6,7 @@ import { NetworkError, request, resolveServer } from "./api";
 import { driftFrom, now, setDrift } from "./clock";
 import { kvGet, kvSet, schedulePut } from "./db";
 import { KV } from "./shared";
-import { allAssets, neededSlots, slotAssets } from "./timeline";
+import { allAssets, allFeeds, neededSlots, slotAssets } from "./timeline";
 
 export interface SyncDeps {
   token: () => string;
@@ -15,6 +15,8 @@ export interface SyncDeps {
   getActive: () => ScheduleDocument | null;
   activate: (doc: ScheduleDocument) => void;
   report: (code: string) => void;
+  /** Précharge les flux de données (météo, RSS) de la programmation et purge les autres. */
+  preloadFeeds?: (ids: string[]) => Promise<void>;
 }
 
 /** Récupère la programmation (ETag), télécharge les médias, n'active qu'une fois le créneau en cours et le suivant en cache. */
@@ -86,6 +88,11 @@ export class Syncer {
       throw e;
     }
     await this.deps.assets.purge(new Set(allAssets(doc)));
+    try {
+      await this.deps.preloadFeeds?.(allFeeds(doc));
+    } catch {
+      // flux : dernier état connu conservé, jamais bloquant
+    }
   }
 
   private async prefetchScripts(doc: ScheduleDocument): Promise<void> {
