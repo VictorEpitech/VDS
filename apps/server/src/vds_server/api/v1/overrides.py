@@ -1,6 +1,6 @@
 """Routes du forçage (`/api/v1/overrides`) : rôle editor ; extinction/organisation : admin."""
 
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -38,6 +38,7 @@ def build_router(rt: Runtime) -> APIRouter:
         site_id: UUID | None = None,
         target_type: TargetType | None = None,
         target_id: UUID | None = None,
+        scope: Literal["screen", "zone"] | None = None,
         limit: Annotated[int, Query(ge=1, le=200)] = 100,
         offset: Annotated[int, Query(ge=0)] = 0,
     ) -> list[sc.OverrideOut]:
@@ -46,6 +47,7 @@ def build_router(rt: Runtime) -> APIRouter:
             site_id=site_id,
             target_type=target_type,
             target_id=target_id,
+            scope=scope,
             limit=limit,
             offset=offset,
         )

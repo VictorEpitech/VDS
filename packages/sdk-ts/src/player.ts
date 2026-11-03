@@ -20,6 +20,8 @@ export interface ScheduleDocument {
   power?: PowerSlot[];
   /** Kiosque demandé (champ additif). Absent = `locked`. Le player applique, ne décide jamais. */
   kiosk?: KioskRequest;
+  /** 1.9.0 : limites de lecture servies par le serveur. Absent = défauts (1 élément exclusif à la fois). */
+  player?: { max_exclusive_elements: number };
 }
 
 export type KioskMode = "locked" | "unlocked" | "maintenance";

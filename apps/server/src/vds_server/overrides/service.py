@@ -1,7 +1,7 @@
 """Service du forçage : création, aperçu, prolongation, arrêt ; lecture de la config héritée."""
 
 from collections.abc import Callable
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
@@ -15,10 +15,13 @@ from vds_server.config.schemas import CORE_NAMESPACE, ConfigSchemaProvider
 from vds_server.config.service import ConfigService
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
-from vds_server.db.models import Organization, Playlist, Screen, ScreenGroup, Site
+from vds_server.db.models import Organization, Playlist, Screen, ScreenGroup
+from vds_server.db.models_layout import Layout
 from vds_server.db.models_override import PlaybackOverride
 from vds_server.diffusion.base import ServiceBase
 from vds_server.diffusion.expiry import is_expired
+from vds_server.diffusion.layout_content import load_layouts
+from vds_server.diffusion.layouts import orientation_mismatch
 from vds_server.diffusion.playlists import ItemSchemaLookup, PlaylistService
 from vds_server.diffusion.resolver import (
     WINDOW_DAYS,
@@ -27,7 +30,7 @@ from vds_server.diffusion.resolver import (
     resolve_input,
     wall_to_instant,
 )
-from vds_server.diffusion.schedules import TARGET_MODELS
+from vds_server.diffusion.targets import TARGET_MODELS, screens_of
 from vds_server.fleet.health import evaluate
 from vds_server.overrides import schemas as sc
 from vds_server.player.schedule import _on_chain, load_inputs
@@ -39,6 +42,8 @@ MAX_DEFER_DAYS = 30
 DEFAULT_MAX_ACTIVE = 20
 MAX_PAGE = 200
 MAX_PREVIEW_SCREENS = 100
+MAX_WARNING_SCREENS = 500
+REPORT_DAYS_CAP = 5  # fenêtres de WINDOW_DAYS jours examinées pour la couverture des zones
 Clock = Callable[[], datetime]
 
 
@@ -56,21 +61,23 @@ def to_event(name: str, payload: dict[str, Any]) -> Event:
     return Event(name=name, payload=payload, source="core")
 
 
-async def screens_of(session: AsyncSession, target_type: str, target_id: UUID) -> list[Screen]:
-    """Écrans actifs (non archivés, site non archivé) couverts par une cible."""
-    q = (
-        select(Screen)
-        .join(Site, Site.id == Screen.site_id)
-        .where(Screen.archived_at.is_(None), Site.archived_at.is_(None))
-        .order_by(Screen.id)
-    )
-    if target_type == "site":
-        q = q.where(Screen.site_id == target_id)
-    elif target_type == "group":
-        q = q.where(Screen.group_id == target_id)
-    elif target_type == "screen":
-        q = q.where(Screen.id == target_id)
-    return list((await session.execute(q)).scalars())
+@dataclass(frozen=True)
+class ZoneReport:
+    """Clés de zone présentes dans chaque créneau `play` des écrans sur la fenêtre."""
+
+    keys_by_screen: dict[UUID, list[frozenset[str]]]
+    layouts_by_key: dict[str, tuple[str, set[UUID | None]]]  # clé -> (nom, mises en page)
+
+    def has(self, screen_id: UUID, key: str) -> bool:
+        """Vrai si l'écran a au moins un créneau `play` et que tous ont la zone."""
+        slots = self.keys_by_screen.get(screen_id, [])
+        return bool(slots) and all(key in keys for keys in slots)
+
+    def candidates(self) -> list[sc.ZoneCandidate]:
+        return [
+            sc.ZoneCandidate(key=k, name=name, layouts=len(ids))
+            for k, (name, ids) in sorted(self.layouts_by_key.items())
+        ]
 
 
 class OverrideService(ServiceBase):
@@ -116,6 +123,8 @@ class OverrideService(ServiceBase):
             name=row.name,
             kind=row.kind,  # type: ignore[arg-type]
             playlist_id=row.playlist_id,
+            layout_id=row.layout_id,
+            zone_ids=None if row.zone_ids is None else list(row.zone_ids),
             ephemeral=ephemeral,
             target_type=row.target_type,  # type: ignore[arg-type]
             target_id=row.target_id,
@@ -205,11 +214,23 @@ class OverrideService(ServiceBase):
         self._check_rights(body.kind, body.target_type)
         name = await self._target_name(body.target_type, body.target_id)
         if body.kind == "off":
-            if body.playlist_id is not None or body.content is not None:
+            if body.playlist_id is not None or body.content is not None or body.layout_id:
                 raise ApiError("override.content_ambiguous", 422)
+            if body.zone_ids is not None:  # jamais d'extinction ni d'allumage par zone
+                raise ApiError("override.zone_not_content", 422)
         else:
-            if (body.playlist_id is None) == (body.content is None):
+            if sum(x is not None for x in (body.playlist_id, body.content, body.layout_id)) != 1:
                 raise ApiError("override.content_ambiguous", 422)
+            if body.zone_ids is not None:
+                if body.playlist_id is None:
+                    raise ApiError("override.zone_requires_playlist", 422)
+                await self._check_zone_ids(body.zone_ids)
+            if body.layout_id is not None:
+                if (
+                    await self._s.scalar(select(Layout.id).where(Layout.id == body.layout_id))
+                    is None
+                ):
+                    raise ApiError("override.layout_not_found", 422)
             if body.playlist_id is not None:
                 pl = await self._s.get(Playlist, body.playlist_id)
                 if pl is None or pl.owner_override_id is not None:
@@ -217,6 +238,15 @@ class OverrideService(ServiceBase):
                 if is_expired(pl, self._clock()):
                     raise ApiError("playlist.expired", 422)
         return name
+
+    async def _check_zone_ids(self, zone_ids: list[str]) -> None:
+        if len(set(zone_ids)) != len(zone_ids):
+            raise ApiError("override.zone_ids_invalid", 422)
+        org = await self._s.scalar(select(Organization.id))
+        cfg = {} if org is None else await self._config("organization", org)
+        max_zones = int(cfg.get("layout.max_zones", 12))
+        if len(zone_ids) > max_zones:
+            raise ApiError("override.zone_ids_invalid", 422, max=max_zones)
 
     async def create(self, body: sc.OverrideCreate, *, module: str | None = None) -> sc.OverrideOut:
         if body.request_id is not None:
@@ -242,6 +272,8 @@ class OverrideService(ServiceBase):
             name=name,
             kind=body.kind,
             playlist_id=playlist_id,
+            layout_id=body.layout_id,
+            zone_ids=body.zone_ids,
             target_type=body.target_type,
             target_id=body.target_id,
             starts_at=starts,
@@ -276,6 +308,8 @@ class OverrideService(ServiceBase):
             target_id=str(row.target_id),
             ends_at=ends.isoformat(),
             playlist_id=None if playlist_id is None else str(playlist_id),
+            layout_id=None if row.layout_id is None else str(row.layout_id),
+            zone_ids=row.zone_ids,
             screens=len(screens),
         )
         self._events.append(
@@ -291,6 +325,7 @@ class OverrideService(ServiceBase):
                     ends_at=ends,
                     created_by=row.created_by,
                     created_by_module=module,
+                    zone_ids=row.zone_ids,
                 ).model_dump(mode="json"),
             )
         )
@@ -305,7 +340,39 @@ class OverrideService(ServiceBase):
                     return await self._out(again, self._clock())
             raise
         await self._s.refresh(row)
-        return await self._out(row, now)
+        out = await self._out(row, now)
+        return await self._with_warnings(out, row, screens, starts, ends, now)
+
+    async def _with_warnings(
+        self,
+        out: sc.OverrideOut,
+        row: PlaybackOverride,
+        screens: list[Screen],
+        starts: datetime,
+        ends: datetime,
+        now: datetime,
+    ) -> sc.OverrideOut:
+        """Avertissements non bloquants : zone absente, orientation discordante."""
+        warnings: list[str] = []
+        if row.zone_ids and len(screens) <= MAX_WARNING_SCREENS:
+            report = await self._zone_report(screens, starts, ends, now)
+            missing = sum(
+                1
+                for sid in report.keys_by_screen
+                if any(not report.has(sid, k) for k in row.zone_ids)
+            )
+            if missing:
+                warnings.append("override_zone_missing")
+                out.screens_missing = missing
+        if row.layout_id is not None:
+            mismatch = await orientation_mismatch(
+                self._s, row.layout_id, row.target_type, row.target_id
+            )
+            if mismatch:
+                warnings.append("layout_orientation_mismatch")
+                out.screens_orientation_mismatch = mismatch
+        out.warnings = warnings
+        return out
 
     # --- aperçu ----------------------------------------------------------------------
     async def preview(self, body: sc.OverrideCreate) -> sc.OverridePreviewOut:
@@ -317,6 +384,25 @@ class OverrideService(ServiceBase):
             raise ApiError("override.preview_too_many_screens", 422, max=MAX_PREVIEW_SCREENS)
         org_cfg = await self._org_config()
         health = await evaluate(self._s, screens, now, Thresholds.from_config(org_cfg))
+        report = await self._zone_report(screens, starts, ends, now)
+        coverage = [
+            sc.ZoneCoverage(
+                zone_id=key,
+                screens_total=len(screens),
+                screens_missing=sum(1 for sid in report.keys_by_screen if not report.has(sid, key)),
+            )
+            for key in body.zone_ids or []
+        ]
+        lay_orientation = (
+            None
+            if body.layout_id is None
+            else await self._s.scalar(select(Layout.orientation).where(Layout.id == body.layout_id))
+        )
+        mismatch = (
+            0
+            if lay_orientation is None
+            else sum(1 for s in screens if s.orientation != lay_orientation)
+        )
         builder = PowerPlanBuilder(self._s, self._schemas)
         off = 0
         for sc_ in screens:
@@ -328,8 +414,74 @@ class OverrideService(ServiceBase):
             screens_offline=sum(1 for h in health.values() if h.status == "offline"),
             screens_in_scheduled_off=off,
             ends_at=ends,
-            superseded_override_ids=await self._superseded(body, screens, starts, ends, now),
+            superseded_override_ids=(
+                [] if body.zone_ids else await self._superseded(body, screens, starts, ends, now)
+            ),
+            zone_coverage=coverage,
+            zone_candidates=report.candidates(),
+            screens_orientation_mismatch=mismatch,
         )
+
+    async def _screen_inputs(self, screens: list[Screen], now: datetime) -> dict[UUID, Any]:
+        cfgs: dict[UUID, dict[str, Any]] = {}
+
+        async def cfg_of(sid: UUID) -> dict[str, Any]:
+            if sid not in cfgs:
+                cfgs[sid] = await self._config("screen", sid)
+            return cfgs[sid]
+
+        async def timezone_of(sid: UUID) -> object:
+            return (await cfg_of(sid)).get("timezone") or DEFAULT_TZ
+
+        async def respect_of(sid: UUID) -> object:
+            return (await cfg_of(sid)).get("override.respect_scheduled_off", False)
+
+        return dict(
+            await load_inputs(self._s, screens, now, timezone_of=timezone_of, respect_of=respect_of)
+        )
+
+    async def _zone_report(
+        self, screens: list[Screen], starts: datetime, ends: datetime, now: datetime
+    ) -> ZoneReport:
+        """Zones disponibles sur les écrans ciblés (même résolveur que le player)."""
+        inputs = await self._screen_inputs(screens, now)
+        layout_ids = {
+            lid
+            for inp in inputs.values()
+            for lid in (
+                *(s.layout_id for s in inp.schedules),
+                *(o.layout_id for o in inp.overrides),
+            )
+            if lid is not None
+        }
+        layouts = await load_layouts(self._s, layout_ids)
+        keys_by_screen: dict[UUID, list[frozenset[str]]] = {}
+        by_key: dict[str, tuple[str, set[UUID | None]]] = {}
+
+        def note(key: str, name: str, layout_id: UUID | None) -> None:
+            by_key.setdefault(key, (name, set()))[1].add(layout_id)
+
+        for sid, inp in inputs.items():
+            seen: list[frozenset[str]] = []
+            for k in range(REPORT_DAYS_CAP):
+                day = inp.day + timedelta(days=k * WINDOW_DAYS)
+                if wall_to_instant(inp.tz, day, 0) >= ends:
+                    break
+                for slot in resolve_input(replace(inp, day=day)):
+                    if slot.is_off or slot.start >= ends or slot.end <= starts:
+                        continue
+                    if slot.layout_id is None:
+                        keys = frozenset({"main"})
+                        note("main", "main", None)
+                    else:
+                        spec = layouts.get(slot.layout_id)
+                        zones = spec.zones if spec is not None else ()
+                        keys = frozenset(z.key for z in zones)
+                        for z in zones:
+                            note(z.key, z.name, slot.layout_id)
+                    seen.append(keys)
+            keys_by_screen[sid] = seen
+        return ZoneReport(keys_by_screen, by_key)
 
     async def _org_config(self) -> dict[str, Any]:
         org = await self._s.scalar(select(Organization.id))
@@ -364,7 +516,7 @@ class OverrideService(ServiceBase):
         draft_id = uuid4()
         playlist_id = (
             None
-            if body.kind == "off"
+            if body.kind == "off" or body.layout_id is not None
             else (body.playlist_id or uuid4())  # contenu : playlist à venir
         )
         out: set[UUID] = set()
@@ -373,7 +525,7 @@ class OverrideService(ServiceBase):
             spec = OverrideSpec(
                 id=draft_id, target_type=body.target_type, target_id=body.target_id,
                 starts_at=starts, ends_at=ends, playlist_id=playlist_id,
-                priority=body.priority, created_at=now,
+                priority=body.priority, created_at=now, layout_id=body.layout_id,
                 respect_scheduled_off=(
                     bool((await cfg_of(sid)).get("override.respect_scheduled_off", False))
                     if respect is None
@@ -409,6 +561,7 @@ class OverrideService(ServiceBase):
         target_id: UUID | None,
         limit: int = 100,
         offset: int = 0,
+        scope: str | None = None,
     ) -> list[sc.OverrideOut]:
         now = self._clock()
         q = select(PlaybackOverride).order_by(
@@ -420,6 +573,10 @@ class OverrideService(ServiceBase):
             q = q.where(
                 or_(PlaybackOverride.ended_at.is_not(None), PlaybackOverride.ends_at <= now)
             )
+        if scope == "zone":
+            q = q.where(PlaybackOverride.zone_ids.is_not(None))
+        elif scope == "screen":
+            q = q.where(PlaybackOverride.zone_ids.is_(None))
         if target_type:
             q = q.where(PlaybackOverride.target_type == target_type)
         if target_id:
@@ -479,6 +636,7 @@ class OverrideService(ServiceBase):
                         target_type=row.target_type,
                         target_id=row.target_id,
                         ends_at=row.ends_at,
+                        zone_ids=row.zone_ids,
                     ).model_dump(mode="json"),
                 )
             )
@@ -511,6 +669,7 @@ class OverrideService(ServiceBase):
                     target_id=row.target_id,
                     ended_at=now,
                     ended_by=self._actor.user_id,
+                    zone_ids=row.zone_ids,
                 ).model_dump(mode="json"),
             )
         )

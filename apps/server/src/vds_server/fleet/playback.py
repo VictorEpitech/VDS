@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vds_server.db.models import Playlist, Schedule, Screen, Site
+from vds_server.db.models_layout import Layout
 from vds_server.db.models_override import PlaybackOverride
 from vds_server.diffusion import resolver
 from vds_server.player.schedule import _zone, load_overrides, load_specs, screen_chain
@@ -27,6 +28,8 @@ class ScreenPlaybackOut(BaseModel):
     schedule_name: str | None = None
     playlist_id: UUID | None = None
     playlist_name: str | None = None
+    layout_id: UUID | None = None
+    layout_name: str | None = None
     until: datetime | None = None
     next_change_at: datetime | None = None
 
@@ -62,7 +65,7 @@ async def fleet_playback(
         cur = slots[idx]
         nxt = slots[idx + 1].start.astimezone(UTC) if idx + 1 < len(slots) else None
         until = cur.end.astimezone(UTC)
-        if cur.playlist_id is None:
+        if cur.is_off:
             out.append(
                 ScreenPlaybackOut(
                     screen_id=screen.id,
@@ -90,8 +93,19 @@ async def fleet_playback(
             ).scalar_one_or_none()
         )
         pl_name = (
-            await session.execute(select(Playlist.name).where(Playlist.id == cur.playlist_id))
-        ).scalar_one_or_none()
+            None
+            if cur.playlist_id is None
+            else (
+                await session.execute(select(Playlist.name).where(Playlist.id == cur.playlist_id))
+            ).scalar_one_or_none()
+        )
+        lay_name = (
+            None
+            if cur.layout_id is None
+            else (
+                await session.execute(select(Layout.name).where(Layout.id == cur.layout_id))
+            ).scalar_one_or_none()
+        )
         out.append(
             ScreenPlaybackOut(
                 screen_id=screen.id,
@@ -102,6 +116,8 @@ async def fleet_playback(
                 schedule_name=sched_name,
                 playlist_id=cur.playlist_id,
                 playlist_name=pl_name,
+                layout_id=cur.layout_id,
+                layout_name=lay_name,
                 until=until,
                 next_change_at=nxt,
             )

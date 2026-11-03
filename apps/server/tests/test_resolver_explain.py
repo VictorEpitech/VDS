@@ -122,6 +122,7 @@ def test_conflict_content_expires_empty_gap() -> None:
     gap = next(c for c in cs if c.kind == "gap")
     assert gap.first_at == datetime(2026, 6, 10, 9, tzinfo=PARIS) and gap.severity == "info"
     e = sch(3, rules=(h(8, 9),))
+    assert e.playlist_id is not None
     cs = conflicts(
         inp([e]),
         resolve(CHAIN, [e], PARIS, DAY, explain=True),

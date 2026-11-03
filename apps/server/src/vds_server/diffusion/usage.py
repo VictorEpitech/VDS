@@ -24,8 +24,8 @@ from vds_server.db.models import (
 from vds_server.db.models_override import PlaybackOverride
 from vds_server.diffusion import schemas as sc
 from vds_server.diffusion.expiry import is_expired
-from vds_server.diffusion.schedules import TARGET_MODELS
 from vds_server.diffusion.scope import ContentScope, OrganizationScope
+from vds_server.diffusion.targets import TARGET_MODELS
 
 
 class UsageService:
@@ -69,6 +69,7 @@ class UsageService:
                 id=r.id,
                 name=r.name,
                 playlist_id=r.playlist_id,
+                layout_id=r.layout_id,
                 target_type=r.target_type,
                 target_id=r.target_id,
                 target_name=names.get((r.target_type, r.target_id), ""),

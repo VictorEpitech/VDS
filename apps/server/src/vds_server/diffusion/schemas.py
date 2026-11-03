@@ -101,7 +101,8 @@ class UsagePlaylist(_Out):
 class UsageSchedule(_Out):
     id: UUID
     name: str
-    playlist_id: UUID
+    playlist_id: UUID | None
+    layout_id: UUID | None = None
     target_type: str
     target_id: UUID
     target_name: str
@@ -234,7 +235,8 @@ class RuleOut(BaseModel):
 
 class ScheduleCreate(_In):
     name: str = NAME
-    playlist_id: UUID
+    playlist_id: UUID | None = None  # exactement un de playlist_id / layout_id (service)
+    layout_id: UUID | None = None
     target_type: TargetType
     target_id: UUID
     priority: int = Field(default=0, ge=-1000, le=1000)
@@ -253,6 +255,7 @@ class ScheduleCreate(_In):
 class SchedulePatch(_In):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     playlist_id: UUID | None = None
+    layout_id: UUID | None = None  # fixer l'un remplace l'autre ; les deux = 422
     target_type: TargetType | None = None
     target_id: UUID | None = None
     priority: int | None = Field(default=None, ge=-1000, le=1000)
@@ -265,7 +268,8 @@ class SchedulePatch(_In):
 class ScheduleOut(BaseModel):
     id: UUID
     name: str
-    playlist_id: UUID
+    playlist_id: UUID | None
+    layout_id: UUID | None
     target_type: TargetType
     target_id: UUID
     priority: int
@@ -276,6 +280,9 @@ class ScheduleOut(BaseModel):
     rules: list[RuleOut]
     created_at: datetime
     updated_at: datetime
+    # création / modification seulement : `layout_orientation_mismatch` (non bloquant)
+    warnings: list[str] = Field(default_factory=list)
+    screens_orientation_mismatch: int = 0
 
 
 def to_minutes(value: str) -> int:

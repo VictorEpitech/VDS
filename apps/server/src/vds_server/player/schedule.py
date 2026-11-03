@@ -2,7 +2,7 @@
 
 import hashlib
 import json
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Collection, Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 from uuid import UUID
@@ -26,9 +26,20 @@ from vds_server.db.models import (
     Screen,
     Site,
 )
+from vds_server.db.models_layout import Layout, LayoutZone
 from vds_server.db.models_override import PlaybackOverride
 from vds_server.diffusion import resolver
 from vds_server.diffusion.expiry import is_expired
+from vds_server.diffusion.layout_compose import (
+    EMPTY_PLAYLIST_KEY,
+    ActiveZoneOverride,
+    PlaylistVariant,
+    ResolvedDefaults,
+    ResolvedLayout,
+    iso,
+    project_items,
+)
+from vds_server.diffusion.layout_content import load_layouts, resolve_play_content
 from vds_server.diffusion.resolver import OverrideSpec, ResolveInput, ScheduleSpec, Slot
 
 SCHEDULE_FORMAT = 1
@@ -38,6 +49,7 @@ InstanceLookup = Callable[[str], Module | None]
 PowerLookup = Callable[[UUID, datetime], Any]  # async: -> [{from, to, state}]
 TimezoneLookup = Callable[[UUID], Any]  # async: screen_id -> fuseau IANA
 KioskLookup = Callable[[Screen, datetime], Any]  # async: -> {"mode", "until"}
+DefaultsLookup = Callable[[UUID], Any]  # async: screen_id -> ResolvedDefaults
 
 
 async def screen_chain(session: AsyncSession, screen: Screen) -> dict[str, UUID]:
@@ -64,7 +76,7 @@ async def _fetch_specs(
     found_rows = (
         await session.execute(
             select(Schedule, Playlist.expires_at)
-            .join(Playlist, Playlist.id == Schedule.playlist_id)
+            .outerjoin(Playlist, Playlist.id == Schedule.playlist_id)
             .where(Schedule.enabled.is_(True), or_(*_chain_conds(chains, Schedule)))
         )
     ).all()
@@ -92,6 +104,7 @@ async def _fetch_specs(
             enabled=r.enabled,
             rules=tuple(rules[r.id]),
             until=until[r.id],
+            layout_id=r.layout_id,
         )
         for r in rows
     ]
@@ -134,12 +147,39 @@ def override_spec(
         priority=row.priority,
         created_at=row.created_at,
         respect_scheduled_off=respect,
+        layout_id=row.layout_id,
+    )
+
+
+def zone_override_spec(
+    row: PlaybackOverride, playlist_expires_at: datetime | None = None
+) -> ActiveZoneOverride | None:
+    """Forçage de zone actif (fin tronquée à l'arrêt manuel et à l'expiration de la playlist)."""
+    if row.zone_ids is None or row.playlist_id is None:
+        return None
+    ends = row.ends_at if row.ended_at is None else min(row.ends_at, row.ended_at)
+    if playlist_expires_at is not None:
+        ends = min(ends, playlist_expires_at)
+    if ends <= row.starts_at:
+        return None
+    return ActiveZoneOverride(
+        override_id=row.id,
+        zone_ids=frozenset(row.zone_ids),
+        playlist_id=row.playlist_id,
+        starts_at=row.starts_at,
+        ends_at=ends,
+        priority=(row.priority, row.created_at.timestamp(), str(row.id)),
     )
 
 
 async def _fetch_override_rows(
-    session: AsyncSession, chains: Sequence[dict[str, UUID]], now: datetime
+    session: AsyncSession,
+    chains: Sequence[dict[str, UUID]],
+    now: datetime,
+    *,
+    zones: bool = False,
 ) -> list[tuple[PlaybackOverride, datetime | None]]:
+    """Forçages d'écran (`zones=False`, découpent les créneaux) ou de zone (`zones=True`)."""
     if not chains:
         return []
     rows = (
@@ -148,6 +188,9 @@ async def _fetch_override_rows(
             .outerjoin(Playlist, Playlist.id == PlaybackOverride.playlist_id)
             .where(
                 PlaybackOverride.ends_at > now - OVERRIDE_LOOKBACK,
+                PlaybackOverride.zone_ids.is_not(None)
+                if zones
+                else PlaybackOverride.zone_ids.is_(None),
                 or_(*_chain_conds(chains, PlaybackOverride)),
             )
         )
@@ -184,6 +227,34 @@ async def load_overrides(
     return _override_specs(
         await _fetch_override_rows(session, [chain], now), chain, respect_default
     )
+
+
+async def select_zone_overrides(
+    session: AsyncSession,
+    *,
+    screen_id: UUID,
+    window_start: datetime,
+    window_end: datetime,
+) -> list[ActiveZoneOverride]:
+    """Forçages de zone de la chaîne de l'écran touchant la fenêtre (même ciblage que les
+    forçages d'écran, filtré `zone_ids IS NOT NULL`)."""
+    screen = await session.get(Screen, screen_id)
+    if screen is None:
+        return []
+    chain = await screen_chain(session, screen)
+    rows = await _fetch_override_rows(session, [chain], window_start, zones=True)
+    out: list[ActiveZoneOverride] = []
+    for row, expires_at in rows:
+        if not _on_chain(chain, row.target_type, row.target_id):
+            continue
+        spec = zone_override_spec(row, expires_at)
+        if (
+            spec is not None
+            and spec.starts_at < window_end
+            and (spec.ends_at is None or spec.ends_at > window_start)
+        ):
+            out.append(spec)
+    return sorted(out, key=lambda o: str(o.override_id))
 
 
 async def load_inputs(
@@ -246,16 +317,39 @@ async def screen_media_ids(
     playlists = {
         s.playlist_id
         for s in specs
-        if (s.ends_on is None or s.ends_on >= horizon)
+        if s.playlist_id is not None
+        and (s.ends_on is None or s.ends_on >= horizon)
         and (include_expired or s.until is None or s.until > now)
     }
-    playlists |= {
-        o.playlist_id
-        for o in await load_overrides(session, await screen_chain(session, screen), now)
-        if o.playlist_id is not None and o.ends_at > now
+    chain = await screen_chain(session, screen)
+    layout_ids = {
+        s.layout_id
+        for s in specs
+        if s.layout_id is not None and (s.ends_on is None or s.ends_on >= horizon)
     }
+    overrides = [o for o in await load_overrides(session, chain, now) if o.ends_at > now]
+    playlists |= {o.playlist_id for o in overrides if o.playlist_id is not None}
+    layout_ids |= {o.layout_id for o in overrides if o.layout_id is not None}
+    zone_ovs = await select_zone_overrides(
+        session, screen_id=screen_id, window_start=now, window_end=now + timedelta(days=3)
+    )
+    playlists |= {z.playlist_id for z in zone_ovs}
+    media: set[UUID] = set()
+    if layout_ids:
+        zone_playlists = await session.execute(
+            select(LayoutZone.playlist_id).where(
+                LayoutZone.layout_id.in_(layout_ids), LayoutZone.playlist_id.is_not(None)
+            )
+        )
+        playlists |= {p for p in zone_playlists.scalars() if p is not None}
+        backgrounds = await session.execute(
+            select(Layout.background_media_id).where(
+                Layout.id.in_(layout_ids), Layout.background_media_id.is_not(None)
+            )
+        )
+        media |= {m for m in backgrounds.scalars() if m is not None}
     if not playlists:
-        return set()
+        return media
     q = (
         select(PlaylistItemMedia.media_id)
         .join(PlaylistItem, PlaylistItem.id == PlaylistItemMedia.item_id)
@@ -265,7 +359,7 @@ async def screen_media_ids(
         q = q.join(Media, Media.id == PlaylistItemMedia.media_id).where(
             Media.expired_at.is_(None), or_(Media.expires_at.is_(None), Media.expires_at > now)
         )
-    return set((await session.execute(q)).scalars())
+    return media | set((await session.execute(q)).scalars())
 
 
 def revision_of(body: dict[str, Any]) -> str:
@@ -286,7 +380,9 @@ class ScheduleBuilder:
         power_of: PowerLookup | None = None,
         kiosk_of: KioskLookup | None = None,
         respect_of: TimezoneLookup | None = None,
+        defaults_of: DefaultsLookup | None = None,
     ) -> None:
+        self._defaults_of = defaults_of
         self._respect_of = respect_of
         self._kiosk_of = kiosk_of
         self._power_of = power_of
@@ -308,9 +404,32 @@ class ScheduleBuilder:
         )[screen_id]
         tz = inp.tz
         slots = resolver.resolve_input(inp)
-        playlists, assets, types = await self._playlists(
-            {s.playlist_id for s in slots if s.playlist_id}, now
+        defaults = (
+            ResolvedDefaults() if self._defaults_of is None else await self._defaults_of(screen_id)
         )
+        zone_ovs = await select_zone_overrides(
+            self._s, screen_id=screen_id, window_start=now, window_end=slots[-1].end
+        )
+        org_id = inp.chain["organization"]
+        layouts = await load_layouts(
+            self._s, {s.layout_id for s in slots if s.layout_id is not None}, org_id=org_id
+        )
+        composed: dict[int, ResolvedLayout] = {}
+        for i, sl in enumerate(slots):
+            if sl.is_off:
+                continue
+            composed[i] = await resolve_play_content(
+                self._s,
+                org_id=org_id,
+                playlist_id=sl.playlist_id,
+                layout_id=sl.layout_id,
+                slot_start=sl.start.astimezone(UTC),
+                slot_end=sl.end.astimezone(UTC),
+                defaults=defaults,
+                zone_overrides=zone_ovs,
+                layouts=layouts,
+            )
+        playlists, assets, types = await self._assemble(list(composed.values()), now)
         body: dict[str, Any] = {
             "format": SCHEDULE_FORMAT,
             "server_time": now.astimezone(UTC).isoformat().replace("+00:00", "Z"),
@@ -322,15 +441,87 @@ class ScheduleBuilder:
             "timezone": tz.key,
             "valid_from": slots[0].start.isoformat(),
             "valid_until": slots[-1].end.isoformat(),
-            "slots": [_slot(s, playlists) for s in slots],
+            "slots": [_slot(s, composed.get(i)) for i, s in enumerate(slots)],
             "playlists": playlists,
             "assets": assets,
             "content_types": types,
         }
+        if defaults.max_exclusive_elements != 1:
+            body["player"] = {"max_exclusive_elements": defaults.max_exclusive_elements}
         if self._power_of is not None:
             body["power"] = await self._power_of(screen_id, now)
         if self._kiosk_of is not None:
             body["kiosk"] = await self._kiosk_of(screen, now)
+        body["revision"] = revision_of(body)
+        return body
+
+    async def _assemble(
+        self, composed: Sequence[ResolvedLayout], now: datetime
+    ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+        """Playlists (variantes de zone), assets (éléments + fonds) et types du document."""
+        variants = {v for r in composed for v in r.variants}
+        base, assets, types = await self._playlists({v.playlist_id for v in variants}, now)
+        playlists = _variants(base, variants)
+        if any(z["playlist"] == EMPTY_PLAYLIST_KEY for r in composed for z in r.layout["zones"]):
+            playlists[EMPTY_PLAYLIST_KEY] = {"items": []}
+        for r in composed:
+            if r.background_media_id is None:
+                continue
+            bg = r.layout.setdefault("background", {})
+            asset = await self._asset(r.background_media_id)
+            if asset is not None:
+                key = f"media/{r.background_media_id}/original"
+                assets[key] = asset
+                bg["asset"] = key
+            if not bg:
+                r.layout.pop("background")
+        return playlists, assets, types
+
+    async def preview_layout(self, layout_id: UUID, now: datetime | None = None) -> dict[str, Any]:
+        """Document à un seul créneau d'1 h pour l'aperçu admin (écran fictif, lecture seule)."""
+        now = now or datetime.now(UTC)
+        layouts = await load_layouts(self._s, [layout_id])
+        spec = layouts.get(layout_id)
+        if spec is None:
+            raise ApiError("layout.not_found", 404)
+        end = now + timedelta(hours=1)
+        defaults = ResolvedDefaults()
+        composed = await resolve_play_content(
+            self._s,
+            org_id=UUID(int=0),  # inutilisé : mise en page déjà chargée
+            playlist_id=None,
+            layout_id=layout_id,
+            slot_start=now,
+            slot_end=end,
+            defaults=defaults,
+            layouts=layouts,
+        )
+        playlists, assets, types = await self._assemble([composed], now)
+        body: dict[str, Any] = {
+            "format": SCHEDULE_FORMAT,
+            "server_time": iso(now),
+            "screen": {"id": str(UUID(int=0)), "name": "preview", "orientation": spec.orientation},
+            "timezone": "UTC",
+            "valid_from": iso(now),
+            "valid_until": iso(end),
+            "slots": [
+                {
+                    "start": iso(now),
+                    "end": iso(end),
+                    "kind": "play",
+                    "layout": composed.layout,
+                    "source": {
+                        "schedule_id": None,
+                        "kind": "schedule",
+                        "override_id": None,
+                        "layout_id": str(layout_id),
+                    },
+                }
+            ],
+            "playlists": playlists,
+            "assets": assets,
+            "content_types": types,
+        }
         body["revision"] = revision_of(body)
         return body
 
@@ -485,21 +676,31 @@ def _zone(name: object) -> ZoneInfo:
         return ZoneInfo(DEFAULT_TZ)
 
 
-def _slot(slot: Slot, playlists: dict[str, Any]) -> dict[str, Any]:
+def _variants(base: dict[str, Any], variants: Collection[PlaylistVariant]) -> dict[str, Any]:
+    """Playlists servies : base `pl_<id>` ou variante (durées par défaut, expiration de zone)."""
+    out: dict[str, Any] = {}
+    for v in sorted(variants, key=lambda v: v.key):
+        items = base.get(_pl(v.playlist_id), {"items": []})["items"]
+        out[v.key] = (
+            base[_pl(v.playlist_id)]
+            if v.key == _pl(v.playlist_id) and _pl(v.playlist_id) in base
+            else {"items": project_items(items, v.fill_ms, v.until)}
+        )
+    return out
+
+
+def _slot(slot: Slot, resolved: ResolvedLayout | None) -> dict[str, Any]:
     base = {"start": slot.start.isoformat(), "end": slot.end.isoformat()}
-    if slot.playlist_id is None:
+    if resolved is None:
         off: dict[str, Any] = {**base, "kind": "off", "mode": "black"}
         if slot.override_id is not None:
             off["override_id"] = str(slot.override_id)
         return off
-    zone = {"id": "main", "x": 0, "y": 0, "w": 1, "h": 1, "playlist": _pl(slot.playlist_id)}
-    return {
-        **base,
-        "kind": "play",
-        "layout": {"zones": [zone]},
-        "source": {
-            "schedule_id": None if slot.schedule_id is None else str(slot.schedule_id),
-            "kind": slot.source,
-            "override_id": None if slot.override_id is None else str(slot.override_id),
-        },
+    source: dict[str, Any] = {
+        "schedule_id": None if slot.schedule_id is None else str(slot.schedule_id),
+        "kind": slot.source,
+        "override_id": None if slot.override_id is None else str(slot.override_id),
     }
+    if slot.layout_id is not None:
+        source["layout_id"] = str(slot.layout_id)
+    return {**base, "kind": "play", "layout": resolved.layout, "source": source}

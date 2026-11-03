@@ -6,7 +6,8 @@ Nommé `PlaybackOverride` pour ne pas être confondu avec `ConfigOverride` (surc
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import CheckConstraint, ForeignKey, Index, Integer, String, text
+from sqlalchemy import CheckConstraint, ForeignKey, Index, Integer, String, Text, text
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 
 from vds_server.db.base import Base, tstz, uuid_pk
@@ -25,7 +26,19 @@ class PlaybackOverride(Base, Timestamps):
         CheckConstraint(
             "end_reason IS NULL OR end_reason IN ('stopped','expired')", name="end_reason"
         ),
-        CheckConstraint("(kind = 'off') = (playlist_id IS NULL)", name="playlist"),
+        CheckConstraint(
+            "(kind = 'off') = (playlist_id IS NULL AND layout_id IS NULL)", name="playlist"
+        ),
+        CheckConstraint("playlist_id IS NULL OR layout_id IS NULL", name="content_target"),
+        CheckConstraint(
+            "zone_ids IS NULL OR cardinality(zone_ids) BETWEEN 1 AND 32", name="zone_count"
+        ),
+        CheckConstraint(
+            "zone_ids IS NULL OR (playlist_id IS NOT NULL AND layout_id IS NULL)",
+            name="zone_playlist",
+        ),
+        CheckConstraint("zone_ids IS NULL OR kind = 'playlist'", name="zone_kind"),
+        Index("ix_playback_overrides_layout_id", "layout_id"),
         Index("ix_playback_overrides_target", "target_type", "target_id"),
         Index(
             "ix_playback_overrides_ends_at",
@@ -44,6 +57,8 @@ class PlaybackOverride(Base, Timestamps):
     name: Mapped[str] = mapped_column(String(120))
     kind: Mapped[str] = mapped_column(String(16))
     playlist_id: Mapped[UUID | None] = mapped_column(ForeignKey("playlist.id"))
+    layout_id: Mapped[UUID | None] = mapped_column(ForeignKey("layout.id", ondelete="RESTRICT"))
+    zone_ids: Mapped[list[str] | None] = mapped_column(ARRAY(Text))  # NULL = forçage d'écran
     target_type: Mapped[str] = mapped_column(String(16))
     target_id: Mapped[UUID] = mapped_column()
     starts_at: Mapped[datetime] = tstz(now=False)

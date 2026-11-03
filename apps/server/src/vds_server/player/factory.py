@@ -11,6 +11,7 @@ from vds_server.config.reader import ModuleConfigReader
 from vds_server.config.schemas import CORE_NAMESPACE
 from vds_server.core.runtime import Runtime
 from vds_server.db.models import Screen
+from vds_server.diffusion.layout_compose import DEFAULT_ITEM_DURATION_MS, ResolvedDefaults
 from vds_server.player import kiosk
 from vds_server.player.schedule import ScheduleBuilder
 from vds_server.power.plan import PowerPlanBuilder
@@ -28,6 +29,17 @@ def schedule_builder(rt: Runtime, session: AsyncSession) -> ScheduleBuilder:
             ScopeRef(level="screen", id=str(screen_id))
         )
         return cfg.get("override.respect_scheduled_off", False)
+
+    async def defaults_of(screen_id: UUID) -> ResolvedDefaults:
+        cfg = await ModuleConfigReader(rt.maker, rt.schemas, CORE_NAMESPACE).resolve(
+            ScopeRef(level="screen", id=str(screen_id))
+        )
+        return ResolvedDefaults(
+            default_item_duration_ms=int(
+                cfg.get("default_item_duration_ms", DEFAULT_ITEM_DURATION_MS)
+            ),
+            max_exclusive_elements=int(cfg.get("player.max_exclusive_elements", 1)),
+        )
 
     async def power_of(screen_id: UUID, now: datetime) -> list[dict[str, str]]:
         return await PowerPlanBuilder(session, rt.schemas).player_slots(screen_id, now)
@@ -47,4 +59,5 @@ def schedule_builder(rt: Runtime, session: AsyncSession) -> ScheduleBuilder:
         power_of,
         kiosk_of,
         respect_of,
+        defaults_of,
     )

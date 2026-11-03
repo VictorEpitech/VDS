@@ -19,6 +19,10 @@ class ContentScope(Protocol):
 
     def screen_filter(self, principal: Principal) -> ColumnElement[bool]: ...
 
+    def layout_filter(self, principal: Principal) -> ColumnElement[bool]: ...
+
+    async def can_write_layout(self, principal: Principal, layout_id: UUID) -> bool: ...
+
     async def can_write_media(self, principal: Principal, media_id: UUID) -> bool: ...
 
     async def can_write_playlist(self, principal: Principal, playlist_id: UUID) -> bool: ...
@@ -33,6 +37,12 @@ class OrganizationScope:
 
     def screen_filter(self, principal: Principal) -> ColumnElement[bool]:
         return true()
+
+    def layout_filter(self, principal: Principal) -> ColumnElement[bool]:
+        return true()
+
+    async def can_write_layout(self, principal: Principal, layout_id: UUID) -> bool:
+        return True
 
     async def can_write_media(self, principal: Principal, media_id: UUID) -> bool:
         return True

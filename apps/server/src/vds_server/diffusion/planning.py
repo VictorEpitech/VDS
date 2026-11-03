@@ -11,7 +11,7 @@ import hashlib
 import json
 import os
 from collections.abc import Callable, Collection, Mapping, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime, time, timedelta
 from typing import Any
 from uuid import UUID, uuid4
@@ -35,6 +35,7 @@ from vds_server.db.models import (
     Screen,
     Site,
 )
+from vds_server.db.models_layout import Layout
 from vds_server.db.models_override import PlaybackOverride
 from vds_server.diffusion import explain as explain_mod
 from vds_server.diffusion import planning_schemas as ps
@@ -51,10 +52,10 @@ from vds_server.diffusion.resolver import (
     Slot,
     wall_to_instant,
 )
-from vds_server.diffusion.schedules import TARGET_MODELS, ScheduleService
+from vds_server.diffusion.schedules import ScheduleService
 from vds_server.diffusion.scope import ContentScope, OrganizationScope
+from vds_server.diffusion.targets import TARGET_MODELS, screens_of
 from vds_server.fleet.health import evaluate
-from vds_server.overrides.service import screens_of
 from vds_server.player.schedule import DEFAULT_TZ, _zone, load_inputs
 from vds_server.supervision.status import Thresholds
 
@@ -72,6 +73,7 @@ class Names:
     override: Mapping[UUID, str]
     target: Mapping[tuple[str, UUID], str]
     media: Mapping[UUID, str]
+    layout: Mapping[UUID, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -253,8 +255,10 @@ class PlanningService:
     ) -> Aux:
         specs = {s.id: s for m in inputs for i in m.values() for s in i.schedules}
         ovs = {o.id: o for m in inputs for i in m.values() for o in i.overrides}
-        playlists = {s.playlist_id for s in specs.values()}
+        playlists = {s.playlist_id for s in specs.values() if s.playlist_id is not None}
         playlists |= {o.playlist_id for o in ovs.values() if o.playlist_id is not None}
+        layouts = {s.layout_id for s in specs.values() if s.layout_id is not None}
+        layouts |= {o.layout_id for o in ovs.values() if o.layout_id is not None}
         targets: dict[str, set[UUID]] = {}
         for sp in specs.values():
             targets.setdefault(sp.target_type, set()).add(sp.target_id)
@@ -270,12 +274,13 @@ class PlanningService:
         for s in screens:
             target_names[("screen", s.id)] = s.name
         names_pl = await self._names(Playlist, playlists, self._scope.playlist_filter(self._actor))
+        names_lay = await self._names(Layout, layouts)
         names_sch = await self._names(Schedule, set(specs))
         names_sch.update(extra_schedule_names or {})
         names_ov = await self._names(PlaybackOverride, set(ovs))
         empty, media_until, media_names = await self._contents(playlists, now)
         return Aux(
-            Names(names_pl, names_sch, names_ov, target_names, media_names),
+            Names(names_pl, names_sch, names_ov, target_names, media_names, names_lay),
             frozenset(empty),
             media_until,
         )
@@ -413,7 +418,11 @@ class PlanningService:
         )  # fmt: skip
 
     @staticmethod
-    def _content(names: Names, playlist_id: UUID | None) -> ps.ContentRef | None:
+    def _content(
+        names: Names, playlist_id: UUID | None, layout_id: UUID | None = None
+    ) -> ps.ContentRef | None:
+        if layout_id is not None:
+            return ps.ContentRef(kind="layout", id=layout_id, name=names.layout.get(layout_id, ""))
         if playlist_id is None:
             return None
         return ps.ContentRef(
@@ -446,13 +455,13 @@ class PlanningService:
             start=slot.start.astimezone(UTC),
             end=slot.end.astimezone(UTC),
             state=state,
-            content=self._content(names, slot.playlist_id),
+            content=self._content(names, slot.playlist_id, slot.layout_id),
             source=source,
             reason=slot.reason,
             losers=[
                 ps.Loser(
                     source=self._ref_source(names, draft, screen_id, lo.ref),
-                    content=self._content(names, lo.ref.playlist_id),
+                    content=self._content(names, lo.ref.playlist_id, lo.ref.layout_id),
                     reason=lo.reason,
                 )
                 for lo in slot.losers
@@ -494,7 +503,7 @@ class PlanningService:
         explain: bool,
     ) -> tuple[ps.ScreenTimeline, list[Slot]]:
         slots = self.slots(inp, start, end, explain=explain)
-        used = {s.playlist_id for s in inp.schedules if s.enabled}
+        used = {s.playlist_id for s in inp.schedules if s.enabled and s.playlist_id is not None}
         used |= {o.playlist_id for o in inp.overrides if o.playlist_id is not None}
         media_until = [mu for pid in sorted(used, key=str) for mu in aux.media_until.get(pid, ())]
         markers = explain_mod.markers(inp, slots, media_until=media_until)
@@ -571,6 +580,7 @@ class PlanningService:
                     spec.target_id,
                     spec.priority,
                     spec.playlist_id,
+                    spec.layout_id,
                     occ,
                     wins.get(spec.id, []),
                     target,
@@ -589,6 +599,7 @@ class PlanningService:
                         o.target_id,
                         o.priority,
                         o.playlist_id,
+                        o.layout_id,
                         [(a, b)],
                         wins.get(o.id, []),
                         target,
@@ -606,6 +617,7 @@ class PlanningService:
         target_id: UUID,
         priority: int,
         playlist_id: UUID | None,
+        layout_id: UUID | None,
         occurrences: list[tuple[datetime, datetime]],
         wins: list[tuple[datetime, datetime]],
         view: tuple[str, UUID],
@@ -627,7 +639,7 @@ class PlanningService:
                 priority=priority,
                 view=view,
             ),  # fmt: skip
-            content=self._content(aux.names, playlist_id),
+            content=self._content(aux.names, playlist_id, layout_id),
             occurrences=[(a.astimezone(UTC), b.astimezone(UTC)) for a, b in occ_u],
             effective_ratio=round(min(ratio, 1.0), 4),
         )
@@ -687,8 +699,15 @@ class PlanningService:
         aux = await self._aux([page.inputs], page.screens, now)
         etag = _etag(
             [
-                str(self._actor.user_id), self._actor.role, target_type, str(target_id),
-                str(start), str(end), explain_on, cursor, limit,
+                str(self._actor.user_id),
+                self._actor.role,
+                target_type,
+                str(target_id),
+                str(start),
+                str(end),
+                explain_on,
+                cursor,
+                limit,
             ],
             page,
             aux,
@@ -774,8 +793,12 @@ class PlanningService:
         after_inputs = {sid: _apply(inp, add, remove_id) for sid, inp in before_inputs.items()}
         aux = await self._aux([before_inputs, after_inputs], screens, now, extra)
         # le brouillon peut citer une playlist absente des entrées : son nom et ses contenus
-        if add is not None and add.playlist_id not in aux.names.playlist:
-            aux = await self._aux_with_playlist(aux, add.playlist_id, now)
+        if add is not None and add.playlist_id is not None:
+            if add.playlist_id not in aux.names.playlist:
+                aux = await self._aux_with_playlist(aux, add.playlist_id, now)
+        elif add is not None and add.layout_id not in aux.names.layout:
+            names = {**aux.names.layout, **await self._names(Layout, {add.layout_id})}  # type: ignore[arg-type]
+            aux = replace(aux, names=replace(aux.names, layout=names))
         before = self._timeline(
             target, Page(screens, before_inputs, None), start, end, aux, now, draft, explain=True
         )
@@ -821,13 +844,13 @@ class PlanningService:
         if body.draft is not None:
             d = body.draft
             await svc.validate_create(d)
-            await self._check_playlist_scope(d.playlist_id)
-            until = await self._until(d.playlist_id)
+            until = await self._scoped_until(d.playlist_id)
             draft = Draft(uuid4(), True)
             spec = ScheduleSpec(
                 id=draft.id, playlist_id=d.playlist_id, target_type=d.target_type,
                 target_id=d.target_id, priority=d.priority, updated_at=now, starts_on=d.starts_on,
                 ends_on=d.ends_on, enabled=d.enabled, rules=_rules(d.rules), until=until,
+                layout_id=d.layout_id,
             )  # fmt: skip
             return draft, spec, None, {draft.id: d.name}
         if body.edit is None:  # exclu par SimulateIn._one_change
@@ -835,14 +858,21 @@ class PlanningService:
         sid, patch = body.edit
         row = await svc.get_row(sid)
         v = await svc.validate_patch(row, patch)
-        await self._check_playlist_scope(v.playlist_id)
+        until = await self._scoped_until(v.playlist_id)
         rules = v.rules if v.rules is not None else await self._stored_rules(sid)
         spec = ScheduleSpec(
             id=sid, playlist_id=v.playlist_id, target_type=v.target_type, target_id=v.target_id,
             priority=v.priority, updated_at=now, starts_on=v.starts_on, ends_on=v.ends_on,
-            enabled=v.enabled, rules=_rules(rules), until=await self._until(v.playlist_id),
+            enabled=v.enabled, rules=_rules(rules), until=until, layout_id=v.layout_id,
         )  # fmt: skip
         return Draft(sid, False), spec, sid, {sid: v.name}
+
+    async def _scoped_until(self, playlist_id: UUID | None) -> datetime | None:
+        """Contrôle de périmètre + expiration de la playlist cible (None pour une mise en page)."""
+        if playlist_id is None:
+            return None
+        await self._check_playlist_scope(playlist_id)
+        return await self._until(playlist_id)
 
     async def _check_playlist_scope(self, playlist_id: UUID) -> None:
         if not await self._scope.can_write_playlist(self._actor, playlist_id):

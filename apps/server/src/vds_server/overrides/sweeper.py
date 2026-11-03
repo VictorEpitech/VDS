@@ -60,6 +60,7 @@ class OverrideSweeper:
                     target_type=row.target_type,
                     target_id=row.target_id,
                     ended_at=row.ends_at,
+                    zone_ids=row.zone_ids,
                 ).model_dump(mode="json")
                 events.append(Event(name="override.expired", payload=payload, source="core"))
             await s.commit()

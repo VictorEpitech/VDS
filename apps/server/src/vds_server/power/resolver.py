@@ -141,7 +141,7 @@ def apply_overrides(
     for a, b in zip(points, points[1:], strict=False):
         base: State = next((s.state for s in slots if s.start <= a and s.end >= b), "on")
         forced = winning_override(chain, overrides, a, b, schedule_off=base == "off")
-        state: State = base if forced is None else ("on" if forced.playlist_id else "off")
+        state: State = base if forced is None else ("off" if forced.is_off else "on")
         if out and out[-1].state == state:
             out[-1] = PowerSlot(out[-1].start, b, state)
         else:

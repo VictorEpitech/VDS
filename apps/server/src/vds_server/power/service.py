@@ -19,8 +19,8 @@ from vds_server.db.models_power import (
     PowerPlanRule,
 )
 from vds_server.diffusion.base import ServiceBase
-from vds_server.diffusion.schedules import TARGET_MODELS
 from vds_server.diffusion.schemas import RuleIn, RuleOut, to_hhmm, to_minutes
+from vds_server.diffusion.targets import TARGET_MODELS
 from vds_server.power import schemas as sc
 
 MANUAL_MODULE = "core"

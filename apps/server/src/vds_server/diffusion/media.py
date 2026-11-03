@@ -16,6 +16,7 @@ from vds_server.config.schemas import ConfigSchemaProvider
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
 from vds_server.db.models import Media, MediaVariant, PlaylistItem, PlaylistItemMedia
+from vds_server.db.models_layout import Layout
 from vds_server.diffusion import schemas as sc
 from vds_server.diffusion.base import ServiceBase
 from vds_server.diffusion.expiry import (
@@ -25,6 +26,7 @@ from vds_server.diffusion.expiry import (
     is_expired,
     state_clause,
 )
+from vds_server.diffusion.layouts import touch_layouts
 from vds_server.diffusion.scope import ContentScope, OrganizationScope
 from vds_server.diffusion.tags import (
     AUTOCOMPLETE_MAX,
@@ -257,6 +259,13 @@ class MediaService(ServiceBase):
         used = await self._used_by(media.id)
         if used:
             raise ApiError("media.in_use", 409, playlists=[str(p) for p in used])
+        backgrounds = list(
+            (
+                await self._s.scalars(
+                    select(Layout.id).where(Layout.background_media_id == media.id)
+                )
+            ).all()
+        )
         keys = set(
             (
                 await self._s.scalars(
@@ -274,6 +283,8 @@ class MediaService(ServiceBase):
         except IntegrityError as exc:  # course : utilisé entre-temps
             raise ApiError("media.in_use", 409) from exc
         await add_tombstones(self._s, backend, keys, reason="deleted", media_id=media.id)
+        for layout_id, revision in await touch_layouts(self._s, backgrounds):
+            self._audit("layout.updated", "layout", layout_id, "layout_id", revision=revision)
         self._audit("media.deleted", "media", media.id, "media_id", kind=media.kind)
 
     async def delete(self, media_id: UUID) -> None:

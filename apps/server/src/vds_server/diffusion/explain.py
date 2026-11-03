@@ -156,7 +156,7 @@ def markers(
     out: list[Marker] = []
     for s in inp.schedules:
         if s.enabled and inp.chain.get(s.target_type) == s.target_id:
-            if s.until is not None and lo <= s.until < hi:
+            if s.until is not None and s.playlist_id is not None and lo <= s.until < hi:
                 out.append(
                     Marker(s.until, "playlist_expires", s.playlist_id, _impact(slots, s.until))
                 )

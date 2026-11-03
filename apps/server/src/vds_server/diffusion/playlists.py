@@ -14,6 +14,7 @@ from vds_server.config.schemas import ConfigSchemaProvider
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
 from vds_server.db.models import Media, Playlist, PlaylistItem, PlaylistItemMedia, Schedule
+from vds_server.db.models_layout import LayoutZone
 from vds_server.diffusion import schemas as sc
 from vds_server.diffusion.base import ServiceBase
 from vds_server.diffusion.expiry import (
@@ -23,6 +24,7 @@ from vds_server.diffusion.expiry import (
     is_expired,
     state_clause,
 )
+from vds_server.diffusion.layouts import touch_layouts
 from vds_server.diffusion.scope import ContentScope, OrganizationScope
 from vds_server.diffusion.tags import AUTOCOMPLETE_MAX, escape_like, normalize_tag, normalize_tags
 
@@ -253,6 +255,19 @@ class PlaylistService(ServiceBase):
         used = [str(s) for s in schedules]
         if used:
             raise ApiError("playlist.in_use", 409, schedules=used)
+        zone_layouts = sorted(
+            (
+                await self._s.scalars(
+                    select(LayoutZone.layout_id)
+                    .where(LayoutZone.playlist_id == playlist_id)
+                    .distinct()
+                )
+            ).all(),
+            key=str,
+        )
+        # ON DELETE SET NULL vide les zones ; les révisions sont incrémentées avant la suppression
+        for layout_id, revision in await touch_layouts(self._s, zone_layouts):
+            self._audit("layout.updated", "layout", layout_id, "layout_id", revision=revision)
         await self._s.delete(playlist)
         self._audit("playlist.deleted", "playlist", playlist_id, "playlist_id")
         await self._commit("playlist.in_use")

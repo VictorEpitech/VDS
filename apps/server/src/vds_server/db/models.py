@@ -435,12 +435,15 @@ class Schedule(Base, Timestamps):
             "starts_on IS NULL OR ends_on IS NULL OR starts_on <= ends_on", name="period"
         ),
         Index("ix_schedule_target", "target_type", "target_id"),
+        CheckConstraint("num_nonnulls(playlist_id, layout_id) = 1", name="content_target"),
         Index("ix_schedule_playlist_id", "playlist_id"),
+        Index("ix_schedule_layout_id", "layout_id"),
     )
 
     id: Mapped[UUID] = uuid_pk()
     name: Mapped[str] = mapped_column(Text)
-    playlist_id: Mapped[UUID] = mapped_column(ForeignKey("playlist.id", ondelete="RESTRICT"))
+    playlist_id: Mapped[UUID | None] = mapped_column(ForeignKey("playlist.id", ondelete="RESTRICT"))
+    layout_id: Mapped[UUID | None] = mapped_column(ForeignKey("layout.id", ondelete="RESTRICT"))
     target_type: Mapped[str] = mapped_column(Text)
     target_id: Mapped[UUID] = mapped_column()
     priority: Mapped[int] = mapped_column(Integer, server_default="0")
@@ -473,4 +476,5 @@ class ScheduleRule(Base, Timestamps):
     end_minute: Mapped[int] = mapped_column(SmallInteger)
 
 
+from vds_server.db import models_layout as _models_layout  # noqa: E402,F401
 from vds_server.db import models_onboarding, models_override, models_power  # noqa: E402,F401  (tables lots 3, Premiers pas, forçage)

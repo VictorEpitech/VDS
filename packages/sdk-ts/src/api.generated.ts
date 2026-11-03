@@ -265,6 +265,97 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/layouts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Layouts */
+        get: operations["list_layouts_api_v1_layouts_get"];
+        put?: never;
+        /** Create Layout */
+        post: operations["create_layout_api_v1_layouts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/layouts/{layout_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Layout */
+        get: operations["get_layout_api_v1_layouts__layout_id__get"];
+        /** Replace Layout */
+        put: operations["replace_layout_api_v1_layouts__layout_id__put"];
+        post?: never;
+        /** Delete Layout */
+        delete: operations["delete_layout_api_v1_layouts__layout_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/layouts/{layout_id}/duplicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Duplicate Layout */
+        post: operations["duplicate_layout_api_v1_layouts__layout_id__duplicate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/layouts/{layout_id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Layout Preview
+         * @description ScheduleDocument à un créneau d'1 h pour l'aperçu admin (lecture seule, session).
+         */
+        get: operations["layout_preview_api_v1_layouts__layout_id__preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/layouts/{layout_id}/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Layout Usage */
+        get: operations["layout_usage_api_v1_layouts__layout_id__usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me": {
         parameters: {
             query?: never;
@@ -2517,6 +2608,132 @@ export interface components {
             /** Zones */
             zones: components["schemas"]["LayoutZone"][];
         };
+        /** LayoutIn */
+        LayoutIn: {
+            /** Background Color */
+            background_color?: string | null;
+            /** Background Media Id */
+            background_media_id?: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Orientation
+             * @enum {string}
+             */
+            orientation: "landscape" | "portrait";
+            /** Tags */
+            tags?: string[];
+            /** Zones */
+            zones: components["schemas"]["LayoutZoneIn"][];
+        };
+        /** LayoutOut */
+        LayoutOut: {
+            /** Background Color */
+            background_color: string | null;
+            /** Background Media Id */
+            background_media_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Orientation
+             * @enum {string}
+             */
+            orientation: "landscape" | "portrait";
+            /** Revision */
+            revision: number;
+            /** Tags */
+            tags: string[];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Warnings */
+            warnings?: string[];
+            /** Zones */
+            zones: components["schemas"]["LayoutZoneOut"][];
+        };
+        /** LayoutPage */
+        LayoutPage: {
+            /** Items */
+            items: components["schemas"]["LayoutSummary"][];
+            /** Total */
+            total: number;
+        };
+        /** LayoutSummary */
+        LayoutSummary: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Orientation
+             * @enum {string}
+             */
+            orientation: "landscape" | "portrait";
+            /** Revision */
+            revision: number;
+            /** Tags */
+            tags: string[];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Usage Count */
+            usage_count: number;
+            /** Zone Count */
+            zone_count: number;
+            /** Zones */
+            zones: components["schemas"]["LayoutZoneOut"][];
+        };
+        /** LayoutUsageOut */
+        LayoutUsageOut: {
+            /** Overrides */
+            overrides: components["schemas"]["LayoutUsageOverride"][];
+            /** Schedules */
+            schedules: components["schemas"]["UsageSchedule"][];
+            /** Screens Orientation Mismatch */
+            screens_orientation_mismatch: number;
+            /** Screens Total */
+            screens_total: number;
+            /** Zone Overrides */
+            zone_overrides: components["schemas"]["LayoutUsageOverride"][];
+        };
+        /** LayoutUsageOverride */
+        LayoutUsageOverride: {
+            /** Active */
+            active: boolean;
+            /**
+             * Ends At
+             * Format: date-time
+             */
+            ends_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Layout Id */
+            layout_id: string | null;
+            /** Name */
+            name: string;
+            /** Zone Ids */
+            zone_ids: string[] | null;
+        };
         /** LayoutZone */
         LayoutZone: {
             /** H */
@@ -2531,6 +2748,70 @@ export interface components {
             x: number;
             /** Y */
             y: number;
+        };
+        /** LayoutZoneIn */
+        LayoutZoneIn: {
+            /** Active From */
+            active_from?: string | null;
+            /** Active Until */
+            active_until?: string | null;
+            /** Default Item Duration Ms */
+            default_item_duration_ms?: number | null;
+            /**
+             * Fit
+             * @default contain
+             * @enum {string}
+             */
+            fit: "contain" | "cover" | "stretch";
+            /** H */
+            h: number;
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            /** Playlist Id */
+            playlist_id?: string | null;
+            /** W */
+            w: number;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+            /**
+             * Z
+             * @default 0
+             */
+            z: number;
+        };
+        /** LayoutZoneOut */
+        LayoutZoneOut: {
+            /** Active From */
+            active_from: string | null;
+            /** Active Until */
+            active_until: string | null;
+            /** Default Item Duration Ms */
+            default_item_duration_ms: number | null;
+            /**
+             * Fit
+             * @enum {string}
+             */
+            fit: "contain" | "cover" | "stretch";
+            /** H */
+            h: number;
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            /** Playlist Id */
+            playlist_id: string | null;
+            /** W */
+            w: number;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+            /** Z */
+            z: number;
         };
         /** LocalActivated */
         LocalActivated: {
@@ -3007,6 +3288,8 @@ export interface components {
              * @enum {string}
              */
             kind: "playlist" | "off";
+            /** Layout Id */
+            layout_id?: string | null;
             /** Name */
             name?: string | null;
             /** Note */
@@ -3036,6 +3319,8 @@ export interface components {
             target_type: "organization" | "site" | "group" | "screen";
             /** Until */
             until?: "end_of_day" | null;
+            /** Zone Ids */
+            zone_ids?: string[] | null;
         };
         /** OverrideOut */
         OverrideOut: {
@@ -3069,6 +3354,8 @@ export interface components {
              * @enum {string}
              */
             kind: "playlist" | "off";
+            /** Layout Id */
+            layout_id?: string | null;
             /** Name */
             name: string;
             /** Note */
@@ -3079,6 +3366,16 @@ export interface components {
             priority: number;
             /** Respect Scheduled Off */
             respect_scheduled_off: boolean;
+            /**
+             * Screens Missing
+             * @default 0
+             */
+            screens_missing: number;
+            /**
+             * Screens Orientation Mismatch
+             * @default 0
+             */
+            screens_orientation_mismatch: number;
             /**
              * Starts At
              * Format: date-time
@@ -3101,6 +3398,10 @@ export interface components {
              * @enum {string}
              */
             target_type: "organization" | "site" | "group" | "screen";
+            /** Warnings */
+            warnings?: string[];
+            /** Zone Ids */
+            zone_ids?: string[] | null;
         };
         /** OverridePatch */
         OverridePatch: {
@@ -3120,10 +3421,19 @@ export interface components {
             screens_in_scheduled_off: number;
             /** Screens Offline */
             screens_offline: number;
+            /**
+             * Screens Orientation Mismatch
+             * @default 0
+             */
+            screens_orientation_mismatch: number;
             /** Screens Total */
             screens_total: number;
             /** Superseded Override Ids */
             superseded_override_ids: string[];
+            /** Zone Candidates */
+            zone_candidates?: components["schemas"]["ZoneCandidate"][];
+            /** Zone Coverage */
+            zone_coverage?: components["schemas"]["ZoneCoverage"][];
         };
         /** PairingClaim */
         PairingClaim: {
@@ -3538,13 +3848,12 @@ export interface components {
             enabled: boolean;
             /** Ends On */
             ends_on?: string | null;
+            /** Layout Id */
+            layout_id?: string | null;
             /** Name */
             name: string;
-            /**
-             * Playlist Id
-             * Format: uuid
-             */
-            playlist_id: string;
+            /** Playlist Id */
+            playlist_id?: string | null;
             /**
              * Priority
              * @default 0
@@ -3619,13 +3928,12 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Layout Id */
+            layout_id: string | null;
             /** Name */
             name: string;
-            /**
-             * Playlist Id
-             * Format: uuid
-             */
-            playlist_id: string;
+            /** Playlist Id */
+            playlist_id: string | null;
             /** Priority */
             priority: number;
             /**
@@ -3635,6 +3943,11 @@ export interface components {
             priority_level: "background" | "normal" | "high";
             /** Rules */
             rules: components["schemas"]["RuleOut"][];
+            /**
+             * Screens Orientation Mismatch
+             * @default 0
+             */
+            screens_orientation_mismatch: number;
             /** Starts On */
             starts_on: string | null;
             /**
@@ -3652,6 +3965,8 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /** Warnings */
+            warnings?: string[];
         };
         /** SchedulePatch */
         SchedulePatch: {
@@ -3659,6 +3974,8 @@ export interface components {
             enabled?: boolean | null;
             /** Ends On */
             ends_on?: string | null;
+            /** Layout Id */
+            layout_id?: string | null;
             /** Name */
             name?: string | null;
             /** Playlist Id */
@@ -3778,6 +4095,10 @@ export interface components {
         };
         /** ScreenPlaybackOut */
         ScreenPlaybackOut: {
+            /** Layout Id */
+            layout_id?: string | null;
+            /** Layout Name */
+            layout_name?: string | null;
             /** Next Change At */
             next_change_at?: string | null;
             /** Override Id */
@@ -4131,13 +4452,12 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Layout Id */
+            layout_id?: string | null;
             /** Name */
             name: string;
-            /**
-             * Playlist Id
-             * Format: uuid
-             */
-            playlist_id: string;
+            /** Playlist Id */
+            playlist_id: string | null;
             /**
              * Target Id
              * Format: uuid
@@ -4160,6 +4480,24 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** ZoneCandidate */
+        ZoneCandidate: {
+            /** Key */
+            key: string;
+            /** Layouts */
+            layouts: number;
+            /** Name */
+            name: string;
+        };
+        /** ZoneCoverage */
+        ZoneCoverage: {
+            /** Screens Missing */
+            screens_missing: number;
+            /** Screens Total */
+            screens_total: number;
+            /** Zone Id */
+            zone_id: string;
         };
         /** CapabilitiesOut */
         vds_server__discovery__schemas__CapabilitiesOut: {
@@ -4786,6 +5124,266 @@ export interface operations {
             };
         };
     };
+    list_layouts_api_v1_layouts_get: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                tag?: string | null;
+                orientation?: ("landscape" | "portrait") | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LayoutPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_layout_api_v1_layouts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LayoutIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LayoutOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_layout_api_v1_layouts__layout_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                layout_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LayoutOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    replace_layout_api_v1_layouts__layout_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "if-match"?: string | null;
+            };
+            path: {
+                layout_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LayoutIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LayoutOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_layout_api_v1_layouts__layout_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                layout_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    duplicate_layout_api_v1_layouts__layout_id__duplicate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                layout_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LayoutOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    layout_preview_api_v1_layouts__layout_id__preview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                layout_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    layout_usage_api_v1_layouts__layout_id__usage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                layout_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LayoutUsageOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     me_api_v1_me_get: {
         parameters: {
             query?: never;
@@ -5253,6 +5851,7 @@ export interface operations {
                 site_id?: string | null;
                 target_type?: ("organization" | "site" | "group" | "screen") | null;
                 target_id?: string | null;
+                scope?: ("screen" | "zone") | null;
                 limit?: number;
                 offset?: number;
             };

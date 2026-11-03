@@ -12,7 +12,12 @@ forçages : extinction d'abord (un `off` bat toute playlist), puis `priority` d�
 puis le plus récent (`created_at`), puis l'id. Un forçage
 `respect_scheduled_off` ne s'applique pas là où la programmation est hors plage (`off`).
 Une programmation avec `until` (expiration de sa playlist) est inactive à partir de cet instant.
-Un forçage sans playlist (`playlist_id is None`) force l'extinction.
+Un forçage sans playlist ni mise en page (`is_off`) force l'extinction.
+
+Mises en page (vds-core 1.9.0) : une programmation ou un forçage cible soit une playlist, soit une
+mise en page (`layout_id`) ; le créneau porte alors `layout_id` (et `playlist_id` None). Le
+résolveur ne découpe que sur les forçages d'écran : les forçages de zone sont appliqués plus tard
+(`diffusion.layouts.compose`), sans jamais découper un créneau.
 
 Mode `explain=True` (planning admin) : même calcul, mais chaque créneau porte en plus le code de
 raison du gagnant et la liste des perdants ; le découpage ajoute les minuits locaux. Le document
@@ -21,7 +26,7 @@ Point d'accroche (non implémenté) : `CandidateFilter` ; `condition_unmet` est 
 """
 
 from collections.abc import Callable, Collection, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, time, timedelta, tzinfo
 from typing import Literal
 from uuid import UUID
@@ -58,7 +63,7 @@ class Rule:
 @dataclass(frozen=True)
 class ScheduleSpec:
     id: UUID
-    playlist_id: UUID
+    playlist_id: UUID | None  # None si la cible est une mise en page
     target_type: str
     target_id: UUID
     priority: int
@@ -68,6 +73,7 @@ class ScheduleSpec:
     enabled: bool = True
     rules: tuple[Rule, ...] = ()
     until: datetime | None = None  # UTC : expiration de la playlist, point de découpe
+    layout_id: UUID | None = None
 
 
 @dataclass(frozen=True)
@@ -81,6 +87,11 @@ class OverrideSpec:
     priority: int
     created_at: datetime
     respect_scheduled_off: bool = False
+    layout_id: UUID | None = None  # forçage d'écran sur une mise en page
+
+    @property
+    def is_off(self) -> bool:
+        return self.playlist_id is None and self.layout_id is None
 
 
 @dataclass(frozen=True)
@@ -93,6 +104,7 @@ class Ref:
     target_id: UUID
     priority: int
     playlist_id: UUID | None
+    layout_id: UUID | None = None
 
 
 @dataclass(frozen=True)
@@ -110,6 +122,11 @@ class Slot:
     override_id: UUID | None = None
     reason: ReasonCode | None = None  # explain=True seulement : pourquoi ce gagnant
     losers: tuple[Loser, ...] = ()  # explain=True seulement
+    layout_id: UUID | None = None  # cible mise en page (playlist_id est alors None)
+
+    @property
+    def is_off(self) -> bool:
+        return self.playlist_id is None and self.layout_id is None
 
     @property
     def source(self) -> Literal["schedule", "override", "off"]:
@@ -142,7 +159,7 @@ def _rank(spec: ScheduleSpec) -> tuple[int, int, float, str]:
 def _override_rank(spec: OverrideSpec) -> tuple[int, int, float, str]:
     # un forçage d'extinction (réservé aux admins) bat toujours un forçage de playlist
     return (
-        1 if spec.playlist_id is None else 0,
+        1 if spec.is_off else 0,
         spec.priority,
         spec.created_at.timestamp(),
         str(spec.id),
@@ -212,12 +229,13 @@ def _intervals(
 
 def _spec_ref(spec: ScheduleSpec) -> Ref:
     return Ref(
-        "schedule", spec.id, spec.target_type, spec.target_id, spec.priority, spec.playlist_id
-    )
+        "schedule", spec.id, spec.target_type, spec.target_id, spec.priority, spec.playlist_id,
+        spec.layout_id,
+    )  # fmt: skip
 
 
 def _override_ref(o: OverrideSpec) -> Ref:
-    return Ref("override", o.id, o.target_type, o.target_id, o.priority, o.playlist_id)
+    return Ref("override", o.id, o.target_type, o.target_id, o.priority, o.playlist_id, o.layout_id)
 
 
 def _vs_schedule(win: ScheduleSpec, other: ScheduleSpec) -> ReasonCode:
@@ -228,7 +246,7 @@ def _vs_schedule(win: ScheduleSpec, other: ScheduleSpec) -> ReasonCode:
 
 
 def _vs_override(win: OverrideSpec, other: OverrideSpec) -> ReasonCode:
-    if (win.playlist_id is None) != (other.playlist_id is None) or win.priority != other.priority:
+    if win.is_off != other.is_off or win.priority != other.priority:
         return "higher_priority"
     return "tie_break"
 
@@ -334,35 +352,24 @@ def resolve(
         win = max(active, key=_rank) if active else None
         forced = winning_override(chain, mine, a, b, schedule_off=win is None)
         if forced is not None:
-            cur = Slot(a, b, None, forced.playlist_id, forced.id)
+            cur = Slot(a, b, None, forced.playlist_id, forced.id, layout_id=forced.layout_id)
         else:
-            cur = Slot(a, b, win.id if win else None, win.playlist_id if win else None)
+            cur = Slot(
+                a, b, win.id if win else None, win.playlist_id if win else None,
+                layout_id=win.layout_id if win else None,
+            )  # fmt: skip
         if explain:
             reason, losers = _explain_slot(
                 a, b, tz, chain, mine_specs, full, active, win, mine, forced
             )
-            cur = Slot(a, b, cur.schedule_id, cur.playlist_id, cur.override_id, reason, losers)
+            cur = replace(cur, reason=reason, losers=losers)
         last = slots[-1] if slots else None
         if (
             last
             and (last.schedule_id, last.override_id) == (cur.schedule_id, cur.override_id)
             and (last.reason, last.losers) == (cur.reason, cur.losers)
         ):
-            slots[-1] = Slot(
-                last.start, b, last.schedule_id, last.playlist_id, last.override_id,
-                last.reason, last.losers,
-            )  # fmt: skip
+            slots[-1] = replace(last, end=b)
         else:
             slots.append(cur)
-    return [
-        Slot(
-            s.start.astimezone(tz),
-            s.end.astimezone(tz),
-            s.schedule_id,
-            s.playlist_id,
-            s.override_id,
-            s.reason,
-            s.losers,
-        )
-        for s in slots
-    ]
+    return [replace(s, start=s.start.astimezone(tz), end=s.end.astimezone(tz)) for s in slots]
