@@ -17,6 +17,7 @@ import { displayState, ISSUE_STATES } from "../features/supervision/status";
 import { useApi } from "../lib/api";
 import { usePlayback } from "../features/planning/now";
 import { powerKeys, useAllAgents, useAllGroups, useFleetApk, useIncidents, useScreens, useSites, type Agent, type ScreenPower } from "../lib/queries";
+import { PageTitle } from "../features/help/HelpPanel";
 
 /** Agent qui pilote l'alimentation du site : un agent en ligne de préférence, sinon un agent non révoqué. */
 function agentOf(agents: readonly Agent[], siteId: string): Agent | undefined {
@@ -70,7 +71,7 @@ export function Screens() {
   return (
     <>
       <div className="page-head">
-        <h1>{t("screens.title")}</h1>
+        <PageTitle topic="screens">{t("screens.title")}</PageTitle>
         <div className="actions">
           {forcer ? (
             <button type="button" className="btn btn-text" aria-expanded={force !== undefined} onClick={() => setForce(null)}>

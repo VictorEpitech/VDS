@@ -12,6 +12,7 @@ import { ActionQueueProvider } from "../features/actions/ActionQueueProvider";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { Icon, type IconName } from "./Icon";
 import { LanguageSwitch } from "./LanguageSwitch";
+import { PaletteProvider, useCommandPalette } from "../features/palette/CommandPalette";
 
 /** 5 entrées orientées intention ; « Plus » regroupe aussi les réglages (sites, alimentation, notifications). */
 const NAV: { to: string; key: string; icon: IconName; also?: string[] }[] = [
@@ -19,10 +20,29 @@ const NAV: { to: string; key: string; icon: IconName; also?: string[] }[] = [
   { to: "/screens", key: "screens", icon: "screen" },
   { to: "/content", key: "content", icon: "media" },
   { to: "/playback", key: "playback", icon: "schedule" },
-  { to: "/more", key: "more", icon: "more", also: ["/sites", "/power", "/notifications", "/users"] },
+  { to: "/more", key: "more", icon: "more", also: ["/sites", "/power", "/notifications", "/users", "/help"] },
 ];
 
+function SearchButton() {
+  const { t } = useTranslation();
+  const palette = useCommandPalette();
+  return (
+    <button type="button" className="btn btn-text palette-open" onClick={palette.open} aria-label={t("palette.search")} aria-haspopup="dialog" aria-keyshortcuts="Control+K Meta+K">
+      <Icon name="search" />
+      <span className="palette-open-label">{t("palette.search")}</span>
+    </button>
+  );
+}
+
 export function AppLayout() {
+  return (
+    <PaletteProvider>
+      <Layout />
+    </PaletteProvider>
+  );
+}
+
+function Layout() {
   const { pathname } = useLocation();
   const { t, i18n } = useTranslation();
   const config = useRuntimeConfig();
@@ -67,6 +87,7 @@ export function AppLayout() {
           ))}
         </nav>
         <div className="app-tools">
+          <SearchButton />
           {auth.links.map((l) => (
             <a key={l.id} className="btn btn-text" href={l.href}>
               <Icon name="back" />

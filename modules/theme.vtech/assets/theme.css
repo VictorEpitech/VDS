@@ -50,6 +50,8 @@
 
 :root {
   color-scheme: light;
+  /* Ton des textes d'aide (lu par l'admin) : neutral ou formal (vouvoiement, phrases courtes). */
+  --vds-tone: neutral;
   /* Mode clair */
   --vds-primary: #2A4B5A;
   --vds-on-primary: #FFFFFF;
@@ -333,6 +335,18 @@ code, kbd, samp, .vds-mono { font-family: var(--vds-font-mono); }
 .vds-icon[data-icon="detect"] {
   -webkit-mask-image: url("icons/detect.svg");
   mask-image: url("icons/detect.svg");
+}
+.vds-icon[data-icon="help"] {
+  -webkit-mask-image: url("icons/help.svg");
+  mask-image: url("icons/help.svg");
+}
+.vds-icon[data-icon="search"] {
+  -webkit-mask-image: url("icons/search.svg");
+  mask-image: url("icons/search.svg");
+}
+.vds-icon[data-icon="close"] {
+  -webkit-mask-image: url("icons/close.svg");
+  mask-image: url("icons/close.svg");
 }
 .vds-icon[data-icon="copy"] {
   -webkit-mask-image: url("icons/copy.svg");

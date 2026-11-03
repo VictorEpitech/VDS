@@ -8,6 +8,7 @@ import { LayoutThumb } from "../features/layouts/LayoutThumb";
 import { TEMPLATE_IDS, templateZones, useCreateLayout, useLayoutPage, type Orientation, type TemplateId } from "../features/layouts/layouts";
 import { OwnerBadge, OwnerField, useOwnerChoice } from "../features/scope/Owner";
 import { useOrganization } from "../lib/queries";
+import { PageTitle } from "../features/help/HelpPanel";
 
 export function Layouts() {
   const { t } = useTranslation();
@@ -42,7 +43,7 @@ export function Layouts() {
   return (
     <>
       <div className="page-head">
-        <h1>{t("layouts.title")}</h1>
+        <PageTitle topic="layouts">{t("layouts.title")}</PageTitle>
         {!open ? (
           <button type="button" className="btn btn-filled" onClick={() => setOpen(true)}>
             <Icon name="add" />

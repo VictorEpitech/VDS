@@ -32,7 +32,8 @@
     "user_detail": "Fiche utilisateur",
     "captures": "Captures",
     "import": "Ajouter un contenu",
-    "connect_agent": "Connecter un agent"
+    "connect_agent": "Connecter un agent",
+    "help": "Aide"
   },
   "language": {
     "label": "Langue",
@@ -1593,7 +1594,9 @@
     "notifications": "Alertes par e-mail.",
     "help": {
       "title": "Aide",
-      "onboarding": "Les Premiers pas guident la mise en route de votre parc."
+      "onboarding": "Les Premiers pas guident la mise en route de votre parc.",
+      "intro": "Sujets d'aide, glossaire et Premiers pas.",
+      "open": "Ouvrir l'aide"
     },
     "users": "Comptes, rôles et périmètre de chaque éditeur."
   },
@@ -2332,5 +2335,154 @@
       "open_library": "Voir la médiathèque",
       "again": "Ajouter d'autres contenus"
     }
+  },
+  "help": {
+    "open": "Aide : {topic}",
+    "close": "Fermer",
+    "more": "Tous les sujets et le glossaire sont dans Plus › Aide.",
+    "page": {
+      "title": "Aide",
+      "intro": "Des explications courtes sur les notions de VDS, sans quitter l'application.",
+      "topics": "Sujets",
+      "glossary": "Glossaire"
+    },
+    "screens": {
+      "title": "Écrans",
+      "body": "Un écran est une TV ou un moniteur rattaché à un site. Son état (en ligne, hors ligne, hors service prévu) s'affiche avec une couleur, une icône et un libellé. Un clic sur un écran ouvre sa programmation active, son allumage et ses réglages.",
+      "body_formal": "Un écran est une TV ou un moniteur rattaché à un site. Vous voyez son état avec une couleur, une icône et un libellé. Cliquez sur un écran pour consulter sa programmation, son allumage et ses réglages."
+    },
+    "content": {
+      "title": "Contenus et médiathèque",
+      "body": "La médiathèque regroupe les images, vidéos et documents envoyés. Chaque fichier est contrôlé à l'envoi : type, poids, orientation et résolution. Un contenu inutilisé est signalé pour faciliter le ménage.",
+      "body_formal": "La médiathèque regroupe vos images, vidéos et documents. Chaque fichier est contrôlé à l'envoi : type, poids, orientation, résolution. Vous repérez vite un contenu inutilisé."
+    },
+    "playlists": {
+      "title": "Playlists",
+      "body": "Une playlist est une suite d'éléments diffusés l'un après l'autre. Chaque élément a sa durée, et peut être désactivé sans être supprimé. L'ordre se change au glisser-déposer ou avec les boutons monter et descendre.",
+      "body_formal": "Une playlist est une suite d'éléments diffusés l'un après l'autre. Vous réglez la durée de chaque élément et pouvez le désactiver sans le supprimer. Vous changez l'ordre au glisser-déposer ou avec les boutons."
+    },
+    "layouts": {
+      "title": "Mises en page",
+      "body": "Une mise en page découpe l'écran en zones, chacune avec son contenu. Elle peut être programmée comme une playlist. Les zones qui se chevauchent sont signalées dans l'éditeur.",
+      "body_formal": "Une mise en page découpe l'écran en zones, chacune avec son contenu. Vous la programmez comme une playlist. L'éditeur signale les zones qui se chevauchent."
+    },
+    "schedule": {
+      "title": "Programmation",
+      "body": "Une programmation dit quelle playlist ou mise en page passe, sur quelles cibles et à quels moments. Quand plusieurs règles se recouvrent, la priorité la plus haute l'emporte. Les conflits sont signalés avant l'enregistrement.",
+      "body_formal": "Une programmation indique quelle playlist ou mise en page passe, où et quand. Si plusieurs règles se recouvrent, la priorité la plus haute l'emporte. Vous voyez les conflits avant d'enregistrer."
+    },
+    "override": {
+      "title": "Forçage",
+      "body": "Un forçage remplace temporairement la programmation sur un écran ou un groupe. Il s'arrête tout seul à l'heure prévue, puis la programmation normale reprend. Les forçages en cours sont listés sur l'Accueil.",
+      "body_formal": "Un forçage remplace temporairement la programmation. Il s'arrête tout seul à l'heure prévue. Vous retrouvez les forçages en cours sur l'Accueil."
+    },
+    "power": {
+      "title": "Allumage et extinction",
+      "body": "L'allumage se règle par plages horaires, avec des exceptions pour les jours particuliers. Un pilote d'alimentation sait commander un modèle de TV. Un écran éteint comme prévu n'est pas en panne : il apparaît comme hors service prévu.",
+      "body_formal": "Vous réglez l'allumage par plages horaires, avec des exceptions pour les jours particuliers. Un pilote d'alimentation commande un modèle de TV. Un écran éteint comme prévu n'est pas en panne."
+    },
+    "agents": {
+      "title": "Sites et agents",
+      "body": "Un site regroupe des écrans d'un même lieu. L'agent de site est un petit programme installé sur place, qui relaie l'allumage et la détection. Il se connecte vers l'extérieur et n'ouvre aucun port entrant.",
+      "body_formal": "Un site regroupe vos écrans d'un même lieu. L'agent de site est un petit programme installé sur place pour l'allumage et la détection. Il se connecte vers l'extérieur, sans port entrant."
+    },
+    "publication": {
+      "title": "Brouillon et validation",
+      "body": "Une modification d'un éditeur reste en brouillon tant qu'elle n'est pas publiée. Selon les réglages, elle passe par une validation d'un administrateur avant d'apparaître sur les écrans. La version diffusée ne change qu'à la publication.",
+      "body_formal": "Votre modification reste en brouillon tant qu'elle n'est pas publiée. Selon les réglages, un administrateur la valide avant diffusion. La version diffusée ne change qu'à la publication."
+    },
+    "inheritance": {
+      "title": "Héritage des réglages",
+      "body": "Un réglage défini pour l'organisation s'applique aux sites, groupes et écrans, sauf s'il est remplacé plus bas. Chaque valeur affiche d'où elle vient. Le bouton « Revenir à l'héritage » supprime la surcharge locale.",
+      "body_formal": "Un réglage défini pour l'organisation s'applique aux sites, groupes et écrans, sauf si vous le remplacez plus bas. Chaque valeur indique d'où elle vient. « Revenir à l'héritage » supprime votre surcharge locale."
+    }
+  },
+  "glossary": {
+    "override": {
+      "term": "Forçage",
+      "definition": "Remplace temporairement la programmation sur un écran ou un groupe, puis s'arrête tout seul à l'heure prévue."
+    },
+    "group": {
+      "term": "Groupe",
+      "definition": "Ensemble d'écrans d'un même site qui partagent des réglages et une programmation."
+    },
+    "inheritance": {
+      "term": "Héritage",
+      "definition": "Un réglage défini à un niveau (organisation, site, groupe) s'applique aux niveaux en dessous, sauf s'il y est remplacé."
+    },
+    "schedule": {
+      "term": "Programmation",
+      "definition": "Règle qui indique quelle playlist ou mise en page passe, sur quelles cibles et quand."
+    },
+    "layout": {
+      "term": "Mise en page",
+      "definition": "Découpage de l'écran en zones, chacune avec son propre contenu."
+    },
+    "scheduled_off": {
+      "term": "Hors service prévu",
+      "definition": "Écran éteint volontairement selon l'allumage programmé : ce n'est pas une panne."
+    },
+    "power_driver": {
+      "term": "Pilote d'alimentation",
+      "definition": "Module qui sait allumer et éteindre un modèle de TV (réseau, HDMI-CEC, etc.)."
+    },
+    "site_agent": {
+      "term": "Agent de site",
+      "definition": "Petit programme installé sur le site, qui relaie l'allumage et la détection sans ouvrir de port entrant."
+    },
+    "draft": {
+      "term": "Brouillon",
+      "definition": "Version en cours de modification, pas encore visible sur les écrans."
+    },
+    "in_review": {
+      "term": "En validation",
+      "definition": "Version soumise, en attente de la validation d'un administrateur avant diffusion."
+    }
+  },
+  "palette": {
+    "title": "Palette de commandes",
+    "label": "Rechercher une page, un élément ou une action",
+    "placeholder": "Rechercher ou saisir une action…",
+    "results": "Résultats",
+    "none": "Aucun résultat.",
+    "count": "{count, plural, one {# résultat} other {# résultats}}",
+    "open": {
+      "screen": "Ouvrir l'écran {name}",
+      "site": "Ouvrir le site {name}",
+      "media": "Voir le média {name}",
+      "playlist": "Ouvrir la playlist {name}",
+      "layout": "Ouvrir la mise en page {name}",
+      "schedule": "Voir la programmation {name}"
+    },
+    "kind": {
+      "navigate": "Aller à",
+      "create": "Créer",
+      "action": "Action"
+    },
+    "go": {
+      "home": "Aller à l'accueil",
+      "screens": "Aller aux écrans",
+      "media": "Aller à la médiathèque",
+      "playlists": "Aller aux playlists",
+      "layouts": "Aller aux mises en page",
+      "playback": "Aller à la diffusion",
+      "sites": "Aller aux sites",
+      "power": "Aller à l'alimentation",
+      "notifications": "Aller aux notifications",
+      "users": "Aller aux utilisateurs",
+      "help": "Ouvrir l'aide"
+    },
+    "create": {
+      "screen": "Ajouter un écran",
+      "android": "Installer sur Android TV",
+      "content": "Ajouter un contenu",
+      "playlist": "Nouvelle playlist",
+      "agent": "Connecter un agent de site"
+    },
+    "action": {
+      "issues": "Voir les écrans à traiter",
+      "onboarding": "Rouvrir Premiers pas"
+    },
+    "search": "Rechercher"
   }
 }

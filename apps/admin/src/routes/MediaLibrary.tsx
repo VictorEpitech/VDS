@@ -7,6 +7,7 @@ import { MediaBrowser } from "../features/media/MediaBrowser";
 import { OwnerField, useOwnerChoice } from "../features/scope/Owner";
 import { useUploads } from "../features/media/upload";
 import { useContentTypes } from "../lib/content-types";
+import { PageTitle } from "../features/help/HelpPanel";
 
 export function MediaLibrary() {
   const { t, i18n } = useTranslation();
@@ -26,7 +27,7 @@ export function MediaLibrary() {
   return (
     <>
       <div className="page-head">
-        <h1>{t("media.title")}</h1>
+        <PageTitle topic="content">{t("media.title")}</PageTitle>
         <Link className="btn btn-filled" to="/content/media/add">
           <Icon name="add" />
           {t("media.add_content")}

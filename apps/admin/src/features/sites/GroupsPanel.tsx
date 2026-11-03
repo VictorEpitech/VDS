@@ -8,6 +8,7 @@ import { useApi } from "../../lib/api";
 import { KioskSetting } from "../kiosk/KioskSetting";
 import { ExclusiveSetting } from "../layouts/ExclusiveSetting";
 import { keys, type Group } from "../../lib/queries";
+import { Term } from "../help/Term";
 
 /** Groupes d'un site et création d'un groupe (POST /sites/{id}/groups). */
 export function GroupsPanel({ siteId }: { siteId: string }) {
@@ -34,7 +35,7 @@ export function GroupsPanel({ siteId }: { siteId: string }) {
     <section className="section" aria-labelledby={`${uid}-h`}>
       <h2 id={`${uid}-h`}>
         <Icon name="screen" />
-        {t("groups.title")}
+        <Term k="group">{t("groups.title")}</Term>
       </h2>
       <p className="meta">{t("groups.intro")}</p>
       <QueryStatus query={groups} />

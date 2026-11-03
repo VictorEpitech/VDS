@@ -237,7 +237,7 @@ test("375 px : pas de défilement horizontal, cibles de 44 px, en FR et EN", asy
       await page.getByRole("button", { name: lang }).click();
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       if (p === "/schedules") {
-        await page.locator(".page-head button").click();
+        await page.locator(".page-head button.btn-filled").click();
         await page.locator(".rules .actions button").first().click();
       }
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

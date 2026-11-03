@@ -10,6 +10,7 @@ import { TagEditor } from "../features/media/TagEditor";
 import { OwnerBadge, OwnerField, useOwnerChoice } from "../features/scope/Owner";
 import { useCanWrite } from "../features/scope/scope";
 import { keys, usePlaylistPage, type Playlist, type PlaylistDetail } from "../lib/queries";
+import { PageTitle } from "../features/help/HelpPanel";
 
 const PAGE_SIZE = 24;
 const STATES = ["all", "active", "expiring", "expired"] as const;
@@ -53,7 +54,7 @@ export function Playlists() {
 
   return (
     <>
-      <h1>{t("playlists.title")}</h1>
+      <PageTitle topic="playlists">{t("playlists.title")}</PageTitle>
       <p className="lead">{t("playlists.intro")}</p>
       <form className="card form-narrow" onSubmit={submit} noValidate>
         <div className="field">

@@ -12,6 +12,7 @@ const ENTRIES: { to: string; icon: IconName; key: string; adminOnly?: boolean }[
   { to: "/notifications", icon: "mail", key: "notifications" },
 ];
 
+
 /** Entrée « Plus » : réglages (sites et agents, alimentation, notifications). */
 export function More() {
   const { t } = useTranslation();
@@ -40,16 +41,24 @@ export function More() {
           </li>
         ))}
       </ul>
-      {session.data?.role === "admin" ? (
-        <section className="card section" aria-labelledby="more-help">
-          <h2 id="more-help">
-            <Icon name="home" />
-            {t("more.help.title")}
-          </h2>
-          <p className="meta">{t("more.help.onboarding")}</p>
-          <ReopenOnboarding onDone={() => navigate("/", { state: { onboardingReopened: true } })} />
-        </section>
-      ) : null}
+      <section className="card section" aria-labelledby="more-help">
+        <h2 id="more-help">
+          <Icon name="help" />
+          {t("more.help.title")}
+        </h2>
+        <p className="meta">{t("more.help.intro")}</p>
+        <div className="actions">
+          <Link className="btn btn-filled" to="/help">
+            {t("more.help.open")}
+          </Link>
+        </div>
+        {session.data?.role === "admin" ? (
+          <>
+            <p className="meta">{t("more.help.onboarding")}</p>
+            <ReopenOnboarding onDone={() => navigate("/", { state: { onboardingReopened: true } })} />
+          </>
+        ) : null}
+      </section>
     </>
   );
 }

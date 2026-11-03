@@ -32,7 +32,8 @@
     "user_detail": "User details",
     "captures": "Captures",
     "import": "Add content",
-    "connect_agent": "Connect an agent"
+    "connect_agent": "Connect an agent",
+    "help": "Help"
   },
   "language": {
     "label": "Language",
@@ -1593,7 +1594,9 @@
     "notifications": "E-mail alerts.",
     "help": {
       "title": "Help",
-      "onboarding": "Getting started guides you through setting up your fleet."
+      "onboarding": "Getting started guides you through setting up your fleet.",
+      "intro": "Help topics, glossary and Getting started.",
+      "open": "Open help"
     },
     "users": "Accounts, roles and each editor's scope."
   },
@@ -2332,5 +2335,154 @@
       "open_library": "View the media library",
       "again": "Add more content"
     }
+  },
+  "help": {
+    "open": "Help: {topic}",
+    "close": "Close",
+    "more": "All topics and the glossary are in More › Help.",
+    "page": {
+      "title": "Help",
+      "intro": "Short explanations of VDS concepts, without leaving the application.",
+      "topics": "Topics",
+      "glossary": "Glossary"
+    },
+    "screens": {
+      "title": "Screens",
+      "body": "A screen is a TV or monitor attached to a site. Its state (online, offline, scheduled off) is shown with a color, an icon and a label. Selecting a screen opens its active schedule, its power settings and its options.",
+      "body_formal": "A screen is a TV or monitor attached to a site. You see its state as a color, an icon and a label. Select a screen to review its schedule, its power settings and its options."
+    },
+    "content": {
+      "title": "Content and media library",
+      "body": "The media library gathers uploaded images, videos and documents. Each file is checked on upload: type, size, orientation and resolution. Unused content is flagged to make cleanup easier.",
+      "body_formal": "The media library gathers your images, videos and documents. Each file is checked on upload: type, size, orientation, resolution. You can quickly spot unused content."
+    },
+    "playlists": {
+      "title": "Playlists",
+      "body": "A playlist is a sequence of items played one after the other. Each item has its own duration and can be disabled without being deleted. The order changes by drag and drop or with the up and down buttons.",
+      "body_formal": "A playlist is a sequence of items played one after the other. You set each item's duration and can disable it without deleting it. You change the order by drag and drop or with the buttons."
+    },
+    "layouts": {
+      "title": "Layouts",
+      "body": "A layout splits the screen into zones, each with its own content. It can be scheduled like a playlist. Overlapping zones are flagged in the editor.",
+      "body_formal": "A layout splits the screen into zones, each with its own content. You schedule it like a playlist. The editor flags overlapping zones."
+    },
+    "schedule": {
+      "title": "Schedule",
+      "body": "A schedule says which playlist or layout plays, on which targets and when. When several rules overlap, the highest priority wins. Conflicts are flagged before saving.",
+      "body_formal": "A schedule says which playlist or layout plays, where and when. If several rules overlap, the highest priority wins. You see conflicts before saving."
+    },
+    "override": {
+      "title": "Override",
+      "body": "An override temporarily replaces the schedule on a screen or group. It stops by itself at the planned time, then the normal schedule resumes. Active overrides are listed on the Home page.",
+      "body_formal": "An override temporarily replaces the schedule. It stops by itself at the planned time. You find active overrides on the Home page."
+    },
+    "power": {
+      "title": "Power on and off",
+      "body": "Power is set by time ranges, with exceptions for special days. A power driver knows how to control a TV model. A screen switched off as planned is not broken: it shows as scheduled off.",
+      "body_formal": "You set power by time ranges, with exceptions for special days. A power driver controls a TV model. A screen switched off as planned is not broken."
+    },
+    "agents": {
+      "title": "Sites and agents",
+      "body": "A site gathers the screens of one location. The site agent is a small program installed on-site that relays power control and detection. It connects outward and opens no inbound port.",
+      "body_formal": "A site gathers your screens in one location. The site agent is a small program installed on-site for power control and detection. It connects outward, with no inbound port."
+    },
+    "publication": {
+      "title": "Draft and review",
+      "body": "An editor's change stays a draft until it is published. Depending on settings, it goes through an administrator's review before appearing on screens. The broadcast version only changes on publication.",
+      "body_formal": "Your change stays a draft until it is published. Depending on settings, an administrator reviews it before broadcast. The broadcast version only changes on publication."
+    },
+    "inheritance": {
+      "title": "Setting inheritance",
+      "body": "A setting defined for the organization applies to sites, groups and screens unless it is overridden lower down. Each value shows where it comes from. The \"Revert to inherited\" button removes the local override.",
+      "body_formal": "A setting defined for the organization applies to sites, groups and screens unless you override it lower down. Each value shows where it comes from. \"Revert to inherited\" removes your local override."
+    }
+  },
+  "glossary": {
+    "override": {
+      "term": "Override",
+      "definition": "Temporarily replaces the schedule on a screen or group, then stops by itself at the planned time."
+    },
+    "group": {
+      "term": "Group",
+      "definition": "A set of screens at the same site that share settings and a schedule."
+    },
+    "inheritance": {
+      "term": "Inheritance",
+      "definition": "A setting defined at one level (organization, site, group) applies to the levels below unless it is replaced there."
+    },
+    "schedule": {
+      "term": "Schedule",
+      "definition": "A rule saying which playlist or layout plays, on which targets and when."
+    },
+    "layout": {
+      "term": "Layout",
+      "definition": "A split of the screen into zones, each with its own content."
+    },
+    "scheduled_off": {
+      "term": "Scheduled off",
+      "definition": "A screen switched off on purpose by the power plan: it is not a failure."
+    },
+    "power_driver": {
+      "term": "Power driver",
+      "definition": "A module that knows how to switch a TV model on and off (network, HDMI-CEC, etc.)."
+    },
+    "site_agent": {
+      "term": "Site agent",
+      "definition": "A small program installed at the site that relays power control and detection without opening an inbound port."
+    },
+    "draft": {
+      "term": "Draft",
+      "definition": "A version being edited, not yet visible on screens."
+    },
+    "in_review": {
+      "term": "In review",
+      "definition": "A submitted version waiting for an administrator's approval before broadcast."
+    }
+  },
+  "palette": {
+    "title": "Command palette",
+    "label": "Search for a page, an item or an action",
+    "placeholder": "Search or type an action…",
+    "results": "Results",
+    "none": "No results.",
+    "count": "{count, plural, one {# result} other {# results}}",
+    "open": {
+      "screen": "Open screen {name}",
+      "site": "Open site {name}",
+      "media": "View media {name}",
+      "playlist": "Open playlist {name}",
+      "layout": "Open layout {name}",
+      "schedule": "View schedule {name}"
+    },
+    "kind": {
+      "navigate": "Go to",
+      "create": "Create",
+      "action": "Action"
+    },
+    "go": {
+      "home": "Go to Home",
+      "screens": "Go to Screens",
+      "media": "Go to the media library",
+      "playlists": "Go to Playlists",
+      "layouts": "Go to Layouts",
+      "playback": "Go to Playback",
+      "sites": "Go to Sites",
+      "power": "Go to Power",
+      "notifications": "Go to Notifications",
+      "users": "Go to Users",
+      "help": "Open help"
+    },
+    "create": {
+      "screen": "Add a screen",
+      "android": "Install on Android TV",
+      "content": "Add content",
+      "playlist": "New playlist",
+      "agent": "Connect a site agent"
+    },
+    "action": {
+      "issues": "Show screens needing attention",
+      "onboarding": "Reopen Getting started"
+    },
+    "search": "Search"
   }
 }

@@ -13,6 +13,7 @@ import { useLayouts } from "../features/layouts/layouts";
 import { useApi } from "../lib/api";
 import { keys, useAllGroups, usePlaylists, useSchedules, useScreens, useSites, type Schedule } from "../lib/queries";
 import { useWritableTargets } from "../features/scope/scope";
+import { PageTitle } from "../features/help/HelpPanel";
 
 /** À la création, seul l'identifiant de contenu utilisé est envoyé (l'autre est omis plutôt que nul). */
 function withoutUnusedTarget(d: ScheduleDraft): Partial<ScheduleDraft> {
@@ -74,7 +75,7 @@ export function Schedules() {
   return (
     <>
       <div className="page-head">
-        <h1>{t("schedules.title")}</h1>
+        <PageTitle topic="schedule">{t("schedules.title")}</PageTitle>
         {form === null ? (
           <button type="button" className="btn btn-filled" onClick={() => { save.reset(); setPrefill(undefined); setForm("new"); }}>
             <Icon name="add" />

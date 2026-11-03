@@ -25,6 +25,7 @@ export function trailFor(pathname: string): Crumb[] | null {
     [/^\/sites$/, [m("/more", "nav.more"), { label: "nav.sites" }]],
     [/^\/users\/[^/]+$/, [m("/more", "nav.more"), m("/users", "nav.users"), { label: "nav.user_detail" }]],
     [/^\/users$/, [m("/more", "nav.more"), { label: "nav.users" }]],
+    [/^\/help$/, [m("/more", "nav.more"), { label: "nav.help" }]],
     [/^\/power$/, [m("/more", "nav.more"), { label: "nav.power" }]],
     [/^\/notifications$/, [m("/more", "nav.more"), { label: "nav.notifications" }]],
   ];

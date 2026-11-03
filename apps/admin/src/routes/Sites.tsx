@@ -7,6 +7,7 @@ import { Icon } from "../components/Icon";
 import { AgentStatusBadge } from "../features/sites/AgentsPanel";
 import { useApi } from "../lib/api";
 import { keys, useAllAgents, useScreens, useSites, type Site } from "../lib/queries";
+import { PageTitle } from "../features/help/HelpPanel";
 
 export const slugify = (v: string) =>
   v
@@ -48,7 +49,7 @@ export function Sites() {
   return (
     <>
       <div className="page-head">
-        <h1>{t("sites.title")}</h1>
+        <PageTitle topic="agents">{t("sites.title")}</PageTitle>
         <button type="button" className="btn btn-filled" onClick={() => setOpen(true)} disabled={open}>
           <Icon name="add" />
           {t("sites.create.action")}

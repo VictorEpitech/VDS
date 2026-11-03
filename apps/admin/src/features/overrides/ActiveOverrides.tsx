@@ -9,6 +9,8 @@ import { OverrideControls, OverrideUntil } from "./OverrideControls";
 import { OverrideForm } from "./OverrideForm";
 import { canForce, screensOf, useOverrides } from "./overrides";
 import { useWritableTargets } from "../scope/scope";
+import { HelpButton } from "../help/HelpPanel";
+import { Term } from "../help/Term";
 
 /** Bloc « Forçages en cours » de l'Accueil : fin visible, prolonger / arrêter, nouveau forçage. Administrateur et éditeur. */
 export function ActiveOverrides() {
@@ -28,8 +30,9 @@ export function ActiveOverrides() {
       <div className="override-block-head">
         <h2 id="home-overrides">
           <Icon name="overridden" />
-          {t("overrides.block.title")}
+          <Term k="override">{t("overrides.block.title")}</Term>
         </h2>
+        <HelpButton topic="override" />
         <button type="button" className="btn btn-text" aria-expanded={open} onClick={() => setOpen(true)}>
           <Icon name="add" />
           {t("overrides.force")}

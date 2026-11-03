@@ -14,6 +14,7 @@ import { formatDateTime } from "../lib/media-view";
 import { HiddenUsage, OwnerBadge, OwnerEdit } from "../features/scope/Owner";
 import { useCanWrite, type NodeRef } from "../features/scope/scope";
 import { keys, useMedia, usePlaylist, usePlaylistUsage, type PlaylistDetail, type PlaylistItem } from "../lib/queries";
+import { PageTitle } from "../features/help/HelpPanel";
 
 export function PlaylistEditor() {
   const { id = "" } = useParams();
@@ -122,7 +123,7 @@ export function PlaylistEditor() {
       <p>
         <Link to="/playlists">{t("playlist.back")}</Link>
       </p>
-      <h1>{playlist.data?.name ?? t("playlist.title")}</h1>
+      <PageTitle topic="publication">{playlist.data?.name ?? t("playlist.title")}</PageTitle>
       <QueryStatus query={playlist} />
       {playlist.isSuccess ? (
         <>

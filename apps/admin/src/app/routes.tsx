@@ -11,6 +11,7 @@ import { Redirect } from "./Redirect";
 import { Captures } from "../routes/Captures";
 import { Bootstrap } from "../routes/Bootstrap";
 import { ChangePassword } from "../routes/ChangePassword";
+import { Help } from "../routes/Help";
 import { Home } from "../routes/Home";
 import { LayoutEditorPage } from "../routes/LayoutEditorPage";
 import { Layouts } from "../routes/Layouts";
@@ -64,6 +65,7 @@ export const routes: RouteObject[] = [
           },
           { path: "playback", element: <Schedules /> },
           { path: "more", element: <More /> },
+          { path: "help", element: <Help /> },
           { path: "sites", element: <Sites /> },
           { path: "sites/connect", element: <ConnectAgent /> },
           { path: "sites/:id", element: <SiteDetail /> },

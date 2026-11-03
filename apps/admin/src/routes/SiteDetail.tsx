@@ -11,6 +11,7 @@ import { AttachmentPanel } from "../features/power/AttachmentSection";
 import { useApi } from "../lib/api";
 import { keys, useSites } from "../lib/queries";
 import { NotFound } from "./NotFound";
+import { PageTitle } from "../features/help/HelpPanel";
 
 export function SiteDetail() {
   const { id = "" } = useParams();
@@ -40,10 +41,10 @@ export function SiteDetail() {
       {site ? (
         <>
           <div className="page-head">
-            <h1>
+            <PageTitle topic="inheritance">
               <Icon name="site" />
               {site.name}
-            </h1>
+            </PageTitle>
             <ConfirmAction label={t("sites.archive.action")} confirmLabel={t("sites.archive.confirm", { name: site.name })} pending={archive.isPending} onConfirm={() => archive.mutate()} />
           </div>
           {archive.isError ? <ErrorAlert error={archive.error} /> : null}

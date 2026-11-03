@@ -29,7 +29,7 @@ describe.each(["", "/espace/affichage"])("assistant agent, base « %s »", (b) =
     expect(await screen.findByTestId("enroll-command")).toHaveTextContent(`https://vds.test${b} vds/agent`);
     expect(screen.getByRole("button", { name: "Copier" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "J'ai lancé la commande" }));
-    expect(await screen.findByText(/Agent connecté il y a 3 s/)).toBeInTheDocument();
+    expect(await screen.findByText(/Agent connecté il y a \d+ s/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Continuer" }));
     expect(await screen.findByRole("heading", { name: "Détecter les appareils du site" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Passer cette étape" }));

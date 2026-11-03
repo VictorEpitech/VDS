@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { ProvenanceBadge } from "../../../components/Provenance";
 import { useConfig } from "../../../lib/queries";
+import { Term } from "../../help/Term";
 
 const KIOSK = "player.kiosk";
 const CASCADE = "power.cascade";
@@ -19,7 +20,9 @@ export function InheritedSettings({ siteId, groupId }: { siteId: string; groupId
   const drivers = Array.isArray(cascade.value) ? cascade.value.filter((x): x is string => typeof x === "string") : [];
   return (
     <section className="inherited" aria-label={t("add.inherit.title")}>
-      <h3>{t("add.inherit.title")}</h3>
+      <h3>
+        <Term k="inheritance">{t("add.inherit.title")}</Term>
+      </h3>
       <p className="field-help">{t("add.inherit.help")}</p>
       <dl className="device-facts">
         <div>
