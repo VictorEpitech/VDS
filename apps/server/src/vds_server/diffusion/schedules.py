@@ -1,5 +1,6 @@
 """Programmation : playlist + cible + période + règles hebdomadaires."""
 
+from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from typing import Any
 from uuid import UUID
@@ -27,6 +28,21 @@ TARGET_MODELS: dict[str, Any] = {
     "group": ScreenGroup,
     "screen": Screen,
 }
+
+
+@dataclass(frozen=True)
+class ScheduleValues:
+    """Valeurs d'une programmation après application d'un PATCH validé (rules None = inchangées)."""
+
+    name: str
+    playlist_id: UUID
+    target_type: str
+    target_id: UUID
+    priority: int
+    starts_on: date | None
+    ends_on: date | None
+    enabled: bool
+    rules: list[sc.RuleIn] | None
 
 
 class ScheduleService(ServiceBase):
@@ -90,14 +106,14 @@ class ScheduleService(ServiceBase):
         rules = await self._rules([r.id for r in rows])
         return [self._out(r, rules[r.id]) for r in rows]
 
-    async def _get(self, schedule_id: UUID) -> Schedule:
+    async def get_row(self, schedule_id: UUID) -> Schedule:
         row = await self._s.get(Schedule, schedule_id)
         if row is None:
             raise ApiError("schedule.not_found", 404)
         return row
 
     async def get(self, schedule_id: UUID) -> sc.ScheduleOut:
-        row = await self._get(schedule_id)
+        row = await self.get_row(schedule_id)
         return self._out(row, (await self._rules([row.id]))[row.id])
 
     def _add_rules(self, schedule_id: UUID, rules: list[sc.RuleIn]) -> None:
@@ -111,9 +127,43 @@ class ScheduleService(ServiceBase):
                 )
             )
 
-    async def create(self, body: sc.ScheduleCreate) -> sc.ScheduleOut:
+    async def validate_create(self, body: sc.ScheduleCreate) -> None:
+        """Contrôles de service de POST /schedules (le schéma a déjà validé la forme)."""
         await self._playlist_exists(body.playlist_id)
         await self._target_exists(body.target_type, body.target_id)
+
+    async def validate_patch(self, row: Schedule, body: sc.SchedulePatch) -> ScheduleValues:
+        """Contrôles de service de PATCH /schedules, sans rien modifier ; retourne le résultat."""
+        fields = body.model_fields_set
+        playlist_id = row.playlist_id
+        if body.playlist_id is not None:
+            if body.playlist_id != row.playlist_id:
+                await self._playlist_exists(body.playlist_id)
+            playlist_id = body.playlist_id
+        target_type, target_id = row.target_type, row.target_id
+        if body.target_type is not None or body.target_id is not None:
+            if body.target_type is None or body.target_id is None:
+                raise ApiError("schedule.target_incomplete", 422)
+            await self._target_exists(body.target_type, body.target_id)
+            target_type, target_id = body.target_type, body.target_id
+        starts: date | None = body.starts_on if "starts_on" in fields else row.starts_on
+        ends: date | None = body.ends_on if "ends_on" in fields else row.ends_on
+        if starts and ends and starts > ends:
+            raise ApiError("schedule.period_invalid", 422)
+        return ScheduleValues(
+            name=row.name if body.name is None else body.name,
+            playlist_id=playlist_id,
+            target_type=target_type,
+            target_id=target_id,
+            priority=row.priority if body.priority is None else body.priority,
+            starts_on=starts,
+            ends_on=ends,
+            enabled=row.enabled if body.enabled is None else body.enabled,
+            rules=body.rules,
+        )
+
+    async def create(self, body: sc.ScheduleCreate) -> sc.ScheduleOut:
+        await self.validate_create(body)
         row = Schedule(
             name=body.name,
             playlist_id=body.playlist_id,
@@ -141,34 +191,19 @@ class ScheduleService(ServiceBase):
         return await self.get(row.id)
 
     async def update(self, schedule_id: UUID, body: sc.SchedulePatch) -> sc.ScheduleOut:
-        row = await self._get(schedule_id)
+        row = await self.get_row(schedule_id)
         fields = body.model_fields_set
-        if body.playlist_id is not None:
-            if body.playlist_id != row.playlist_id:
-                await self._playlist_exists(body.playlist_id)
-            row.playlist_id = body.playlist_id
-        if body.target_type is not None or body.target_id is not None:
-            if body.target_type is None or body.target_id is None:
-                raise ApiError("schedule.target_incomplete", 422)
-            await self._target_exists(body.target_type, body.target_id)
-            row.target_type, row.target_id = body.target_type, body.target_id
-        if body.name is not None:
-            row.name = body.name
-        if body.priority is not None:
-            row.priority = body.priority
-        if body.enabled is not None:
-            row.enabled = body.enabled
-        starts: date | None = body.starts_on if "starts_on" in fields else row.starts_on
-        ends: date | None = body.ends_on if "ends_on" in fields else row.ends_on
-        if starts and ends and starts > ends:
-            raise ApiError("schedule.period_invalid", 422)
-        row.starts_on, row.ends_on = starts, ends
-        if body.rules is not None:
+        v = await self.validate_patch(row, body)
+        row.playlist_id = v.playlist_id
+        row.target_type, row.target_id = v.target_type, v.target_id
+        row.name, row.priority, row.enabled = v.name, v.priority, v.enabled
+        row.starts_on, row.ends_on = v.starts_on, v.ends_on
+        if v.rules is not None:
             q = select(ScheduleRule).where(ScheduleRule.schedule_id == row.id)
             for old in (await self._s.execute(q)).scalars():
                 await self._s.delete(old)
             await self._s.flush()
-            self._add_rules(row.id, body.rules)
+            self._add_rules(row.id, v.rules)
         row.updated_at = datetime.now(UTC)
         row.updated_by = self._actor.user_id
         self._audit("schedule.updated", "schedule", row.id, "schedule_id", fields=sorted(fields))
@@ -176,7 +211,7 @@ class ScheduleService(ServiceBase):
         return await self.get(row.id)
 
     async def delete(self, schedule_id: UUID) -> None:
-        row = await self._get(schedule_id)
+        row = await self.get_row(schedule_id)
         await self._s.delete(row)
         self._audit("schedule.deleted", "schedule", schedule_id, "schedule_id")
         await self._commit("schedule.conflict")

@@ -543,6 +543,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/planning/at": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** At */
+        get: operations["at_api_v1_planning_at_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/simulate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Simulate */
+        post: operations["simulate_api_v1_planning_simulate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Timeline */
+        get: operations["timeline_api_v1_planning_timeline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/player/heartbeat": {
         parameters: {
             query?: never;
@@ -1552,6 +1603,33 @@ export interface components {
             /** Sha256 */
             sha256: string | null;
         };
+        /** AtOut */
+        AtOut: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Next Cursor */
+            next_cursor: string | null;
+            /** Screens */
+            screens: components["schemas"]["AtScreen"][];
+        };
+        /** AtScreen */
+        AtScreen: {
+            /** Next Change At */
+            next_change_at: string | null;
+            /** Presence */
+            presence: string;
+            /**
+             * Screen Id
+             * Format: uuid
+             */
+            screen_id: string;
+            /** Screen Name */
+            screen_name: string;
+            segment: components["schemas"]["Segment"];
+        };
         /** AvailableApkOut */
         AvailableApkOut: {
             /**
@@ -1639,6 +1717,26 @@ export interface components {
             hidden: boolean;
             /** Hidden At */
             hidden_at: string | null;
+        };
+        /** ChangeOut */
+        ChangeOut: {
+            after: components["schemas"]["Segment"];
+            before: components["schemas"]["Segment"];
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /**
+             * Screen Id
+             * Format: uuid
+             */
+            screen_id: string;
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
         };
         /** CommandCreate */
         CommandCreate: {
@@ -1743,6 +1841,43 @@ export interface components {
             level?: string | null;
             /** Scope Id */
             scope_id?: string | null;
+        };
+        /** Conflict */
+        Conflict: {
+            /**
+             * First At
+             * Format: date-time
+             */
+            first_at: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "never_plays" | "partially_masked" | "ambiguous_tie" | "content_expires" | "content_empty" | "gap";
+            /** Occurrences */
+            occurrences: number;
+            other: components["schemas"]["SourceRef"] | null;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "info" | "warning";
+            source: components["schemas"]["SourceRef"];
+        };
+        /** ContentRef */
+        ContentRef: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "playlist" | "layout";
+            /** Name */
+            name: string;
         };
         /** ContentTypeEntry */
         ContentTypeEntry: {
@@ -2362,6 +2497,21 @@ export interface components {
              */
             mode: "locked" | "unlocked" | "maintenance";
         };
+        /**
+         * Lane
+         * @description Candidat applicable à la cible (vue « couches »).
+         */
+        Lane: {
+            content: components["schemas"]["ContentRef"] | null;
+            /** Effective Ratio */
+            effective_ratio: number;
+            /** Occurrences */
+            occurrences: [
+                string,
+                string
+            ][];
+            source: components["schemas"]["SourceRef"];
+        };
         /** Layout */
         Layout: {
             /** Zones */
@@ -2446,6 +2596,16 @@ export interface components {
             /** Proof */
             proof: string;
         };
+        /** Loser */
+        Loser: {
+            content: components["schemas"]["ContentRef"] | null;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "override_active" | "scheduled_off" | "higher_priority" | "more_specific" | "tie_break" | "outside_rules" | "outside_period" | "disabled" | "content_expired" | "content_empty" | "no_candidate" | "only_candidate" | "condition_unmet";
+            source: components["schemas"]["SourceRef"];
+        };
         /** MaintenanceIn */
         MaintenanceIn: {
             /** Duration Min */
@@ -2460,6 +2620,31 @@ export interface components {
              * Format: date-time
              */
             until: string;
+        };
+        /** Marker */
+        Marker: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /**
+             * Impact
+             * @enum {string}
+             */
+            impact: "gap" | "fallback" | "none";
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "playlist_expires" | "media_expires" | "override_ends" | "schedule_starts" | "schedule_ends";
+            /** Name */
+            name: string | null;
+            /**
+             * Ref Id
+             * Format: uuid
+             */
+            ref_id: string;
         };
         /** MeOut */
         MeOut: {
@@ -3653,6 +3838,24 @@ export interface components {
              */
             orientation: "landscape" | "portrait";
         };
+        /** ScreenTimeline */
+        ScreenTimeline: {
+            /** Conflicts */
+            conflicts: components["schemas"]["Conflict"][];
+            /** Markers */
+            markers: components["schemas"]["Marker"][];
+            /**
+             * Screen Id
+             * Format: uuid
+             */
+            screen_id: string;
+            /** Screen Name */
+            screen_name: string;
+            /** Segments */
+            segments: components["schemas"]["Segment"][];
+            /** Timezone */
+            timezone: string;
+        };
         /** ScreensSummaryOut */
         ScreensSummaryOut: {
             /** By Status */
@@ -3661,6 +3864,76 @@ export interface components {
             };
             /** Total */
             total: number;
+        };
+        /** Segment */
+        Segment: {
+            content: components["schemas"]["ContentRef"] | null;
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /**
+             * Losers
+             * @default []
+             */
+            losers: components["schemas"]["Loser"][];
+            /** Reason */
+            reason: ("override_active" | "scheduled_off" | "higher_priority" | "more_specific" | "tie_break" | "outside_rules" | "outside_period" | "disabled" | "content_expired" | "content_empty" | "no_candidate" | "only_candidate" | "condition_unmet") | null;
+            source: components["schemas"]["SourceRef"];
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "play" | "off" | "scheduled_off" | "overridden";
+        };
+        /** SimulateIn */
+        SimulateIn: {
+            draft?: components["schemas"]["ScheduleCreate"] | null;
+            /** Edit */
+            edit?: [
+                string,
+                components["schemas"]["SchedulePatch"]
+            ] | null;
+            /**
+             * From
+             * Format: date
+             */
+            from: string;
+            /** Remove */
+            remove?: string | null;
+            /**
+             * Target Id
+             * Format: uuid
+             */
+            target_id: string;
+            /**
+             * Target Type
+             * @enum {string}
+             */
+            target_type: "organization" | "site" | "group" | "screen";
+            /**
+             * To
+             * Format: date
+             */
+            to: string;
+        };
+        /** SimulateOut */
+        SimulateOut: {
+            after: components["schemas"]["TimelineOut"];
+            /** Changes */
+            changes: components["schemas"]["ChangeOut"][];
+            /** New Conflicts */
+            new_conflicts: components["schemas"]["Conflict"][];
+            /** Resolved Conflicts */
+            resolved_conflicts: components["schemas"]["Conflict"][];
+            /** Screens Touched */
+            screens_touched: number;
         };
         /** SiteCreate */
         SiteCreate: {
@@ -3721,6 +3994,36 @@ export interface components {
             /** Schedule Id */
             schedule_id: string | null;
         };
+        /**
+         * SourceRef
+         * @description Provenance d'un segment.
+         */
+        SourceRef: {
+            /** Id */
+            id?: string | null;
+            /**
+             * Inherited
+             * @default false
+             */
+            inherited: boolean;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "schedule" | "override" | "power_plan" | "none" | "draft";
+            /** Name */
+            name?: string | null;
+            /** Priority */
+            priority?: number | null;
+            /** Priority Level */
+            priority_level?: ("background" | "normal" | "high") | null;
+            /** Target Id */
+            target_id?: string | null;
+            /** Target Name */
+            target_name?: string | null;
+            /** Target Type */
+            target_type?: ("organization" | "site" | "group" | "screen") | null;
+        };
         /** StepSkipIn */
         StepSkipIn: {
             /** Skipped */
@@ -3734,6 +4037,45 @@ export interface components {
             device: components["schemas"]["DeviceInfo"];
             /** Pairing Ticket */
             pairing_ticket: string;
+        };
+        /** TimelineOut */
+        TimelineOut: {
+            /**
+             * Computed At
+             * Format: date-time
+             */
+            computed_at: string;
+            /**
+             * Format
+             * @default 1
+             * @constant
+             */
+            format: 1;
+            /** Lanes */
+            lanes: components["schemas"]["Lane"][];
+            /** Mixed Timezones */
+            mixed_timezones: boolean;
+            /** Next Cursor */
+            next_cursor: string | null;
+            /** Screens */
+            screens: components["schemas"]["ScreenTimeline"][];
+            /**
+             * Target Id
+             * Format: uuid
+             */
+            target_id: string;
+            /**
+             * Target Type
+             * @enum {string}
+             */
+            target_type: "organization" | "site" | "group" | "screen";
+            /** Timezone */
+            timezone: string;
+            /** Window */
+            window: [
+                string,
+                string
+            ];
         };
         /** ToHandleOut */
         ToHandleOut: {
@@ -5123,6 +5465,113 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PairingClaimed"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    at_api_v1_planning_at_get: {
+        parameters: {
+            query: {
+                target_type: "organization" | "site" | "group" | "screen";
+                target_id: string;
+                at?: string | null;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AtOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    simulate_api_v1_planning_simulate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimulateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimulateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    timeline_api_v1_planning_timeline_get: {
+        parameters: {
+            query: {
+                target_type: "organization" | "site" | "group" | "screen";
+                target_id: string;
+                from: string;
+                to: string;
+                explain?: boolean | null;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: {
+                "if-none-match"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelineOut"];
                 };
             };
             /** @description Validation Error */

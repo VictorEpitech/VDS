@@ -24,6 +24,7 @@ from vds_server.api.v1 import (
     media_files,
     onboarding,
     overrides,
+    planning,
     player,
     power,
     provisioning,
@@ -85,6 +86,7 @@ def create_app(
         inner.include_router(inventory.build_router(runtime))
         inner.include_router(diffusion.build_router(runtime))
         inner.include_router(overrides.build_router(runtime))
+        inner.include_router(planning.build_router(runtime))
         inner.include_router(media_files.build_router(runtime))
         inner.include_router(power.build_router(runtime))
         inner.include_router(player.build_router(runtime))

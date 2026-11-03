@@ -222,6 +222,15 @@
       "target_not_found": "This target no longer exists.",
       "rule_range_invalid": "The end time must be after the start time."
     },
+    "planning": {
+      "window_too_large": "The period is too long. Choose {max_days} days at most.",
+      "window_invalid": "The end date must not be before the start date.",
+      "target_not_found": "This target no longer exists.",
+      "cursor_invalid": "The page reference is not valid. Reload the planning.",
+      "at_timezone_required": "The time must include a time zone.",
+      "too_many_screens": "Too many screens to simulate (maximum {max}). Choose a smaller target.",
+      "simulate_one_change": "Simulate exactly one change: a new schedule, an edit, or a removal."
+    },
     "screen": {
       "group_other_site": "This group belongs to another site."
     },

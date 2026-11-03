@@ -222,6 +222,15 @@
       "target_not_found": "Cette cible n'existe plus.",
       "rule_range_invalid": "L'heure de fin doit être après l'heure de début."
     },
+    "planning": {
+      "window_too_large": "La période est trop longue. Choisissez {max_days} jours au plus.",
+      "window_invalid": "La date de fin ne peut pas précéder la date de début.",
+      "target_not_found": "Cette cible n'existe plus.",
+      "cursor_invalid": "La référence de page n'est pas valide. Rechargez le planning.",
+      "at_timezone_required": "L'heure doit comporter un fuseau horaire.",
+      "too_many_screens": "Trop d'écrans à simuler (maximum {max}). Choisissez une cible plus petite.",
+      "simulate_one_change": "Simulez un seul changement : une nouvelle programmation, une modification ou une suppression."
+    },
     "screen": {
       "group_other_site": "Ce groupe appartient à un autre site."
     },
