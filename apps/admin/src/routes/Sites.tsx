@@ -138,6 +138,10 @@ export function Sites() {
                   <Icon name="agent" />
                   {t("sites.manage")}
                 </Link>
+                <Link className="btn btn-text" to={`/sites/connect?site=${s.id}`} aria-label={t("sites.connect_for", { name: s.name })}>
+                  <Icon name="add" />
+                  {t("sites.connect")}
+                </Link>
               </div>
             </li>
           );

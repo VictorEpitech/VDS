@@ -136,7 +136,6 @@ export function createFleetMock(world: World, zoneCandidates: () => { key: strin
       }), true;
     }
     if (route === "/agent/local" && method === "GET") return send(200, { available: false, detected: null, site_id: null }), true;
-    if (/^\/sites\/[^/]+\/agent\/enrollments$/.test(route) && method === "GET") return send(200, []), true;
     const del = /^\/screens\/([^/]+)$/.exec(route);
     if (del && method === "DELETE") {
       const idx = world.screens.findIndex((s) => s.id === del[1]);

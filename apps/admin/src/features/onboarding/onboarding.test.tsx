@@ -32,7 +32,7 @@ describe.each(["", "/espace/affichage"])("Premiers pas, base « %s »", (b) => {
     await renderRoutes(routes, "/", b);
     expect(await screen.findByText("3 sur 6 étapes terminées")).toBeInTheDocument();
     const next = screen.getByRole("link", { name: /Importer un contenu/ });
-    expect(next).toHaveAttribute("href", `${b}/content/media`);
+    expect(next).toHaveAttribute("href", `${b}/content/media/add`);
     expect(next).toHaveClass("btn-filled");
     expect(screen.getByText("Étape suivante")).toBeInTheDocument();
     expect(screen.getAllByText("Fait")).toHaveLength(3);

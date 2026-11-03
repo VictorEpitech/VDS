@@ -30,7 +30,9 @@
     "layouts": "Layouts",
     "users": "Users",
     "user_detail": "User details",
-    "captures": "Captures"
+    "captures": "Captures",
+    "import": "Add content",
+    "connect_agent": "Connect an agent"
   },
   "language": {
     "label": "Language",
@@ -511,7 +513,9 @@
     "retry": "Retry",
     "cancel": "Cancel",
     "save": "Save",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "back": "Back",
+    "continue": "Continue"
   },
   "form": {
     "choose": "Choose…",
@@ -788,7 +792,8 @@
       "confirm": "Replace now",
       "progress": "Uploading the new file",
       "done": "The file is replaced. Screens will receive it on their next refresh."
-    }
+    },
+    "add_content": "Add content"
   },
   "playlists": {
     "title": "Playlists",
@@ -973,7 +978,9 @@
       "action": "Archive site",
       "confirm": "Archive {name}"
     },
-    "empty_action": "Create a site"
+    "empty_action": "Create a site",
+    "connect": "Connect an agent",
+    "connect_for": "Connect an agent to site {name}"
   },
   "enroll": {
     "title": "Add an agent",
@@ -1057,6 +1064,53 @@
       "copy": "Copy token",
       "copied": "Token copied.",
       "done": "I have copied the token"
+    },
+    "connect": {
+      "title": "Connect a site agent",
+      "intro": "The agent is a small program installed on a computer at the site. It relays power control and device detection, without opening any inbound port.",
+      "admin_only": "Only an administrator can connect an agent.",
+      "no_site": "Create a site first, then connect an agent to it.",
+      "site": "Site",
+      "progress_label": "Agent connection steps",
+      "live": "Step {step} of {total}: {name}",
+      "step": {
+        "1": "Command",
+        "2": "Connection",
+        "3": "Devices",
+        "4": "Summary"
+      },
+      "step1": {
+        "title": "Install the agent on site {site}",
+        "intro": "Generate the command, then run it on the site's computer (Docker must be installed there).",
+        "once": "This command contains a single-use enrollment code. It is shown only once.",
+        "outbound": "The agent connects outward (outbound port 443): no port needs to be opened.",
+        "launched": "I ran the command",
+        "generate": "Generate the command"
+      },
+      "step2": {
+        "title": "Waiting for the agent",
+        "waiting": "Waiting for the agent's first connection. This page updates by itself.",
+        "connected": "Agent connected {ago}.",
+        "stalled": "No connection received for 2 minutes. Check that the site has Internet access (outbound port 443) and that the command ran correctly, then generate a new command if needed.",
+        "lapsed": "The enrollment code has expired or was revoked. Generate a new command.",
+        "regenerate": "Generate a new command"
+      },
+      "step3": {
+        "title": "Detect the site's devices",
+        "intro": "This step is optional: the agent can look for TVs on the network and let you add them in one click.",
+        "added_list": "Added screens",
+        "added": "Screen \"{name}\" added.",
+        "config_failed": "The power driver could not be prefilled: you can set it up later.",
+        "add": "Add the chosen device",
+        "skip": "Skip this step"
+      },
+      "step4": {
+        "title": "Agent connected",
+        "agent": "The agent of site {site} is connected.",
+        "screens": "{count, plural, =0 {No screen added yet.} one {# screen added: pair it with the code shown on the TV.} other {# screens added: pair them with the codes shown on the TVs.}}",
+        "pair": "Pair the first screen",
+        "open_site": "Open the site"
+      }
     }
   },
   "power": {
@@ -1604,7 +1658,8 @@
         "hint": "When screens switch on and off.",
         "action": "Set power"
       }
-    }
+    },
+    "connect_agent": "Connect an agent"
   },
   "actions": {
     "kind": {
@@ -2198,6 +2253,84 @@
       "conflict": "Someone else changed this scope. Reload to pick up the current version.",
       "reload": "Reload",
       "saved": "Scope saved."
+    }
+  },
+  "wizard": {
+    "current": "(current step)"
+  },
+  "import": {
+    "title": "Add content",
+    "intro": "Drop your images, videos or documents: each file is checked, then you can add them to a playlist in one click.",
+    "progress_label": "Import steps",
+    "live": "Step {step} of {total}: {name}",
+    "step": {
+      "1": "Files",
+      "2": "Upload",
+      "3": "Playlist",
+      "4": "Summary"
+    },
+    "step1": {
+      "title": "Choose your files"
+    },
+    "target": {
+      "label": "Target screens",
+      "any": "Any",
+      "landscape": "Landscape screens",
+      "portrait": "Portrait screens",
+      "help": "Only used to warn you when a file has the wrong orientation. Nothing is refused for that reason."
+    },
+    "checks": "Type and size are checked on upload; orientation and resolution are flagged here, before sending.",
+    "empty": "No file chosen yet.",
+    "list": "Files to upload",
+    "mb": "MB",
+    "warning": {
+      "ratio_mismatch": "Orientation differs from the target screens",
+      "low_resolution": "Low resolution: the image may look blurry"
+    },
+    "remove": "Remove",
+    "remove_file": "Remove {name}",
+    "send": "{count, plural, one {Upload # file} other {Upload # files}}",
+    "step2": {
+      "title": "Uploading"
+    },
+    "progress_count": "{done} of {total} files processed",
+    "finished": "{done, plural, one {# file uploaded} other {# files uploaded}}, {failed, plural, =0 {no errors} one {# error} other {# errors}}.",
+    "queued": "Queued",
+    "retry": "Retry",
+    "retry_file": "Retry {name}",
+    "error": {
+      "too_large": "File too large: {size} MB, the limit is {limit} MB. Compress it, then add it again."
+    },
+    "step3": {
+      "title": "Add to a playlist",
+      "intro": "{count, plural, one {# item is ready.} other {# items are ready.}} They will be added in upload order."
+    },
+    "dest": {
+      "label": "Where should they go?",
+      "new": "In a new playlist",
+      "existing": "In an existing playlist",
+      "none": "Nowhere for now"
+    },
+    "playlist": {
+      "name": "Playlist name",
+      "existing": "Playlist",
+      "choose": "Choose a playlist",
+      "none": "No playlist yet: choose \"new playlist\".",
+      "default_name": "Import of {date}"
+    },
+    "finish": "Finish",
+    "add_to_playlist": "Add to playlist",
+    "step4": {
+      "title": "Import complete"
+    },
+    "summary": {
+      "sent": "{count, plural, one {# item was added to the media library.} other {# items were added to the media library.}}",
+      "added": "{count, plural, one {# item added} other {# items added}} to playlist \"{name}\".",
+      "skipped": "{count, plural, one {# item could not be added: no content type can play it.} other {# items could not be added: no content type can play them.}}",
+      "failed": "{count, plural, one {# file was not uploaded.} other {# files were not uploaded.}}",
+      "open_playlist": "Open the playlist",
+      "open_library": "View the media library",
+      "again": "Add more content"
     }
   }
 }

@@ -3,6 +3,8 @@ import { PublicLayout } from "../auth/PublicLayout";
 import { RequireAuth } from "../auth/RequireAuth";
 import { AppLayout } from "../components/AppLayout";
 import { AddScreen } from "../routes/AddScreen";
+import { ConnectAgent } from "../routes/ConnectAgent";
+import { ImportContent } from "../routes/ImportContent";
 import { ContentLayout } from "../routes/ContentLayout";
 import { More } from "../routes/More";
 import { Redirect } from "./Redirect";
@@ -53,6 +55,7 @@ export const routes: RouteObject[] = [
             children: [
               { index: true, element: <Redirect to="/content/media" /> },
               { path: "media", element: <MediaLibrary /> },
+              { path: "media/add", element: <ImportContent /> },
               { path: "playlists", element: <Playlists /> },
               { path: "playlists/:id", element: <PlaylistEditor /> },
               { path: "layouts", element: <Layouts /> },
@@ -62,6 +65,7 @@ export const routes: RouteObject[] = [
           { path: "playback", element: <Schedules /> },
           { path: "more", element: <More /> },
           { path: "sites", element: <Sites /> },
+          { path: "sites/connect", element: <ConnectAgent /> },
           { path: "sites/:id", element: <SiteDetail /> },
           { path: "users", element: <Users /> },
           { path: "users/:id", element: <Users detail /> },

@@ -12,11 +12,11 @@ import { keys, useOnboarding, type Onboarding, type OnboardingStep } from "../..
 type StepId = OnboardingStep["step"];
 type Status = OnboardingStep["status"];
 
-const STEP_UI: Record<StepId, { icon: IconName; to: string }> = {
+const STEP_UI: Record<StepId, { icon: IconName; to: string; also?: string }> = {
   account: { icon: "user", to: "/more" },
-  site: { icon: "site", to: "/sites" },
+  site: { icon: "site", to: "/sites", also: "/sites/connect" },
   screen: { icon: "screen", to: "/screens/add" },
-  media: { icon: "media", to: "/content/media" },
+  media: { icon: "media", to: "/content/media/add" },
   playlist: { icon: "playlist", to: "/content/playlists" },
   schedule: { icon: "schedule", to: "/playback" },
   power: { icon: "power", to: "/power" },
@@ -123,6 +123,11 @@ export function OnboardingCard() {
                 {actionable ? (
                   <Link className={next ? "btn btn-filled" : "btn btn-text"} to={ui.to} aria-label={`${t(`onboarding.step.${s.step}.action`)} : ${name}`}>
                     {t(`onboarding.step.${s.step}.action`)}
+                  </Link>
+                ) : null}
+                {isAdmin && ui.also && s.status !== "skipped" ? (
+                  <Link className="btn btn-text" to={ui.also} aria-label={`${t("onboarding.connect_agent")} : ${name}`}>
+                    {t("onboarding.connect_agent")}
                   </Link>
                 ) : null}
                 {isAdmin && s.skippable && actionable ? (

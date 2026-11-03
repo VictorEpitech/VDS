@@ -32,6 +32,11 @@ interface AgentRow {
   revoked_at: string | null;
   last_seen_at: string | null;
 }
+interface EnrollRow {
+  id: string;
+  site_id: string;
+  created: number;
+}
 interface CommandRow extends Json {
   id: string;
   created: number;
@@ -71,6 +76,7 @@ const publicCommand = (c: CommandRow): Json => Object.fromEntries(Object.entries
 export function createPowerMock(world: World) {
   const org = { id: randomUUID(), name: "Collectivité de Moulins" };
   const moulins = world.sites[0]!;
+  const enrolled: EnrollRow[] = [];
   const agents: AgentRow[] = [
     { id: randomUUID(), site_id: moulins.id, name: "Serveur technique", token: "vds_agt_seed", created_at: ago(86_400_000), rotated_at: null, revoked_at: null, last_seen_at: now() },
   ];
@@ -218,12 +224,36 @@ export function createPowerMock(world: World) {
       return send(200, row), true;
     }
 
+    // --- enrôlement (assistant « Connecter un agent ») -------------------
+    // Le premier battement arrive 3,5 s après la génération de la commande ; l'agent n'entre pas dans `agents` (aucun effet sur les autres parcours).
+    const enr = m(/^\/sites\/([^/]+)\/agent\/enrollments$/);
+    if (enr && method === "POST") {
+      const row: EnrollRow = { id: randomUUID(), site_id: enr[1]!, created: Date.now() };
+      enrolled.push(row);
+      const server = `https://vds.example${process.env.VDS_BASE_PATH && process.env.VDS_BASE_PATH !== "/" ? process.env.VDS_BASE_PATH : ""}`;
+      return send(201, {
+        id: row.id, code: "E2E-CODE", expires_at: new Date(Date.now() + 3_600_000).toISOString(), image: "ghcr.io/vtech/vds-agent:1", server_url: server,
+        commands: { docker_login: null, docker_run: `docker run -d -e VDS_SERVER_URL=${server} -e VDS_ENROLL_CODE=E2E-CODE ghcr.io/vtech/vds-agent:1` }, files: { agent_env: `VDS_SERVER_URL=${server}\n` },
+      }), true;
+    }
+    if (enr && method === "GET") {
+      return send(200, enrolled.filter((e) => e.site_id === enr[1]).map((e) => ({
+        id: e.id, channel: "remote", state: Date.now() - e.created >= 3500 ? "consumed" : "pending", agent_id: Date.now() - e.created >= 3500 ? e.id : null,
+        consumed_hostname: null, consumed_ip: null, created_at: new Date(e.created).toISOString(), expires_at: new Date(e.created + 3_600_000).toISOString(),
+      }))), true;
+    }
+
     // --- agents ----------------------------------------------------------
     const ag = m(/^\/sites\/([^/]+)\/agents(?:\/([^/]+)(?:\/(rotate|revoke|commands))?)?$/);
     if (ag) {
       const siteId = ag[1]!;
       if (!ag[2]) {
-        if (method === "GET") return send(200, agents.filter((a) => a.site_id === siteId).map(agentOut)), true;
+        if (method === "GET") {
+          const arrived = enrolled.filter((e) => e.site_id === siteId && Date.now() - e.created >= 3500).map((e) => ({
+            id: e.id, site_id: siteId, name: "Agent e2e", token_prefix: "vds_agt_e2e", status: "online", version: "1.0.0", last_seen_at: now(), last_heartbeat: null, created_at: new Date(e.created).toISOString(), rotated_at: null, revoked_at: null,
+          }));
+          return send(200, [...agents.filter((a) => a.site_id === siteId).map(agentOut), ...arrived]), true;
+        }
         if (method === "POST") {
           if (agents.some((a) => a.site_id === siteId && !a.revoked_at)) return fail(409, "agents.already_active"), true;
           const b = await json();

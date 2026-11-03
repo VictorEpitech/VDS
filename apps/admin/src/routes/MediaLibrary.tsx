@@ -1,4 +1,5 @@
 import { useRef, useState, type DragEvent } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useErrorText } from "../auth/error-text";
 import { Icon } from "../components/Icon";
@@ -24,7 +25,13 @@ export function MediaLibrary() {
 
   return (
     <>
-      <h1>{t("media.title")}</h1>
+      <div className="page-head">
+        <h1>{t("media.title")}</h1>
+        <Link className="btn btn-filled" to="/content/media/add">
+          <Icon name="add" />
+          {t("media.add_content")}
+        </Link>
+      </div>
       <p className="lead">{t("media.intro")}</p>
 
       <section className="card" aria-labelledby="upload-title">
