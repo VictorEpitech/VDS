@@ -42,6 +42,15 @@ describe("FeedService.get", () => {
     expect(await s.get(ID2)).toBeNull();
   });
 
+  it("état connu de moins de 300 s : aucune requête réseau", async () => {
+    const f = vi.fn().mockResolvedValue(okRes(new Date(Date.now() - 60_000).toISOString(), { t: 1 }));
+    vi.stubGlobal("fetch", f);
+    const s = new FeedService({ token: () => "tok" });
+    await s.get(ID);
+    expect((await s.get(ID))?.data).toEqual({ t: 1 });
+    expect(f).toHaveBeenCalledTimes(1);
+  });
+
   it("304 et 204 : état connu conservé, requête conditionnelle", async () => {
     const f = vi
       .fn()

@@ -38,6 +38,9 @@ export class FeedService {
     const snap = (r: { feedId: string; fetchedAt: string; data: unknown } | undefined): FeedSnapshot | null =>
       r ? { feedId: r.feedId, fetchedAt: r.fetchedAt, data: r.data } : null;
     if (typeof navigator !== "undefined" && navigator.onLine === false) return snap(cached);
+    // état connu récent (< 300 s) : le serveur ne peut pas avoir mieux (contrat 1.12), pas de réseau
+    const age = cached ? Date.now() - Date.parse(cached.fetchedAt) : Number.NaN;
+    if (age >= 0 && age < FEED_POLL_MS) return snap(cached);
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), FEED_NET_TIMEOUT_MS);
     try {
