@@ -168,7 +168,7 @@ Schéma de config (`config.schema.json`, JSON Schema 2020-12, `type: object`, `a
 - `x-vds-secret: true` : jamais renvoyée par l'API HTTP ni journalisée (implique `x-vds-env`). L'API renvoie `value: null` + `is_set: bool` + provenance `env`. Le **module propriétaire** la reçoit via `ctx.config.resolve()` sous forme de `pydantic.SecretStr` (lecture par `get_secret_value()`, `repr` masqué) ; aucun autre module n'y a accès.
 - `x-vds-groups` (racine) : regroupement des champs dans le formulaire.
 
-Permissions (catalogue 1.0) : `screens.read`, `screens.write`, `sites.read`, `config.read.core`, `users.read`, `media.read`, `media.write`, `lan.access`, `net.outbound`, `fs.media`, `http.routes`, `db.own-tables`, `users.provision`. `users.provision` (façade `ctx.core.users.provision(identity: Identity, *, role: Literal["admin","editor"] | None = None) -> UserRef`, upsert par `(provider, external_id)`) n'est acceptée que si `kind = "auth-provider"` : le registre rejette tout autre manifeste qui la déclare. Un module lit toujours sa propre config. En processus (modules intégrés), les permissions sont appliquées par la façade `CoreApi` ; l'isolation forte ne concerne que les modules tiers (processus séparé).
+Permissions (catalogue 1.0) : `screens.read`, `screens.write`, `sites.read`, `config.read.core`, `users.read`, `media.read`, `media.write`, `lan.access`, `net.outbound`, `fs.media`, `http.routes`, `db.own-tables`, `users.provision`. `users.provision` (façade `ctx.core.users.provision(identity: Identity, *, role: Literal["admin","editor"] | None = None) -> UserRef`, upsert par `(provider, external_id)`) n'est acceptée que si `kind = "auth-provider"` : le registre rejette tout autre manifeste qui la déclare. Un module lit toujours sa propre config. En processus (modules intégrés), les permissions sont appliquées par la façade `CoreApi` ; l'isolation forte ne concerne que les modules tiers (processus séparé). Ajout 1.12.0 : `content.feeds` (flux de données des content-types, kind `content-type` seulement).
 
 Interfaces Python (`vds_sdk`, sans dépendance FastAPI ; les kinds serveur sont dans `vds_sdk.server`) :
 
@@ -524,6 +524,8 @@ Cycle : le player prépare l'élément suivant hors écran (`prepare` ≤ 10 s),
 | `content.video` | `<video muted playsinline>`, son si `props.audio` | durée lue par `ffprobe` dans `process_media` ; `vds-ended` en fin |
 | `content.pdf` | images `page-<n>` paginées, `props.page_duration_ms` | pages rendues par `pypdfium2` (licence permissive) dans `process_media`, largeur 3840 |
 | `content.url` | `<iframe sandbox="allow-scripts allow-same-origin">` sans `allow-top-navigation` | `requires_network: true` : sauté hors ligne ; sur Android avec `VdsNative.web`, WebView native superposée sans pont (sites refusant l'iframe compris), voir `architecture-content-url-natif.md` |
+| `content.weather` | élément `vds-content-weather`, données lues sur `/api/v1/player/feeds/{id}` (jamais d'URL externe) | `requires_network: false`, MET Norway (sans clé, attribution CC BY 4.0), dernier état connu hors ligne jusqu'à `max_age_s`, voir `architecture-widgets.md` |
+| `content.rss` | élément `vds-content-rss` (liste ou bandeau), texte seul via `textContent` | RSS 2.0 / Atom analysés par `defusedxml` côté serveur, HTML réduit en texte, dernier état connu hors ligne, voir `architecture-widgets.md` |
 
 Les modules intégrés s'exécutent dans la page du player ; les modules tiers passeront par une iframe sandbox (déjà prévu). CSP propre à `<base>/player/` : `script-src 'self'`, `media-src 'self' blob:`, `frame-src https:`.
 
@@ -675,6 +677,15 @@ Remplace les commandes provisoires du heartbeat et lève le reste de L3-T5 (tram
 - `cache.resync` : `AssetCache.verify()` relit les octets et marque les clés corrompues sans supprimer le média ; `ensure` le remplace via la clé d'attente, donc le média courant reste jouable même hors ligne. Mode dégradé (mémoire) : seul le manquant est retéléchargé.
 - Après une coupure serveur, le prochain heartbeat attend `DEFAULT_INTERVAL_S` (60 s) : une commande par le repli HTTP arrive donc jusqu'à 60 s après le retour du réseau (la livraison WS est immédiate à la reconnexion).
 - Capture périodique : timer de 30 s, jamais hors ligne, sans file d'attente ; `screenshot.interval_min` ajouté (optionnel) à `ScheduleDocument`.
+
+### Flux de données et widgets météo / RSS (vds-core 1.12.0, décision 2026-11-03)
+
+Détail dans `docs/architecture-widgets.md`. Contrat additif : permission `content.feeds`, `PlayerItemSpec.feeds`, `ContentType.fetch_feed`, événements `feed.failed` / `feed.recovered` (hook, aucun abonné par défaut).
+
+- **Le player ne contacte jamais une URL externe.** Le noyau (`vds_server.feeds`, table `content_feed`, migration `0020_flux_donnees`) récupère via `SafeHttp` (`vds_server.net.safe_http`), stocke du JSON borné (64 Kio) et le player le lit sur `GET {base}/api/v1/player/feeds/{feed_id}` (auth écran, `ETag`/`304`, `204` jamais récupéré, `404 feeds.unknown` si le flux n'est pas dans la programmation de l'écran).
+- **`SafeHttp` (anti-SSRF)** : https seul, port 443, toutes les adresses résolues vérifiées (privé, loopback, lien-local, CGNAT, multicast, réservé, ULA, IPv4-mappée, 6to4/NAT64 refusés ; hôte de `VDS_PUBLIC_ORIGIN` refusé), connexion épinglée sur l'IP vérifiée (SNI et `Host` d'origine), 3 redirections revérifiées, corps coupé à `max_bytes` (2 Mio dur), 10 s, ni cookies ni proxy d'environnement. Exposé aux modules par `ctx.core.safe_http` (permission `net.outbound` ; `ctx.core.http` reste celui des routes de module) et `ctx.core.feeds` (permission `content.feeds`).
+- **Rafraîchissement** : tâche de fond (tick 30 s), 4 récupérations en parallèle, une requête à la fois par hôte, bail de 120 s (multi-workers), échec = données conservées + backoff exponentiel plafonné à `refresh_s` (borné à 300–86400 s), 200 flux par module (`feeds.quota_exceeded`), purge des flux inutilisés depuis 7 jours. Un module peut allonger l'intervalle (en-tête `Expires`) via la clé réservée `_next_after_s` du résultat de `fetch_feed`.
+- **Hors ligne** : le player garde le dernier état connu par flux (IndexedDB) et saute l'élément au-delà de `max_age_s` (`feed_unavailable` / `feed_stale`).
 
 ## Données, sécurité, déploiement
 
