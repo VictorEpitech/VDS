@@ -297,3 +297,12 @@ class OverrideIn(BaseModel):  # champs existants inchangés
 - **Q3 Forçage d'une zone** : **dans la V1** (la recommandation « hors V1 » est rejetée). Spécifié en §2, §3 bis, §4, §5, §6, §8, §9, §10. Zone absente : forçage ignoré sur l'écran concerné, avertissement à la création (arbitrage architecte, §3 bis).
 
 Questions restantes : (a) un forçage de zone doit-il pouvoir agir hors plage / hors service prévu (bandeau d'urgence sur écran éteint) ? Proposé : non, utiliser un forçage d'écran. (b) Zone absente : confirmer « ignorer + avertir » plutôt qu'un calque plein écran de secours.
+
+## 14. Notes L0 (vérification de l'existant, 3 novembre 2026)
+
+- **Tables** : programmation = `schedule` (+ `schedule_rule`) ; forçage = `playback_overrides` (modèle `PlaybackOverride`, `db/models_override.py`), pas `override`. La migration `0017` ajoute `zone_ids` / `layout_id` sur `playback_overrides`.
+- **Nature du forçage** : colonne `kind` (`'playlist'` | `'off'`, CHECK `kind`), plus CHECK `(kind='off') = (playlist_id IS NULL)`. Le CHECK « zone + alimentation » devient `zone_ids IS NULL OR kind='playlist'` ; « zone + layout » est à écrire sur la nouvelle colonne `layout_id`. Le forçage « alimentation » est `kind='off'` (pas de notion séparée).
+- **Purge de la playlist d'un forçage** : le balayeur (`overrides/sweeper.py`, `purge`) supprime les forçages terminés depuis plus de `override.retention_days` (config noyau), la playlist éphémère part en cascade ; l'audit n'est pas purgé. La règle de §3 bis s'applique telle quelle.
+- **LayoutZone actuel** (`player/schemas.py`, `player/schedule.py`) : fractions flottantes 0..1, zone implicite `{"id":"main",x:0,y:0,w:1,h:1}` ; seuls `id,x,y,w,h,playlist` existent (pas de `z`, `fit`, `from`, `until`) : conforme au contrat 1.9.0, additif. `Layout` serveur n'a que `zones` (id/revision/orientation/background à ajouter en L3).
+- **Permissions** : le catalogue existant est en notation pointée (`media.read`, `override.write`) ; 1.9.0 ajoute `layouts.read` / `layouts.write` (et non `layouts:read|write`). Les « domaines d'événements » ne sont définis qu'en 1.1 et 1.2 ; `CORE_EVENT_DOMAINS_1_9` repart de `_1_2` (+ `override`, `layout`).
+- **Contrat livré (L0)** : `vds-core 1.9.0` côté `sdk-py` et `sdk-ts` (L1 est donc absorbée) ; `zone_ids` sur `override.*` est documenté, non requis ; aucun code serveur ni migration.

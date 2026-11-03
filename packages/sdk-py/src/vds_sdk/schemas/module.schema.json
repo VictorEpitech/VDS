@@ -303,7 +303,9 @@
           "incidents.read",
           "screens.provision",
           "network.discover",
-          "override.write"
+          "override.write",
+          "layouts.read",
+          "layouts.write"
         ],
         "type": "string"
       },

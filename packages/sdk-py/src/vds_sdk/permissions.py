@@ -22,5 +22,7 @@ Permission = Literal[
     "screens.provision",
     "network.discover",
     "override.write",
+    "layouts.read",
+    "layouts.write",
 ]
 PERMISSIONS: frozenset[str] = frozenset(get_args(Permission))

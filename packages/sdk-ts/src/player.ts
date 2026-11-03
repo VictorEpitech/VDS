@@ -54,13 +54,22 @@ export interface PlaySlot {
   end: string;
   kind: "play";
   layout: {
+    /** Triées par z croissant puis id (un player 1.8 empile dans l'ordre du tableau). */
     zones: LayoutZone[];
+    /** vds-core 1.9.0 : null = mise en page implicite (cible playlist). */
+    id?: string | null;
+    revision?: number;
+    orientation?: "landscape" | "portrait";
+    /** `asset` = clé de `assets`. */
+    background?: { color?: string; asset?: string } | null;
   };
   source: {
     /** null pour un forçage (vds-core 1.7.0). */
     schedule_id: string | null;
     kind?: "schedule" | "override";
     override_id?: string | null;
+    /** vds-core 1.9.0 */
+    layout_id?: string | null;
   };
 }
 
@@ -73,6 +82,24 @@ export interface LayoutZone {
   w: number;
   h: number;
   playlist: string;
+  /** vds-core 1.9.0 (tous optionnels, ignorés par un player 1.8) : */
+  z?: number;
+  fit?: "contain" | "cover" | "stretch";
+  /** ISO UTC : la zone apparaît à cet instant. */
+  from?: string | null;
+  /** ISO UTC : la zone disparaît à cet instant. */
+  until?: string | null;
+  /** Forçages de zone, triés par from, sans chevauchement, bornés au créneau. */
+  overrides?: ZoneOverrideWindow[];
+}
+
+/** vds-core 1.9.0 */
+export interface ZoneOverrideWindow {
+  override_id: string;
+  /** Clé de `playlists`. */
+  playlist: string;
+  from: string;
+  until: string;
 }
 
 export interface Playlist {

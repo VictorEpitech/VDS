@@ -32,7 +32,7 @@ NEW = {
 
 
 def test_version() -> None:
-    assert CORE_API_VERSION == "1.8.0"
+    assert CORE_API_VERSION.startswith("1.")  # 1.9.0 : voir test_compat_19
 
 
 def test_events_1_8_additive() -> None:

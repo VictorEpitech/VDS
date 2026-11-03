@@ -8,7 +8,7 @@ export interface ContentContext {
   /** Orientation du conteneur. */
   orientation: "landscape" | "portrait";
   /** Dimensions de la zone d'affichage. */
-  zone: { width: number; height: number };
+  zone: { width: number; height: number; /** vds-core 1.9.0 : clé de la zone (absente hors scène multi-zones). */ id?: string };
   /** Transforme une URL relative à l'URL serveur en URL servie par le Service Worker. */
   resolveUrl(relative: string): string;
 }

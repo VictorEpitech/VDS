@@ -203,3 +203,22 @@ CORE_EVENTS_1_8: frozenset[str] = CORE_EVENTS_1_7 | frozenset(
 CRITICAL_EVENTS_1_8: frozenset[str] = CRITICAL_EVENTS_1_7 | {"media.purged", "playlist.purged"}
 
 SCHEDULE_DELETED_REASONS_1_8: frozenset[str] = frozenset({"user", "playlist_purged"})
+
+# --- vds-core 1.9.0 (additif) : mises en page multi-zones et forçage de zone ----------
+# Payloads `version: 1`. Les payloads `override.*` existants gagnent la clé optionnelle
+# `zone_ids` (list[str] | None ; None = forçage d'écran) sans changer les clés requises.
+# Aucun événement critique ajouté.
+CORE_EVENT_DOMAINS_1_9: frozenset[str] = CORE_EVENT_DOMAINS_1_2 | {"override", "layout"}
+
+CORE_EVENT_PAYLOAD_1_9: dict[str, tuple[str, ...]] = {
+    **CORE_EVENT_PAYLOAD_1_8,
+    "layout.created": ("layout_id",),
+    "layout.updated": ("layout_id", "revision"),
+    "layout.deleted": ("layout_id",),
+}
+
+CORE_EVENTS_1_9: frozenset[str] = CORE_EVENTS_1_8 | frozenset(
+    set(CORE_EVENT_PAYLOAD_1_9) - set(CORE_EVENT_PAYLOAD_1_8)
+)
+
+CRITICAL_EVENTS_1_9: frozenset[str] = CRITICAL_EVENTS_1_8
