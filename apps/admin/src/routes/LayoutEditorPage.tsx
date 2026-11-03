@@ -6,6 +6,7 @@ import { QueryStatus } from "../components/feedback";
 import { LayoutEditor } from "../features/layouts/LayoutEditor";
 import { LayoutUsage } from "../features/layouts/LayoutUsage";
 import { layoutKeys, useLayout } from "../features/layouts/layouts";
+import { PublicationPanel } from "../features/publication/PublicationPanel";
 import { useMaxZones } from "../features/layouts/warnings";
 
 export function LayoutEditorPage() {
@@ -22,6 +23,7 @@ export function LayoutEditorPage() {
       <QueryStatus query={layout} />
       {layout.data ? (
         <>
+          <PublicationPanel type="layout" id={layout.data.id} />
           <LayoutEditor
             key={`${layout.data.id}-${epoch}`}
             layout={layout.data}

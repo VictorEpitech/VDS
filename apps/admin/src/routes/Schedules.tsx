@@ -13,6 +13,10 @@ import { useLayouts } from "../features/layouts/layouts";
 import { useApi } from "../lib/api";
 import { keys, useAllGroups, usePlaylists, useSchedules, useScreens, useSites, type Schedule } from "../lib/queries";
 import { useWritableTargets } from "../features/scope/scope";
+import { PublicationBadge } from "../features/publication/PublicationBadge";
+import { PublicationPanel } from "../features/publication/PublicationPanel";
+import { usePublicationIndex, usePublicationList, useIsAdmin } from "../features/publication/publication";
+import { Link } from "react-router-dom";
 import { PageTitle } from "../features/help/HelpPanel";
 
 /** À la création, seul l'identifiant de contenu utilisé est envoyé (l'autre est omis plutôt que nul). */
@@ -32,6 +36,9 @@ export function Schedules() {
   const targets = useWritableTargets();
   const playlists = usePlaylists();
   const layouts = useLayouts();
+  const pubs = usePublicationIndex("schedule");
+  const isAdmin = useIsAdmin();
+  const pending = usePublicationList({ state: "in_review", enabled: isAdmin });
   const [form, setForm] = useState<"new" | Schedule | null>(null);
   const [prefill, setPrefill] = useState<SchedulePrefill | undefined>(undefined);
 
@@ -76,12 +83,20 @@ export function Schedules() {
     <>
       <div className="page-head">
         <PageTitle topic="schedule">{t("schedules.title")}</PageTitle>
-        {form === null ? (
-          <button type="button" className="btn btn-filled" onClick={() => { save.reset(); setPrefill(undefined); setForm("new"); }}>
-            <Icon name="add" />
-            {t("schedules.create")}
-          </button>
-        ) : null}
+        <div className="actions">
+          {isAdmin ? (
+            <Link className="btn btn-text" to="/playback/review">
+              <Icon name="processing" />
+              {t("publication.review.link", { count: pending.data?.length ?? 0 })}
+            </Link>
+          ) : null}
+          {form === null ? (
+            <button type="button" className="btn btn-filled" onClick={() => { save.reset(); setPrefill(undefined); setForm("new"); }}>
+              <Icon name="add" />
+              {t("schedules.create")}
+            </button>
+          ) : null}
+        </div>
       </div>
       <p className="lead">{t("schedules.intro")}</p>
       {warned > 0 ? (
@@ -105,6 +120,7 @@ export function Schedules() {
           }
         }}
       />
+      {form !== null && form !== "new" ? <PublicationPanel type="schedule" id={form.id} /> : null}
       {form !== null ? (
         <ScheduleWizard
           key={form === "new" ? `new-${prefill ? `${prefill.target.id}-${prefill.date}-${prefill.rule.start}` : ""}` : form.id}
@@ -147,6 +163,9 @@ export function Schedules() {
               <p className="meta">
                 {t(`schedules.target.${s.target_type}`)} : {targetName(s)} · {s.layout_id ? `${t("schedules.content.layout")} : ${layouts.data?.items.find((l) => l.id === s.layout_id)?.name ?? ""}` : (playlists.data?.items.find((p) => p.id === s.playlist_id)?.name ?? "")}
               </p>
+              <div className="badges">
+                <PublicationBadge publication={pubs.get(s.id)} />
+              </div>
               <p className="meta">
                 {rulesText(s)} · <PriorityBadge level={s.priority_level} value={s.priority} />
                 {s.enabled ? "" : ` · ${t("schedules.disabled")}`}

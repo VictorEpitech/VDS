@@ -33,7 +33,8 @@
     "captures": "Captures",
     "import": "Ajouter un contenu",
     "connect_agent": "Connecter un agent",
-    "help": "Aide"
+    "help": "Aide",
+    "review": "Publications à valider"
   },
   "language": {
     "label": "Langue",
@@ -465,6 +466,14 @@
       "not_found": "Cette commande n'existe plus.",
       "role_required": "Seul un administrateur peut lancer cette commande.",
       "ids_invalid": "Liste de commandes invalide."
+    },
+    "publication": {
+      "stale": "Le contenu a changé depuis votre ouverture. Rechargez pour voir la dernière version.",
+      "invalid_transition": "Cette action n'est pas possible dans l'état actuel. Rechargez la page.",
+      "dependency_unpublished": "Des éléments référencés ne sont pas encore publiés. Publiez-les d'abord, ou cochez « Valider aussi les éléments dont celui-ci dépend ».",
+      "not_published": "Ce contenu n'est pas encore publié : un forçage ne peut diffuser que la version publiée. Faites d'abord valider le contenu.",
+      "delete_requires_admin": "Ce contenu a déjà été publié : seul un administrateur peut le supprimer.",
+      "media_in_use_requires_admin": "Ce média est utilisé par un contenu publié : seul un administrateur peut remplacer son fichier."
     }
   },
   "auth": {
@@ -1386,6 +1395,12 @@
         "max_exclusive_elements": {
           "title": "Éléments lus en même temps",
           "description": "Nombre maximal de vidéos lues simultanément par un écran (1 à 4). Au-delà, les vidéos en trop sont sautées."
+        }
+      },
+      "diffusion": {
+        "review_required": {
+          "title": "Validation par un administrateur avant publication",
+          "description": "Si activé, les modifications d'un éditeur restent en brouillon jusqu'à leur validation. Les administrateurs publient directement."
         }
       }
     }
@@ -2484,5 +2499,52 @@
       "onboarding": "Rouvrir Premiers pas"
     },
     "search": "Rechercher"
+  },
+  "publication": {
+    "title": "Publication",
+    "state": {
+      "never": "Brouillon, jamais publié",
+      "changed": "Modifications non publiées",
+      "in_review": "En revue",
+      "published": "Publié"
+    },
+    "hint": {
+      "never": "Cet élément n'est pas encore diffusé. Soumettez-le pour validation.",
+      "changed": "Les écrans continuent de jouer la version publiée. Soumettez vos modifications pour validation.",
+      "in_review": "En attente de validation par un administrateur. Les écrans jouent encore la version publiée.",
+      "published": "Les écrans jouent cette version."
+    },
+    "submitted": "Soumis par {who} le {date}.",
+    "someone": "un utilisateur",
+    "rejected": "Refusé par un administrateur. Motif :",
+    "blocked": "{count, plural, one {Publication bloquée : # élément référencé n'est pas encore publié.} other {Publication bloquée : # éléments référencés ne sont pas encore publiés.}}",
+    "submit": "Soumettre pour validation",
+    "submit_confirm": "Soumettre",
+    "withdraw": "Retirer de la validation",
+    "comment": "Commentaire pour l'administrateur (facultatif)",
+    "open_queue": "Ouvrir la file à valider",
+    "type": {
+      "playlist": "Playlist",
+      "layout": "Mise en page",
+      "schedule": "Programmation"
+    },
+    "review": {
+      "title": "Publications à valider",
+      "intro": "Les modifications des éditeurs attendent votre accord avant d'apparaître sur les écrans. Vous validez exactement la version qui vous est présentée.",
+      "back": "Retour à la diffusion",
+      "list": "Éléments en attente",
+      "empty": "Aucune publication en attente.",
+      "open": "Voir {name}",
+      "include_deps": "Valider aussi les éléments dont celui-ci dépend",
+      "approve": "Valider",
+      "approve_named": "Valider {name}",
+      "reject": "Refuser",
+      "reject_named": "Refuser {name}",
+      "reject_confirm": "Confirmer le refus",
+      "reason": "Motif du refus (obligatoire)",
+      "reload": "Recharger",
+      "admin_only": "Seul un administrateur peut valider les publications.",
+      "link": "{count, plural, =0 {À valider} other {À valider (#)}}"
+    }
   }
 }

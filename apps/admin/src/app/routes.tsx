@@ -22,6 +22,7 @@ import { Notifications } from "../routes/Notifications";
 import { PlaylistEditor } from "../routes/PlaylistEditor";
 import { Playlists } from "../routes/Playlists";
 import { Power } from "../routes/Power";
+import { Review } from "../routes/Review";
 import { Schedules } from "../routes/Schedules";
 import { Screens } from "../routes/Screens";
 import { SiteDetail } from "../routes/SiteDetail";
@@ -64,6 +65,7 @@ export const routes: RouteObject[] = [
             ],
           },
           { path: "playback", element: <Schedules /> },
+          { path: "playback/review", element: <Review /> },
           { path: "more", element: <More /> },
           { path: "help", element: <Help /> },
           { path: "sites", element: <Sites /> },

@@ -8,6 +8,8 @@ import { LayoutThumb } from "../features/layouts/LayoutThumb";
 import { TEMPLATE_IDS, templateZones, useCreateLayout, useLayoutPage, type Orientation, type TemplateId } from "../features/layouts/layouts";
 import { OwnerBadge, OwnerField, useOwnerChoice } from "../features/scope/Owner";
 import { useOrganization } from "../lib/queries";
+import { PublicationBadge } from "../features/publication/PublicationBadge";
+import { usePublicationIndex } from "../features/publication/publication";
 import { PageTitle } from "../features/help/HelpPanel";
 
 export function Layouts() {
@@ -30,6 +32,7 @@ export function Layouts() {
     if (open) formRef.current?.querySelector<HTMLElement>("input")?.focus();
   }, [open]);
   const items = layouts.data?.items ?? [];
+  const pubs = usePublicationIndex("layout");
   const filtered = q.trim() !== "" || orientationFilter !== "";
 
   const submit = (e: FormEvent) => {
@@ -145,7 +148,10 @@ export function Layouts() {
               <p className="meta">
                 {t(`layouts.orientation.${l.orientation}`)} · {t("layouts.zone_count", { count: l.zone_count })} · {t("layouts.usage_count", { count: l.usage_count })}
               </p>
-              <OwnerBadge owner={l.owner} />
+              <div className="badges">
+                <PublicationBadge publication={pubs.get(l.id)} />
+                <OwnerBadge owner={l.owner} />
+              </div>
             </li>
           ))}
         </ul>

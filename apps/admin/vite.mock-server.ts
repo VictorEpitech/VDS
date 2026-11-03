@@ -14,6 +14,7 @@ import { createLayoutsMock } from "./vite.mock-layouts";
 import { createFleetMock } from "./vite.mock-fleet";
 import { createPlanningMock } from "./vite.mock-planning";
 import { createPowerMock } from "./vite.mock-power";
+import { createPublicationsMock } from "./vite.mock-publications";
 import { createProvisionMock } from "./vite.mock-provision";
 import { createUsersMock, whoOf } from "./vite.mock-users";
 
@@ -111,9 +112,10 @@ export function vdsMockServer(): Plugin {
   const fleetMock = createFleetMock(diffusionMock.world, layoutsMock.zoneCandidates);
   const planningMock = createPlanningMock(diffusionMock.world, fleetMock.forcedOn);
   const usersMock = createUsersMock(diffusionMock.world);
+  const publicationsMock = createPublicationsMock(diffusionMock.world, layoutsMock.layouts);
   const commandsMock = createCommandsMock(diffusionMock.world);
   const diffusion = async (req: IncomingMessage, res: ServerResponse, route: string, query: URLSearchParams): Promise<boolean> =>
-    (await usersMock(req, res, route, query)) || (await commandsMock(req, res, route, query)) || (await layoutsMock(req, res, route, query)) || (await fleetMock(req, res, route)) || (await planningMock(req, res, route, query)) || (await provisionMock(req, res, route, query)) || (await powerMock(req, res, route, query)) || diffusionMock(req, res, route, query);
+    (await publicationsMock(req, res, route, query)) || (await usersMock(req, res, route, query)) || (await commandsMock(req, res, route, query)) || (await layoutsMock(req, res, route, query)) || (await fleetMock(req, res, route)) || (await planningMock(req, res, route, query)) || (await provisionMock(req, res, route, query)) || (await powerMock(req, res, route, query)) || diffusionMock(req, res, route, query);
 
   async function api(req: IncomingMessage, res: ServerResponse, route: string, query: URLSearchParams): Promise<void> {
     const method = req.method ?? "GET";

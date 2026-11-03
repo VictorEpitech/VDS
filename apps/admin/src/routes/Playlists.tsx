@@ -10,6 +10,8 @@ import { TagEditor } from "../features/media/TagEditor";
 import { OwnerBadge, OwnerField, useOwnerChoice } from "../features/scope/Owner";
 import { useCanWrite } from "../features/scope/scope";
 import { keys, usePlaylistPage, type Playlist, type PlaylistDetail } from "../lib/queries";
+import { PublicationBadge } from "../features/publication/PublicationBadge";
+import { usePublicationIndex } from "../features/publication/publication";
 import { PageTitle } from "../features/help/HelpPanel";
 
 const PAGE_SIZE = 24;
@@ -29,6 +31,7 @@ export function Playlists() {
   const total = playlists.data?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const filtered = q.trim() !== "" || stateFilter !== "all" || tags.length > 0;
+  const pubs = usePublicationIndex("playlist");
   const owner = useOwnerChoice();
   const canWrite = useCanWrite();
   const [name, setName] = useState("");
@@ -131,6 +134,7 @@ export function Playlists() {
                 <p className="meta">{t("playlists.items", { count: p.item_count })}</p>
                 {p.tags.length > 0 ? <p className="meta">{t("tags.list", { tags: p.tags.join(", ") })}</p> : null}
                 <div className="badges">
+                  <PublicationBadge publication={pubs.get(p.id)} />
                   <ExpiryBadge item={p} />
                   <OwnerBadge owner={p.owner} />
                 </div>

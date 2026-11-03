@@ -14,6 +14,7 @@ import { formatDateTime } from "../lib/media-view";
 import { HiddenUsage, OwnerBadge, OwnerEdit } from "../features/scope/Owner";
 import { useCanWrite, type NodeRef } from "../features/scope/scope";
 import { keys, useMedia, usePlaylist, usePlaylistUsage, type PlaylistDetail, type PlaylistItem } from "../lib/queries";
+import { PublicationPanel } from "../features/publication/PublicationPanel";
 import { PageTitle } from "../features/help/HelpPanel";
 
 export function PlaylistEditor() {
@@ -127,6 +128,7 @@ export function PlaylistEditor() {
       <QueryStatus query={playlist} />
       {playlist.isSuccess ? (
         <>
+          <PublicationPanel type="playlist" id={id} writable={writable} />
           {writable ? (
           <form
             className="inline-form"

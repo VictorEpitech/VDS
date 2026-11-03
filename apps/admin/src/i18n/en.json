@@ -33,7 +33,8 @@
     "captures": "Captures",
     "import": "Add content",
     "connect_agent": "Connect an agent",
-    "help": "Help"
+    "help": "Help",
+    "review": "Publications to review"
   },
   "language": {
     "label": "Language",
@@ -465,6 +466,14 @@
       "not_found": "This command no longer exists.",
       "role_required": "Only an administrator can run this command.",
       "ids_invalid": "Invalid command list."
+    },
+    "publication": {
+      "stale": "The content has changed since you opened it. Reload to see the latest version.",
+      "invalid_transition": "This action is not possible in the current state. Reload the page.",
+      "dependency_unpublished": "Some referenced items are not published yet. Publish them first, or tick \"Also approve the items this one depends on\".",
+      "not_published": "This content is not published yet: an override can only broadcast the published version. Have the content approved first.",
+      "delete_requires_admin": "This content has already been published: only an administrator can delete it.",
+      "media_in_use_requires_admin": "This media is used by published content: only an administrator can replace its file."
     }
   },
   "auth": {
@@ -1386,6 +1395,12 @@
         "max_exclusive_elements": {
           "title": "Simultaneous elements",
           "description": "Maximum number of videos a screen plays at once (1 to 4). Extra videos are skipped."
+        }
+      },
+      "diffusion": {
+        "review_required": {
+          "title": "Administrator approval before publishing",
+          "description": "When enabled, an editor's changes stay in draft until approved. Administrators publish directly."
         }
       }
     }
@@ -2484,5 +2499,52 @@
       "onboarding": "Reopen Getting started"
     },
     "search": "Search"
+  },
+  "publication": {
+    "title": "Publication",
+    "state": {
+      "never": "Draft, never published",
+      "changed": "Unpublished changes",
+      "in_review": "In review",
+      "published": "Published"
+    },
+    "hint": {
+      "never": "This item is not broadcast yet. Submit it for review.",
+      "changed": "Screens keep playing the published version. Submit your changes for review.",
+      "in_review": "Waiting for an administrator's approval. Screens still play the published version.",
+      "published": "Screens play this version."
+    },
+    "submitted": "Submitted by {who} on {date}.",
+    "someone": "a user",
+    "rejected": "Rejected by an administrator. Reason:",
+    "blocked": "{count, plural, one {Publication blocked: # referenced item is not published yet.} other {Publication blocked: # referenced items are not published yet.}}",
+    "submit": "Submit for review",
+    "submit_confirm": "Submit",
+    "withdraw": "Withdraw from review",
+    "comment": "Comment for the administrator (optional)",
+    "open_queue": "Open the review queue",
+    "type": {
+      "playlist": "Playlist",
+      "layout": "Layout",
+      "schedule": "Schedule"
+    },
+    "review": {
+      "title": "Publications to review",
+      "intro": "Editors' changes wait for your approval before they appear on screens. You approve exactly the version shown to you.",
+      "back": "Back to playback",
+      "list": "Pending items",
+      "empty": "No publication is waiting.",
+      "open": "View {name}",
+      "include_deps": "Also approve the items this one depends on",
+      "approve": "Approve",
+      "approve_named": "Approve {name}",
+      "reject": "Reject",
+      "reject_named": "Reject {name}",
+      "reject_confirm": "Confirm rejection",
+      "reason": "Reason for rejection (required)",
+      "reload": "Reload",
+      "admin_only": "Only an administrator can approve publications.",
+      "link": "{count, plural, =0 {To review} other {To review (#)}}"
+    }
   }
 }

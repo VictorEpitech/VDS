@@ -20,6 +20,7 @@ export function trailFor(pathname: string): Crumb[] | null {
     [/^\/content\/playlists$/, [m("/content/media", "nav.content"), { label: "nav.playlists" }]],
     [/^\/content\/media\/add$/, [m("/content/media", "nav.content"), m("/content/media", "nav.media"), { label: "nav.import" }]],
     [/^\/content\/media$/, [m("/content/media", "nav.content"), { label: "nav.media" }]],
+    [/^\/playback\/review$/, [m("/playback", "nav.playback"), { label: "nav.review" }]],
     [/^\/sites\/connect$/, [m("/more", "nav.more"), m("/sites", "nav.sites"), { label: "nav.connect_agent" }]],
     [/^\/sites\/[^/]+$/, [m("/more", "nav.more"), m("/sites", "nav.sites"), { label: "nav.site_detail" }]],
     [/^\/sites$/, [m("/more", "nav.more"), { label: "nav.sites" }]],

@@ -2943,3 +2943,33 @@ fieldset.field > legend {
   min-inline-size: 0;
   overflow-wrap: anywhere;
 }
+
+/* Publication : état = couleur + icône + libellé (jetons de la charte uniquement). */
+.status-badge[data-state="pub-never"] {
+  --state-color: var(--vds-on-surface-variant);
+}
+
+.status-badge[data-state="pub-changed"] {
+  --state-color: var(--vds-warning);
+}
+
+.status-badge[data-state="pub-in_review"] {
+  --state-color: var(--vds-tertiary);
+}
+
+.status-badge[data-state="pub-published"] {
+  --state-color: var(--vds-success);
+}
+
+.publication-panel {
+  display: grid;
+  gap: var(--vds-space-3);
+  margin-block: var(--vds-space-4);
+}
+
+.publication-comment {
+  margin: var(--vds-space-2) 0 0;
+  padding-inline-start: var(--vds-space-3);
+  border-inline-start: 3px solid var(--vds-warning);
+  overflow-wrap: anywhere;
+}
