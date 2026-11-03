@@ -84,3 +84,23 @@ def test_power_override_on_layout_turns_screen_on() -> None:
     assert [s.state for s in lit] == ["off", "on", "off"]
     dark = apply_overrides(base, CHAIN, [force(2, a, b)], UTC)
     assert {s.state for s in dark} == {"off"}
+
+
+def test_layout_schedule_on_dst_days_keeps_layout_and_local_hours() -> None:
+    for day, off_h in ((date(2026, 3, 29), 1), (date(2026, 10, 25), 2)):
+        slots = resolve(CHAIN, [sched(1, lay=LAY)], PARIS, day)
+        assert slots and all(s.layout_id == LAY and s.playlist_id is None for s in slots)
+        assert slots[0].start.astimezone(PARIS).hour == 0
+        assert slots[0].start.utcoffset() == timedelta(hours=off_h)  # offset à minuit local
+        assert slots[-1].end.utcoffset() == timedelta(hours=3 - off_h)  # bascule dans la journée
+
+
+def test_layout_override_across_paris_midnight_is_one_slot_per_day_kept() -> None:
+    a = datetime(2026, 6, 10, 21, 30, tzinfo=UTC)  # 23:30 Paris
+    b = datetime(2026, 6, 10, 22, 30, tzinfo=UTC)  # 00:30 Paris le lendemain
+    f = force(1, a, b, lay=LAY2)
+    day1 = [s for s in resolve(CHAIN, [sched(1, pl=PL)], PARIS, DAY, [f]) if s.override_id]
+    assert day1 and all(s.layout_id == LAY2 and not s.is_off for s in day1)
+    day2 = resolve(CHAIN, [sched(1, pl=PL)], PARIS, date(2026, 6, 11), [f])
+    hit = [s for s in day2 if s.override_id]
+    assert hit and hit[0].end.astimezone(PARIS).strftime("%H:%M") == "00:30"

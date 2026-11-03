@@ -204,3 +204,10 @@ def test_override_on_omitted_zone_is_ignored_without_missing() -> None:
     r = compose(layout(zone("gone", active_until=START), zone("main")), zone_overrides=[o])
     assert [z["id"] for z in r.layout["zones"]] == ["main"]
     assert not r.missing_zone_override_ids  # la zone existe, elle est seulement expirée
+
+
+def test_zone_override_spanning_past_slot_end_is_clamped_to_until() -> None:
+    o = zo(1, {"z"}, PL_B, START + timedelta(hours=2), END + timedelta(days=1))
+    r = compose(layout(zone("z")), zone_overrides=[o])
+    (w,) = r.layout["zones"][0]["overrides"]
+    assert w["from"] == "2026-06-10T10:00:00Z" and w["until"] == "2026-06-10T12:00:00Z"
