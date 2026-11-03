@@ -45,11 +45,12 @@ def build_config_js(settings: Settings, auth_info: AuthInfo = no_auth) -> str:
     return "window.__VDS__ = " + json.dumps(cfg).replace("</", "<\\/") + ";\n"
 
 
+# 127.0.0.1:47801 : assistant local de l'image Pi (packaging/pi), boucle seulement.
 PLAYER_CSP = (
     "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; "
-    "connect-src 'self'; frame-src https:; worker-src 'self'; object-src 'none'; "
-    "base-uri 'self'"
+    "connect-src 'self' http://127.0.0.1:47801; frame-src https:; worker-src 'self'; "
+    "object-src 'none'; base-uri 'self'"
 )
 
 

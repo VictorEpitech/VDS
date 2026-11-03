@@ -1,0 +1,17 @@
+# Chromium en kiosque. Restart=always : toute sortie du processus (crash, restart.app) relance l'écran.
+[Unit]
+Description=VDS player (Chromium kiosque)
+After=graphical.target network-online.target
+Wants=network-online.target
+
+[Service]
+User=vds
+EnvironmentFile=/etc/vds/player.env
+ExecStart=/usr/bin/chromium --kiosk --noerrdialogs --disable-infobars --no-first-run \
+  --disable-session-crashed-bubble --check-for-update-interval=31536000 --app=${VDS_PLAYER_URL}
+Restart=always
+RestartSec=2
+# Aucun port de débogage distant : pas de --remote-debugging-port (surface d'attaque locale).
+
+[Install]
+WantedBy=graphical.target

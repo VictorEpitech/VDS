@@ -154,6 +154,17 @@ export interface VdsNativeWeb {
   hide(id: string): void;
 }
 
+/**
+ * Commandes player natives (Android), remises UNE seule fois au contrôleur de commandes du player.
+ * Chaque appel résout un JSON `{ok, code?}` (+ `jpeg` base64 pour `shot`, + `screenshot`/`restart_app`/`restart_device`
+ * pour `caps`). Rien de technique n'est affiché : les codes servent au résultat de commande uniquement.
+ */
+export interface NativeCmd {
+  caps(): Promise<string>;
+  shot(maxEdge: number, quality: number): Promise<string>;
+  restart(scope: "app" | "device"): Promise<string>;
+}
+
 export interface PlatformBridge {
   /** Absent hors Android ou sur un APK trop ancien : `content.url` retombe sur l'iframe. */
   web?: VdsNativeWeb;
@@ -177,6 +188,8 @@ export interface PlatformBridge {
    * Le natif ne le remet qu'une fois (puis l'efface) ; il ne doit jamais être persisté ni affiché.
    */
   claimPairingTicket?(): Promise<string>;
+  /** Commandes player natives : remises une fois (puis `null`), voir [NativeCmd]. */
+  claimCmd?(): NativeCmd | null;
   claimKiosk?(): ((mode: KioskMode, remainingMs: number, windowSec: number) => Promise<string>) | null;
 }
 

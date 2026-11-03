@@ -12,6 +12,7 @@ class BridgeRouter(
     private val cec: CecDispatcher = CecDispatcher(null),
     private val kiosk: KioskDispatcher? = null,
     private val web: WebDispatcher? = null,
+    private val cmd: CmdDispatcher? = null,
     private val tickets: PairingTicketVault? = null,
     /** URL serveur courante (le ticket n'est remis que si elle est celle pour laquelle il a été émis). */
     private val serverUrl: () -> String? = { null },
@@ -26,6 +27,7 @@ class BridgeRouter(
             data.startsWith("cec:") -> background { cec.handle(data)?.let(reply) }
             data.startsWith("ticket:") -> ticketReply(data)?.let(reply)
             data.startsWith("kiosk:") -> kiosk?.handle(data)?.let(reply)
+            data.startsWith("cmd:") -> cmd?.handle(data, reply)
             data.startsWith("web:") -> web?.handle(data, reply)
         }
     }

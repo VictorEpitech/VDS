@@ -4,6 +4,7 @@ import android.os.Build
 import android.os.SystemClock
 import app.vds.relay.BridgeRouter
 import app.vds.relay.CecDispatcher
+import app.vds.relay.CmdDispatcher
 import app.vds.relay.KioskDispatcher
 import app.vds.relay.PairingTicketVault
 import app.vds.relay.WebDispatcher
@@ -28,6 +29,7 @@ class VdsBridge(
     kiosk: KioskDispatcher? = null,
     tickets: PairingTicketVault? = null,
     web: WebDispatcher? = null,
+    cmd: CmdDispatcher? = null,
     serverUrl: () -> String? = { null },
 ) {
     // Les ordres CEC peuvent bloquer (attente de la réponse du bus) : jamais sur le thread UI.
@@ -45,6 +47,7 @@ class VdsBridge(
         kiosk = kiosk,
         tickets = tickets,
         web = web,
+        cmd = cmd,
         serverUrl = serverUrl,
         background = { cecExecutor.execute(it) },
     )
@@ -83,7 +86,7 @@ class VdsBridge(
               }"""
 
         /** Script exécuté au début de chaque document des origines autorisées. */
-        fun script(infoJson: String, kioskToken: String = "", webSupported: Boolean = false): String = """
+        fun script(infoJson: String, kioskToken: String = "", webSupported: Boolean = false, cmdToken: String = ""): String = """
             (function(){
               var t=window.$LISTENER_NAME;
               if(!t)return;
@@ -97,6 +100,7 @@ class VdsBridge(
                 });
               }
               var kioskToken=${JSONObject.quote(kioskToken)},claimed=false;
+              var cmdToken=${JSONObject.quote(cmdToken)},cmdClaimed=false;
               var web=${if (webSupported) WEB_API else "null"};
               window.VdsNative={
                 ping:function(){t.postMessage("$MSG_PING")},
@@ -111,6 +115,18 @@ class VdsBridge(
                 claimPairingTicket:function(){
                   return req("ticket","claim",'{}');
                 },
+                // Commandes player (capture, redémarrage) : remise UNIQUE au contrôleur de commandes du player.
+                claimCmd:function(){
+                  if(cmdClaimed||!cmdToken)return null;
+                  cmdClaimed=true;
+                  var tk=cmdToken;cmdToken="";
+                  var f='{"ok":false,"code":"timeout"}';
+                  return {
+                    caps:function(){return req("cmd","caps:"+tk,f)},
+                    shot:function(e,q){return req("cmd","shot-"+Math.floor(e)+"-"+Math.floor(q)+":"+tk,f)},
+                    restart:function(s){return req("cmd",(s==="device"?"restart-device":"restart-app")+":"+tk,f)}
+                  };
+                },
                 claimKiosk:function(){
                   if(claimed||!kioskToken)return null;
                   claimed=true;
@@ -123,7 +139,7 @@ class VdsBridge(
               };
               if(web)window.VdsNative.web=web;
               t.onmessage=function(e){
-                var d=String(e.data),m=/^(cec|kiosk|ticket|web):([A-Za-z0-9_-]+):(.*)${'$'}/.exec(d);
+                var d=String(e.data),m=/^(cec|kiosk|ticket|web|cmd):([A-Za-z0-9_-]+):(.*)${'$'}/.exec(d);
                 if(m&&w[m[1]+":"+m[2]])w[m[1]+":"+m[2]](m[3]);
               };
             })();

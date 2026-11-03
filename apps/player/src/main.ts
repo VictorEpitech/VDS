@@ -9,6 +9,8 @@ import { startRuntime } from "./runtime";
 import type { Runtime } from "./runtime";
 import { Screens } from "./screens";
 import { KV } from "./shared";
+import { probeHelperAdapter } from "./helper-adapter";
+import { claimNativeAdapter } from "./native-adapter";
 import { createWebAdapter } from "./web-adapter";
 import { startWatchdog } from "./watchdog";
 import "./style.css";
@@ -47,7 +49,9 @@ function loadTheme(cssUrl: string | undefined): void {
 
 async function main(): Promise<void> {
   trackNativeWeb();
-  if (!getPlayerAdapter()) registerPlayerAdapter(createWebAdapter()); // un module player-adapter (Android, Pi) passe avant
+  // Un adaptateur déjà enregistré (module player-adapter) passe avant ; sinon pont natif (le natif annonce ses
+  // capacités), puis assistant local, puis web minimal. Réclamé avant tout content-type (jeton à remise unique).
+  if (!getPlayerAdapter()) registerPlayerAdapter(claimNativeAdapter() ?? (await probeHelperAdapter()) ?? createWebAdapter());
   claimKioskBridge(); // avant tout content-type : seul ce contrôleur parle au kiosque natif
   const cfg = window.__VDS__;
   const locale = setLocale(cfg?.defaultLocale ?? navigator.language.slice(0, 2));

@@ -27,6 +27,7 @@ import android.content.RestrictionsManager
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import app.vds.relay.CecDispatcher
+import app.vds.relay.CmdDispatcher
 import app.vds.relay.Enforcement
 import app.vds.relay.KioskActuator
 import app.vds.relay.KioskDispatcher
@@ -65,6 +66,11 @@ class MainActivity : Activity() {
     }
     private val kioskDispatcher = KioskDispatcher(overlayAwareKiosk, HandlerKioskTimer(ui), kioskToken, SystemClock::elapsedRealtime)
 
+    // Jeton des commandes player (capture, redémarrage), remis une seule fois au contrôleur du player (claimCmd).
+    private val cmdToken = ByteArray(24).also { java.security.SecureRandom().nextBytes(it) }
+        .joinToString("") { "%02x".format(it) }
+    private val cmdDispatcher = CmdDispatcher(AndroidCmd(this, ui), HandlerCmdScheduler(ui), cmdToken, SystemClock::elapsedRealtime)
+
     private val ticketVault = PairingTickets.vault { this }
 
     private val bridge = VdsBridge(
@@ -73,6 +79,7 @@ class MainActivity : Activity() {
         cec = CecDispatcher(AndroidCec(this)),
         kiosk = kioskDispatcher,
         web = WebDispatcher(overlay),
+        cmd = cmdDispatcher,
         tickets = ticketVault,
         serverUrl = { cfg?.url },
     )
@@ -209,7 +216,7 @@ class MainActivity : Activity() {
         WebViewCompat.addWebMessageListener(view, VdsBridge.LISTENER_NAME, rules) { _, message, _, isMainFrame, replyProxy ->
             bridge.onMessage(isMainFrame, message.data) { replyProxy.postMessage(it) }
         }
-        WebViewCompat.addDocumentStartJavaScript(view, VdsBridge.script(VdsBridge.infoJson(c.insecureUpstream), kioskToken, webSupported = true), rules)
+        WebViewCompat.addDocumentStartJavaScript(view, VdsBridge.script(VdsBridge.infoJson(c.insecureUpstream), kioskToken, webSupported = true, cmdToken = cmdToken), rules)
         bridgeInstalled = true
     }
 

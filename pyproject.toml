@@ -32,6 +32,8 @@ select = ["E", "F", "I", "UP", "B", "ASYNC", "S"]
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["S101"]
+"packaging/pi/**" = ["E501"]
+"packaging/pi/**/test_*.py" = ["S101", "E501"]
 "modules/power.*/agent/**" = ["ASYNC109"]  # timeout borné explicite des protocoles TV
 "modules/power.*/tests/**" = ["ASYNC109", "S105", "S110", "S112", "S303"]
 "apps/site-agent/tests/**" = ["ASYNC109", "S105", "S110"]
@@ -47,4 +49,4 @@ files = ["apps/server/src", "apps/server/tests", "apps/site-agent/src", "package
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["apps/server/tests", "packages/sdk-py/tests", "apps/site-agent/tests", "modules"]
+testpaths = ["apps/server/tests", "packages/sdk-py/tests", "apps/site-agent/tests", "modules", "packaging/pi"]

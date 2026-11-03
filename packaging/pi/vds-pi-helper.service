@@ -1,0 +1,18 @@
+[Unit]
+Description=VDS assistant local (restart app/appareil)
+After=network.target
+
+[Service]
+User=vds
+EnvironmentFile=/etc/vds/player.env
+ExecStart=/usr/bin/python3 /opt/vds/vds_pi_helper.py
+Restart=always
+RestartSec=2
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+MemoryMax=64M
+
+[Install]
+WantedBy=multi-user.target

@@ -24,7 +24,7 @@ const VIDEO = arg("--video", "");
 
 const CSP =
   "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; " +
-  "media-src 'self' blob:; font-src 'self'; connect-src 'self'; frame-src https:; worker-src 'self'; " +
+  "media-src 'self' blob:; font-src 'self'; connect-src 'self' http://127.0.0.1:47801; frame-src https:; worker-src 'self'; " +
   "object-src 'none'; base-uri 'self'";
 
 // --- médias de test ---------------------------------------------------------
