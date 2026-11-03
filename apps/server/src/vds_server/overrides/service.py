@@ -38,6 +38,7 @@ DEFAULT_TZ = "Europe/Paris"
 MAX_DEFER_DAYS = 30
 DEFAULT_MAX_ACTIVE = 20
 MAX_PAGE = 200
+MAX_PREVIEW_SCREENS = 100
 Clock = Callable[[], datetime]
 
 
@@ -312,6 +313,8 @@ class OverrideService(ServiceBase):
         now = self._clock()
         starts, ends = await self._times(body, now, target_name)
         screens = await screens_of(self._s, body.target_type, body.target_id)
+        if len(screens) > MAX_PREVIEW_SCREENS:
+            raise ApiError("override.preview_too_many_screens", 422, max=MAX_PREVIEW_SCREENS)
         org_cfg = await self._org_config()
         health = await evaluate(self._s, screens, now, Thresholds.from_config(org_cfg))
         builder = PowerPlanBuilder(self._s, self._schemas)

@@ -234,6 +234,8 @@
       "target_not_found": "This target no longer exists.",
       "cursor_invalid": "The page reference is not valid. Reload the planning.",
       "at_timezone_required": "The time must include a time zone.",
+      "date_out_of_range": "This date is too far away. Pick a date within 5 years.",
+      "playlist_out_of_scope": "This playlist is not available with your permissions.",
       "too_many_screens": "Too many screens to simulate (maximum {max}). Choose a smaller target.",
       "simulate_one_change": "Simulate exactly one change: a new schedule, an edit, or a removal."
     },
@@ -328,6 +330,7 @@
       "target_not_found": "This target no longer exists.",
       "forbidden_kind": "Only an administrator can force power-off or target the whole organization.",
       "too_many_active": "There are already too many active overrides on this target. Stop one before creating another.",
+      "preview_too_many_screens": "Too many screens to preview (maximum {max}). Choose a smaller target.",
       "start_too_far": "The override start is too far away. Pick a closer date.",
       "already_ended": "This override has already ended."
     },

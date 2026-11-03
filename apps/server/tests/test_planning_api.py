@@ -417,3 +417,79 @@ async def test_simulate_origin_check(admin: AsyncClient, p: str) -> None:
     assert (
         await admin.post(f"{p}/api/v1/planning/simulate", json=payload, headers=SAME)
     ).status_code == 200
+
+
+class _Restricted:
+    """Périmètre simulé : écran « Hidden » et playlist « PlEcran » hors périmètre, aucun média."""
+
+    forbidden = ""
+
+    def media_filter(self, principal: Any) -> Any:
+        from sqlalchemy import false
+
+        return false()
+
+    def playlist_filter(self, principal: Any) -> Any:
+        from vds_server.db.models import Playlist
+
+        return Playlist.name != "PlEcran"
+
+    def screen_filter(self, principal: Any) -> Any:
+        from vds_server.db.models import Screen
+
+        return Screen.name != "Hidden"
+
+    async def can_write_media(self, principal: Any, media_id: Any) -> bool:
+        return False
+
+    async def can_write_playlist(self, principal: Any, playlist_id: Any) -> bool:
+        return str(playlist_id) != self.forbidden
+
+
+async def test_restricted_scope(
+    admin: AsyncClient, editor: AsyncClient, p: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    w = await world(admin, p)
+    await screen_of(admin, p, w["site"], "Hidden", w["group"])
+    await sched(admin, p, w["pl_scr"], "screen", w["scr"], "Ecran")
+    full = await tl(admin, p, "group", w["group"])
+    assert [r["screen_name"] for r in full.json()["screens"]] == ["Hall", "Hidden"]
+    scope = _Restricted()
+    scope.forbidden = w["pl_scr"]
+    monkeypatch.setattr("vds_server.diffusion.planning.OrganizationScope", lambda: scope)
+    r = await tl(admin, p, "group", w["group"])
+    assert r.status_code == 200, r.text
+    assert [s["screen_name"] for s in r.json()["screens"]] == ["Hall"]
+    assert "PlEcran" not in r.text and r.headers["etag"] != full.headers["etag"]
+    # l'ETag dépend aussi du principal
+    other = await tl(editor, p, "group", w["group"])
+    assert other.headers["etag"] != r.headers["etag"]
+    draft = {
+        "name": "D", "playlist_id": w["pl_scr"], "target_type": "screen", "target_id": w["scr"],
+    }  # fmt: skip
+    r = await sim(admin, p, w, draft=draft)
+    assert r.status_code == 403 and r.json()["code"] == "planning.playlist_out_of_scope"
+    ok = await sim(admin, p, w, draft={**draft, "playlist_id": w["pl_site"]})
+    assert ok.status_code == 200, ok.text
+    at = await admin.get(
+        f"{p}/api/v1/planning/at", params={"target_type": "group", "target_id": w["group"]}
+    )
+    assert [s["screen_name"] for s in at.json()["screens"]] == ["Hall"]
+    assert "PlEcran" not in at.text
+
+
+async def test_date_bounds(admin: AsyncClient, p: str) -> None:
+    w = await world(admin, p)
+    far = "9999-12-30"
+    r = await tl(admin, p, "screen", w["scr"], **{"from": "0001-01-01", "to": "0001-01-02"})
+    assert r.status_code == 422 and r.json()["code"] == "planning.date_out_of_range"
+    r = await tl(admin, p, "screen", w["scr"], **{"from": far, "to": "9999-12-31"})
+    assert r.status_code == 422 and r.json()["code"] == "planning.date_out_of_range"
+    for at in ("0001-01-01T00:00:00+00:00", "9999-12-31T23:59:59+00:00"):
+        r = await admin.get(
+            f"{p}/api/v1/planning/at",
+            params={"target_type": "screen", "target_id": w["scr"], "at": at},
+        )
+        assert r.status_code == 422 and r.json()["code"] == "planning.date_out_of_range"
+    r = await sim(admin, p, w, remove="00000000-0000-4000-8000-000000000001", **{"from": far})
+    assert r.status_code == 422

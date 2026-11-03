@@ -54,7 +54,7 @@ export function PlanningPage({ onEdit, onCreate }: { onEdit: (scheduleId: string
   const stack = pager.key === pageKey ? pager.stack : [null];
   const cursor = resources ? (stack[stack.length - 1] ?? null) : null;
 
-  const timeline = usePlanningTimeline(target, from, to, { cursor, explain: !resources });
+  const timeline = usePlanningTimeline(target, from, to, { cursor, explain: target?.type === "screen" });
   const serverTz = timeline.data?.timezone;
   useEffect(() => {
     if (serverTz) setTzKnown(serverTz);

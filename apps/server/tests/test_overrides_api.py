@@ -749,3 +749,14 @@ async def test_preview_superseded_follows_resolver(
     assert r.status_code == 200
     assert r.json()["superseded_override_ids"] == [low["id"]]  # le plus prioritaire reste
     assert high["id"] not in r.json()["superseded_override_ids"]
+
+
+async def test_preview_screen_cap(
+    admin: AsyncClient, p: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    w = await world(admin, p)
+    monkeypatch.setattr("vds_server.overrides.service.MAX_PREVIEW_SCREENS", 1)
+    body = {"target_type": "site", "target_id": w["site"], "playlist_id": w["pl_force"],
+            "duration_minutes": 30}  # fmt: skip
+    r = await admin.post(f"{p}/api/v1/overrides/preview", json=body, headers=SAME)
+    assert r.status_code == 422 and r.json()["code"] == "override.preview_too_many_screens"

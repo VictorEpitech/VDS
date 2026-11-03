@@ -16,12 +16,13 @@ from datetime import UTC, date, datetime, time, timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import select
+from sqlalchemy import ColumnElement, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vds_server.config import resolver as cfg_resolver
 from vds_server.config.schemas import CORE_NAMESPACE, ConfigSchemaProvider
 from vds_server.config.service import ConfigService
+from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
 from vds_server.db.models import (
     ConfigOverride,
@@ -51,6 +52,7 @@ from vds_server.diffusion.resolver import (
     wall_to_instant,
 )
 from vds_server.diffusion.schedules import TARGET_MODELS, ScheduleService
+from vds_server.diffusion.scope import ContentScope, OrganizationScope
 from vds_server.fleet.health import evaluate
 from vds_server.overrides.service import screens_of
 from vds_server.player.schedule import DEFAULT_TZ, _zone, load_inputs
@@ -58,6 +60,7 @@ from vds_server.supervision.status import Thresholds
 
 ETAG_VERSION = "planning-1"
 NEXT_CHANGE_DAYS = 8  # horizon de recherche du prochain changement (4 tranches)
+MAX_DATE_OFFSET_DAYS = 5 * 366  # bornes de `from`, `to` et `at` autour de maintenant
 _RESPECT_KEY = "override.respect_scheduled_off"
 
 
@@ -106,7 +109,10 @@ def _decode_cursor(cursor: str) -> tuple[str, UUID]:
         raise ApiError("planning.cursor_invalid", 422) from exc
 
 
-def _check_window(start: date, end: date, max_days: int) -> None:
+def _check_window(start: date, end: date, max_days: int, today: date) -> None:
+    for d in (start, end):
+        if abs((d - today).days) > MAX_DATE_OFFSET_DAYS:
+            raise ApiError("planning.date_out_of_range", 422)
     if end < start:
         raise ApiError("planning.window_invalid", 422)
     if (end - start).days + 1 > max_days:
@@ -120,7 +126,12 @@ class PlanningService:
         schemas: ConfigSchemaProvider,
         schedules: ScheduleService | None = None,
         clock: Callable[[], datetime] | None = None,
+        *,
+        actor: Principal,
+        scope: ContentScope | None = None,
     ) -> None:
+        self._actor = actor
+        self._scope: ContentScope = scope or OrganizationScope()
         self._s = session
         self._schemas = schemas
         self._sched = schedules
@@ -131,6 +142,16 @@ class PlanningService:
         if await self._s.get(TARGET_MODELS[target_type], target_id) is None:
             raise ApiError("planning.target_not_found", 404, target_type=target_type)
         screens = await screens_of(self._s, target_type, target_id)
+        if screens:
+            allowed = set(
+                await self._s.scalars(
+                    select(Screen.id).where(
+                        Screen.id.in_([x.id for x in screens]),
+                        self._scope.screen_filter(self._actor),
+                    )
+                )
+            )
+            screens = [x for x in screens if x.id in allowed]
         return sorted(screens, key=lambda s: (s.name, str(s.id)))
 
     def _page(
@@ -248,7 +269,7 @@ class PlanningService:
                 target_names[(ttype, tid)] = name
         for s in screens:
             target_names[("screen", s.id)] = s.name
-        names_pl = await self._names(Playlist, playlists)
+        names_pl = await self._names(Playlist, playlists, self._scope.playlist_filter(self._actor))
         names_sch = await self._names(Schedule, set(specs))
         names_sch.update(extra_schedule_names or {})
         names_ov = await self._names(PlaybackOverride, set(ovs))
@@ -259,10 +280,15 @@ class PlanningService:
             media_until,
         )
 
-    async def _names(self, model: Any, ids: set[UUID]) -> dict[UUID, str]:
+    async def _names(
+        self, model: Any, ids: set[UUID], scope_filter: ColumnElement[bool] | None = None
+    ) -> dict[UUID, str]:
         if not ids:
             return {}
-        rows = await self._s.execute(select(model.id, model.name).where(model.id.in_(ids)))
+        q = select(model.id, model.name).where(model.id.in_(ids))
+        if scope_filter is not None:
+            q = q.where(scope_filter)
+        rows = await self._s.execute(q)
         return {i: n for i, n in rows}
 
     async def _contents(
@@ -280,6 +306,7 @@ class PlanningService:
                     Media.title,
                     Media.expires_at,
                     Media.expired_at,
+                    self._scope.media_filter(self._actor),
                 )
                 .select_from(PlaylistItem)
                 .outerjoin(PlaylistItemMedia, PlaylistItemMedia.item_id == PlaylistItem.id)
@@ -291,12 +318,13 @@ class PlanningService:
         item_playlist: dict[UUID, UUID] = {}
         media_names: dict[UUID, str] = {}
         until: dict[UUID, dict[UUID, datetime]] = {}
-        for pid, item_id, media_id, title, expires_at, expired_at in rows:
+        for pid, item_id, media_id, title, expires_at, expired_at, visible in rows:
             item_playlist[item_id] = pid
             playable.setdefault(item_id, True)
             if media_id is None:
                 continue
-            media_names[media_id] = title
+            if visible:
+                media_names[media_id] = title
             if expired_at is not None or (expires_at is not None and expires_at <= now):
                 playable[item_id] = False
             elif expires_at is not None:
@@ -652,13 +680,16 @@ class PlanningService:
         if_none_match: str | None,
     ) -> tuple[str, ps.TimelineOut | None]:
         """(ETag, timeline) ; timeline None si `If-None-Match` correspond (304)."""
-        _check_window(start, end, ps.MAX_WINDOW_DAYS)
+        _check_window(start, end, ps.MAX_WINDOW_DAYS, self._clock().date())
         explain_on = target_type == "screen" if explain is None else explain
         now = self._clock()
         page = await self._load_page(target_type, target_id, start, cursor, limit)
         aux = await self._aux([page.inputs], page.screens, now)
         etag = _etag(
-            [target_type, str(target_id), str(start), str(end), explain_on, cursor, limit],
+            [
+                str(self._actor.user_id), self._actor.role, target_type, str(target_id),
+                str(start), str(end), explain_on, cursor, limit,
+            ],
             page,
             aux,
         )
@@ -683,6 +714,8 @@ class PlanningService:
         moment = now if at is None else at
         if moment.tzinfo is None:
             raise ApiError("planning.at_timezone_required", 422)
+        if abs(moment - now) > timedelta(days=MAX_DATE_OFFSET_DAYS):
+            raise ApiError("planning.date_out_of_range", 422)
         moment = moment.astimezone(UTC)
         screens = await self._ordered_screens(target_type, target_id)
         screens, nxt = self._page(screens, cursor, limit)
@@ -730,7 +763,7 @@ class PlanningService:
     # --- POST /simulate -----------------------------------------------------------------------
     async def simulate(self, body: ps.SimulateIn) -> ps.SimulateOut:
         start, end = body.from_, body.to
-        _check_window(start, end, ps.MAX_SIMULATE_DAYS)
+        _check_window(start, end, ps.MAX_SIMULATE_DAYS, self._clock().date())
         target = (body.target_type, body.target_id)
         now = self._clock()
         draft, add, remove_id, extra = await self._change(body, now)
@@ -767,7 +800,9 @@ class PlanningService:
 
     async def _aux_with_playlist(self, aux: Aux, playlist_id: UUID, now: datetime) -> Aux:
         names = dict(aux.names.playlist)
-        names.update(await self._names(Playlist, {playlist_id}))
+        names.update(
+            await self._names(Playlist, {playlist_id}, self._scope.playlist_filter(self._actor))
+        )
         empty, media_until, media_names = await self._contents({playlist_id}, now)
         return Aux(
             replace(aux.names, playlist=names, media={**aux.names.media, **media_names}),
@@ -786,6 +821,7 @@ class PlanningService:
         if body.draft is not None:
             d = body.draft
             await svc.validate_create(d)
+            await self._check_playlist_scope(d.playlist_id)
             until = await self._until(d.playlist_id)
             draft = Draft(uuid4(), True)
             spec = ScheduleSpec(
@@ -799,6 +835,7 @@ class PlanningService:
         sid, patch = body.edit
         row = await svc.get_row(sid)
         v = await svc.validate_patch(row, patch)
+        await self._check_playlist_scope(v.playlist_id)
         rules = v.rules if v.rules is not None else await self._stored_rules(sid)
         spec = ScheduleSpec(
             id=sid, playlist_id=v.playlist_id, target_type=v.target_type, target_id=v.target_id,
@@ -806,6 +843,10 @@ class PlanningService:
             enabled=v.enabled, rules=_rules(rules), until=await self._until(v.playlist_id),
         )  # fmt: skip
         return Draft(sid, False), spec, sid, {sid: v.name}
+
+    async def _check_playlist_scope(self, playlist_id: UUID) -> None:
+        if not await self._scope.can_write_playlist(self._actor, playlist_id):
+            raise ApiError("planning.playlist_out_of_scope", 403)
 
     async def _until(self, playlist_id: UUID) -> datetime | None:
         return await self._s.scalar(select(Playlist.expires_at).where(Playlist.id == playlist_id))

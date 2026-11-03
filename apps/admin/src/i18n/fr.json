@@ -234,6 +234,8 @@
       "target_not_found": "Cette cible n'existe plus.",
       "cursor_invalid": "La référence de page n'est pas valide. Rechargez le planning.",
       "at_timezone_required": "L'heure doit comporter un fuseau horaire.",
+      "date_out_of_range": "Cette date est trop éloignée. Choisissez une date dans les 5 prochaines ou dernières années.",
+      "playlist_out_of_scope": "Cette playlist n'est pas accessible avec vos droits.",
       "too_many_screens": "Trop d'écrans à simuler (maximum {max}). Choisissez une cible plus petite.",
       "simulate_one_change": "Simulez un seul changement : une nouvelle programmation, une modification ou une suppression."
     },
@@ -328,6 +330,7 @@
       "target_not_found": "Cette cible n'existe plus.",
       "forbidden_kind": "Seul un administrateur peut forcer l'extinction ou cibler toute l'organisation.",
       "too_many_active": "Il y a déjà trop de forçages actifs sur cette cible. Arrêtez-en un avant d'en créer un autre.",
+      "preview_too_many_screens": "Trop d'écrans pour l'aperçu (maximum {max}). Choisissez une cible plus petite.",
       "start_too_far": "Le début du forçage est trop éloigné. Choisissez une date plus proche.",
       "already_ended": "Ce forçage est déjà terminé."
     },

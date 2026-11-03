@@ -308,3 +308,9 @@ Charte V-Tech : uniquement `--vds-*` ; couleurs de contenu = rotation d'une pale
 
 > ### 2 novembre 2026 — Refonte du planning (architecte, sans bump vds-core, sans migration)
 > Vue calendrier jour/semaine/mois/liste par écran, groupe ou site ; un seul résolveur serveur (`resolve()` extrait de `ScheduleBuilder`, documents player inchangés) servant la timeline, l'aperçu « à l'instant » et la simulation d'un brouillon ; conflits et provenance calculés côté serveur ; 3 niveaux de priorité par bandes (−100/0/100) + numérique en Avancé ; points d'accroche diffusion conditionnelle (`CandidateFilter`, `condition_unmet`) et alertes non implémentés. Détail : `docs/architecture-planning.md`.
+
+## Notes de revue sécurité
+
+- **Pagination SQL (amélioration)** : `_ordered_screens` charge tous les écrans de la cible puis pagine en mémoire. Une pagination keyset en SQL (`(name, id) > curseur`, `LIMIT`) évitera ce chargement pour les très grandes organisations ; non nécessaire en V1 (plafond 100 écrans par page, simulation plafonnée).
+- **Vigilance i18n** : `escapeValue: false` (i18next) est acceptable car React échappe le rendu ; ne jamais passer une chaîne d'interpolation à `dangerouslySetInnerHTML` ni à un composant `<Trans>` avec HTML issu de données (noms de playlists, d'écrans, de médias).
+- **Périmètre** : le service planning applique `ContentScope` (écrans, noms de playlists et de médias) et refuse (`planning.playlist_out_of_scope`, 403) un brouillon visant une playlist hors périmètre ; l'ETag inclut le principal. Bornes de dates : ±5 ans (`planning.date_out_of_range`, 422) ; aperçu de forçage plafonné à 100 écrans (`override.preview_too_many_screens`).

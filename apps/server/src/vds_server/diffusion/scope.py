@@ -17,6 +17,8 @@ class ContentScope(Protocol):
 
     def playlist_filter(self, principal: Principal) -> ColumnElement[bool]: ...
 
+    def screen_filter(self, principal: Principal) -> ColumnElement[bool]: ...
+
     async def can_write_media(self, principal: Principal, media_id: UUID) -> bool: ...
 
     async def can_write_playlist(self, principal: Principal, playlist_id: UUID) -> bool: ...
@@ -27,6 +29,9 @@ class OrganizationScope:
         return true()
 
     def playlist_filter(self, principal: Principal) -> ColumnElement[bool]:
+        return true()
+
+    def screen_filter(self, principal: Principal) -> ColumnElement[bool]:
         return true()
 
     async def can_write_media(self, principal: Principal, media_id: UUID) -> bool:
