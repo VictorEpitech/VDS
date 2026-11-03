@@ -210,6 +210,14 @@ CORE_SCHEMA: dict[str, Any] = {
             "default": False,
             "x-vds-level": "advanced",
         },
+        "diffusion.review_required": {
+            "type": "boolean",
+            "title": "config.core.diffusion.review_required.title",
+            "description": "config.core.diffusion.review_required.description",
+            "default": True,
+            "x-vds-level": "simple",
+            "x-vds-scopes": ["organization"],
+        },
         "default_item_duration_ms": {
             "type": "integer",
             "minimum": 1000,

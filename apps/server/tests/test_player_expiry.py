@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 from fastapi import FastAPI
 from httpx import AsyncClient
 from PIL import Image
+from pubhelp import republish_all
 from sqlalchemy import pool, text
 from sqlalchemy.ext.asyncio import create_async_engine
 from test_auth import SAME, admin, anon, app, base, clean, editor, new_client, p  # noqa: F401, F811
@@ -111,6 +112,7 @@ async def test_playlist_expiry_cuts_schedule(
     await scheduled_media(admin, p, migrated_db_url, screen)
     cut = datetime.now(UTC) + timedelta(hours=3)
     await exec_sql(migrated_db_url, "UPDATE playlist SET expires_at = :e", e=cut)
+    await republish_all(app.state.runtime.maker)
     async with new_client(app) as player:
         token = await pair(admin, player, p, screen)
         doc = (await player.get(f"{p}/api/v1/player/schedule", headers=hdr(token))).json()
@@ -122,6 +124,7 @@ async def test_playlist_expiry_cuts_schedule(
         await exec_sql(
             migrated_db_url, "UPDATE playlist SET expires_at = now() - interval '1 minute'"
         )
+        await republish_all(app.state.runtime.maker)
         doc = (await player.get(f"{p}/api/v1/player/schedule", headers=hdr(token))).json()
         assert doc["slots"][-1]["kind"] == "off"
         assert datetime.fromisoformat(doc["slots"][-1]["start"]) < datetime.now(UTC)

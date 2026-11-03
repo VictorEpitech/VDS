@@ -16,6 +16,7 @@ from vds_sdk import ContractError, Event, EventBus, Module
 from vds_sdk.server.content import ContentType, MediaMeta, MediaRef
 from vds_sdk.server.storage import StorageBackend, StoredObject
 
+from vds_server.config.schemas import ConfigSchemaProvider
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
 from vds_server.core.perimeter import NodeRef
@@ -24,6 +25,7 @@ from vds_server.diffusion.base import ServiceBase
 from vds_server.diffusion.ownership import owner_for_create
 from vds_server.diffusion.scope import ContentScope, PerimeterScope
 from vds_server.diffusion.tombstones import add_tombstones
+from vds_server.publication.reader import layouts_publishing_media, playlists_publishing_media
 
 CHUNK = 1024 * 1024
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -117,8 +119,10 @@ class MediaUploadService(ServiceBase):
         processor: Callable[[str], tuple[str, Module] | None] | None = None,
         replaced_grace_hours: int = 48,
         scope: ContentScope | None = None,
+        schemas: ConfigSchemaProvider | None = None,
     ) -> None:
         super().__init__(session, bus, actor)
+        self._schemas = schemas
         self._scope: ContentScope = scope or PerimeterScope(session)
         self._processor = processor
         self._storage = storage
@@ -272,6 +276,15 @@ class MediaUploadService(ServiceBase):
             raise ApiError("media.not_found", 404)
         if not await self._scope.can_write_media(self._actor, media_id):
             raise ApiError("scope.forbidden", 403)
+        if (
+            self._actor.role != "admin"
+            and await self._pub.review_required()
+            and (
+                await playlists_publishing_media(self._s, media_id)
+                or await layouts_publishing_media(self._s, media_id)
+            )
+        ):  # sinon le remplacement contournerait la validation d'un objet publié
+            raise ApiError("publication.media_in_use_requires_admin", 403)
         if if_match is not None:
             wanted = if_match.strip().removeprefix("W/").strip('"').lower()
             if wanted != (media.sha256 or ""):

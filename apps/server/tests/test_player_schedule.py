@@ -9,7 +9,7 @@ import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
 from sqlalchemy import pool, text
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from test_auth import SAME, admin, anon, app, base, clean, editor, new_client, p  # noqa: F401
 from test_diffusion import (  # noqa: F401 - fixtures partagées
     _content_types,
@@ -20,6 +20,7 @@ from test_diffusion import (  # noqa: F401 - fixtures partagées
 )
 from test_pairing import _pairing_clean, hdr, pair, sql  # noqa: F401
 from vds_server.player.schedule import ScheduleBuilder
+from vds_server.publication.backfill import backfill_session
 
 PNG = b"\x89PNG\r\n\x1a\n" + bytes(range(256)) * 8
 
@@ -51,6 +52,8 @@ async def schedule_media_sql(url: str, screen_id: str, media_id: UUID) -> None:
             ),
             {"pl": pl, "s": UUID(screen_id)},
         )
+        async with AsyncSession(bind=c) as session:  # reprise de l'existant (instantanés)
+            await backfill_session(session)
     await engine.dispose()
 
 

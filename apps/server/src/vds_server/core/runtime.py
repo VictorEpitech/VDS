@@ -46,6 +46,7 @@ from vds_server.provisioning.apk import ApkCatalog
 from vds_server.provisioning.apk_update import ApkUpdateEvents, host_reader
 from vds_server.provisioning.service import ProvisionEvents
 from vds_server.provisioning.tickets import TicketBox
+from vds_server.publication.backfill import ensure_published_baseline
 from vds_server.registry import ModuleRegistry
 from vds_server.settings import Settings
 from vds_server.supervision import Supervisor
@@ -215,6 +216,7 @@ class Runtime:
     @asynccontextmanager
     async def lifespan(self, app: FastAPI) -> AsyncIterator[None]:
         await self.ensure_organization()
+        await ensure_published_baseline(self.maker)  # avant de servir les players
         await self.registry.start()
         await self.apk_catalog.load()
         self.agent_hub.start(self.engine)

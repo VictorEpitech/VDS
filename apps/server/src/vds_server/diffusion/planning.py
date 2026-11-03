@@ -28,8 +28,6 @@ from vds_server.db.models import (
     ConfigOverride,
     Media,
     Playlist,
-    PlaylistItem,
-    PlaylistItemMedia,
     Schedule,
     ScheduleRule,
     Screen,
@@ -57,6 +55,7 @@ from vds_server.diffusion.scope import ContentScope, PerimeterScope
 from vds_server.diffusion.targets import TARGET_MODELS, screens_of
 from vds_server.fleet.health import evaluate
 from vds_server.player.schedule import DEFAULT_TZ, _zone, load_inputs
+from vds_server.publication import reader
 from vds_server.supervision.status import Thresholds
 
 ETAG_VERSION = "planning-1"
@@ -304,38 +303,40 @@ class PlanningService:
         """Playlists sans élément jouable (aucun élément actif sans média expiré) et expirations."""
         if not playlists:
             return set(), {}, {}
-        rows = (
-            await self._s.execute(
+        snapshots = await reader.playlist_snapshots(self._s, playlists)  # ce que jouent les écrans
+        wanted = {
+            m for snapshot in snapshots.values() for it in snapshot.items for m in it.media_ids
+        }
+        media: dict[UUID, tuple[str, datetime | None, datetime | None, bool]] = {}
+        if wanted:
+            found = await self._s.execute(
                 select(
-                    PlaylistItem.playlist_id,
-                    PlaylistItem.id,
                     Media.id,
                     Media.title,
                     Media.expires_at,
                     Media.expired_at,
                     self._scope.media_filter(self._actor),
-                )
-                .select_from(PlaylistItem)
-                .outerjoin(PlaylistItemMedia, PlaylistItemMedia.item_id == PlaylistItem.id)
-                .outerjoin(Media, Media.id == PlaylistItemMedia.media_id)
-                .where(PlaylistItem.playlist_id.in_(playlists), PlaylistItem.enabled.is_(True))
+                ).where(Media.id.in_(wanted))
             )
-        ).all()
+            media = {mid: (title, exp, gone, bool(vis)) for mid, title, exp, gone, vis in found}
         playable: dict[UUID, bool] = {}  # item -> aucun média expiré
         item_playlist: dict[UUID, UUID] = {}
         media_names: dict[UUID, str] = {}
         until: dict[UUID, dict[UUID, datetime]] = {}
-        for pid, item_id, media_id, title, expires_at, expired_at, visible in rows:
-            item_playlist[item_id] = pid
-            playable.setdefault(item_id, True)
-            if media_id is None:
-                continue
-            if visible:
-                media_names[media_id] = title
-            if expired_at is not None or (expires_at is not None and expires_at <= now):
-                playable[item_id] = False
-            elif expires_at is not None:
-                until.setdefault(pid, {})[media_id] = expires_at
+        for pid, snapshot in snapshots.items():
+            for it in (i for i in snapshot.items if i.enabled):
+                item_playlist[it.id] = pid
+                playable.setdefault(it.id, True)
+                for media_id in it.media_ids:
+                    if media_id not in media:
+                        continue
+                    title, expires_at, expired_at, visible = media[media_id]
+                    if visible:
+                        media_names[media_id] = title
+                    if expired_at is not None or (expires_at is not None and expires_at <= now):
+                        playable[it.id] = False
+                    elif expires_at is not None:
+                        until.setdefault(pid, {})[media_id] = expires_at
         good = {item_playlist[i] for i, ok in playable.items() if ok}
         return (
             playlists - good,

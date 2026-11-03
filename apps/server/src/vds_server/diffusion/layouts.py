@@ -33,6 +33,7 @@ from vds_server.diffusion.ownership import (
 from vds_server.diffusion.scope import ContentScope, PerimeterScope
 from vds_server.diffusion.tags import escape_like, normalize_tag, normalize_tags
 from vds_server.diffusion.targets import TARGET_MODELS, screens_of
+from vds_server.publication.reader import published_schedules_of_layout
 
 DEFAULT_MAX_ZONES = 12
 SCALE = 10_000
@@ -143,7 +144,9 @@ class LayoutService(ServiceBase):
 
     async def get(self, layout_id: UUID) -> ls.LayoutOut:
         row = await self._row(layout_id)
-        return self._out(row, (await self._zones([row.id]))[row.id])
+        out = self._out(row, (await self._zones([row.id]))[row.id])
+        await self._pub.attach_one("layout", out)
+        return out
 
     async def _usage_counts(self, ids: list[UUID], now: datetime) -> dict[UUID, int]:
         out: dict[UUID, int] = dict.fromkeys(ids, 0)
@@ -200,7 +203,7 @@ class LayoutService(ServiceBase):
         ids = [r.id for r in rows]
         zones = await self._zones(ids)
         usage = await self._usage_counts(ids, datetime.now(UTC))
-        return ls.LayoutPage(
+        page = ls.LayoutPage(
             items=[
                 ls.LayoutSummary(
                     id=r.id,
@@ -218,6 +221,8 @@ class LayoutService(ServiceBase):
             ],
             total=int(total or 0),
         )
+        await self._pub.attach("layout", list(page.items))
+        return page
 
     # --- validation ------------------------------------------------------------------
     async def _validate(
@@ -320,6 +325,7 @@ class LayoutService(ServiceBase):
         await self._flush("layout.name_conflict")
         self._s.add_all(self._zone_rows(row.id, body))
         self._audit("layout.created", "layout", row.id, "layout_id", zones=len(body.zones))
+        await self._pub.touch("layout", row.id)
         await self._commit("layout.name_conflict")
         return await self.get(row.id)
 
@@ -352,6 +358,7 @@ class LayoutService(ServiceBase):
         await self._flush("layout.name_conflict")
         self._s.add_all(self._zone_rows(row.id, body))
         self._audit("layout.updated", "layout", row.id, "layout_id", revision=row.revision)
+        await self._pub.touch("layout", row.id)
         await self._commit("layout.name_conflict")
         return await self.get(row.id)
 
@@ -400,6 +407,7 @@ class LayoutService(ServiceBase):
             for z in zones
         )
         self._audit("layout.created", "layout", row.id, "layout_id", duplicate_of=str(src.id))
+        await self._pub.touch("layout", row.id)
         await self._commit("layout.name_conflict")
         return await self.get(row.id)
 
@@ -415,6 +423,8 @@ class LayoutService(ServiceBase):
                 select(PlaybackOverride.id).where(PlaybackOverride.layout_id == layout_id)
             )
         ).all()
+        published = await published_schedules_of_layout(self._s, layout_id)
+        schedules = sorted({*schedules, *published}, key=str)
         if schedules or overrides:
             raise ApiError(
                 "layout.in_use",
@@ -422,7 +432,9 @@ class LayoutService(ServiceBase):
                 schedules=sorted(str(i) for i in schedules),
                 overrides=sorted(str(i) for i in overrides),
             )
+        await self._pub.ensure_deletable("layout", layout_id)
         await self._s.delete(row)
+        await self._pub.forget("layout", layout_id)
         self._audit("layout.deleted", "layout", layout_id, "layout_id")
         await self._commit("layout.in_use")
 

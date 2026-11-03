@@ -7,6 +7,7 @@ from uuid import UUID
 
 from jsonschema import Draft202012Validator
 from sqlalchemy import ColumnElement, func, select, true
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from vds_sdk import EventBus
 
@@ -35,6 +36,7 @@ from vds_server.diffusion.ownership import (
 )
 from vds_server.diffusion.scope import ContentScope, PerimeterScope
 from vds_server.diffusion.tags import AUTOCOMPLETE_MAX, escape_like, normalize_tag, normalize_tags
+from vds_server.publication.reader import published_schedules_of_playlist
 
 ItemSchemaLookup = Callable[[str], dict[str, Any] | None]
 
@@ -134,9 +136,11 @@ class PlaylistService(ServiceBase):
         )
         rows = (await self._s.execute(q)).all()
         total = await self._s.scalar(select(func.count()).select_from(Playlist).where(*where))
-        return sc.PlaylistPage(
+        page = sc.PlaylistPage(
             items=[to_out(p, int(n), now) for p, n in rows], total=int(total or 0)
         )
+        await self._pub.attach("playlist", list(page.items))
+        return page
 
     async def tag_suggestions(self, prefix: str) -> list[str]:
         try:
@@ -232,12 +236,24 @@ class PlaylistService(ServiceBase):
         self._s.add(playlist)
         await self._s.flush()
         self._audit("playlist.created", "playlist", playlist.id, "playlist_id")
+        await self._publish(playlist)
         await self._commit("playlist.conflict")
         return playlist
 
     def _touch(self, playlist: Playlist) -> None:
         playlist.updated_at = datetime.now(UTC)
         playlist.updated_by = self._actor.user_id
+
+    async def _publish(self, playlist: Playlist) -> None:
+        """Validation de publication : playlist éphémère de forçage = publiée d'office."""
+        if playlist.owner_override_id is not None:
+            await self._pub.publish_system("playlist", playlist.id)
+        else:
+            await self._pub.touch("playlist", playlist.id)
+
+    async def with_publication(self, out: sc.PlaylistOut) -> sc.PlaylistOut:
+        await self._pub.attach_one("playlist", out)
+        return out
 
     async def update(self, playlist_id: UUID, body: sc.PlaylistPatch) -> Playlist:
         playlist = await self._writable(playlist_id)
@@ -272,19 +288,23 @@ class PlaylistService(ServiceBase):
         )
         if restored:
             self._audit("playlist.restored", "playlist", playlist.id, "playlist_id")
+        await self._publish(playlist)
         await self._commit("playlist.conflict")
         return playlist
 
     async def delete(self, playlist_id: UUID) -> None:
         playlist = await self._writable(playlist_id)
+        await self._pub.ensure_deletable("playlist", playlist_id)
         schedules = (
             await self._s.execute(
                 select(Schedule.id).where(Schedule.playlist_id == playlist_id).order_by(Schedule.id)
             )
         ).scalars()
-        used = [str(s) for s in schedules]
-        if used:
-            raise ApiError("playlist.in_use", 409, schedules=used)
+        used = {str(s) for s in schedules}
+        used |= {str(s) for s in await published_schedules_of_playlist(self._s, playlist_id)}
+        used_ids = sorted(used)
+        if used_ids:
+            raise ApiError("playlist.in_use", 409, schedules=used_ids)
         zone_layouts = sorted(
             (
                 await self._s.scalars(
@@ -296,9 +316,18 @@ class PlaylistService(ServiceBase):
             key=str,
         )
         # ON DELETE SET NULL vide les zones ; les révisions sont incrémentées avant la suppression
-        for layout_id, revision in await touch_layouts(self._s, zone_layouts):
+        zone_touched = await touch_layouts(self._s, zone_layouts)
+        for layout_id, revision in zone_touched:
             self._audit("layout.updated", "layout", layout_id, "layout_id", revision=revision)
         await self._s.delete(playlist)
+        try:
+            await self._s.flush()  # ON DELETE SET NULL : zones vidées avant la republication
+        except IntegrityError as exc:  # forçage ou référence apparue entre-temps
+            await self._s.rollback()
+            raise ApiError("playlist.in_use", 409) from exc
+        await self._pub.forget("playlist", playlist_id)
+        for layout_id, _ in zone_touched:
+            await self._pub.touch("layout", layout_id)
         self._audit("playlist.deleted", "playlist", playlist_id, "playlist_id")
         await self._commit("playlist.in_use")
 
@@ -329,9 +358,8 @@ class PlaylistService(ServiceBase):
         for name, media_id, kind in media_refs(schema, props):
             media = (
                 await self._s.execute(
-                    select(Media).where(
-                        Media.id == media_id, self._scope.media_filter(self._actor)
-                    )
+                    select(Media)
+                    .where(Media.id == media_id, self._scope.media_filter(self._actor))
                     .with_for_update(read=True, of=Media)  # J-D5 : verrou anti-course
                 )
             ).scalar_one_or_none()
@@ -380,9 +408,7 @@ class PlaylistService(ServiceBase):
     ) -> PlaylistItem:
         """Ajoute un élément (validé) en fin de playlist sans commit ni audit : l'appelant porte
         la transaction (forçage de contenu isolé)."""
-        media_ids = await self._validate_props(
-            await self.get(playlist_id), content_type, props
-        )
+        media_ids = await self._validate_props(await self.get(playlist_id), content_type, props)
         position = len(await self.items(playlist_id))
         item = PlaylistItem(
             playlist_id=playlist_id,
@@ -395,6 +421,7 @@ class PlaylistService(ServiceBase):
         self._s.add(item)
         await self._s.flush()
         await self._set_media(item.id, media_ids)
+        await self._publish(await self.get(playlist_id))
         return item
 
     async def add_item(self, playlist_id: UUID, body: sc.ItemCreate) -> sc.ItemOut:
@@ -424,6 +451,7 @@ class PlaylistService(ServiceBase):
             change="item_added",
             item_id=str(item.id),
         )
+        await self._publish(playlist)
         await self._commit("playlist.conflict")
         return self._out(item, sorted(media_ids))
 
@@ -432,9 +460,7 @@ class PlaylistService(ServiceBase):
         item = await self._item(playlist_id, item_id)
         if body.props is not None:
             current = frozenset((await self.media_ids([item_id]))[item_id])
-            media_ids = await self._validate_props(
-                playlist, item.content_type, body.props, current
-            )
+            media_ids = await self._validate_props(playlist, item.content_type, body.props, current)
             item.props = body.props
             await self._set_media(item.id, media_ids)
         if "duration_ms" in body.model_fields_set:
@@ -451,6 +477,7 @@ class PlaylistService(ServiceBase):
             change="item_updated",
             item_id=str(item_id),
         )
+        await self._publish(playlist)
         await self._commit("playlist.conflict")
         media = await self.media_ids([item_id])
         return self._out(item, media[item_id])
@@ -470,6 +497,7 @@ class PlaylistService(ServiceBase):
             change="item_removed",
             item_id=str(item_id),
         )
+        await self._publish(playlist)
         await self._commit("playlist.conflict")
 
     async def reorder(self, playlist_id: UUID, body: sc.ItemOrder) -> None:
@@ -483,4 +511,5 @@ class PlaylistService(ServiceBase):
         self._audit(
             "playlist.updated", "playlist", playlist_id, "playlist_id", change="items_reordered"
         )
+        await self._publish(playlist)
         await self._commit("playlist.conflict")

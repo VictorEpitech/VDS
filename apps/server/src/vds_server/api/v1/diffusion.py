@@ -29,7 +29,7 @@ def build_router(rt: Runtime) -> APIRouter:
         return PlaylistService(session, rt.bus, actor, rt.registry.content_item_schema, rt.schemas)
 
     def schedule_svc(session: Session, actor: Editor) -> ScheduleService:
-        return ScheduleService(session, rt.bus, actor)
+        return ScheduleService(session, rt.bus, actor, schemas=rt.schemas)
 
     def usage_svc(session: Session, actor: Editor) -> UsageService:
         return UsageService(session, actor)
@@ -207,6 +207,8 @@ def _split_tags(raw: list[str] | None) -> list[str]:
 
 async def _detail(s: PlaylistService, playlist_id: UUID) -> sc.PlaylistDetailOut:
     playlist, items = await s.detail(playlist_id)
-    return sc.PlaylistDetailOut(
+    out = sc.PlaylistDetailOut(
         **to_out(playlist, len(items), datetime.now(UTC)).model_dump(), items=items
     )
+    await s.with_publication(out)
+    return out

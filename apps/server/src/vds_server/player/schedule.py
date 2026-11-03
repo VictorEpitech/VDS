@@ -18,15 +18,9 @@ from vds_server.core.errors import ApiError
 from vds_server.db.models import (
     Media,
     MediaVariant,
-    Playlist,
-    PlaylistItem,
-    PlaylistItemMedia,
-    Schedule,
-    ScheduleRule,
     Screen,
     Site,
 )
-from vds_server.db.models_layout import Layout, LayoutZone
 from vds_server.db.models_override import PlaybackOverride
 from vds_server.diffusion import resolver
 from vds_server.diffusion.expiry import is_expired
@@ -41,6 +35,8 @@ from vds_server.diffusion.layout_compose import (
 )
 from vds_server.diffusion.layout_content import load_layouts, resolve_play_content
 from vds_server.diffusion.resolver import OverrideSpec, ResolveInput, ScheduleSpec, Slot
+from vds_server.publication import reader
+from vds_server.publication.snapshots import ItemSnap
 
 SCHEDULE_FORMAT = 1
 DEFAULT_TZ = "Europe/Paris"
@@ -70,44 +66,8 @@ def _chain_conds(chains: Sequence[dict[str, UUID]], model: Any) -> list[Any]:
 async def _fetch_specs(
     session: AsyncSession, chains: Sequence[dict[str, UUID]]
 ) -> list[ScheduleSpec]:
-    """Schedules activés ciblant l'une des chaînes, règles incluses : 2 requêtes quel que soit N."""
-    if not chains:
-        return []
-    found_rows = (
-        await session.execute(
-            select(Schedule, Playlist.expires_at)
-            .outerjoin(Playlist, Playlist.id == Schedule.playlist_id)
-            .where(Schedule.enabled.is_(True), or_(*_chain_conds(chains, Schedule)))
-        )
-    ).all()
-    rows = [r for r, _ in found_rows]
-    until = {r.id: exp for r, exp in found_rows}
-    rules: dict[UUID, list[resolver.Rule]] = {r.id: [] for r in rows}
-    if rows:
-        found = await session.execute(
-            select(ScheduleRule)
-            .where(ScheduleRule.schedule_id.in_(list(rules)))
-            .order_by(ScheduleRule.start_minute, ScheduleRule.end_minute, ScheduleRule.weekdays)
-        )
-        for r in found.scalars():
-            rules[r.schedule_id].append(resolver.Rule(r.weekdays, r.start_minute, r.end_minute))
-    return [
-        ScheduleSpec(
-            id=r.id,
-            playlist_id=r.playlist_id,
-            target_type=r.target_type,
-            target_id=r.target_id,
-            priority=r.priority,
-            updated_at=r.updated_at,
-            starts_on=r.starts_on,
-            ends_on=r.ends_on,
-            enabled=r.enabled,
-            rules=tuple(rules[r.id]),
-            until=until[r.id],
-            layout_id=r.layout_id,
-        )
-        for r in rows
-    ]
+    """Programmations publiées et activées ciblant l'une des chaînes (instantanés seulement)."""
+    return await reader.schedule_specs(session, chains)
 
 
 def _on_chain(chain: dict[str, UUID], target_type: str, target_id: UUID) -> bool:
@@ -183,19 +143,24 @@ async def _fetch_override_rows(
     if not chains:
         return []
     rows = (
-        await session.execute(
-            select(PlaybackOverride, Playlist.expires_at)
-            .outerjoin(Playlist, Playlist.id == PlaybackOverride.playlist_id)
-            .where(
-                PlaybackOverride.ends_at > now - OVERRIDE_LOOKBACK,
-                PlaybackOverride.zone_ids.is_not(None)
-                if zones
-                else PlaybackOverride.zone_ids.is_(None),
-                or_(*_chain_conds(chains, PlaybackOverride)),
+        (
+            await session.execute(
+                select(PlaybackOverride).where(
+                    PlaybackOverride.ends_at > now - OVERRIDE_LOOKBACK,
+                    PlaybackOverride.zone_ids.is_not(None)
+                    if zones
+                    else PlaybackOverride.zone_ids.is_(None),
+                    or_(*_chain_conds(chains, PlaybackOverride)),
+                )
             )
         )
-    ).all()
-    return [(r, e) for r, e in rows]
+        .scalars()
+        .all()
+    )
+    expiries = await reader.playlist_expiries(
+        session, {r.playlist_id for r in rows if r.playlist_id is not None}
+    )
+    return [(r, expiries.get(r.playlist_id) if r.playlist_id is not None else None) for r in rows]
 
 
 def _override_specs(
@@ -336,30 +301,25 @@ async def screen_media_ids(
     playlists |= {z.playlist_id for z in zone_ovs}
     media: set[UUID] = set()
     if layout_ids:
-        zone_playlists = await session.execute(
-            select(LayoutZone.playlist_id).where(
-                LayoutZone.layout_id.in_(layout_ids), LayoutZone.playlist_id.is_not(None)
-            )
-        )
-        playlists |= {p for p in zone_playlists.scalars() if p is not None}
-        backgrounds = await session.execute(
-            select(Layout.background_media_id).where(
-                Layout.id.in_(layout_ids), Layout.background_media_id.is_not(None)
-            )
-        )
-        media |= {m for m in backgrounds.scalars() if m is not None}
+        specs_by_layout = await reader.layout_specs(session, layout_ids)
+        for spec in specs_by_layout.values():
+            playlists |= {z.playlist_id for z in spec.zones if z.playlist_id is not None}
+            if spec.background_media_id is not None:
+                media.add(spec.background_media_id)
     if not playlists:
         return media
-    q = (
-        select(PlaylistItemMedia.media_id)
-        .join(PlaylistItem, PlaylistItem.id == PlaylistItemMedia.item_id)
-        .where(PlaylistItem.playlist_id.in_(playlists), PlaylistItem.enabled.is_(True))
-    )
-    if not include_expired:
-        q = q.join(Media, Media.id == PlaylistItemMedia.media_id).where(
-            Media.expired_at.is_(None), or_(Media.expires_at.is_(None), Media.expires_at > now)
+    snapshots = await reader.playlist_snapshots(session, playlists)
+    wanted = {UUID(m) for snap in snapshots.values() for m in snap.media_ids()}
+    if wanted and not include_expired:
+        live = await session.execute(
+            select(Media.id).where(
+                Media.id.in_(wanted),
+                Media.expired_at.is_(None),
+                or_(Media.expires_at.is_(None), Media.expires_at > now),
+            )
         )
-    return media | set((await session.execute(q)).scalars())
+        wanted = set(live.scalars())
+    return media | wanted
 
 
 def revision_of(body: dict[str, Any]) -> str:
@@ -537,14 +497,12 @@ class ScheduleBuilder:
         playlists: dict[str, Any] = {}
         assets: dict[str, Any] = {}
         types: dict[str, Any] = {}
+        snapshots = await reader.playlist_snapshots(self._s, ids)
         for pid in sorted(ids):
-            items_q = (
-                select(PlaylistItem)
-                .where(PlaylistItem.playlist_id == pid, PlaylistItem.enabled.is_(True))
-                .order_by(PlaylistItem.position)
-            )
+            snapshot = snapshots.get(pid)
+            published = [] if snapshot is None else sorted(snapshot.items, key=lambda i: i.position)
             out: list[dict[str, Any]] = []
-            for item in (await self._s.execute(items_q)).scalars():
+            for item in (i for i in published if i.enabled):
                 built = await self._item(item, now)
                 if built is None:
                     continue
@@ -558,7 +516,7 @@ class ScheduleBuilder:
         return playlists, assets, types
 
     async def _item(
-        self, item: PlaylistItem, now: datetime
+        self, item: ItemSnap, now: datetime
     ) -> tuple[dict[str, Any], dict[str, Any]] | None:
         schema = self._item_schema(item.content_type)
         if schema is None:  # content-type absent ou inactif : élément ignoré

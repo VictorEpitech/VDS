@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from vds_server.core.perimeter import NodeRef
 from vds_server.diffusion.priority import PriorityLevel
+from vds_server.publication.schemas import PublicationOut
 
 MediaKind = Literal["image", "video", "document"]
 MediaStatus = Literal["processing", "ready", "failed"]
@@ -211,6 +212,7 @@ class PlaylistOut(_Out):
     expired: bool
     tags: list[str]
     owner: NodeRef | None = None
+    publication: PublicationOut | None = None  # vds-core 1.13.0 : état de validation
 
 
 class PlaylistPage(_Out):
@@ -291,6 +293,7 @@ class ScheduleOut(BaseModel):
     # création / modification seulement : `layout_orientation_mismatch` (non bloquant)
     warnings: list[str] = Field(default_factory=list)
     screens_orientation_mismatch: int = 0
+    publication: PublicationOut | None = None  # vds-core 1.13.0 : état de validation
 
 
 def to_minutes(value: str) -> int:

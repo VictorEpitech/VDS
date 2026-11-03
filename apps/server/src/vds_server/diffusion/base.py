@@ -10,6 +10,7 @@ from vds_sdk import Event, EventBus
 from vds_server.core import audit
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
+from vds_server.publication.service import PublicationService
 
 
 class ServiceBase:
@@ -18,6 +19,16 @@ class ServiceBase:
         self._bus = bus
         self._actor = actor
         self._events: list[Event] = []
+        self._publication: PublicationService | None = None
+
+    @property
+    def _pub(self) -> PublicationService:
+        """Crochet de validation de publication, dans la transaction du service."""
+        if self._publication is None:
+            self._publication = PublicationService(
+                self._s, self._actor, getattr(self, "_schemas", None)
+            )
+        return self._publication
 
     def _audit(
         self,
@@ -51,6 +62,8 @@ class ServiceBase:
             await self._s.rollback()
             raise ApiError(conflict_code, 409) from exc
         events, self._events = self._events, []
+        if self._publication is not None:
+            events += self._publication.drain()
         if self._bus is not None:
             for event in events:
                 await self._bus.publish(event)

@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from vds_sdk import EventBus
 
+from vds_server.config.schemas import ConfigSchemaProvider
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
 from vds_server.core.perimeter import node_of_owner, node_of_target
@@ -50,8 +51,10 @@ class ScheduleService(ServiceBase):
         bus: EventBus | None,
         actor: Principal,
         scope: ContentScope | None = None,
+        schemas: ConfigSchemaProvider | None = None,
     ) -> None:
         super().__init__(session, bus, actor)
+        self._schemas = schemas
         self._scope: ContentScope = scope or PerimeterScope(session)
 
     async def _target_exists(self, target_type: str, target_id: UUID) -> None:
@@ -187,7 +190,9 @@ class ScheduleService(ServiceBase):
             q = q.where(Schedule.playlist_id == playlist_id)
         rows = list((await self._s.execute(q)).scalars())
         rules = await self._rules([r.id for r in rows])
-        return [self._out(r, rules[r.id]) for r in rows]
+        outs = [self._out(r, rules[r.id]) for r in rows]
+        await self._pub.attach("schedule", outs)
+        return outs
 
     async def get_row(self, schedule_id: UUID) -> Schedule:
         row = (
@@ -212,7 +217,9 @@ class ScheduleService(ServiceBase):
 
     async def get(self, schedule_id: UUID) -> sc.ScheduleOut:
         row = await self.get_row(schedule_id)
-        return self._out(row, (await self._rules([row.id]))[row.id])
+        out = self._out(row, (await self._rules([row.id]))[row.id])
+        await self._pub.attach_one("schedule", out)
+        return out
 
     def _add_rules(self, schedule_id: UUID, rules: list[sc.RuleIn]) -> None:
         for r in rules:
@@ -294,6 +301,7 @@ class ScheduleService(ServiceBase):
             target_type=body.target_type,
             target_id=str(body.target_id),
         )
+        await self._pub.touch("schedule", row.id)
         await self._commit("schedule.conflict")
         return await self._with_warnings(await self.get(row.id), row)
 
@@ -323,11 +331,14 @@ class ScheduleService(ServiceBase):
         row.updated_at = datetime.now(UTC)
         row.updated_by = self._actor.user_id
         self._audit("schedule.updated", "schedule", row.id, "schedule_id", fields=sorted(fields))
+        await self._pub.touch("schedule", row.id)
         await self._commit("schedule.conflict")
         return await self._with_warnings(await self.get(row.id), row)
 
     async def delete(self, schedule_id: UUID) -> None:
         row = await self._writable_row(schedule_id)
+        await self._pub.ensure_deletable("schedule", schedule_id)
         await self._s.delete(row)
+        await self._pub.forget("schedule", schedule_id)
         self._audit("schedule.deleted", "schedule", schedule_id, "schedule_id")
         await self._commit("schedule.conflict")

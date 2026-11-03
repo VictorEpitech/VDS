@@ -38,6 +38,7 @@ from vds_server.fleet.health import evaluate
 from vds_server.overrides import schemas as sc
 from vds_server.player.schedule import _on_chain, load_inputs
 from vds_server.power.plan import PowerPlanBuilder
+from vds_server.publication.reader import is_published
 from vds_server.supervision.status import Thresholds
 
 DEFAULT_TZ = "Europe/Paris"
@@ -249,6 +250,13 @@ class OverrideService(ServiceBase):
                 await check_reference(
                     self._s, node_of_owner(lay.owner_site_id, lay.owner_group_id), holder
                 )
+                if not await is_published(self._s, "layout", lay.id):
+                    raise ApiError(
+                        "publication.not_published",
+                        409,
+                        entity_type="layout",
+                        entity_id=str(lay.id),
+                    )
             if body.playlist_id is not None:
                 pl = (
                     await self._s.execute(
@@ -266,6 +274,13 @@ class OverrideService(ServiceBase):
                 )
                 if is_expired(pl, self._clock()):
                     raise ApiError("playlist.expired", 422)
+                if not await is_published(self._s, "playlist", pl.id):
+                    raise ApiError(
+                        "publication.not_published",
+                        409,
+                        entity_type="playlist",
+                        entity_id=str(pl.id),
+                    )
         return name
 
     async def _check_zone_ids(self, zone_ids: list[str]) -> None:

@@ -8,6 +8,7 @@ from uuid import UUID
 
 import pytest
 from httpx import AsyncClient
+from pubhelp import disable_review
 from sqlalchemy import pool, text
 from sqlalchemy.ext.asyncio import create_async_engine
 from test_auth import SAME, admin, anon, app, base, clean, editor, new_client, p  # noqa: F401
@@ -169,6 +170,7 @@ async def test_expiry_patch_states_and_restore(
 async def test_usage_and_unused(
     admin: AsyncClient, editor: AsyncClient, p: str, migrated_db_url: str
 ) -> None:
+    await disable_review(admin, p)  # l'éditeur publie d'office : forçage possible sur sa playlist
     used = await make_media(migrated_db_url, title="Utilise")
     await make_media(migrated_db_url, title="Seul")
     pl = await mk_playlist(editor, p, "Accueil")

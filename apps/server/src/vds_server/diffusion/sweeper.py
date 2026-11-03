@@ -34,6 +34,8 @@ from vds_server.db.models import (
 )
 from vds_server.db.models_override import PlaybackOverride
 from vds_server.diffusion.tombstones import add_tombstones
+from vds_server.publication.reader import published_media_clause, strip_media
+from vds_server.publication.service import PublicationService
 
 log = logging.getLogger("vds.content")
 
@@ -176,7 +178,11 @@ class ContentSweeper:
         medias = (
             await s.execute(
                 select(Media)
-                .where(Media.expired_at.is_not(None), Media.expired_at <= cutoff)
+                .where(
+                    Media.expired_at.is_not(None),
+                    Media.expired_at <= cutoff,
+                    ~published_media_clause(),  # encore diffusé par un instantané : conservé
+                )
                 .order_by(Media.expired_at)
                 .limit(BATCH)
                 .with_for_update(skip_locked=True)
@@ -205,6 +211,7 @@ class ContentSweeper:
                     delete(PlaylistItem).where(PlaylistItem.id.in_([r[0] for r in refs]))
                 )
             playlist_ids = sorted({r[1] for r in refs}, key=str)
+            await strip_media(s, media.id)  # l'instantané publié perd aussi ces éléments
             removed = [{"playlist_id": str(pid), "item_id": str(iid)} for iid, pid in refs]
             await add_tombstones(
                 s,
@@ -273,8 +280,12 @@ class ContentSweeper:
                     await s.scalars(select(Schedule.id).where(Schedule.playlist_id == playlist.id))
                 ).all()
             )
+            publication = PublicationService(s, None)
             if schedule_ids:
                 await s.execute(delete(Schedule).where(Schedule.id.in_(schedule_ids)))
+                for sid in schedule_ids:
+                    await publication.forget("schedule", sid)
+            await publication.forget("playlist", playlist.id)
             _system(
                 s,
                 "playlist.purged",

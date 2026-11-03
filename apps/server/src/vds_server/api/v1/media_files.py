@@ -95,7 +95,14 @@ def build_router(rt: Runtime) -> APIRouter:
         max_bytes = int(cfg.get("media_max_upload_mb", 2048)) * 1024 * 1024
         grace = int(cfg.get("media.replaced_grace_hours", 48))
         svc = MediaUploadService(
-            session, rt.bus, actor, backend, max_bytes, rt.registry.content_processor, grace
+            session,
+            rt.bus,
+            actor,
+            backend,
+            max_bytes,
+            rt.registry.content_processor,
+            grace,
+            schemas=rt.schemas,
         )
         media = await svc.replace(
             media_uuid(media_id),

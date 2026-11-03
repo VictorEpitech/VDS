@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, exists, func, or_, select, true
+from sqlalchemy import ColumnElement, Text, cast, exists, func, or_, select, true
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from vds_sdk import EventBus
@@ -18,6 +18,7 @@ from vds_server.core.errors import ApiError
 from vds_server.core.perimeter import node_of_owner, owner_ref
 from vds_server.db.models import Media, MediaVariant, PlaylistItem, PlaylistItemMedia
 from vds_server.db.models_layout import Layout
+from vds_server.db.models_publication import Publication
 from vds_server.diffusion import schemas as sc
 from vds_server.diffusion.base import ServiceBase
 from vds_server.diffusion.expiry import (
@@ -37,6 +38,7 @@ from vds_server.diffusion.tags import (
     normalize_tags,
 )
 from vds_server.diffusion.tombstones import add_tombstones
+from vds_server.publication.reader import playlists_publishing_media
 
 THUMB = "thumb"
 MAX_PAGE = 200
@@ -140,7 +142,10 @@ class MediaService(ServiceBase):
         if state != "all":
             where.append(state_clause(Media, state, now, await self._soon_days()))
         if unused is not None:
-            used = exists().where(PlaylistItemMedia.media_id == Media.id)
+            used = exists().where(PlaylistItemMedia.media_id == Media.id) | exists().where(
+                Publication.entity_type == "playlist",
+                Publication.snapshot["media_ids"].has_key(cast(Media.id, Text)),
+            )
             where.append(~used if unused else used)
         column, desc = _SORTS[sort]
         order = column.desc() if desc else column.asc()
@@ -231,7 +236,10 @@ class MediaService(ServiceBase):
             .distinct()
             .order_by(PlaylistItem.playlist_id)
         )
-        return list((await self._s.execute(q)).scalars())
+        working = list((await self._s.execute(q)).scalars())
+        # un instantané publié compte comme une référence (purge, suppression, expiration)
+        published = await playlists_publishing_media(self._s, media_id)
+        return sorted({*working, *published}, key=str)
 
     # --- écriture --------------------------------------------------------
     async def _writable(self, media_id: UUID) -> Media:
@@ -302,6 +310,7 @@ class MediaService(ServiceBase):
         await add_tombstones(self._s, backend, keys, reason="deleted", media_id=media.id)
         for layout_id, revision in await touch_layouts(self._s, backgrounds):
             self._audit("layout.updated", "layout", layout_id, "layout_id", revision=revision)
+            await self._pub.touch("layout", layout_id)
         self._audit("media.deleted", "media", media.id, "media_id", kind=media.kind)
 
     async def delete(self, media_id: UUID) -> None:

@@ -8,6 +8,7 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validato
 
 from vds_server.core.perimeter import NodeRef
 from vds_server.diffusion.schemas import UsageSchedule
+from vds_server.publication.schemas import PublicationOut
 
 ZoneKey = Annotated[str, Field(pattern=r"^[a-z0-9_-]{1,32}$")]
 Orientation = Literal["landscape", "portrait"]
@@ -84,6 +85,7 @@ class LayoutOut(BaseModel):
     updated_at: datetime
     warnings: list[str] = Field(default_factory=list)
     owner: NodeRef | None = None
+    publication: PublicationOut | None = None  # vds-core 1.13.0 : état de validation
 
 
 class LayoutSummary(BaseModel):
@@ -97,6 +99,7 @@ class LayoutSummary(BaseModel):
     zones: list[LayoutZoneOut]  # géométrie seule utile à la vignette
     updated_at: datetime
     owner: NodeRef | None = None
+    publication: PublicationOut | None = None  # vds-core 1.13.0 : état de validation
 
 
 class LayoutPage(BaseModel):

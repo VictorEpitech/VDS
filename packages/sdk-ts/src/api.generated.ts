@@ -1193,6 +1193,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/publications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Publications */
+        get: operations["list_publications_api_v1_publications_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/publications/{entity_type}/{entity_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Publication */
+        get: operations["get_publication_api_v1_publications__entity_type___entity_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/publications/{entity_type}/{entity_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve */
+        post: operations["approve_api_v1_publications__entity_type___entity_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/publications/{entity_type}/{entity_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject */
+        post: operations["reject_api_v1_publications__entity_type___entity_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/publications/{entity_type}/{entity_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit */
+        post: operations["submit_api_v1_publications__entity_type___entity_id__submit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/publications/{entity_type}/{entity_id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Withdraw */
+        post: operations["withdraw_api_v1_publications__entity_type___entity_id__withdraw_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/registry/content-types": {
         parameters: {
             query?: never;
@@ -1894,6 +1996,16 @@ export interface components {
             /** Version Name */
             version_name: string;
         };
+        /** ApproveIn */
+        ApproveIn: {
+            /** Expected Rev */
+            expected_rev: number;
+            /**
+             * Include Dependencies
+             * @default false
+             */
+            include_dependencies: boolean;
+        };
         /** AssetRef */
         AssetRef: {
             /** Bytes */
@@ -2455,6 +2567,19 @@ export interface components {
              */
             state: "pending" | "consumed" | "expired" | "revoked";
         };
+        /** EntityRef */
+        EntityRef: {
+            /**
+             * Entity Id
+             * Format: uuid
+             */
+            entity_id: string;
+            /**
+             * Entity Type
+             * @enum {string}
+             */
+            entity_type: "playlist" | "layout" | "schedule";
+        };
         /** ExceptionCreate */
         ExceptionCreate: {
             /** End */
@@ -2911,6 +3036,7 @@ export interface components {
              */
             orientation: "landscape" | "portrait";
             owner?: components["schemas"]["NodeRef"] | null;
+            publication?: components["schemas"]["PublicationOut"] | null;
             /** Revision */
             revision: number;
             /** Tags */
@@ -2947,6 +3073,7 @@ export interface components {
              */
             orientation: "landscape" | "portrait";
             owner?: components["schemas"]["NodeRef"] | null;
+            publication?: components["schemas"]["PublicationOut"] | null;
             /** Revision */
             revision: number;
             /** Tags */
@@ -3991,6 +4118,7 @@ export interface components {
             /** Name */
             name: string;
             owner?: components["schemas"]["NodeRef"] | null;
+            publication?: components["schemas"]["PublicationOut"] | null;
             /** Tags */
             tags: string[];
             /**
@@ -4022,6 +4150,7 @@ export interface components {
             /** Name */
             name: string;
             owner?: components["schemas"]["NodeRef"] | null;
+            publication?: components["schemas"]["PublicationOut"] | null;
             /** Tags */
             tags: string[];
             /**
@@ -4147,6 +4276,45 @@ export interface components {
         ProvisionRetry: {
             /** From Step */
             from_step?: ("connect" | "authorize" | "inspect" | "download" | "verify" | "install" | "device_owner" | "soft_kiosk" | "configure" | "inject" | "launch") | null;
+        };
+        /** PublicationOut */
+        PublicationOut: {
+            /** Blocked By */
+            blocked_by?: components["schemas"]["EntityRef"][];
+            /**
+             * Entity Id
+             * Format: uuid
+             */
+            entity_id: string;
+            /**
+             * Entity Type
+             * @enum {string}
+             */
+            entity_type: "playlist" | "layout" | "schedule";
+            /** Name */
+            name?: string | null;
+            /** Published At */
+            published_at?: string | null;
+            published_by?: components["schemas"]["UserRef"] | null;
+            /** Published Rev */
+            published_rev: number | null;
+            /** Review Comment */
+            review_comment?: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "draft" | "in_review" | "published";
+            /** Submitted At */
+            submitted_at?: string | null;
+            submitted_by?: components["schemas"]["UserRef"] | null;
+            /** Working Rev */
+            working_rev: number;
+        };
+        /** RejectIn */
+        RejectIn: {
+            /** Comment */
+            comment: string;
         };
         /** RuleIn */
         RuleIn: {
@@ -4317,6 +4485,7 @@ export interface components {
              * @enum {string}
              */
             priority_level: "background" | "normal" | "high";
+            publication?: components["schemas"]["PublicationOut"] | null;
             /** Rules */
             rules: components["schemas"]["RuleOut"][];
             /**
@@ -4829,6 +4998,11 @@ export interface components {
             /** Skipped */
             skipped: boolean;
         };
+        /** SubmitIn */
+        SubmitIn: {
+            /** Comment */
+            comment?: string | null;
+        };
         /**
          * TicketPair
          * @description Appairage par ticket de provisioning (additif) ; le ticket n'est jamais journalisé.
@@ -4991,6 +5165,16 @@ export interface components {
             /** Role */
             role?: ("admin" | "editor") | null;
         };
+        /** UserRef */
+        UserRef: {
+            /** Display Name */
+            display_name?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -5004,6 +5188,8 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** WithdrawIn */
+        WithdrawIn: Record<string, never>;
         /** ZoneCandidate */
         ZoneCandidate: {
             /** Key */
@@ -8033,6 +8219,215 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProvisionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_publications_api_v1_publications_get: {
+        parameters: {
+            query?: {
+                state?: ("draft" | "in_review" | "published") | null;
+                entity_type?: ("playlist" | "layout" | "schedule") | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicationOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_publication_api_v1_publications__entity_type___entity_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entity_type: "playlist" | "layout" | "schedule";
+                entity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_api_v1_publications__entity_type___entity_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entity_type: "playlist" | "layout" | "schedule";
+                entity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApproveIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_api_v1_publications__entity_type___entity_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entity_type: "playlist" | "layout" | "schedule";
+                entity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_api_v1_publications__entity_type___entity_id__submit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entity_type: "playlist" | "layout" | "schedule";
+                entity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    withdraw_api_v1_publications__entity_type___entity_id__withdraw_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entity_type: "playlist" | "layout" | "schedule";
+                entity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WithdrawIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicationOut"];
                 };
             };
             /** @description Validation Error */
