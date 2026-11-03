@@ -255,8 +255,12 @@ async def test_patch_last_admin(admin: AsyncClient, p: str, app: FastAPI) -> Non
     dernier admin actif ; avec un second admin actif, c'est permis."""
     rt = app.state.runtime
     me_id = UUID((await admin.get(f"{p}/api/v1/me")).json()["id"])
+    from vds_server.core.perimeter import UNRESTRICTED
+
     ghost = Principal(
-        user_id=uuid4(), provider="x", email=None, display_name="g", role="admin", locale=None
+        user_id=uuid4(), provider="auth.local", email=None, display_name="g", role="admin",
+        locale=None,
+        perimeter=UNRESTRICTED,
     )
     for body in ({"role": "editor"}, {"is_active": False}):
         async with rt.maker() as s:

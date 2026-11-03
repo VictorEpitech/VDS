@@ -241,6 +241,7 @@ class OverrideService(ServiceBase):
                         select(Layout).where(
                             Layout.id == body.layout_id, self._scope.layout_filter(self._actor)
                         )
+                        .with_for_update(read=True, of=Layout)  # J-D5
                     )
                 ).scalar_one_or_none()
                 if lay is None:
@@ -255,6 +256,7 @@ class OverrideService(ServiceBase):
                             Playlist.id == body.playlist_id,
                             self._scope.playlist_filter(self._actor),
                         )
+                        .with_for_update(read=True, of=Playlist)  # J-D5
                     )
                 ).scalar_one_or_none()
                 if pl is None or pl.owner_override_id is not None:

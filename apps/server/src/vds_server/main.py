@@ -6,7 +6,7 @@ from contextlib import AbstractAsyncContextManager
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, FastAPI
+from fastapi import APIRouter, Depends, FastAPI, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vds_server.agents import cache as agent_cache
@@ -158,11 +158,14 @@ def _config_read_guard(rt: Runtime) -> Callable[..., Any]:
     """Lecture/écriture de configuration : la cible doit être dans le périmètre (404 sinon)."""
 
     async def guard(
+        request: Request,
         p: Annotated[Principal, Depends(rt.pipeline.require("editor"))],
         session: Annotated[AsyncSession, Depends(rt.session)],
         level: str,
         target_id: UUID,
     ) -> None:
+        if request.method != "GET" and p.role != "admin":
+            raise ApiError("auth.forbidden", 403, required="admin")  # rôle avant périmètre
         if level == "organization" and not p.perimeter.empty:
             return
         if not await PerimeterScope(session).can_read_target(p, level, target_id):

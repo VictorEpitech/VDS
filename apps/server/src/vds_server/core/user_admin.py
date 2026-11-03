@@ -221,7 +221,12 @@ class UserAdminService(ServiceBase):
         q = (
             select(func.count())
             .select_from(UserAccount)
-            .where(UserAccount.role == "admin", UserAccount.is_active, UserAccount.id != user_id)
+            .where(
+                UserAccount.role == "admin",
+                UserAccount.is_active,
+                UserAccount.id != user_id,
+                UserAccount.auth_provider == self._actor.provider,
+            )
         )
         return await self._s.scalar(q) or 0
 

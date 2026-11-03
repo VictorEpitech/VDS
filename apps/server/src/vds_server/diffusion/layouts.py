@@ -245,6 +245,8 @@ class LayoutService(ServiceBase):
                             Playlist.owner_override_id.is_(None),
                             self._scope.playlist_filter(self._actor),
                         )
+                        .order_by(Playlist.id)
+                        .with_for_update(read=True, of=Playlist)  # J-D5 : verrou anti-course
                     )
                 ).all()
             }
@@ -257,6 +259,7 @@ class LayoutService(ServiceBase):
                 select(Media).where(
                     Media.id == body.background_media_id, self._scope.media_filter(self._actor)
                 )
+                .with_for_update(read=True, of=Media)  # J-D5 : verrou anti-course
             )
             if media is None:
                 raise ApiError("layout.media_not_found", 422)

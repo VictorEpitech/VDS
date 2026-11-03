@@ -2,6 +2,7 @@
 # ruff: noqa: F811
 
 import asyncio
+import re
 from collections.abc import AsyncIterator
 from typing import Any
 from uuid import UUID
@@ -353,3 +354,24 @@ async def test_scope_routes_cover_every_api_route(app: FastAPI) -> None:
         seen |= {f"{method.upper()} {path}" for method in ops}
     assert seen - set(SCOPE_ROUTES) == set(), "route /api/v1 non classée dans SCOPE_ROUTES"
     assert set(SCOPE_ROUTES) - seen == set(), "SCOPE_ROUTES cite une route inexistante"
+
+
+@pytest.mark.parametrize("route", sorted(r for r, c in SCOPE_ROUTES.items() if c == "admin_only"))
+async def test_editor_gets_403_on_every_admin_only_route(
+    world: World, p: str, route: str
+) -> None:
+    method, path = route.split(" ", 1)
+    fixed = {"level": "site", "namespace": "core", "key": "k"}
+    path = re.sub(
+        r"\{(\w+)\}",
+        lambda m: fixed.get(m.group(1), "00000000-0000-4000-8000-000000000001"),
+        path,
+    )
+    for name in ("ed_org", "ed_A"):  # éditeur non restreint comme restreint
+        r = await world.clients[name].request(
+            method,
+            f"{p}{path}",
+            json={} if method in {"POST", "PUT", "PATCH"} else None,
+            headers=SAME,
+        )
+        assert r.status_code == 403, (route, name, r.status_code, r.text)

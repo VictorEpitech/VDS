@@ -15,7 +15,7 @@ from vds_sdk.server import AuthProvider, AuthRequest
 
 from vds_server.core import users
 from vds_server.core.errors import ApiError
-from vds_server.core.perimeter import UNRESTRICTED, Perimeter, load_perimeter
+from vds_server.core.perimeter import EMPTY, Perimeter, load_perimeter
 from vds_server.events import CoreBus
 
 Role = Literal["admin", "editor"]
@@ -30,8 +30,8 @@ class Principal:
     display_name: str
     role: Role
     locale: str | None
-    # J-D10 : défaut = non restreint pour les acteurs non humains ; `resolve` le fixe toujours.
-    perimeter: Perimeter = UNRESTRICTED
+    # J-D10 : défaut = vide ; UNRESTRICTED seulement explicite (`resolve` le fixe toujours).
+    perimeter: Perimeter = EMPTY
 
     @property
     def actor_id(self) -> str:

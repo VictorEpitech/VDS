@@ -191,7 +191,12 @@ class PowerService(ServiceBase):
         return row
 
     async def _check_scope(self, level: str, scope_id: UUID | None) -> None:
-        if scope_id is not None and await self._s.get(TARGET_MODELS[level], scope_id) is None:
+        if scope_id is None:
+            return
+        # même 422 pour inexistant et hors périmètre : aucune fuite d'existence
+        if await self._s.get(
+            TARGET_MODELS[level], scope_id
+        ) is None or not await self._scope.can_read_target(self._actor, level, scope_id):
             raise ApiError("power.scope_not_found", 422, scope_level=level)
 
     def _fill(self, row: PowerException, body: sc.ExceptionCreate | sc.ExceptionReplace) -> None:

@@ -480,10 +480,11 @@ async def _service(app: FastAPI, now: datetime) -> tuple[OverrideService, Any]:
 
 async def _actor(s: Any) -> Any:
     from vds_server.core.auth import Principal
+    from vds_server.core.perimeter import UNRESTRICTED
 
     uid = (await s.execute(text("SELECT id FROM user_account LIMIT 1"))).scalar_one()
     return Principal(user_id=uid, provider="auth.local", email=None, display_name="x",
-                     role="admin", locale=None)  # fmt: skip
+                     role="admin", locale=None, perimeter=UNRESTRICTED)  # fmt: skip
 
 
 @pytest.mark.parametrize(

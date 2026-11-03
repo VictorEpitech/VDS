@@ -332,6 +332,7 @@ class PlaylistService(ServiceBase):
                     select(Media).where(
                         Media.id == media_id, self._scope.media_filter(self._actor)
                     )
+                    .with_for_update(read=True, of=Media)  # J-D5 : verrou anti-course
                 )
             ).scalar_one_or_none()
             if media is None:

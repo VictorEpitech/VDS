@@ -59,7 +59,11 @@ class ScheduleService(ServiceBase):
             raise ApiError("schedule.target_not_found", 422, target_type=target_type)
 
     async def _playlist_exists(self, playlist_id: UUID) -> None:
-        playlist = await self._s.get(Playlist, playlist_id)
+        playlist = await self._s.scalar(
+            select(Playlist).where(
+                Playlist.id == playlist_id, self._scope.playlist_filter(self._actor)
+            )
+        )
         if playlist is None:
             raise ApiError("schedule.playlist_not_found", 422)
         if is_expired(playlist, datetime.now(UTC)):
@@ -105,6 +109,7 @@ class ScheduleService(ServiceBase):
                     select(Playlist).where(
                         Playlist.id == playlist_id, self._scope.playlist_filter(self._actor)
                     )
+                    .with_for_update(read=True, of=Playlist)  # J-D5
                 )
             ).scalar_one_or_none()
             if row is None:
@@ -116,6 +121,7 @@ class ScheduleService(ServiceBase):
                     select(Layout).where(
                         Layout.id == layout_id, self._scope.layout_filter(self._actor)
                     )
+                    .with_for_update(read=True, of=Layout)  # J-D5
                 )
             ).scalar_one_or_none()
             if lay is None:

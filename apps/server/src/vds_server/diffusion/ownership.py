@@ -190,6 +190,11 @@ async def check_owner_change(
 ) -> None:
     """Changement de propriétaire : ses références doivent couvrir le nouveau nœud (422) et il doit
     couvrir tous ses référents (409, compteur seul)."""
+    model = {"media": Media, "playlist": Playlist, "layout": Layout}[kind]
+    # verrou exclusif sur le contenu : sérialise avec les créations de référence (FOR SHARE)
+    await session.execute(
+        select(model.id).where(model.id == content_id).with_for_update(of=model)  # type: ignore[attr-defined]
+    )
     for owner in await reference_owners(session, kind, content_id):
         await check_reference(session, owner, new)
     narrower = 0

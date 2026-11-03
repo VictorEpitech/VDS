@@ -70,6 +70,8 @@ def build_router(rt: Runtime) -> APIRouter:
             timezone_of,
             respect_of,
             PerimeterScope(session).screen_filter(actor),
+            PerimeterScope(session).playlist_filter(actor),
+            PerimeterScope(session).layout_filter(actor),
         )
 
     @router.get("/apk", response_model=FleetApkOut)
