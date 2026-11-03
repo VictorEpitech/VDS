@@ -298,6 +298,22 @@ code, kbd, samp, .vds-mono { font-family: var(--vds-font-mono); }
   -webkit-mask-image: url("icons/rotate.svg");
   mask-image: url("icons/rotate.svg");
 }
+.vds-icon[data-icon="priority_low"] {
+  -webkit-mask-image: url("icons/priority_low.svg");
+  mask-image: url("icons/priority_low.svg");
+}
+.vds-icon[data-icon="priority_high"] {
+  -webkit-mask-image: url("icons/priority_high.svg");
+  mask-image: url("icons/priority_high.svg");
+}
+.vds-icon[data-icon="expiry"] {
+  -webkit-mask-image: url("icons/expiry.svg");
+  mask-image: url("icons/expiry.svg");
+}
+.vds-icon[data-icon="next"] {
+  -webkit-mask-image: url("icons/next.svg");
+  mask-image: url("icons/next.svg");
+}
 .vds-icon[data-icon="calendar"] {
   -webkit-mask-image: url("icons/calendar.svg");
   mask-image: url("icons/calendar.svg");
