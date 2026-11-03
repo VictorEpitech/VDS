@@ -321,6 +321,8 @@ class LayoutService(ServiceBase):
 
     async def duplicate(self, layout_id: UUID) -> ls.LayoutOut:
         src = await self._row(layout_id)
+        if not await self._scope.can_write_layout(self._actor, layout_id):
+            raise ApiError("layout.forbidden", 403)
         zones = (await self._zones([src.id]))[src.id]
         existing = set(
             (await self._s.scalars(select(Layout.name).where(Layout.org_id == src.org_id))).all()

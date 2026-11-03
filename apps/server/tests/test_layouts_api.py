@@ -537,3 +537,39 @@ async def test_preview_document(admin: AsyncClient, p: str) -> None:
     span = datetime.fromisoformat(slot["end"]) - datetime.fromisoformat(slot["start"])
     assert span == timedelta(hours=1) and doc["revision"].startswith("sha256:")
     assert (await admin.get(f"{p}/api/v1/layouts/{GHOST}/preview")).status_code == 404
+
+
+class _NoLayoutScope:
+    """Périmètre simulé : la mise en page « Secrète » est invisible, aucune n'est modifiable."""
+
+    def layout_filter(self, principal: Any) -> Any:
+        from vds_server.db.models_layout import Layout
+
+        return Layout.name != "Secrète"
+
+    async def can_write_layout(self, principal: Any, layout_id: Any) -> bool:
+        return False
+
+
+async def test_layout_scope_duplicate_and_existence(
+    admin: AsyncClient, p: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    site = await site_of(admin, p, "a")
+    scr = await screen_of(admin, p, site, "Hall")
+    lay = await mk_layout(admin, p, "Secrète")
+    vis = await mk_layout(admin, p, "Visible")
+    scope = _NoLayoutScope()
+    for mod in ("diffusion.layouts", "diffusion.schedules", "overrides.service"):
+        monkeypatch.setattr(f"vds_server.{mod}.OrganizationScope", lambda: scope)
+    dup = await admin.post(f"{p}/api/v1/layouts/{vis['id']}/duplicate", headers=SAME)
+    assert dup.status_code == 403 and dup.json()["code"] == "layout.forbidden"
+    r = await sched_layout(admin, p, lay["id"], scr)
+    assert r.status_code == 422 and r.json()["code"] == "schedule.layout_not_found"
+    o = await ov(admin, p, target_type="screen", target_id=scr, layout_id=lay["id"])
+    assert o.status_code == 422 and o.json()["code"] == "override.layout_not_found"
+
+
+def test_warning_screens_cap() -> None:
+    from vds_server.overrides.service import MAX_WARNING_SCREENS
+
+    assert MAX_WARNING_SCREENS == 100

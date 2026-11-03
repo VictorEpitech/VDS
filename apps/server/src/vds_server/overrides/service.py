@@ -30,6 +30,7 @@ from vds_server.diffusion.resolver import (
     resolve_input,
     wall_to_instant,
 )
+from vds_server.diffusion.scope import ContentScope, OrganizationScope
 from vds_server.diffusion.targets import TARGET_MODELS, screens_of
 from vds_server.fleet.health import evaluate
 from vds_server.overrides import schemas as sc
@@ -42,7 +43,7 @@ MAX_DEFER_DAYS = 30
 DEFAULT_MAX_ACTIVE = 20
 MAX_PAGE = 200
 MAX_PREVIEW_SCREENS = 100
-MAX_WARNING_SCREENS = 500
+MAX_WARNING_SCREENS = 100
 REPORT_DAYS_CAP = 5  # fenêtres de WINDOW_DAYS jours examinées pour la couverture des zones
 Clock = Callable[[], datetime]
 
@@ -89,8 +90,10 @@ class OverrideService(ServiceBase):
         schemas: ConfigSchemaProvider,
         item_schema: ItemSchemaLookup,
         clock: Clock = _utcnow,
+        scope: ContentScope | None = None,
     ) -> None:
         super().__init__(session, bus, actor)
+        self._scope: ContentScope = scope or OrganizationScope()
         self._schemas = schemas
         self._item_schema = item_schema
         self._clock = clock
@@ -227,7 +230,11 @@ class OverrideService(ServiceBase):
                 await self._check_zone_ids(body.zone_ids)
             if body.layout_id is not None:
                 if (
-                    await self._s.scalar(select(Layout.id).where(Layout.id == body.layout_id))
+                    await self._s.scalar(
+                        select(Layout.id).where(
+                            Layout.id == body.layout_id, self._scope.layout_filter(self._actor)
+                        )
+                    )
                     is None
                 ):
                     raise ApiError("override.layout_not_found", 422)

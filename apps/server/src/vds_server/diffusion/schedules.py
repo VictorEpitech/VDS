@@ -5,7 +5,10 @@ from datetime import UTC, date, datetime
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from vds_sdk import EventBus
 
+from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
 from vds_server.db.models import (
     Playlist,
@@ -18,6 +21,7 @@ from vds_server.diffusion.base import ServiceBase
 from vds_server.diffusion.expiry import is_expired
 from vds_server.diffusion.layouts import MISMATCH, orientation_mismatch
 from vds_server.diffusion.priority import priority_level
+from vds_server.diffusion.scope import ContentScope, OrganizationScope
 from vds_server.diffusion.targets import TARGET_MODELS
 
 
@@ -38,6 +42,16 @@ class ScheduleValues:
 
 
 class ScheduleService(ServiceBase):
+    def __init__(
+        self,
+        session: AsyncSession,
+        bus: EventBus | None,
+        actor: Principal,
+        scope: ContentScope | None = None,
+    ) -> None:
+        super().__init__(session, bus, actor)
+        self._scope: ContentScope = scope or OrganizationScope()
+
     async def _target_exists(self, target_type: str, target_id: UUID) -> None:
         if await self._s.get(TARGET_MODELS[target_type], target_id) is None:
             raise ApiError("schedule.target_not_found", 422, target_type=target_type)
@@ -51,7 +65,14 @@ class ScheduleService(ServiceBase):
 
     async def _layout_exists(self, layout_id: UUID) -> None:
         # même code qu'une mise en page inconnue : aucune fuite d'existence (422)
-        if await self._s.scalar(select(Layout.id).where(Layout.id == layout_id)) is None:
+        if (
+            await self._s.scalar(
+                select(Layout.id).where(
+                    Layout.id == layout_id, self._scope.layout_filter(self._actor)
+                )
+            )
+            is None
+        ):
             raise ApiError("schedule.layout_not_found", 422)
 
     async def _content_exists(self, playlist_id: UUID | None, layout_id: UUID | None) -> None:
