@@ -86,6 +86,7 @@ Ce lot peut être avancé avant le lot 3 si le Studio est le premier déploiemen
 
 ## Décisions
 
+- 2026-11-04 — Relance de l'application VDS sur TV (architecte, vds-core 1.14.0 additif, une colonne) : pas de nouvelle commande, `restart{scope:"app"}` gagne `via: auto|player|agent` ; second exécutant = agent de site par la commande d'agent `app.restart` (`power.adb` 0.4.0, `am force-stop` + `am start`) quand le player est figé ou hors ligne ; Pi et web : chemin player seul ; Tizen : point d'accroche `app.restart.tizen` ; bouton admin masqué selon `ScreenOut.restart_app`. Voir `docs/architecture-relance-app.md`.
 - 2026-11-03 — Widgets météo et RSS : `content.weather` (MET Norway, sans clé) et `content.rss` (texte seul) ; fetch serveur via `SafeHttp` noyau anti-SSRF, cache `content_feed`, player lit son serveur et garde le dernier état connu ; vds-core 1.12.0 additif. Voir `architecture-widgets.md`.
 - 2026-11-03 — Validation de publication : copie de travail + instantané publié lu seul par le résolveur ; admin auto-publie, éditeur soumet, admin valide ; `diffusion.review_required` ; événements `publication.*` (hook) ; vds-core 1.13.0 additif après 1.12.0. Voir `architecture-validation.md`.
 - 2026-11-03 — Refonte UX lots F et G livrés ensemble (F puis G), sans bump ni migration ; import par URL reporté. Voir `architecture-ux-fg.md`.

@@ -313,7 +313,7 @@ Ajouts prévus (additifs, lots suivants) : jetons d'appareil, médias, playlists
 | kind | Rôle | V1 |
 | --- | --- | --- |
 | player-adapter | Installation, capture, redémarrage, kiosque | Android, Tizen, Chromium Pi |
-| power-driver | Allumer / éteindre / lire l'état | ADB, Samsung WS, WoL, CEC, écran noir |
+| power-driver | Allumer / éteindre / lire l'état (capacités `power.*`, `app.restart.<platform>`) | ADB, Samsung WS, WoL, CEC, écran noir |
 | content-type | Rendu d'un contenu (web component) | image, vidéo, PDF, URL, météo, RSS |
 | trigger | Source d'événements | planning |
 | notifier | Notifications | mail |
@@ -667,6 +667,8 @@ Lot 2 : ces trois cas sont documentés ; un profil Compose `https` (service Cadd
 ### Commandes player et captures (lot I, vds-core 1.11.0, décision 2026-11-03)
 
 Remplace les commandes provisoires du heartbeat et lève le reste de L3-T5 (trames `cmd` sur `/ws/player`). Contrat, droits, captures, rétention, UI et découpage I0–I8 : `docs/architecture-commandes.md`.
+
+Relance de l'application : chemin player (lot I) ou agent de site (`app.restart`, vds-core 1.14.0), voir `architecture-relance-app.md`.
 
 **Contraintes de plateforme découvertes (I4, `apps/player`)**
 
