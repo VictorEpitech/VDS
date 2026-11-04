@@ -48,9 +48,13 @@ export function capabilitiesOf(screen: Pick<Screen, "capabilities" | "device">):
 
 export const canScreenshot = (screen: Pick<Screen, "capabilities" | "device">) => capabilitiesOf(screen).includes("cmd.screenshot");
 
-export function availableActions(screen: Pick<Screen, "capabilities" | "device">, isAdmin: boolean): CommandAction[] {
+/** « Relancer l'application » : seul le serveur sait si un chemin (player ou agent) existe, il n'est jamais déduit ici. */
+export const canRestartApp = (screen: Pick<Screen, "device"> & { restart_app?: Screen["restart_app"] }) =>
+  !!screen.device && screen.device.presence !== "revoked" && screen.restart_app?.available === true;
+
+export function availableActions(screen: Pick<Screen, "capabilities" | "device"> & { restart_app?: Screen["restart_app"] }, isAdmin: boolean): CommandAction[] {
   const caps = capabilitiesOf(screen);
-  return ACTIONS.filter((a) => (isAdmin || !a.adminOnly) && caps.includes(a.capability));
+  return ACTIONS.filter((a) => (isAdmin || !a.adminOnly) && (a.id === "restart.app" ? canRestartApp(screen) : caps.includes(a.capability)));
 }
 
 const TERMINAL: ReadonlySet<PlayerCommandStatus> = new Set(["ok", "failed", "expired", "rejected", "cancelled"]);

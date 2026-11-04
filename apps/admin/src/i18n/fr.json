@@ -174,12 +174,12 @@
         "reload": "Recharger",
         "identify": "Identifier",
         "screenshot": "Actualiser la capture",
-        "restart_app": "Redémarrer l'application",
+        "restart_app": "Relancer l'application",
         "restart_device": "Redémarrer l'appareil",
         "cache_resync": "Resynchroniser le cache"
       },
       "confirm": {
-        "restart_app": "Confirmer le redémarrage de l'application de {name} (écran noir environ 30 s)",
+        "restart_app": "Confirmer la relance de l'application de {name} (écran noir environ 30 s)",
         "restart_device": "Confirmer le redémarrage de l'appareil de {name} (écran noir environ 30 s)"
       },
       "name": {
@@ -403,6 +403,7 @@
     "update_running": "Une mise à jour est déjà en cours pour cet écran.",
     "up_to_date": "Cet écran est déjà à jour.",
     "apk_unavailable": "Aucune application n'est disponible sur le serveur.",
+    "restart_app_unavailable": "Cette relance n'est pas disponible pour cet écran.",
     "agent_offline": "Agent du site hors ligne.",
     "agent_outdated": "Agent du site trop ancien pour cette mise à jour.",
     "module_disabled": "Le pilote d'alimentation ADB n'est pas actif.",

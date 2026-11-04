@@ -177,7 +177,11 @@ export function createDiffusionMock() {
     if (!d || d.revoked_at) return [];
     return d.platform === "android" ? ["cmd.reload", "cmd.identify", "cmd.screenshot", "cmd.restart.app", "cmd.restart.device", "cmd.cache.resync"] : ["cmd.reload", "cmd.identify"];
   };
-  const screenOut = (s: (typeof screens)[number]) => ({ ...s, device: devices.has(s.id) ? deviceOut(devices.get(s.id)!) : null, kiosk: kioskOut(s), capabilities: capabilitiesOf(s.id), last_screenshot: shots.get(s.id)?.[0] ?? null });
+  const restartApp = (id: string) => {
+    const android = devices.get(id)?.platform === "android";
+    return android ? { available: true, via: ["player", "agent"], reason: null } : { available: false, via: [], reason: "no_capability" };
+  };
+  const screenOut = (s: (typeof screens)[number]) => ({ ...s, device: devices.has(s.id) ? deviceOut(devices.get(s.id)!) : null, kiosk: kioskOut(s), capabilities: capabilitiesOf(s.id), restart_app: restartApp(s.id), last_screenshot: shots.get(s.id)?.[0] ?? null });
   const claimed = new Set<string>();
 
   const mediaOut = (m: MediaRow) => {

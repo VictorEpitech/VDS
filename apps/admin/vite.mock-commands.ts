@@ -121,7 +121,7 @@ export function createCommandsMock(world: World) {
       if (!device || device.revoked_at) return fail(409, "cmd.no_device");
       if ((name === "restart" || name === "cache.resync") && who !== "admin") return fail(403, "cmd.role_required");
       const cap = name === "restart" ? `cmd.restart.${String(args.scope)}` : `cmd.${name}`;
-      if (!caps(device.platform).includes(cap)) return fail(409, "cmd.unsupported");
+      if (!caps(device.platform).includes(cap)) return fail(name === "restart" && args.scope === "app" ? 422 : 409, name === "restart" && args.scope === "app" ? "restart_app_unavailable" : "cmd.unsupported");
       const c: Cmd = { id: randomUUID(), screen_id: screenId, name, args, key, created: Date.now(), cancelled: false, by: who === "admin" ? "Ada" : "Marie" };
       cmds.push(c);
       return send(201, out(c));

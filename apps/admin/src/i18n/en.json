@@ -174,12 +174,12 @@
         "reload": "Reload",
         "identify": "Identify",
         "screenshot": "Refresh capture",
-        "restart_app": "Restart the app",
+        "restart_app": "Relaunch the app",
         "restart_device": "Restart the device",
         "cache_resync": "Resync the cache"
       },
       "confirm": {
-        "restart_app": "Confirm restarting the app on {name} (black screen for about 30 s)",
+        "restart_app": "Confirm relaunching the app on {name} (black screen for about 30 s)",
         "restart_device": "Confirm restarting the device of {name} (black screen for about 30 s)"
       },
       "name": {
@@ -403,6 +403,7 @@
     "update_running": "An update is already running for this screen.",
     "up_to_date": "This screen is already up to date.",
     "apk_unavailable": "No app is available on the server.",
+    "restart_app_unavailable": "This relaunch is not available for this screen.",
     "agent_offline": "Site agent offline.",
     "agent_outdated": "Site agent too old for this update.",
     "module_disabled": "The ADB power driver is not active.",

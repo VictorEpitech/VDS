@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { mockApi, renderRoutes } from "../../../test/render";
+import { errorResponse, mockApi, renderRoutes } from "../../../test/render";
 import { routes } from "../../app/routes";
 import type { Api } from "../../lib/api";
 import { ActionQueue, DELAY_MS, type Target } from "../actions/queue";
@@ -11,8 +11,8 @@ const SITE = { id: "10000000-0000-4000-8000-000000000001", name: "Moulins", slug
 const ALL = ["cmd.reload", "cmd.identify", "cmd.screenshot", "cmd.restart.app", "cmd.restart.device", "cmd.cache.resync"];
 const SHOT = { id: "50000000-0000-4000-8000-000000000001", screen_id: "", trigger: "on_demand", captured_at: new Date(Date.now() - 180_000).toISOString(), width: 640, height: 360, bytes: 1000, image_url: "/api/v1/screenshots/50000000-0000-4000-8000-000000000001/image" };
 const dev = { presence: "online", last_seen_at: "2026-10-24T09:00:00Z", platform: "android" };
-const mk = (n: number, extra: Record<string, unknown> = {}) => ({ id: `30000000-0000-4000-8000-${String(n).padStart(12, "0")}`, site_id: SITE.id, group_id: null, name: `Écran ${n}`, orientation: "landscape", archived_at: null, device: dev, kiosk: null, capabilities: ALL, last_screenshot: null, ...extra });
-const pc = (id: string, status: PlayerCommand["status"], extra: Partial<PlayerCommand> = {}): PlayerCommand => ({ id, screen_id: null, name: "reload", args: {}, status, code: null, requested_by: "Ada", created_at: new Date().toISOString(), expires_at: new Date(Date.now() + 600_000).toISOString(), done_at: null, screenshot_id: null, ...extra });
+const mk = (n: number, extra: Record<string, unknown> = {}) => ({ id: `30000000-0000-4000-8000-${String(n).padStart(12, "0")}`, site_id: SITE.id, group_id: null, name: `Écran ${n}`, orientation: "landscape", archived_at: null, device: dev, kiosk: null, capabilities: ALL, restart_app: { available: true, via: ["player", "agent"], reason: null }, last_screenshot: null, ...extra });
+const pc = (id: string, status: PlayerCommand["status"], extra: Partial<PlayerCommand> = {}): PlayerCommand => ({ id, screen_id: null, name: "reload", args: {}, executor: "player", status, code: null, requested_by: "Ada", created_at: new Date().toISOString(), expires_at: new Date(Date.now() + 600_000).toISOString(), done_at: null, screenshot_id: null, ...extra });
 
 afterEach(() => vi.useRealTimers());
 
@@ -21,8 +21,16 @@ describe("règles d'affichage", () => {
     const s = mk(1);
     expect(availableActions(s as never, false).map((a) => a.id)).toEqual(["reload", "identify", "screenshot"]);
     expect(availableActions(s as never, true).map((a) => a.id)).toContain("restart.device");
-    expect(availableActions(mk(2, { capabilities: ["cmd.reload"] }) as never, true).map((a) => a.id)).toEqual(["reload"]);
+    expect(availableActions(mk(2, { capabilities: ["cmd.reload"], restart_app: { available: false, via: [], reason: "no_capability" } }) as never, true).map((a) => a.id)).toEqual(["reload"]);
     expect(availableActions(mk(3, { device: null }) as never, true)).toEqual([]);
+  });
+  it("Relancer l'application : seulement si le serveur l'annonce disponible, et à un admin", () => {
+    const off = { available: false, via: [], reason: "agent_offline" };
+    expect(availableActions(mk(1, { restart_app: off }) as never, true).map((a) => a.id)).not.toContain("restart.app");
+    expect(availableActions(mk(1, { restart_app: undefined }) as never, true).map((a) => a.id)).not.toContain("restart.app");
+    expect(availableActions(mk(1) as never, true).map((a) => a.id)).toContain("restart.app");
+    expect(availableActions(mk(1) as never, false).map((a) => a.id)).not.toContain("restart.app");
+    expect(availableActions(mk(1, { capabilities: [] }) as never, true).map((a) => a.id)).toContain("restart.app");
   });
   it("sondage 1 s pendant 20 s puis 5 s", () => {
     expect(pollDelay(0)).toBe(1000);
@@ -65,10 +73,31 @@ describe.each(["", "/espace/affichage"])("fiche écran, base « %s »", (b) => {
     const calls = mockApi(base([s], { [`GET /screens/${s.id}/commands`]: [], [`POST /screens/${s.id}/commands`]: pc("c1", "queued", { name: "restart", args: { scope: "app" } }) }), b);
     const user = userEvent.setup();
     await renderRoutes(routes, "/screens", b);
-    await user.click(await screen.findByRole("button", { name: "Redémarrer l'application" }));
+    await user.click(await screen.findByRole("button", { name: "Relancer l'application" }));
     expect(calls.some((c) => c.method === "POST")).toBe(false);
-    await user.click(screen.getByRole("button", { name: /Confirmer le redémarrage de l'application de Écran 1/ }));
+    await user.click(screen.getByRole("button", { name: /Confirmer la relance de l'application de Écran 1/ }));
     await waitFor(() => expect(calls.find((c) => c.method === "POST")?.body).toMatchObject({ name: "restart", args: { scope: "app" } }));
+  });
+
+  it("traduit les refus 422 restart_app_unavailable et 409 agent_offline", async () => {
+    for (const [status, code, text] of [[422, "restart_app_unavailable", /relance n'est pas disponible/], [409, "agent_offline", /Agent du site hors ligne/]] as const) {
+      const s = mk(1);
+      mockApi(base([s], { [`GET /screens/${s.id}/commands`]: [], [`POST /screens/${s.id}/commands`]: () => errorResponse(status, code) }), b);
+      const user = userEvent.setup();
+      const { unmount } = await renderRoutes(routes, "/screens", b);
+      await user.click(await screen.findByRole("button", { name: "Relancer l'application" }));
+      await user.click(screen.getByRole("button", { name: /Confirmer la relance de l'application de Écran 1/ }));
+      expect(await screen.findByText(text)).toBeInTheDocument();
+      unmount?.();
+    }
+  });
+
+  it("masque le bouton quand restart_app est indisponible", async () => {
+    const s = mk(1, { restart_app: { available: false, via: [], reason: "player_offline" } });
+    mockApi(base([s], { [`GET /screens/${s.id}/commands`]: [] }), b);
+    await renderRoutes(routes, "/screens", b);
+    expect(await screen.findByRole("button", { name: "Recharger : Écran 1" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Relancer l'application" })).not.toBeInTheDocument();
   });
 
   it("l'éditeur ne voit ni redémarrage ni resynchronisation", async () => {
@@ -76,7 +105,7 @@ describe.each(["", "/espace/affichage"])("fiche écran, base « %s »", (b) => {
     mockApi(base([s], { "GET /me": { id: "u2", display_name: "Marie", email: null, role: "editor", provider: "auth.local", locale: null, role_source: "vds", perimeter: { unrestricted: false, can_share: false, nodes: [{ type: "site", id: SITE.id, name: SITE.name }] } }, [`GET /screens/${s.id}/commands`]: [] }), b);
     await renderRoutes(routes, "/screens", b);
     expect(await screen.findByRole("button", { name: "Recharger : Écran 1" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Redémarrer l'application" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Relancer l'application" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Autres commandes" })).not.toBeInTheDocument();
   });
 
@@ -139,7 +168,7 @@ describe("EN", () => {
     mockApi({ "GET /sites": [SITE], "GET /screens": [s], [`GET /sites/${SITE.id}/groups`]: [], "GET /fleet/playback": [], [`GET /screens/${s.id}/commands`]: [] });
     await renderRoutes(routes, "/screens", "", "en");
     expect(await screen.findByRole("button", { name: "Reload: Écran 1" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Restart the app" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Relaunch the app" })).toBeInTheDocument();
   });
 });
 
