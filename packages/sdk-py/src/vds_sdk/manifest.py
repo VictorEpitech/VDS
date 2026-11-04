@@ -27,6 +27,7 @@ Kind = Literal[
 Target = Literal["server", "site-agent", "admin", "player"]
 PROVISION_CAPABILITY_RE = re.compile(r"^provision\.[a-z][a-z0-9_-]*$")
 UPDATE_CAPABILITY_RE = re.compile(r"^update\.[a-z][a-z0-9_-]*$")
+APP_RESTART_CAPABILITY_RE = re.compile(r"^app\.restart\.[a-z][a-z0-9_-]*$")
 DISCOVERY_CAPABILITIES = frozenset({"discovery.lan"})  # 1.5
 POWER_CAPABILITIES = frozenset({"power.on", "power.off", "power.state", "power.input"})
 PYTHON_TARGETS = frozenset({"server", "site-agent"})
@@ -240,12 +241,25 @@ class ModuleManifest(_Strict):
                 raise ValueError("module.power_driver_target_invalid")
             provision = [c for c in self.capabilities if c.startswith("provision.")]
             update = [c for c in self.capabilities if c.startswith("update.")]
-            if not set(self.capabilities) - set(provision) - set(update) <= POWER_CAPABILITIES:
+            restart = [c for c in self.capabilities if c.startswith("app.restart.")]
+            known = set(provision) | set(update) | set(restart)
+            if not set(self.capabilities) - known <= POWER_CAPABILITIES:
                 raise ValueError("module.power_driver_capability_invalid")
+            if restart:
+                if not all(APP_RESTART_CAPABILITY_RE.match(c) for c in restart):
+                    raise ValueError("module.app_restart_capability_invalid")
+                if not satisfies("1.14.0", self.core):
+                    raise ValueError("contract.app_restart_requires_1_14")
+                if "screens.provision" not in self.permissions:
+                    raise ValueError("module.provision_permission_missing")
+                if "site-agent" not in self.targets:
+                    raise ValueError("module.provision_target_invalid")
             if update:
                 if not all(UPDATE_CAPABILITY_RE.match(c) for c in update):
                     raise ValueError("module.update_capability_invalid")
-                if not satisfies("1.6.0", self.core) or satisfies("1.5.0", self.core):
+                if satisfies("1.5.0", self.core) or not any(
+                    satisfies(f"1.{n}.0", self.core) for n in range(6, 15)
+                ):
                     raise ValueError("contract.update_requires_1_6")
                 if "screens.provision" not in self.permissions:
                     raise ValueError("module.provision_permission_missing")
@@ -299,10 +313,12 @@ class ModuleManifest(_Strict):
         if self.kind == "content-type":
             if self.content is None:
                 raise ValueError("module.content_type_missing_content")
-            if not (satisfies("1.1.0", self.core)
+            if not (
+                satisfies("1.1.0", self.core)
                 or satisfies("1.12.0", self.core)
                 or satisfies("1.13.0", self.core)
-                or satisfies("1.14.0", self.core)):
+                or satisfies("1.14.0", self.core)
+            ):
                 raise ValueError("module.content_type_core_incompatible")
             if satisfies("1.0.0", self.core):
                 raise ValueError("module.content_type_core_incompatible")

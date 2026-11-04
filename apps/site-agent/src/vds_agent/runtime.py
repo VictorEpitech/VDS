@@ -17,6 +17,7 @@ import httpx
 from pydantic import ValidationError
 from vds_sdk import CORE_API_VERSION
 from vds_sdk.agent import (
+    AppRestarter,
     DetectHint,
     DetectResult,
     Discoverer,
@@ -36,6 +37,7 @@ from vds_sdk.wire import (
 )
 
 from .apk_update import ApkUpdateRunner
+from .app_restart import AppRestartRunner
 from .bridge import AgentBus
 from .cache import MediaCache, SyncResult, fetch_manifest
 from .cascade import Cascade, ScreenDrivers, event_for
@@ -141,6 +143,12 @@ class Agent:
             token=settings.token,
             data_dir=settings.data_dir,
             updaters=self._updater_for,
+            screen_lock=lambda sid: self._locks.setdefault(sid, asyncio.Lock()),
+            host_lock=self._host_lock,
+            prepare=self._prepare_update,
+        )
+        self.app_restarter = AppRestartRunner(
+            restarters=self._restarter_for,
             screen_lock=lambda sid: self._locks.setdefault(sid, asyncio.Lock()),
             host_lock=self._host_lock,
             prepare=self._prepare_update,
@@ -516,6 +524,10 @@ class Agent:
             if sid is None:
                 return "rejected", "invalid_args", {}
             return await self.apk_updater.run(sid, args)
+        if cmd.name == "app.restart":
+            if sid is None:
+                return "rejected", "invalid_args", {}
+            return await self.app_restarter.run(sid, args)
         if cmd.name == "discovery.scan":
             return await self.discovery.run(args)
         return "failed", "agent.unknown_command", {}
@@ -541,6 +553,15 @@ class Agent:
         for ld in self.drivers.values():
             if f"update.{platform}" in ld.manifest.capabilities and isinstance(
                 ld.driver, ScreenUpdater
+            ):
+                return ld.driver
+        return None
+
+    def _restarter_for(self, platform: str) -> AppRestarter | None:
+        """Module actif déclarant `app.restart.<platform>` et implémentant `AppRestarter`."""
+        for ld in self.drivers.values():
+            if f"app.restart.{platform}" in ld.manifest.capabilities and isinstance(
+                ld.driver, AppRestarter
             ):
                 return ld.driver
         return None

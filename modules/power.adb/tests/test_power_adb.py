@@ -397,7 +397,7 @@ async def run_upd(
 
 async def test_manifest_declares_update() -> None:
     m = load_manifest(Path(__file__).parents[1] / "module.json")
-    assert "update.android" in m.capabilities and m.version == "0.3.0"
+    assert "update.android" in m.capabilities and m.version == "0.4.0"
 
 
 async def test_update_happy_path(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
@@ -493,3 +493,78 @@ async def test_update_refuses_public_address(tmp_path: Path) -> None:
     d._ctx.screen_configs[SID] = {"host": "8.8.8.8"}
     out = await d.update(upd_req(), FakeApkSource(apk_file(tmp_path)), lambda r: asyncio.sleep(0))
     assert out.code == "update.android.address_not_lan"
+
+
+# --- relance de l'application (capacité app.restart.android) ---
+
+from vds_sdk.agent import AppRestartRequest  # noqa: E402
+
+
+async def run_rst(tv, monkeypatch, host: str | None = "127.0.0.1", prime: bool = True):  # type: ignore[no-untyped-def]
+    mod = next(m for n, m in sys.modules.items() if n.endswith("restart_android"))
+    monkeypatch.setattr(mod, "ensure_lan_address", lambda ip: ip)
+    d = await make_driver()
+    if prime:
+        await d.get_state(target(tv.port))
+        tv.commands.clear()
+    cfg: dict[str, object] = {"port": tv.port}
+    if host:
+        cfg["host"] = host
+    d._ctx.screen_configs[SID] = cfg
+    req = AppRestartRequest(request_id=uuid4(), screen_id=SID, platform="android")
+    return await d.restart_app(req)
+
+
+async def test_restart_manifest_declares_capability() -> None:
+    m = load_manifest(Path(__file__).parents[1] / "module.json")
+    assert "app.restart.android" in m.capabilities and m.version == "0.4.0"
+    assert m.core == ">=1.14 <2.0"
+
+
+async def test_restart_exact_command_sequence(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    async with fakes.FakeAdbTv("auth") as tv:
+        tv.version_code = 7
+        out = await run_rst(tv, monkeypatch)
+    assert out.ok and out.code is None
+    assert [c for c in tv.commands if not c.startswith("shell:getprop")] == [
+        "shell:pm list packages --show-versioncode app.vds.player",
+        "shell:am force-stop app.vds.player",
+        "shell:am start -n app.vds.player/.MainActivity",
+    ]
+
+
+async def test_restart_not_installed(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    async with fakes.FakeAdbTv("auth") as tv:
+        out = await run_rst(tv, monkeypatch)
+    assert out.code == "app.restart.not_installed"
+    assert not any("force-stop" in c or "am start" in c for c in tv.commands)
+
+
+async def test_restart_unauthorized_fails_fast_without_command(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    async with fakes.FakeAdbTv("prompt") as tv:
+        loop = asyncio.get_running_loop()
+        t0 = loop.time()
+        out = await run_rst(tv, monkeypatch, prime=False)
+        tv.accept_event.set()  # libère le fake (sinon sa fermeture attend l'utilisateur)
+    assert out.code == "app.restart.adb_unauthorized" and loop.time() - t0 < 3
+    assert tv.commands == []
+
+
+async def test_restart_unreachable(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    async with fakes.FakeAdbTv("auth") as tv:
+        pass  # serveur fermé en sortie : le port ne répond plus
+    out = await run_rst(tv, monkeypatch, prime=False)
+    assert out.code == "app.restart.adb_unreachable"
+
+
+async def test_restart_no_host_never_connects(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    async with fakes.FakeAdbTv("auth") as tv:
+        out = await run_rst(tv, monkeypatch, host=None)
+        assert out.code == "app.restart.adb_unreachable" and tv.commands == []
+
+
+async def test_restart_refuses_public_address() -> None:
+    d = await make_driver()
+    d._ctx.screen_configs[SID] = {"host": "8.8.8.8"}
+    req = AppRestartRequest(request_id=uuid4(), screen_id=SID, platform="android")
+    assert (await d.restart_app(req)).code == "app.restart.adb_unreachable"

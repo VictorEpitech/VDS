@@ -160,6 +160,8 @@ class FakeAdbTv:
             return self.set_owner_output
         if cmd.startswith(("cmd package set-home-activity", "appops set", "settings put")):
             return "Success\n" if "home" in cmd else ""
+        if cmd.startswith("am force-stop"):
+            return ""
         if cmd.startswith("am start"):
             return "Starting: Intent { cmp=app.vds.player/... }\n"
         return None

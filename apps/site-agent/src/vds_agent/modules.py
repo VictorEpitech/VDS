@@ -14,6 +14,7 @@ from vds_sdk import CORE_API_VERSION, ModuleManifest, ScopedBus, ScopeRef
 from vds_sdk.agent import (
     PowerDriver,
     StateStore,
+    check_app_restarter,
     check_discoverer,
     check_provisioner,
     check_updater,
@@ -133,6 +134,7 @@ async def instantiate(d: Discovered, bus: Any, state: StateStore) -> LoadedDrive
     driver = getattr(mod, cls_name)()
     check_provisioner(driver, m.capabilities)  # capacité `provision.*` => ScreenProvisioner
     check_updater(driver, m.capabilities)  # capacité `update.*` => ScreenUpdater
+    check_app_restarter(driver, m.capabilities)  # `app.restart.*` => AppRestarter
     check_discoverer(driver, m.capabilities)  # capacité `discovery.*` => Discoverer
     ctx = AgentContext(m.id, ScopedBus(bus, m), state, d.schema)
     await driver.setup(ctx)

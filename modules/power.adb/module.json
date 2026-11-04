@@ -1,17 +1,17 @@
 {
   "id": "power.adb",
-  "version": "0.3.0",
-  "core": ">=1.6 <2.0",
+  "version": "0.4.0",
+  "core": ">=1.14 <2.0",
   "kind": "power-driver",
   "name": { "fr": "Alimentation par ADB (Android TV / Google TV)", "en": "ADB power (Android TV / Google TV)" },
   "description": {
-    "fr": "Allume et éteint une TV Android ou Google TV (TCL 2023) par ADB réseau, état lu via dumpsys power ; provisionne aussi une TV Android (installation du player, Device Owner ou kiosque doux, appairage) et met à jour son APK player.",
-    "en": "Turns an Android TV or Google TV (TCL 2023) on and off over network ADB, state read with dumpsys power; also provisions an Android TV (player install, Device Owner or soft kiosk, pairing) and updates its player APK."
+    "fr": "Allume et éteint une TV Android ou Google TV (TCL 2023) par ADB réseau, état lu via dumpsys power ; provisionne aussi une TV Android (installation du player, Device Owner ou kiosque doux, appairage) met à jour son APK player et relance l'application.",
+    "en": "Turns an Android TV or Google TV (TCL 2023) on and off over network ADB, state read with dumpsys power; also provisions an Android TV (player install, Device Owner or soft kiosk, pairing) updates its player APK and restarts the app."
   },
   "targets": ["site-agent"],
   "entrypoints": { "site-agent": "agent.module:AdbDriver" },
   "requires": {},
-  "capabilities": ["power.on", "power.off", "power.state", "provision.android", "update.android"],
+  "capabilities": ["power.on", "power.off", "power.state", "provision.android", "update.android", "app.restart.android"],
   "permissions": ["lan.access", "screens.read", "screens.provision"],
   "events": { "listens": [], "emits": [] },
   "config": { "$ref": "config.schema.json" },

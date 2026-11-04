@@ -9,6 +9,9 @@ from vds_sdk.agent import (
     ApkSource,
     ApkUpdateOutcome,
     ApkUpdateRequest,
+    AppRestarter,
+    AppRestartOutcome,
+    AppRestartRequest,
     Capability,
     DetectHint,
     DetectResult,
@@ -25,6 +28,7 @@ from vds_sdk.agent import (
 
 from .adb import AdbError, AdbProvisionTransport, AdbTransport, TcpAdbTransport, generate_key_pem
 from .provision_android import AndroidProvisioner
+from .restart_android import AndroidAppRestarter
 from .update_android import AndroidUpdater
 
 KEY_STATE = "adb_private_key"
@@ -43,7 +47,7 @@ def parse_state(dumpsys: str) -> PowerState:
     return "unknown"
 
 
-class AdbDriver(PowerDriver, ScreenProvisioner, ScreenUpdater):
+class AdbDriver(PowerDriver, ScreenProvisioner, ScreenUpdater, AppRestarter):
     capabilities: ClassVar[frozenset[Capability]] = frozenset(
         {"power.on", "power.off", "power.state"}
     )
@@ -163,3 +167,14 @@ class AdbDriver(PowerDriver, ScreenProvisioner, ScreenUpdater):
         return await AndroidUpdater(transport).update(
             req, host, int(cfg.get("port", 5555)), apk, report
         )
+
+    async def restart_app(self, req: AppRestartRequest) -> AppRestartOutcome:
+        """`app.restart.android` : adresse uniquement depuis `power.adb.host` de l'écran."""
+        if req.platform != "android" or self._transport is None or self._ctx is None:
+            return AppRestartOutcome(ok=False, code="app.restart.unsupported")
+        cfg: dict[str, Any] = getattr(self._ctx, "screen_configs", {}).get(str(req.screen_id), {})
+        host = str(cfg.get("host") or "")
+        if not host:
+            return AppRestartOutcome(ok=False, code="app.restart.adb_unreachable")
+        transport: AdbProvisionTransport = self._transport  # type: ignore[assignment]
+        return await AndroidAppRestarter(transport).restart(host, int(cfg.get("port", 5555)))
