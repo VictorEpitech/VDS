@@ -79,8 +79,8 @@ describe.each(["", "/espace/affichage"])("fiche écran, base « %s »", (b) => {
     await waitFor(() => expect(calls.find((c) => c.method === "POST")?.body).toMatchObject({ name: "restart", args: { scope: "app" } }));
   });
 
-  it("traduit les refus 422 restart_app_unavailable et 409 agent_offline", async () => {
-    for (const [status, code, text] of [[422, "restart_app_unavailable", /relance n'est pas disponible/], [409, "agent_offline", /Agent du site hors ligne/]] as const) {
+  it("traduit les refus 422 restart_app_unavailable, 409 agent_offline et 429 restart_app_too_soon", async () => {
+    for (const [status, code, text] of [[422, "restart_app_unavailable", /relance n'est pas disponible/], [409, "agent_offline", /Agent du site hors ligne/], [429, "restart_app_too_soon", /relance a déjà eu lieu/]] as const) {
       const s = mk(1);
       mockApi(base([s], { [`GET /screens/${s.id}/commands`]: [], [`POST /screens/${s.id}/commands`]: () => errorResponse(status, code) }), b);
       const user = userEvent.setup();

@@ -404,6 +404,7 @@
     "up_to_date": "This screen is already up to date.",
     "apk_unavailable": "No app is available on the server.",
     "restart_app_unavailable": "This relaunch is not available for this screen.",
+    "restart_app_too_soon": "A relaunch just happened. Try again in a few seconds.",
     "agent_offline": "Site agent offline.",
     "agent_outdated": "Site agent too old for this update.",
     "module_disabled": "The ADB power driver is not active.",

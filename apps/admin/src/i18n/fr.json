@@ -404,6 +404,7 @@
     "up_to_date": "Cet écran est déjà à jour.",
     "apk_unavailable": "Aucune application n'est disponible sur le serveur.",
     "restart_app_unavailable": "Cette relance n'est pas disponible pour cet écran.",
+    "restart_app_too_soon": "Une relance a déjà eu lieu à l'instant. Réessayez dans quelques secondes.",
     "agent_offline": "Agent du site hors ligne.",
     "agent_outdated": "Agent du site trop ancien pour cette mise à jour.",
     "module_disabled": "Le pilote d'alimentation ADB n'est pas actif.",
