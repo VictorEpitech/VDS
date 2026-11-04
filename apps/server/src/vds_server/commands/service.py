@@ -42,6 +42,7 @@ ADMIN_ONLY = frozenset({"restart", "cache.resync"})
 SERVER_MARK = "_server"  # posé uniquement par l'ingestion serveur, retiré des données du player
 SERVER_RESULT_KEYS = frozenset({SERVER_MARK, "screenshot_id"})
 MAX_PENDING_PER_SCREEN = 20
+RESTART_APP_MIN_GAP_S = 30
 HEARTBEAT_COMMANDS_MAX = 10
 RESULT_MAX_BYTES = 4096
 DEFAULT_CAPABILITIES = ("cmd.reload",)  # vieux player : seul le provisoire est compris
@@ -201,6 +202,25 @@ class CommandCore:
         ).scalar_one()
         return "agent", agent
 
+    async def _guard_restart_gap(
+        self, screen_id: UUID, live: Sequence[PlayerCommand], now: datetime
+    ) -> None:
+        """Anti-rafale : pas de relance app si une autre est en attente ou finie depuis < 30 s."""
+        gap = timedelta(seconds=RESTART_APP_MIN_GAP_S)
+        recent = (
+            await self._s.execute(
+                select(PlayerCommand.id).where(
+                    PlayerCommand.screen_id == screen_id,
+                    PlayerCommand.name == "restart",
+                    PlayerCommand.args["scope"].as_string() == "app",
+                    PlayerCommand.updated_at > now - gap,
+                )
+            )
+        ).first()
+        pending = any(r.name == "restart" and r.args.get("scope") == "app" for r in live)
+        if recent is not None or pending:
+            raise ApiError("restart_app_too_soon", 429, retry_after_s=RESTART_APP_MIN_GAP_S)
+
     async def publish(self, events: Iterable[Event]) -> None:
         if self._bus is not None:
             for event in events:
@@ -279,6 +299,8 @@ class CommandCore:
                 return dup, False
         if len(live) >= MAX_PENDING_PER_SCREEN:
             raise ApiError("cmd.too_many_pending", 429, retry_after_s=30)
+        if name == "restart" and clean.get("scope") == "app":
+            await self._guard_restart_gap(screen.id, live, now)
         if executor == "agent":
             ttl = min(ttl, 120)  # pas de relance surprise tardive
         row = PlayerCommand(
@@ -431,7 +453,10 @@ class CommandCore:
             row = (
                 await self._s.execute(
                     select(PlayerCommand)
-                    .where(PlayerCommand.id == res.cmd_id, PlayerCommand.device_id == device_id)
+                    .where(PlayerCommand.id == res.cmd_id,
+                        PlayerCommand.device_id == device_id,
+                        PlayerCommand.executor == "player",
+                    )
                     .with_for_update()
                 )
             ).scalar_one_or_none()

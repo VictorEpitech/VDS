@@ -109,7 +109,8 @@ async def test_auto_player_and_explicit(
     r = await send(admin, p, s)
     assert r.status_code == 201, r.text
     assert (r.json()["executor"], r.json()["status"]) == ("player", "queued")
-    assert (await send(admin, p, s, {"via": "player"})).status_code == 201
+    r = await send(admin, p, s, {"via": "player"})  # anti-rafale 30 s, quel que soit l'exécutant
+    assert (r.status_code, r.json()["code"]) == (429, "restart_app_too_soon")
     r = await send(admin, p, s, {"via": "agent"})
     assert (r.status_code, r.json()["code"]) == (409, "agent_offline")  # agent hors ligne
     r = await send(admin, p, s, {"scope": "device", "via": "agent"})
@@ -205,3 +206,36 @@ async def test_roles(
         headers={"Sec-Fetch-Site": "cross-site", "Origin": "https://evil.example"},
     )
     assert cross.status_code == 403
+
+
+async def test_too_soon_after_finished_then_allowed(
+    admin: AsyncClient, app: FastAPI, p: str, setup: dict[str, Any], migrated_db_url: str
+) -> None:
+    s = setup
+    await player(app, admin, p, s, CAPS)
+    assert (await send(admin, p, s)).status_code == 201
+    await sql(migrated_db_url, "UPDATE player_command SET status='ok'")  # terminée, < 30 s
+    r = await send(admin, p, s)
+    assert (r.status_code, r.json()["code"]) == (429, "restart_app_too_soon")
+    await sql(migrated_db_url, "UPDATE player_command SET updated_at = now() - interval '31 s'")
+    assert (await send(admin, p, s)).status_code == 201
+
+
+async def test_player_cannot_close_agent_row(
+    admin: AsyncClient, app: FastAPI, p: str, setup: dict[str, Any], migrated_db_url: str
+) -> None:
+    s = setup
+    await player(app, admin, p, s, None)
+    await set_host(admin, p, s)
+    ws = await online(app, p, s, **HELLO14)
+    r = await send(admin, p, s)
+    assert r.json()["executor"] == "agent"
+    cid = r.json()["id"]
+    async with new_client(app) as pl:
+        token = await pair(admin, pl, p, s["screen"])
+        body = {"app_version": "1", "command_results": [{"cmd_id": cid, "status": "ok"}]}
+        hb = await pl.post(f"{p}/api/v1/player/heartbeat", json=body, headers=hdr(token))
+        assert hb.status_code == 200, hb.text
+    rows = await sql(migrated_db_url, "SELECT status FROM player_command WHERE executor='agent'")
+    assert rows[0][0] == "sent"
+    await ws.close()
