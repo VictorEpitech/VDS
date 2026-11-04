@@ -6,7 +6,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from vds_sdk import EventBus
 
+from vds_server.agents.queue import CommandQueue
 from vds_server.commands import schemas as sc
+from vds_server.commands.restart_app import RestartContext
 from vds_server.commands.service import ADMIN_ONLY, Actor, CommandCore
 from vds_server.core.auth import Principal
 from vds_server.core.errors import ApiError
@@ -31,11 +33,18 @@ def screenshot_out(row: Screenshot) -> sc.ScreenshotOut:
 
 
 class CommandAdmin:
-    def __init__(self, session: AsyncSession, bus: EventBus | None, actor: Principal) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        bus: EventBus | None,
+        actor: Principal,
+        restart: RestartContext | None = None,
+        queue: CommandQueue | None = None,
+    ) -> None:
         self._s = session
         self._actor = actor
         self._scope = PerimeterScope(session)
-        self.core = CommandCore(session, bus)
+        self.core = CommandCore(session, bus, restart, queue)
 
     async def screen(self, screen_id: UUID) -> Screen:
         """404 sans nom hors périmètre (jamais 403 : l'existence ne fuit pas)."""

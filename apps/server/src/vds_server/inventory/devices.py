@@ -10,6 +10,7 @@ from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vds_server.commands.access import screenshot_out
+from vds_server.commands.restart_app import RestartContext, availability_many
 from vds_server.commands.service import capabilities_of
 from vds_server.db.models import Screen, ScreenDevice
 from vds_server.db.models_command import Screenshot
@@ -97,12 +98,19 @@ def kiosk_state(
     return out
 
 
-async def screens_out(session: AsyncSession, screens: Iterable[Screen]) -> list[sc.ScreenOut]:
+async def screens_out(
+    session: AsyncSession, screens: Iterable[Screen], restart: RestartContext | None = None
+) -> list[sc.ScreenOut]:
     rows = list(screens)
     devices = await latest_devices(session, (r.id for r in rows))
     requests = await kiosk.load_requests(session, rows)
     shots = await _last_screenshots(session, [r.id for r in rows])
     now = datetime.now(UTC)
+    avail = (
+        await availability_many(session, restart, rows, devices, now)
+        if restart is not None and rows
+        else {}
+    )
     out = []
     for r in rows:
         item = sc.ScreenOut.model_validate(r)
@@ -111,6 +119,8 @@ async def screens_out(session: AsyncSession, screens: Iterable[Screen]) -> list[
         item.kiosk = kiosk_state(requests[r.id], dev, now)
         if dev is not None and dev.revoked_at is None:
             item.capabilities = capabilities_of(dev.last_heartbeat)
+        if r.id in avail:
+            item.restart_app = avail[r.id]
         shot = shots.get(r.id)
         item.last_screenshot = screenshot_out(shot) if shot is not None else None
         out.append(item)

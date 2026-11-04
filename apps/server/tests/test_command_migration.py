@@ -54,6 +54,14 @@ async def test_command_constraints(session: AsyncSession) -> None:
     await _rejected(session, INS, **_args(scr, n="power.set"))
     await _rejected(session, INS, **_args(scr, st="done"))
     await _rejected(session, INS, **_args(scr, k="robot"))
+    # 0022 : exécutant 'player' par défaut, 'agent' accepté, autre valeur refusée
+    got = (await session.execute(text(INS), _args(scr))).scalar_one()
+    row = await session.execute(text("SELECT executor FROM player_command WHERE id=:i"), {"i": got})
+    assert row.scalar_one() == "player"
+    await _rejected(session, "UPDATE player_command SET executor='x' WHERE id=:i", i=got)
+    await session.execute(
+        text("UPDATE player_command SET executor='agent' WHERE id=:i"), {"i": got}
+    )
     # idempotence : (actor_id, request_key) unique si request_key non nul
     await session.execute(text(INS), _args(scr, r="k1"))
     await _rejected(session, INS, **_args(scr, r="k1"))

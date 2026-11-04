@@ -4,7 +4,16 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import CheckConstraint, ForeignKey, Index, Integer, Text, UniqueConstraint, text
+from sqlalchemy import (
+    CheckConstraint,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -24,6 +33,7 @@ class PlayerCommand(Base, Timestamps):
             "status IN ('queued','sent','ok','failed','expired','rejected','cancelled')",
             name="status",
         ),
+        CheckConstraint("executor IN ('player','agent')", name="executor"),
         CheckConstraint("actor_kind IN ('user','module','system')", name="actor_kind"),
         Index(
             "uq_player_command_request_key",
@@ -49,6 +59,8 @@ class PlayerCommand(Base, Timestamps):
     name: Mapped[str] = mapped_column(Text)
     args: Mapped[Any] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
     status: Mapped[str] = mapped_column(Text, server_default="queued")
+    # vds-core 1.14.0 : 'player' (livrée au player) ou 'agent' (commande d'agent `app.restart`)
+    executor: Mapped[str] = mapped_column(String(8), server_default="player")
     code: Mapped[str | None] = mapped_column(Text)
     request_key: Mapped[str | None] = mapped_column(Text)
     batch_id: Mapped[UUID | None] = mapped_column()

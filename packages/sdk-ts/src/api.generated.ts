@@ -4033,6 +4033,12 @@ export interface components {
             /** Done At */
             done_at: string | null;
             /**
+             * Executor
+             * @default player
+             * @enum {string}
+             */
+            executor: "player" | "agent";
+            /**
              * Expires At
              * Format: date-time
              */
@@ -4315,6 +4321,27 @@ export interface components {
         RejectIn: {
             /** Comment */
             comment: string;
+        };
+        /**
+         * RestartAppAvailability
+         * @description Relance de l'application (vds-core 1.14.0) : exécutants possibles maintenant.
+         */
+        RestartAppAvailability: {
+            /**
+             * Available
+             * @default false
+             */
+            available: boolean;
+            /**
+             * Reason
+             * @default no_capability
+             */
+            reason: ("no_capability" | "player_offline" | "agent_offline" | "agent_outdated" | "module_disabled" | "no_adb_host") | null;
+            /**
+             * Via
+             * @default []
+             */
+            via: ("player" | "agent")[];
         };
         /** RuleIn */
         RuleIn: {
@@ -4654,6 +4681,14 @@ export interface components {
              * @enum {string}
              */
             orientation: "landscape" | "portrait";
+            /**
+             * @default {
+             *       "available": false,
+             *       "reason": "no_capability",
+             *       "via": []
+             *     }
+             */
+            restart_app: components["schemas"]["RestartAppAvailability"];
             /**
              * Site Id
              * Format: uuid

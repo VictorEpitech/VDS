@@ -20,6 +20,7 @@ from vds_server.agents.cache import site_media_ids
 from vds_server.agents.hub import AgentHub
 from vds_server.agents.plan import PlanPusher
 from vds_server.agents.queue import MODULES_KIND, CommandQueue, notify
+from vds_server.commands.restart_app import RestartAppEvents, RestartContext
 from vds_server.commands.screenshots import CaptureSweeper
 from vds_server.config.reader import ModuleConfigReader
 from vds_server.config.registry_schemas import RegistrySchemaProvider
@@ -95,6 +96,10 @@ class Runtime:
         self.provision_events = ProvisionEvents(self.maker, self.bus)
         self.apk_update_events = ApkUpdateEvents(self.maker, self.bus)
         self.apk_update_host = host_reader(self.maker, self.schemas)
+        self.restart_context = RestartContext(
+            lambda: self.registry.app_restart_modules(), self.apk_update_host
+        )
+        self.restart_app_events = RestartAppEvents(self.maker, self.bus)
         self.provision_events.register(self.bus.subscribe)
         self.discovery_events = DiscoveryEvents(self.maker, self.bus)
         self.agent_bridge.discovery_batch = self.discovery_events.on_batch
@@ -138,6 +143,7 @@ class Runtime:
         await self.provision_events.on_cmd_result(cmd_id, status, code, data)
         await self.discovery_events.on_cmd_result(cmd_id, status, code, data)
         await self.apk_update_events.on_cmd_result(cmd_id, status, code, data)
+        await self.restart_app_events.on_cmd_result(cmd_id, status, code, data)
 
     async def _modules_changed(self, _event: Event) -> None:
         """Propagé à tous les workers par NOTIFY (chacun ferme ses sessions d'agent)."""

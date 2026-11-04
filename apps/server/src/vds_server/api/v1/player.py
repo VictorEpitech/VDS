@@ -153,7 +153,7 @@ def build_router(rt: Runtime) -> APIRouter:
         )
         if replayed:
             response.status_code = 200
-        out = (await screens_out(session, [screen]))[0]
+        out = (await screens_out(session, [screen], rt.restart_context))[0]
         return isc.ScreenPaired(
             screen=out,
             pairing=isc.PairingStateOut(

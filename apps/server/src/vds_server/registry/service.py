@@ -378,6 +378,20 @@ class ModuleRegistry:
                     out.append((mid, d.manifest.version, platforms))
         return out
 
+    def app_restart_modules(self) -> list[tuple[str, str, frozenset[str]]]:
+        """(id, version, plateformes) des modules site-agent actifs déclarant `app.restart.*`."""
+        out: list[tuple[str, str, frozenset[str]]] = []
+        for mid, d in self._known.items():
+            if d.error is None and mid in self._running and "site-agent" in d.manifest.targets:
+                platforms = frozenset(
+                    c.removeprefix("app.restart.")
+                    for c in d.manifest.capabilities
+                    if c.startswith("app.restart.") and len(c) > len("app.restart.")
+                )
+                if platforms:
+                    out.append((mid, d.manifest.version, platforms))
+        return out
+
     def discovery_modules(self) -> list[tuple[str, str]]:
         """(id, version) des modules site-agent actifs déclarant la capacité `discovery.lan`."""
         return [

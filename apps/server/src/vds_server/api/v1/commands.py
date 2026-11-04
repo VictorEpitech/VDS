@@ -29,7 +29,7 @@ def build_router(rt: Runtime) -> APIRouter:
     Device = Annotated[DevicePrincipal, Depends(rt.device_auth)]
 
     def admin_svc(session: Session, actor: Editor) -> CommandAdmin:
-        return CommandAdmin(session, rt.bus, actor)
+        return CommandAdmin(session, rt.bus, actor, rt.restart_context, rt.command_queue)
 
     Svc = Annotated[CommandAdmin, Depends(admin_svc)]
 

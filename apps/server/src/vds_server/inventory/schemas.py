@@ -127,6 +127,24 @@ class KioskOut(BaseModel):
     mismatch: bool = False
 
 
+RestartAppReason = Literal[
+    "no_capability",
+    "player_offline",
+    "agent_offline",
+    "agent_outdated",
+    "module_disabled",
+    "no_adb_host",
+]
+
+
+class RestartAppAvailability(BaseModel):
+    """Relance de l'application (vds-core 1.14.0) : exécutants possibles maintenant."""
+
+    available: bool = False
+    via: list[Literal["player", "agent"]] = []  # ordre de préférence
+    reason: RestartAppReason | None = "no_capability"  # si available = False
+
+
 class ScreenOut(_Out):
     id: UUID
     site_id: UUID
@@ -139,6 +157,7 @@ class ScreenOut(_Out):
     # vds-core 1.11.0 : capacités annoncées par le player (vide : écran sans appareil actif)
     capabilities: list[str] = []
     last_screenshot: ScreenshotOut | None = None
+    restart_app: RestartAppAvailability = RestartAppAvailability()
 
 
 class PairingStateOut(BaseModel):

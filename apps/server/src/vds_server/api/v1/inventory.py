@@ -106,21 +106,23 @@ def build_router(rt: Runtime) -> APIRouter:
                 and (not issues or health[r.id].to_handle)
                 and (not status or health[r.id].status in status)
             ]
-        return await screens_out(session, rows)
+        return await screens_out(session, rows, rt.restart_context)
 
     @router.post("/screens", response_model=sc.ScreenOut, status_code=201)
     async def create_screen(body: sc.ScreenCreate, s: Write, session: Session) -> sc.ScreenOut:
-        return (await screens_out(session, [await s.create_screen(body)]))[0]
+        return (await screens_out(session, [await s.create_screen(body)], rt.restart_context))[0]
 
     @router.get("/screens/{screen_id}", response_model=sc.ScreenOut)
     async def get_screen(screen_id: UUID, s: Read, session: Session) -> sc.ScreenOut:
-        return (await screens_out(session, [await s.get_screen(screen_id)]))[0]
+        return (await screens_out(session, [await s.get_screen(screen_id)], rt.restart_context))[0]
 
     @router.patch("/screens/{screen_id}", response_model=sc.ScreenOut)
     async def patch_screen(
         screen_id: UUID, body: sc.ScreenPatch, s: Write, session: Session
     ) -> sc.ScreenOut:
-        return (await screens_out(session, [await s.update_screen(screen_id, body)]))[0]
+        return (
+            await screens_out(session, [await s.update_screen(screen_id, body)], rt.restart_context)
+        )[0]
 
     @router.delete("/screens/{screen_id}", status_code=204)
     async def delete_screen(screen_id: UUID, s: Write, session: Session) -> Response:

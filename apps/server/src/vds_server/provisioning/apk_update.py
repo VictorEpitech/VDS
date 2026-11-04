@@ -86,11 +86,14 @@ class FleetApkOut(BaseModel):
 
 # --- éligibilité (fonction pure) ---------------------------------------------------------------
 def agent_supports(
-    last_hello: object, modules: list[tuple[str, str, frozenset[str]]], platform: str
+    last_hello: object,
+    modules: list[tuple[str, str, frozenset[str]]],
+    platform: str,
+    min_core: Version = MIN_CORE,
 ) -> Literal["ok", "agent_outdated", "module_disabled"]:
     hello = last_hello if isinstance(last_hello, dict) else {}
     try:
-        if Version.parse(str(hello.get("core", "0"))) < MIN_CORE:
+        if Version.parse(str(hello.get("core", "0"))) < min_core:
             return "agent_outdated"
     except ValueError:
         return "agent_outdated"

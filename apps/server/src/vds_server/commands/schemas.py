@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 CommandName = Literal["reload", "restart", "identify", "screenshot", "cache.resync"]
 CommandStatus = Literal["queued", "sent", "ok", "failed", "expired", "rejected", "cancelled"]
+Executor = Literal["player", "agent"]
 Trigger = Literal["on_demand", "periodic"]
 
 
@@ -26,6 +27,7 @@ class PlayerCommandOut(BaseModel):
     name: CommandName
     args: dict[str, Any]
     status: CommandStatus
+    executor: Executor = "player"  # vds-core 1.14.0
     code: str | None
     requested_by: str | None  # nom affichable, jamais d'identifiant technique
     created_at: datetime

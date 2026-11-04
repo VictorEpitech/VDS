@@ -7,7 +7,7 @@ Table dédiée `player_command` (la file d'agent `remote_command` est append-onl
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID
 
 from pydantic import ValidationError
@@ -17,12 +17,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from vds_sdk import Event, EventBus
 from vds_sdk.wire import PLAYER_COMMAND_ARGS, CmdResult
 
-from vds_server.agents.queue import SCREEN_KIND, notify_raw
+from vds_server.agents.queue import SCREEN_KIND, CommandQueue, notify_raw
+from vds_server.agents.service import agent_status
 from vds_server.commands import schemas as sc
 from vds_server.core import audit
 from vds_server.core.errors import ApiError
 from vds_server.db.models import Screen, ScreenDevice, UserAccount
 from vds_server.db.models_command import PlayerCommand
+
+if TYPE_CHECKING:
+    from vds_server.commands.restart_app import RestartContext
+from vds_server.db.models_power import SiteAgent
 
 PENDING = ("queued", "sent")
 FAILURES = ("failed", "expired", "rejected")
@@ -146,9 +151,55 @@ async def expire_device_commands(
 
 
 class CommandCore:
-    def __init__(self, session: AsyncSession, bus: EventBus | None) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        bus: EventBus | None,
+        restart: "RestartContext | None" = None,
+        queue: CommandQueue | None = None,
+    ) -> None:
         self._s = session
         self._bus = bus
+        self._restart = restart  # None : chemin player seul (modules, tests)
+        self._queue = queue
+
+    async def _pick_executor(
+        self, screen: Screen, device: ScreenDevice, via: str
+    ) -> tuple[Literal["player", "agent"], SiteAgent | None]:
+        """Choix de l'exécutant de `restart{scope:"app"}` (vds-core 1.14.0)."""
+        from vds_server.commands import restart_app as ra
+
+        if self._restart is None:
+            if via == "agent":
+                raise ApiError("restart_app_unavailable", 422)
+            return "player", None
+        avail = (
+            await ra.availability_many(
+                self._s, self._restart, [screen], {screen.id: device}, datetime.now(UTC)
+            )
+        )[screen.id]
+        if via == "player" or (via == "auto" and "player" in avail.via):
+            return "player", None
+        if "agent" not in avail.via:
+            if via == "agent" and device.platform == ra.PLATFORM:
+                site_agent = (
+                    await self._s.execute(
+                        select(SiteAgent).where(
+                            SiteAgent.site_id == screen.site_id, SiteAgent.revoked_at.is_(None)
+                        )
+                    )
+                ).scalar_one_or_none()
+                if site_agent is None or agent_status(site_agent) != "online":
+                    raise ApiError("agent_offline", 409)
+            raise ApiError("restart_app_unavailable", 422, reason=avail.reason)
+        agent = (
+            await self._s.execute(
+                select(SiteAgent).where(
+                    SiteAgent.site_id == screen.site_id, SiteAgent.revoked_at.is_(None)
+                )
+            )
+        ).scalar_one()
+        return "agent", agent
 
     async def publish(self, events: Iterable[Event]) -> None:
         if self._bus is not None:
@@ -195,7 +246,13 @@ class CommandCore:
         ).scalar_one_or_none()
         if device is None:
             raise ApiError("cmd.no_device", 409)
-        if capability_of(name, clean) not in capabilities_of(device.last_heartbeat):
+        executor: Literal["player", "agent"] = "player"
+        agent: SiteAgent | None = None
+        if name == "restart" and clean.get("scope") == "app":
+            executor, agent = await self._pick_executor(screen, device, clean.get("via", "auto"))
+        if executor == "player" and capability_of(name, clean) not in capabilities_of(
+            device.last_heartbeat
+        ):
             raise ApiError("cmd.unsupported", 409)
         now = datetime.now(UTC)
         await self._s.execute(
@@ -222,12 +279,16 @@ class CommandCore:
                 return dup, False
         if len(live) >= MAX_PENDING_PER_SCREEN:
             raise ApiError("cmd.too_many_pending", 429, retry_after_s=30)
+        if executor == "agent":
+            ttl = min(ttl, 120)  # pas de relance surprise tardive
         row = PlayerCommand(
+            executor=executor,
             screen_id=screen.id,
             device_id=device.id,
             name=name,
             args=clean,
-            status="queued",
+            status="sent" if executor == "agent" else "queued",
+            sent_at=now if executor == "agent" else None,
             request_key=request_key,
             batch_id=batch_id,
             actor_kind=actor.kind,
@@ -249,6 +310,7 @@ class CommandCore:
                 "command_id": str(row.id),
                 "name": name,
                 "args": clean,
+                "executor": executor,
                 "batch_id": str(batch_id) if batch_id else None,
             },
         )
@@ -276,7 +338,33 @@ class CommandCore:
                 )
             ]
         )
+        if executor == "agent" and agent is not None:
+            await self._send_to_agent(row, agent, actor)
         return row, True
+
+    async def _send_to_agent(self, row: PlayerCommand, agent: SiteAgent, actor: Actor) -> None:
+        """Commande d'agent `app.restart` ; échec d'envoi => la ligne passe à `failed`."""
+        from vds_server.commands import restart_app as ra
+
+        failed: Event | None = None
+        try:
+            if self._queue is None or row.screen_id is None:
+                raise RuntimeError("no queue")
+            await self._queue.enqueue(
+                "agent",
+                agent.id,
+                ra.CMD_NAME,
+                screen_id=row.screen_id,
+                args=ra.agent_args(row.id, row.screen_id),
+                ttl_s=ra.CMD_TTL_S,
+                created_by=_uuid_or_none(actor.id),
+            )
+        except Exception:
+            ra.log.warning("app.restart enqueue failed")
+            failed = terminate(self._s, row, "failed", "app.restart.enqueue_failed")
+            await self._s.commit()
+        if failed is not None:
+            await self.publish([failed])
 
     async def _by_key(self, actor: Actor, request_key: str | None) -> PlayerCommand | None:
         if request_key is None or actor.id is None:
@@ -306,6 +394,7 @@ class CommandCore:
                     select(PlayerCommand)
                     .where(
                         PlayerCommand.device_id == device_id,
+                        PlayerCommand.executor == "player",
                         PlayerCommand.status.in_(PENDING),
                         PlayerCommand.expires_at > datetime.now(UTC),
                     )
@@ -398,6 +487,7 @@ class CommandCore:
                 name=r.name,  # type: ignore[arg-type]
                 args=dict(r.args or {}),
                 status=r.status,  # type: ignore[arg-type]
+                executor=r.executor,  # type: ignore[arg-type]
                 code=r.code,
                 requested_by=names.get(r.actor_id or "") if r.actor_kind == "user" else None,
                 created_at=r.created_at,
@@ -407,6 +497,13 @@ class CommandCore:
             )
             for r in rows
         ]
+
+
+def _uuid_or_none(raw: str | None) -> UUID | None:
+    try:
+        return UUID(raw) if raw else None
+    except ValueError:
+        return None
 
 
 def _shot_id(row: PlayerCommand) -> UUID | None:
