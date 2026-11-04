@@ -13,12 +13,13 @@ import time
 from collections.abc import Callable
 from typing import Any
 
+from pydantic import ValidationError
 from vds_sdk.agent import AppRestarter, AppRestartOutcome, AppRestartRequest
 
 log = logging.getLogger("vds.agent.app_restart")
 
 RESTART_TIMEOUT_S = 28.0  # sous le délai de commande serveur (30 s)
-MIN_GAP_S = 30.0  # miroir de MIN_RESTART_GAP_MS côté serveur
+MIN_GAP_S = 30.0  # anti-rafale local (le serveur applique aussi 30 s : restart_app_too_soon)
 
 
 class AppRestartRunner:
@@ -49,9 +50,10 @@ class AppRestartRunner:
     async def run(
         self, screen_id: str, args: dict[str, Any]
     ) -> tuple[str, str | None, dict[str, Any]]:
-        req = AppRestartRequest.model_validate(
-            {"request_id": args["request_id"], "platform": args["platform"], "screen_id": screen_id}
-        )
+        try:
+            req = AppRestartRequest.model_validate({**args, "screen_id": screen_id})
+        except ValidationError:
+            return self._fail("app.restart.unsupported")
         provider = self._restarters(req.platform)
         if provider is None:
             return self._fail("app.restart.unsupported")

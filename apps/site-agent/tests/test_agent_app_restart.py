@@ -84,6 +84,13 @@ async def test_busy_when_screen_or_host_locked() -> None:
         assert (await r.run(SID, args()))[1] == "app.restart.busy"
 
 
+async def test_missing_key_fails_cleanly() -> None:
+    f = FakeRestarter()
+    r = runner(f)
+    out = await r.run(SID, {"platform": "android"})  # request_id absent
+    assert out[0] == "failed" and out[1] == "app.restart.unsupported" and f.calls == []
+
+
 async def test_burst_limited_to_one_per_30s() -> None:
     now = [100.0]
     f = FakeRestarter()
