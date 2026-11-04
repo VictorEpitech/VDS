@@ -447,6 +447,12 @@ export interface components {
              * @enum {string}
              */
             scope: "app" | "device";
+            /**
+             * Via
+             * @default auto
+             * @enum {string}
+             */
+            via: "auto" | "player" | "agent";
         };
         /** ScheduleChanged */
         ScheduleChanged: {

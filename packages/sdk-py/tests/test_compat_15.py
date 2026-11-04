@@ -66,6 +66,7 @@ def test_version_and_permission() -> None:
         "1.11.0",
         "1.12.0",
         "1.13.0",
+        "1.14.0",
     }
     assert "network.discover" in PERMISSIONS
 

@@ -46,7 +46,7 @@ def manifest(**over: Any) -> dict[str, Any]:
 
 
 def test_version_and_events() -> None:
-    assert CORE_API_VERSION in {"1.12.0", "1.13.0"}
+    assert CORE_API_VERSION in {"1.12.0", "1.13.0", "1.14.0"}
     assert NEW == CORE_EVENTS_1_12 - CORE_EVENTS_1_11
     assert CORE_EVENT_PAYLOAD_1_11.items() <= CORE_EVENT_PAYLOAD_1_12.items()
     assert CRITICAL_EVENTS_1_12 == CRITICAL_EVENTS_1_11

@@ -787,6 +787,16 @@
           ],
           "title": "Scope",
           "type": "string"
+        },
+        "via": {
+          "default": "auto",
+          "enum": [
+            "auto",
+            "player",
+            "agent"
+          ],
+          "title": "Via",
+          "type": "string"
         }
       },
       "required": [
@@ -856,7 +866,8 @@
     "cache.sync",
     "screen.provision",
     "discovery.scan",
-    "apk.update"
+    "apk.update",
+    "app.restart"
   ],
   "x-player-commands": [
     "reload",

@@ -191,7 +191,53 @@ def check_updater(instance: object, capabilities: list[str]) -> None:
         raise ContractError("module.updater_platform_mismatch")
 
 
+class AppRestartRequest(BaseModel):
+    """Relance de l'application VDS (vds-core 1.14.0). Ni URL, ni adresse : le module résout
+    `host`/`port` de l'écran dans sa propre configuration."""
+
+    request_id: UUID  # = player_command.id
+    screen_id: UUID
+    platform: str = Field(pattern=r"^[a-z][a-z0-9_-]*$")
+
+
+class AppRestartOutcome(BaseModel):
+    ok: bool
+    code: str | None = Field(default=None, pattern=r"^[a-z0-9_.]{1,96}$")
+    # app.restart.{adb_unreachable, adb_unauthorized, not_installed, launch_failed, busy,
+    #   unsupported}
+
+
+@runtime_checkable
+class AppRestarter(Protocol):
+    platforms: ClassVar[frozenset[str]]  # capacité manifeste `app.restart.<platform>`
+
+    async def restart_app(self, req: AppRestartRequest) -> AppRestartOutcome: ...
+
+
+def app_restart_platforms(capabilities: list[str]) -> frozenset[str]:
+    return frozenset(
+        c.removeprefix("app.restart.") for c in capabilities if c.startswith("app.restart.")
+    )
+
+
+def check_app_restarter(instance: object, capabilities: list[str]) -> None:
+    """Au chargement : `app.restart.<p>` déclaré => `AppRestarter` couvrant <p>."""
+    declared = app_restart_platforms(capabilities)
+    if not declared:
+        return
+    if not isinstance(instance, AppRestarter):
+        raise ContractError("module.app_restarter_missing")
+    platforms = getattr(instance, "platforms", None)
+    if not isinstance(platforms, frozenset) or not declared <= platforms:
+        raise ContractError("module.app_restarter_platform_mismatch")
+
+
 __all__ = [
+    "AppRestartOutcome",
+    "AppRestartRequest",
+    "AppRestarter",
+    "app_restart_platforms",
+    "check_app_restarter",
     "ApkUpdateOutcome",
     "ApkUpdateRequest",
     "ScreenUpdater",

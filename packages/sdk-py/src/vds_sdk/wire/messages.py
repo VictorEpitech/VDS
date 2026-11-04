@@ -8,7 +8,7 @@ from ipaddress import IPv4Network
 from typing import Any, Literal, get_args
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from ..agent.discovery import MAX_BATCH, MAX_DEVICES, DiscoveredDevice
 from ..agent.provision import TICKET_RE, ApkRef, ProvisionStepId, parse_lan_address
@@ -28,6 +28,7 @@ AGENT_COMMANDS = (
     "screen.provision",  # 1.3 : un agent 1.2 répond unknown_command
     "discovery.scan",  # 1.5 : un agent 1.4 répond unknown_command
     "apk.update",  # 1.6 : un agent 1.5 répond unknown_command
+    "app.restart",  # 1.14 : un agent 1.13 répond unknown_command
 )
 PLAYER_COMMANDS_1_2 = ("reload", "identify", "screenshot", "power.set", "power.probe")
 PLAYER_COMMANDS = (
@@ -248,6 +249,21 @@ class IdentifyArgs(_M):
 
 class RestartArgs(_M):
     scope: Literal["app", "device"]
+    via: Literal["auto", "player", "agent"] = "auto"  # 1.14 ; "agent" interdit avec scope="device"
+
+    @model_validator(mode="after")
+    def _via_agent_app_only(self) -> RestartArgs:
+        if self.via == "agent" and self.scope == "device":
+            raise ValueError("restart.via_agent_requires_app")
+        return self
+
+
+class AppRestartArgs(_M):
+    """Commande fermée `app.restart` (1.14) : `request_id` = player_command.id."""
+
+    request_id: UUID
+    platform: str = Field(pattern=r"^[a-z][a-z0-9_-]*$")
+    screen_id: UUID | None = None
 
 
 class PlayerPowerSetArgs(_M):
@@ -265,6 +281,7 @@ AGENT_COMMAND_ARGS: dict[str, type[_M]] = {
     "screen.provision": ScreenProvisionArgs,
     "discovery.scan": DiscoveryScanArgs,
     "apk.update": ApkUpdateArgs,
+    "app.restart": AppRestartArgs,
 }
 PLAYER_COMMAND_ARGS: dict[str, type[_M]] = {
     "reload": EmptyArgs,

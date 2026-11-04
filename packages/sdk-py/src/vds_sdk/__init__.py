@@ -1,6 +1,6 @@
-"""Contrat de module VDS (vds-core 1.13.0)."""
+"""Contrat de module VDS (vds-core 1.14.0)."""
 
-CORE_API_VERSION = "1.13.0"
+CORE_API_VERSION = "1.14.0"
 
 from . import permissions  # noqa: E402
 from .bus import Event, EventBus, ScopedBus  # noqa: E402
