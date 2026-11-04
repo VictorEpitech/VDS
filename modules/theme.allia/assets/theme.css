@@ -188,6 +188,14 @@ code, kbd, samp, .vds-mono { font-family: var(--vds-font-mono); }
   -webkit-mask-image: url("icons/media.svg");
   mask-image: url("icons/media.svg");
 }
+.vds-icon[data-icon="video"] {
+  -webkit-mask-image: url("icons/video.svg");
+  mask-image: url("icons/video.svg");
+}
+.vds-icon[data-icon="document"] {
+  -webkit-mask-image: url("icons/document.svg");
+  mask-image: url("icons/document.svg");
+}
 .vds-icon[data-icon="playlist"] {
   -webkit-mask-image: url("icons/playlist.svg");
   mask-image: url("icons/playlist.svg");

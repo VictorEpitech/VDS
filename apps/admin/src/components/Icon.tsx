@@ -18,6 +18,8 @@ export const ICON_NAMES = [
   "move_up",
   "move_down",
   "media",
+  "video",
+  "document",
   "playlist",
   "schedule",
   "revoke",
