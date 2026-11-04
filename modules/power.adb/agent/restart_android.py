@@ -27,6 +27,17 @@ class AndroidAppRestarter:
     def __init__(self, transport: AdbProvisionTransport) -> None:
         self._t = transport
 
+    async def _launch(self, host: str, port: int) -> bool:
+        """`am start`, retenté une fois (échec ou délai) après le force-stop."""
+        for attempt in range(2):
+            try:
+                if not _bad(await self._t.shell(host, port, CMD_LAUNCH, SHELL_TIMEOUT)):
+                    return True
+            except (AdbError, TimeoutError):
+                if attempt == 1:
+                    raise
+        return False
+
     async def restart(self, host: str, port: int) -> AppRestartOutcome:
         try:
             addr = ensure_lan_address(ipaddress.ip_address(host))
@@ -42,7 +53,7 @@ class AndroidAppRestarter:
             if not _VERSION_RE.search(await self._t.shell(host, port, CMD_PACKAGES, SHELL_TIMEOUT)):
                 return _fail("not_installed")
             await self._t.shell(host, port, CMD_FORCE_STOP, SHELL_TIMEOUT)
-            if _bad(await self._t.shell(host, port, CMD_LAUNCH, SHELL_TIMEOUT)):
+            if not await self._launch(host, port):
                 return _fail("launch_failed")
         except AdbError as e:
             denied = e.code == "power.adb.unauthorized"

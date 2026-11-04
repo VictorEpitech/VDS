@@ -568,3 +568,40 @@ async def test_restart_refuses_public_address() -> None:
     d._ctx.screen_configs[SID] = {"host": "8.8.8.8"}
     req = AppRestartRequest(request_id=uuid4(), screen_id=SID, platform="android")
     assert (await d.restart_app(req)).code == "app.restart.adb_unreachable"
+
+
+class _FlakyLaunch:
+    """Transport factice (aucun réseau) : `am start` échoue `fails` fois."""
+
+    def __init__(self, fails: int, exc: Exception | None = None) -> None:
+        self.fails, self.exc, self.launches = fails, exc, 0
+
+    async def probe(self, *a, **k) -> str:  # type: ignore[no-untyped-def]
+        return "ok"
+
+    async def shell(self, host, port, command, timeout) -> str:  # type: ignore[no-untyped-def]
+        if "list packages" in command:
+            return "package:app.vds.player versionCode:7"
+        if "am start" in command:
+            self.launches += 1
+            if self.launches <= self.fails:
+                if self.exc:
+                    raise self.exc
+                return "Error: Activity class does not exist"
+        return ""
+
+
+async def _restart_flaky(t, monkeypatch):  # type: ignore[no-untyped-def]
+    mod = next(m for n, m in sys.modules.items() if n.endswith("restart_android"))
+    monkeypatch.setattr(mod, "ensure_lan_address", lambda ip: ip)
+    return await mod.AndroidAppRestarter(t).restart("127.0.0.1", 5555)
+
+
+async def test_restart_retries_am_start_once(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    mod = next(m for n, m in sys.modules.items() if n.endswith("restart_android"))
+    for exc in (None, TimeoutError(), mod.AdbError("power.adb.protocol")):
+        t = _FlakyLaunch(1, exc)
+        assert (await _restart_flaky(t, monkeypatch)).ok and t.launches == 2
+    t = _FlakyLaunch(2)
+    assert (await _restart_flaky(t, monkeypatch)).code == "app.restart.launch_failed"
+    assert t.launches == 2  # une seule nouvelle tentative
