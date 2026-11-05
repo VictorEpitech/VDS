@@ -29,6 +29,18 @@ Sans secrets de signature, aucune APK n'est produite et l'image n'en contient pa
 
 ## Installer sur la TCL
 
+### Déploiement automatique en 1 commande
+
+```powershell
+# PowerShell (Windows)
+.\deploy-tcl.ps1 -TvIp 192.168.1.100 -ServerUrl "https://allia-innovation.fr/espace/affichage" -DeviceOwner
+
+# Bash (Linux/macOS)
+./deploy-tcl.sh 192.168.1.100 "https://allia-innovation.fr/espace/affichage" true
+```
+
+### Déploiement manuel pas à pas
+
 1. Sur la TV : Paramètres > Système > À propos, taper 7 fois sur « Build » ; Options pour les développeurs > Débogage USB et **Débogage réseau** (ADB sans fil).
 2. Depuis le poste : `adb connect <ip-tv>:5555`, accepter l'empreinte sur la TV.
 3. `adb install -r app-release.apk`

@@ -1,6 +1,22 @@
 # VDS Player pour Raspberry Pi (Chromium kiosque)
 
-Fichiers à poser par l'image Pi (aucun n'est exécuté ici) :
+### Déploiement automatique en 1 commande
+
+Sur le Raspberry Pi :
+```bash
+sudo ./install.sh https://allia-innovation.fr/espace/affichage
+```
+
+À distance depuis votre poste de travail (SSH) :
+```powershell
+# Depuis Windows PowerShell
+.\deploy-pi.ps1 -PiHost 192.168.1.50 -User pi -ServerUrl "https://allia-innovation.fr/espace/affichage"
+
+# Depuis Linux / macOS
+./deploy-pi.sh 192.168.1.50 pi "https://allia-innovation.fr/espace/affichage"
+```
+
+### Fichiers à poser par l'image Pi (aucun n'est exécuté ici) :
 
 | Fichier | Destination |
 | --- | --- |
