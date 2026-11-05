@@ -1,0 +1,35 @@
+{
+  "config": {
+    "auth_studio_allia": {
+      "session_url": {
+        "title": "Studio session check URL",
+        "description": "Internal Next.js endpoint (/api/espace/vds/session)."
+      },
+      "shared_secret": {
+        "title": "Studio shared secret",
+        "description": "Secret passed in x-vds-secret header."
+      },
+      "cache_ttl_seconds": {
+        "title": "Session cache TTL (seconds)",
+        "description": "Memory cache validity for session fingerprints."
+      },
+      "login_url": {
+        "title": "Studio sign-in URL",
+        "description": "Sign-in page of Allia Studio."
+      },
+      "logout_url": {
+        "title": "Studio sign-out URL",
+        "description": "Sign-out page of Allia Studio."
+      }
+    }
+  },
+  "errors": {
+    "auth": {
+      "studio_financeur_forbidden": "Funder role does not have access to display.",
+      "studio_role_unauthorized": "Inactive account or unauthorized role.",
+      "studio_secret_mismatch": "Invalid Allia Studio shared secret.",
+      "cross_site_forbidden": "Cross-site request rejected.",
+      "origin_mismatch": "Unauthorized request origin."
+    }
+  }
+}

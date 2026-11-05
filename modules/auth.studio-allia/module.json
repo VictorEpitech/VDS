@@ -1,0 +1,43 @@
+{
+  "id": "auth.studio-allia",
+  "version": "0.1.0",
+  "core": ">=1.0 <2.0",
+  "kind": "auth-provider",
+  "name": {
+    "fr": "Studio Allia",
+    "en": "Allia Studio"
+  },
+  "description": {
+    "fr": "Connexion unique déléguée au Studio Allia (mode hébergé).",
+    "en": "Single sign-on delegated to Allia Studio (hosted mode)."
+  },
+  "targets": [
+    "server"
+  ],
+  "entrypoints": {
+    "server": "server.module:StudioAlliaAuth"
+  },
+  "requires": {},
+  "capabilities": [
+    "auth.sso"
+  ],
+  "permissions": [
+    "http.routes",
+    "net.outbound",
+    "users.read",
+    "users.provision"
+  ],
+  "events": {
+    "listens": [],
+    "emits": []
+  },
+  "config": {
+    "$ref": "config.schema.json"
+  },
+  "i18n": [
+    "fr",
+    "en"
+  ],
+  "author": "Allia Innovation",
+  "signature": null
+}

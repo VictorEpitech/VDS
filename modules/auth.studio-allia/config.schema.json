@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "session_url": {
+      "type": "string",
+      "default": "http://website:3000/api/espace/vds/session",
+      "title": "config.auth_studio_allia.session_url.title",
+      "description": "config.auth_studio_allia.session_url.description",
+      "x-vds-level": "advanced",
+      "x-vds-scopes": [
+        "organization"
+      ],
+      "x-vds-env": "STUDIO_SESSION_URL"
+    },
+    "shared_secret": {
+      "type": "string",
+      "default": "",
+      "title": "config.auth_studio_allia.shared_secret.title",
+      "description": "config.auth_studio_allia.shared_secret.description",
+      "x-vds-level": "advanced",
+      "x-vds-scopes": [
+        "organization"
+      ],
+      "x-vds-secret": true,
+      "x-vds-env": "STUDIO_SHARED_SECRET"
+    },
+    "cache_ttl_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 300,
+      "default": 60,
+      "title": "config.auth_studio_allia.cache_ttl_seconds.title",
+      "description": "config.auth_studio_allia.cache_ttl_seconds.description",
+      "x-vds-level": "advanced",
+      "x-vds-scopes": [
+        "organization"
+      ]
+    },
+    "login_url": {
+      "type": "string",
+      "default": "/espace/connexion",
+      "title": "config.auth_studio_allia.login_url.title",
+      "description": "config.auth_studio_allia.login_url.description",
+      "x-vds-level": "simple",
+      "x-vds-scopes": [
+        "organization"
+      ],
+      "x-vds-env": "STUDIO_LOGIN_URL"
+    },
+    "logout_url": {
+      "type": "string",
+      "default": "/espace/deconnexion",
+      "title": "config.auth_studio_allia.logout_url.title",
+      "description": "config.auth_studio_allia.logout_url.description",
+      "x-vds-level": "simple",
+      "x-vds-scopes": [
+        "organization"
+      ],
+      "x-vds-env": "STUDIO_LOGOUT_URL"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "config": {
+    "auth_studio_allia": {
+      "session_url": {
+        "title": "URL de vérification de session Studio",
+        "description": "Point d'entrée interne Next.js (/api/espace/vds/session)."
+      },
+      "shared_secret": {
+        "title": "Secret partagé Studio",
+        "description": "Secret transmis dans l'en-tête x-vds-secret."
+      },
+      "cache_ttl_seconds": {
+        "title": "Durée de cache de session (secondes)",
+        "description": "Validité de l'empreinte de session en mémoire."
+      },
+      "login_url": {
+        "title": "URL de connexion Studio",
+        "description": "Page de connexion du Studio Allia."
+      },
+      "logout_url": {
+        "title": "URL de déconnexion Studio",
+        "description": "Page de déconnexion du Studio Allia."
+      }
+    }
+  },
+  "errors": {
+    "auth": {
+      "studio_financeur_forbidden": "Le rôle financeur n'a pas accès à l'affichage.",
+      "studio_role_unauthorized": "Compte inactif ou rôle non autorisé.",
+      "studio_secret_mismatch": "Secret partagé Studio Allia invalide.",
+      "cross_site_forbidden": "Requête inter-sites refusée.",
+      "origin_mismatch": "Origine de requête non autorisée."
+    }
+  }
+}
