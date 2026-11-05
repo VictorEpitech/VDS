@@ -714,6 +714,19 @@
       "done": "Envoyé"
     },
     "library": "Vos médias",
+    "ratio": {
+      "landscape": "16:9 Paysage",
+      "portrait": "9:16 Portrait",
+      "square": "1:1 Carré"
+    },
+    "quick_details": "Détails",
+    "quick_filter": {
+      "all": "Tous",
+      "images": "Images",
+      "videos": "Vidéos",
+      "documents": "Documents",
+      "unused": "Inutilisés"
+    },
     "empty": "Aucun média pour le moment. Envoyez un premier fichier.",
     "status": {
       "ready": "Prêt",
@@ -840,6 +853,13 @@
   },
   "playlists": {
     "title": "Playlists",
+    "view": {
+      "label": "Mode d'affichage",
+      "grid": "Galerie de diaporamas",
+      "table": "Tableau"
+    },
+    "duration_est": "~{duration} min",
+    "open": "Modifier le diaporama",
     "intro": "Une playlist est une suite d'éléments joués dans l'ordre, en boucle.",
     "name": "Nom de la playlist",
     "create": "Créer la playlist",
@@ -861,6 +881,10 @@
   },
   "playlist": {
     "title": "Playlist",
+    "summary_bar": {
+      "total_items": "{count, plural, =0 {Aucun élément} one {# élément} other {# éléments}}",
+      "total_duration": "Durée du cycle : {time}"
+    },
     "back": "Retour aux playlists",
     "items": "Éléments",
     "empty": "Cette playlist est vide. Ajoutez un premier élément.",
@@ -892,6 +916,10 @@
   },
   "schedules": {
     "title": "Programmation",
+    "summary_bar": {
+      "total": "{count, plural, =0 {Aucune programmation} one {# programmation} other {# programmations}}",
+      "active": "{count, plural, =0 {Aucune active} one {# active} other {# actives}}"
+    },
     "intro": "Choisissez quelle playlist joue, sur quelle cible et à quelles heures.",
     "create": "Nouvelle programmation",
     "edit": "Modifier",

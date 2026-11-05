@@ -137,7 +137,21 @@ export function Schedules() {
           onCancel={() => { setForm(null); setPrefill(undefined); }}
         />
       ) : null}
-      <h2>{t("schedules.all")}</h2>
+      <div className="page-head schedules-head">
+        <h2>{t("schedules.all")}</h2>
+        {schedules.data && schedules.data.length > 0 ? (
+          <div className="schedules-summary-strip">
+            <span className="schedules-summary-stat">
+              <Icon name="schedule" />
+              <span>{t("schedules.summary_bar.total", { count: schedules.data.length })}</span>
+            </span>
+            <span className="schedules-summary-stat">
+              <Icon name="online" />
+              <span>{t("schedules.summary_bar.active", { count: schedules.data.filter((s) => s.enabled).length })}</span>
+            </span>
+          </div>
+        ) : null}
+      </div>
       <QueryStatus query={schedules} />
       {remove.isError ? <ErrorAlert error={remove.error} /> : null}
       {schedules.isSuccess && schedules.data.length === 0 ? (
@@ -157,17 +171,28 @@ export function Schedules() {
       ) : null}
       <ul className="rows list-reset">
         {schedules.data?.map((s) => (
-          <li key={s.id} className="row card" aria-labelledby={`sch-${s.id}`}>
+          <li key={s.id} className="row card schedule-card-row" aria-labelledby={`sch-${s.id}`}>
             <div className="row-main">
-              <h2 id={`sch-${s.id}`}>{s.name}</h2>
-              <p className="meta">
-                {t(`schedules.target.${s.target_type}`)} : {targetName(s)} · {s.layout_id ? `${t("schedules.content.layout")} : ${layouts.data?.items.find((l) => l.id === s.layout_id)?.name ?? ""}` : (playlists.data?.items.find((p) => p.id === s.playlist_id)?.name ?? "")}
-              </p>
+              <div className="schedule-card-header">
+                <h2 id={`sch-${s.id}`}>{s.name}</h2>
+                <div className="schedule-pills">
+                  <span className="schedule-target-pill">
+                    <Icon name={s.target_type === "screen" ? "screen" : "site"} />
+                    <span>{t(`schedules.target.${s.target_type}`)} : <strong>{targetName(s)}</strong></span>
+                  </span>
+                  <span className="schedule-content-pill">
+                    <Icon name={s.layout_id ? "layout" : "playlist"} />
+                    <span>{s.layout_id ? `${t("schedules.content.layout")} : ${layouts.data?.items.find((l) => l.id === s.layout_id)?.name ?? ""}` : (playlists.data?.items.find((p) => p.id === s.playlist_id)?.name ?? "")}</span>
+                  </span>
+                </div>
+              </div>
               <div className="badges">
                 <PublicationBadge publication={pubs.get(s.id)} />
+                <PriorityBadge level={s.priority_level} value={s.priority} />
               </div>
-              <p className="meta">
-                {rulesText(s)} · <PriorityBadge level={s.priority_level} value={s.priority} />
+              <p className="meta schedule-timing-meta">
+                <Icon name="calendar" />
+                <span>{rulesText(s)}</span>
                 {s.enabled ? "" : ` · ${t("schedules.disabled")}`}
               </p>
             </div>

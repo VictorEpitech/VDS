@@ -8,6 +8,7 @@ import { Icon } from "../components/Icon";
 import { ExpiryField } from "../features/media/ExpiryField";
 import { TagEditor } from "../features/media/TagEditor";
 import { ItemForm, type ItemDraft } from "../features/playlist/ItemForm";
+import { MediaThumb } from "../features/media/MediaThumb";
 import { useApi } from "../lib/api";
 import { useContentTypes } from "../lib/content-types";
 import { formatDateTime } from "../lib/media-view";
@@ -16,6 +17,14 @@ import { useCanWrite, type NodeRef } from "../features/scope/scope";
 import { keys, useMedia, usePlaylist, usePlaylistUsage, type PlaylistDetail, type PlaylistItem } from "../lib/queries";
 import { PublicationPanel } from "../features/publication/PublicationPanel";
 import { PageTitle } from "../features/help/HelpPanel";
+
+function formatDurationMs(ms: number): string {
+  const totalSeconds = Math.round(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes === 0) return `${seconds} s`;
+  return `${minutes} min ${seconds > 0 ? `${seconds} s` : ""}`.trim();
+}
 
 export function PlaylistEditor() {
   const { id = "" } = useParams();
@@ -34,6 +43,7 @@ export function PlaylistEditor() {
   const focusAfter = useRef<string | null>(null);
   const lang = i18n.language === "en" ? "en" : "fr";
   const items = playlist.data?.items ?? [];
+  const totalDurationMs = items.reduce((acc, it) => acc + (it.enabled ? (it.duration_ms ?? 10000) : 0), 0);
 
   const refresh = () => Promise.all([qc.invalidateQueries({ queryKey: keys.playlist(id) }), qc.invalidateQueries({ queryKey: keys.playlists })]);
 
@@ -180,13 +190,40 @@ export function PlaylistEditor() {
             {remove.isError ? <ErrorAlert error={remove.error} /> : null}
             {reorder.isError ? <ErrorAlert error={reorder.error} /> : null}
             {items.length === 0 ? <Empty icon="playlist">{t("playlist.empty")}</Empty> : null}
+            {items.length > 0 ? (
+              <div className="playlist-summary-strip">
+                <span className="playlist-summary-stat">
+                  <Icon name="playlist" />
+                  <span>{t("playlist.summary_bar.total_items", { count: items.length })}</span>
+                </span>
+                <span className="playlist-summary-stat">
+                  <Icon name="schedule" />
+                  <span>{t("playlist.summary_bar.total_duration", { time: formatDurationMs(totalDurationMs) })}</span>
+                </span>
+              </div>
+            ) : null}
             <ol className="rows list-reset">
-              {items.map((item, index) => (
+              {items.map((item, index) => {
+                const itemMedia = item.media_ids.length > 0
+                  ? media.data?.items.find((m) => item.media_ids.includes(m.id))
+                  : typeof item.props.media === "string"
+                    ? media.data?.items.find((m) => m.id === item.props.media)
+                    : undefined;
+                return (
                 <li key={item.id} className="item-row">
-                  <div className="row card">
+                  <div className="row card playlist-item-card">
                     <span className="position" aria-hidden="true">
                       {index + 1}
                     </span>
+                    {itemMedia ? (
+                      <div className="playlist-item-thumb">
+                        <MediaThumb media={itemMedia} size="small" />
+                      </div>
+                    ) : (
+                      <div className="playlist-item-thumb-placeholder">
+                        <Icon name={item.content_type === "content.url" ? "screen" : "media"} />
+                      </div>
+                    )}
                     <div className="row-main">
                       <h3 className={itemExpired(item) ? "item-expired" : undefined}>{label(item)}</h3>
                       {itemExpired(item) ? (
@@ -245,7 +282,8 @@ export function PlaylistEditor() {
                     />
                   ) : null}
                 </li>
-              ))}
+                );
+              })}
             </ol>
             {adding ? (
               <ItemForm media={media.data?.items ?? []} pending={add.isPending} error={add.error} onSubmit={(d) => add.mutate(d)} onCancel={() => setAdding(false)} />

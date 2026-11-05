@@ -27,6 +27,7 @@ export function Playlists() {
   const [stateFilter, setStateFilter] = useState<string>("all");
   const [tags, setTags] = useState<string[]>([]);
   const [page, setPage] = useState(0);
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const playlists = usePlaylistPage({ q, state: stateFilter, tags, sort: "-updated_at", limit: PAGE_SIZE, offset: page * PAGE_SIZE });
   const total = playlists.data?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -92,7 +93,29 @@ export function Playlists() {
         {create.isError ? <ErrorAlert error={create.error} /> : null}
       </form>
       <section className="section" aria-labelledby="pl-list">
-        <h2 id="pl-list">{t("playlists.list")}</h2>
+        <div className="page-head">
+          <h2 id="pl-list">{t("playlists.list")}</h2>
+          <div className="actions" role="group" aria-label={t("playlists.view.label")}>
+            <button
+              type="button"
+              className="btn btn-text"
+              aria-pressed={viewMode === "grid"}
+              onClick={() => setViewMode("grid")}
+            >
+              <Icon name="playlist" />
+              {t("playlists.view.grid")}
+            </button>
+            <button
+              type="button"
+              className="btn btn-text"
+              aria-pressed={viewMode === "table"}
+              onClick={() => setViewMode("table")}
+            >
+              <Icon name="schedule" />
+              {t("playlists.view.table")}
+            </button>
+          </div>
+        </div>
         <div className="filters" role="search" aria-label={t("playlists.filters.label")}>
           <div className="field">
             <label htmlFor={`${uid}-q`}>{t("playlists.filters.search")}</label>
@@ -131,38 +154,80 @@ export function Playlists() {
             {t("playlists.empty")}
           </Empty>
         ) : null}
-        <ul className="rows list-reset">
-          {playlists.data?.items.map((p) => (
-            <li key={p.id} className="row card">
-              <div className="row-main">
-                <h3>
-                  <Link to={`/content/playlists/${p.id}`}>{p.name}</Link>
-                </h3>
-                <p className="meta">{t("playlists.items", { count: p.item_count })}</p>
-                {p.tags.length > 0 ? <p className="meta">{t("tags.list", { tags: p.tags.join(", ") })}</p> : null}
-                <div className="badges">
-                  <PublicationBadge publication={pubs.get(p.id)} />
-                  <ExpiryBadge item={p} />
-                  <OwnerBadge owner={p.owner} />
+        {viewMode === "grid" ? (
+          <ul className="playlist-grid list-reset" aria-label={t("playlists.list")}>
+            {playlists.data?.items.map((p) => (
+              <li key={p.id} className="card playlist-card">
+                <div className="playlist-card-hero">
+                  <div className="playlist-card-icon-stack">
+                    <Icon name="playlist" />
+                  </div>
+                  <span className="playlist-card-items-pill">
+                    {t("playlists.items", { count: p.item_count })}
+                  </span>
                 </div>
-              </div>
-              <div className="row-actions">
-                <Link className="btn btn-text" to={`/content/playlists/${p.id}`}>
-                  <Icon name="playlist" />
-                  {t("nav.playlist_edit")}
-                </Link>
-                {canWrite(p.owner) ? (
-                  <ConfirmAction
-                    label={t("playlists.delete.action")}
-                    confirmLabel={t("playlists.delete.confirm", { name: p.name })}
-                    pending={remove.isPending}
-                    onConfirm={() => remove.mutate(p)}
-                  />
-                ) : null}
-              </div>
-            </li>
-          ))}
-        </ul>
+                <div className="playlist-card-body">
+                  <h3 className="playlist-card-title">
+                    <Link to={`/content/playlists/${p.id}`}>{p.name}</Link>
+                  </h3>
+                  {p.tags.length > 0 ? <p className="meta">{t("tags.list", { tags: p.tags.join(", ") })}</p> : null}
+                  <div className="badges">
+                    <PublicationBadge publication={pubs.get(p.id)} />
+                    <ExpiryBadge item={p} />
+                    <OwnerBadge owner={p.owner} />
+                  </div>
+                </div>
+                <div className="playlist-card-actions">
+                  <Link className="btn btn-tonal btn-sm" to={`/content/playlists/${p.id}`}>
+                    <Icon name="playlist" />
+                    {t("nav.playlist_edit")}
+                  </Link>
+                  {canWrite(p.owner) ? (
+                    <ConfirmAction
+                      label={t("playlists.delete.action")}
+                      confirmLabel={t("playlists.delete.confirm", { name: p.name })}
+                      pending={remove.isPending}
+                      onConfirm={() => remove.mutate(p)}
+                    />
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <ul className="rows list-reset">
+            {playlists.data?.items.map((p) => (
+              <li key={p.id} className="row card">
+                <div className="row-main">
+                  <h3>
+                    <Link to={`/content/playlists/${p.id}`}>{p.name}</Link>
+                  </h3>
+                  <p className="meta">{t("playlists.items", { count: p.item_count })}</p>
+                  {p.tags.length > 0 ? <p className="meta">{t("tags.list", { tags: p.tags.join(", ") })}</p> : null}
+                  <div className="badges">
+                    <PublicationBadge publication={pubs.get(p.id)} />
+                    <ExpiryBadge item={p} />
+                    <OwnerBadge owner={p.owner} />
+                  </div>
+                </div>
+                <div className="row-actions">
+                  <Link className="btn btn-text" to={`/content/playlists/${p.id}`}>
+                    <Icon name="playlist" />
+                    {t("nav.playlist_edit")}
+                  </Link>
+                  {canWrite(p.owner) ? (
+                    <ConfirmAction
+                      label={t("playlists.delete.action")}
+                      confirmLabel={t("playlists.delete.confirm", { name: p.name })}
+                      pending={remove.isPending}
+                      onConfirm={() => remove.mutate(p)}
+                    />
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
         {total > PAGE_SIZE ? (
           <nav className="pager" aria-label={t("media.pager.label")}>
             <button type="button" className="btn btn-text" disabled={page === 0} onClick={() => setPage(page - 1)}>

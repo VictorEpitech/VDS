@@ -271,49 +271,47 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
             {isAdmin ? <ExclusiveSetting level="screen" id={screen.id} /> : null}
           </div>
 
-          {screen.device || (isAdmin && apk && apk.state !== "not_android") ? (
-            <div className="screen-subcard screen-section-device">
-              <div className="screen-subcard-header">
-                <Icon name="screen" />
-                <h4>Matériel & Système</h4>
-              </div>
-              {screen.device ? (
-                <dl className="device-facts">
-                  <div>
-                    <dt>{t("screens.device.platform")}</dt> <dd className="mono">{[screen.device.platform, screen.device.model].filter(Boolean).join(" ")}</dd>
-                  </div>
-                  {screen.device.app_version ? (
-                    <div>
-                      <dt>{t("screens.device.version")}</dt> <dd className="mono">{screen.device.app_version}</dd>
-                    </div>
-                  ) : null}
-                  <div>
-                    <dt>{t("screens.device.last_seen")}</dt> <dd>{screen.device.last_seen_at ? fmt(screen.device.last_seen_at) : t("screens.device.never_seen")}</dd>
-                  </div>
-                  {screen.device.revoked_at ? (
-                    <div>
-                      <dt>{t("screens.device.revoked_at")}</dt> <dd>{fmt(screen.device.revoked_at)}</dd>
-                    </div>
-                  ) : null}
-                </dl>
-              ) : (
-                <p className="meta">{t("screens.device.none")}</p>
-              )}
-              {isAdmin && apk && apk.state !== "not_android" ? (
-                <dl className="device-facts">
-                  <div>
-                    <dt>{t("apk.installed")}</dt>{" "}
-                    <dd className="mono">{apk.installed_version_code != null ? [apk.installed_version_name, `(${apk.installed_version_code})`].filter(Boolean).join(" ") : <span className="meta">{t("apk.unknown_version")}</span>}</dd>
-                  </div>
-                </dl>
-              ) : null}
-              {isAdmin && apk?.state === "outdated" ? (
-                <p>
-                  <StatusBadge state="pairing" icon="upload" label={t("apk.badge")} />
-                </p>
-              ) : null}
+          <div className="screen-subcard screen-section-device">
+            <div className="screen-subcard-header">
+              <Icon name="screen" />
+              <h4>Matériel & Système</h4>
             </div>
-          ) : null}
+            {screen.device ? (
+              <dl className="device-facts">
+                <div>
+                  <dt>{t("screens.device.platform")}</dt> <dd className="mono">{[screen.device.platform, screen.device.model].filter(Boolean).join(" ")}</dd>
+                </div>
+                {screen.device.app_version ? (
+                  <div>
+                    <dt>{t("screens.device.version")}</dt> <dd className="mono">{screen.device.app_version}</dd>
+                  </div>
+                ) : null}
+                <div>
+                  <dt>{t("screens.device.last_seen")}</dt> <dd>{screen.device.last_seen_at ? fmt(screen.device.last_seen_at) : t("screens.device.never_seen")}</dd>
+                </div>
+                {screen.device.revoked_at ? (
+                  <div>
+                    <dt>{t("screens.device.revoked_at")}</dt> <dd>{fmt(screen.device.revoked_at)}</dd>
+                  </div>
+                ) : null}
+              </dl>
+            ) : (
+              <p className="meta">{t("screens.device.none")}</p>
+            )}
+            {isAdmin && apk && apk.state !== "not_android" ? (
+              <dl className="device-facts">
+                <div>
+                  <dt>{t("apk.installed")}</dt>{" "}
+                  <dd className="mono">{apk.installed_version_code != null ? [apk.installed_version_name, `(${apk.installed_version_code})`].filter(Boolean).join(" ") : <span className="meta">{t("apk.unknown_version")}</span>}</dd>
+                </div>
+              </dl>
+            ) : null}
+            {isAdmin && apk?.state === "outdated" ? (
+              <p>
+                <StatusBadge state="pairing" icon="upload" label={t("apk.badge")} />
+              </p>
+            ) : null}
+          </div>
 
           <div className="actions screen-drawer-actions">
             {isAdmin ? (

@@ -714,6 +714,19 @@
       "done": "Uploaded"
     },
     "library": "Your media",
+    "ratio": {
+      "landscape": "16:9 Landscape",
+      "portrait": "9:16 Portrait",
+      "square": "1:1 Square"
+    },
+    "quick_details": "Details",
+    "quick_filter": {
+      "all": "All",
+      "images": "Images",
+      "videos": "Videos",
+      "documents": "Documents",
+      "unused": "Unused"
+    },
     "empty": "No media yet. Upload your first file.",
     "status": {
       "ready": "Ready",
@@ -840,6 +853,13 @@
   },
   "playlists": {
     "title": "Playlists",
+    "view": {
+      "label": "View mode",
+      "grid": "Slideshow gallery",
+      "table": "Table"
+    },
+    "duration_est": "~{duration} min",
+    "open": "Edit slideshow",
     "intro": "A playlist is a sequence of items played in order, on a loop.",
     "name": "Playlist name",
     "create": "Create playlist",
@@ -861,6 +881,10 @@
   },
   "playlist": {
     "title": "Playlist",
+    "summary_bar": {
+      "total_items": "{count, plural, =0 {No items} one {# item} other {# items}}",
+      "total_duration": "Cycle duration: {time}"
+    },
     "back": "Back to playlists",
     "items": "Items",
     "empty": "This playlist is empty. Add a first item.",
@@ -892,6 +916,10 @@
   },
   "schedules": {
     "title": "Schedule",
+    "summary_bar": {
+      "total": "{count, plural, =0 {No schedules} one {# schedule} other {# schedules}}",
+      "active": "{count, plural, =0 {None active} one {# active} other {# active}}"
+    },
     "intro": "Choose which playlist plays, on which target and at what times.",
     "create": "New schedule",
     "edit": "Edit",

@@ -21,6 +21,22 @@ const SORTS = ["-created_at", "created_at", "title", "-title", "-bytes", "expire
 const STATES = ["all", "active", "expiring", "expired"] as const;
 const KINDS = ["image", "video", "document"] as const;
 
+function getMediaOrientation(m: Media): "landscape" | "portrait" | "square" | null {
+  if (!m.width || !m.height) return null;
+  const ratio = m.width / m.height;
+  if (ratio >= 1.2) return "landscape";
+  if (ratio <= 0.8) return "portrait";
+  return "square";
+}
+
+function formatDuration(ms: number | null | undefined): string | null {
+  if (!ms || ms <= 0) return null;
+  const totalSeconds = Math.round(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+}
+
 function Badges({ m }: { m: Media }) {
   return (
     <div className="badges">
@@ -150,6 +166,48 @@ export function MediaBrowser({ onEmptyAction }: { onEmptyAction: () => void }) {
         </div>
       </div>
 
+      <div className="media-quick-filters" role="group" aria-label={t("media.filters.label")}>
+        <button
+          type="button"
+          className={`btn btn-sm ${kind === "" && !unused ? "btn-tonal" : "btn-text"}`}
+          onClick={() => { filter(setKind)(""); filter(setUnused)(false); }}
+        >
+          {t("media.quick_filter.all")}
+        </button>
+        <button
+          type="button"
+          className={`btn btn-sm ${kind === "image" ? "btn-tonal" : "btn-text"}`}
+          onClick={() => filter(setKind)(kind === "image" ? "" : "image")}
+        >
+          <Icon name="media" />
+          {t("media.quick_filter.images")}
+        </button>
+        <button
+          type="button"
+          className={`btn btn-sm ${kind === "video" ? "btn-tonal" : "btn-text"}`}
+          onClick={() => filter(setKind)(kind === "video" ? "" : "video")}
+        >
+          <Icon name="video" />
+          {t("media.quick_filter.videos")}
+        </button>
+        <button
+          type="button"
+          className={`btn btn-sm ${kind === "document" ? "btn-tonal" : "btn-text"}`}
+          onClick={() => filter(setKind)(kind === "document" ? "" : "document")}
+        >
+          <Icon name="document" />
+          {t("media.quick_filter.documents")}
+        </button>
+        <button
+          type="button"
+          className={`btn btn-sm ${unused ? "btn-tonal" : "btn-text"}`}
+          onClick={() => filter(setUnused)(!unused)}
+        >
+          <Icon name="warning" />
+          {t("media.quick_filter.unused")}
+        </button>
+      </div>
+
       <div className="filters" role="search" aria-label={t("media.filters.label")}>
         <div className="field">
           <label htmlFor={`${uid}-q`}>{t("media.filters.search")}</label>
@@ -253,26 +311,56 @@ export function MediaBrowser({ onEmptyAction }: { onEmptyAction: () => void }) {
 
           {view === "grid" ? (
             <ul className="media-grid list-reset" aria-label={t("media.library")}>
-              {items.map((m) => (
-                <li key={m.id} className="card media-card" data-selected={selected.has(m.id) || undefined}>
-                  <div className="media-card-head">
-                    {select(m)}
-                    <MediaThumb media={m} />
-                  </div>
-                  {title(m)}
-                  <p className="meta">
-                    {t(`media.kind.${m.kind}`)} · {formatBytes(m.bytes, i18n.language)}
-                  </p>
-                  <Badges m={m} />
-                  {m.status === "failed" ? (
-                    <p className="field-error">
-                      <Icon name="failed" />
-                      <span>{errorText(m.error ?? "errors.unknown")}</span>
-                    </p>
-                  ) : null}
-                  {del(m)}
-                </li>
-              ))}
+              {items.map((m) => {
+                const orientation = getMediaOrientation(m);
+                const dur = formatDuration(m.duration_ms);
+                return (
+                  <li key={m.id} className="card media-card" data-selected={selected.has(m.id) || undefined}>
+                    <div className="media-card-head">
+                      <div className="media-card-check-pill">{select(m)}</div>
+                      <MediaThumb media={m} />
+                      {orientation ? (
+                        <span className="media-ratio-badge" data-ratio={orientation}>
+                          {t(`media.ratio.${orientation}`)}
+                        </span>
+                      ) : null}
+                      {dur ? (
+                        <span className="media-duration-badge">
+                          <Icon name="video" />
+                          <span>{dur}</span>
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="media-card-body">
+                      {title(m)}
+                      <p className="meta media-card-meta">
+                        <span>{t(`media.kind.${m.kind}`)}</span>
+                        <span aria-hidden="true">·</span>
+                        <span>{formatBytes(m.bytes, i18n.language)}</span>
+                      </p>
+                      <Badges m={m} />
+                      {m.status === "failed" ? (
+                        <p className="field-error">
+                          <Icon name="failed" />
+                          <span>{errorText(m.error ?? "errors.unknown")}</span>
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="media-card-actions">
+                      <button
+                        type="button"
+                        className="btn btn-text btn-sm"
+                        onClick={() => open(m.id)}
+                        aria-expanded={detailId === m.id}
+                      >
+                        <Icon name="more" />
+                        {t("media.quick_details")}
+                      </button>
+                      {del(m)}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           ) : items.length > 0 ? (
             // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- région défilante : focus clavier requis (axe)

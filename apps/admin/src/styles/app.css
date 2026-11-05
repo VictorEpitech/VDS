@@ -4065,3 +4065,315 @@ fieldset.field > legend {
   background: var(--vds-surface-3);
   color: var(--vds-on-surface);
 }
+
+/* --- Refonte Ergonomique & Graphique : Contenus, Playlists & Diffusion --- */
+
+/* Filtres Rapides Médias */
+.media-quick-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vds-space-2);
+  margin-block-end: var(--vds-space-3);
+}
+
+/* Carte Média Moderne */
+.media-card {
+  display: flex;
+  flex-direction: column;
+  padding: var(--vds-space-3);
+  border: 1px solid var(--vds-outline-variant);
+  border-radius: var(--vds-radius-lg);
+  background: var(--vds-surface);
+  transition: border-color var(--vds-duration-short) ease;
+}
+
+.media-card:hover {
+  border-color: var(--vds-primary);
+}
+
+.media-card-head {
+  position: relative;
+  inline-size: 100%;
+}
+
+.media-card-check-pill {
+  position: absolute;
+  inset-block-start: var(--vds-space-2);
+  inset-inline-start: var(--vds-space-2);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  border-radius: var(--vds-radius-pill);
+  background: var(--vds-surface);
+  border: 1px solid var(--vds-outline-variant);
+}
+
+.media-card-check-pill .media-check {
+  margin: 0;
+  inline-size: 1.125rem;
+  block-size: 1.125rem;
+  cursor: pointer;
+}
+
+.media-ratio-badge {
+  position: absolute;
+  inset-block-start: var(--vds-space-2);
+  inset-inline-end: var(--vds-space-2);
+  z-index: 1;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: var(--vds-space-1) var(--vds-space-2);
+  border-radius: var(--vds-radius-pill);
+  background: var(--vds-surface);
+  color: var(--vds-on-surface);
+  border: 1px solid var(--vds-outline-variant);
+}
+
+.media-duration-badge {
+  position: absolute;
+  inset-block-end: var(--vds-space-2);
+  inset-inline-end: var(--vds-space-2);
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vds-space-1);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding: var(--vds-space-1) var(--vds-space-2);
+  border-radius: var(--vds-radius-pill);
+  background: var(--vds-surface-3);
+  color: var(--vds-on-surface);
+}
+
+.media-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-1);
+  inline-size: 100%;
+  margin-block-start: var(--vds-space-2);
+}
+
+.media-card-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--vds-space-1);
+  font-size: 0.8125rem;
+  color: var(--vds-on-surface-variant);
+  margin: 0;
+}
+
+.media-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  inline-size: 100%;
+  margin-block-start: auto;
+  padding-block-start: var(--vds-space-2);
+  border-block-start: 1px solid var(--vds-outline-variant);
+}
+
+/* Grille de Playlists */
+.playlist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+  gap: var(--vds-space-4);
+  margin-block: var(--vds-space-3);
+}
+
+.playlist-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-3);
+  padding: var(--vds-space-4);
+  border: 1px solid var(--vds-outline-variant);
+  border-radius: var(--vds-radius-lg);
+  background: var(--vds-surface);
+  transition: border-color var(--vds-duration-short) ease;
+}
+
+.playlist-card:hover {
+  border-color: var(--vds-primary);
+}
+
+.playlist-card-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--vds-space-3);
+  background: var(--vds-surface-2);
+  border-radius: var(--vds-radius-md);
+}
+
+.playlist-card-icon-stack {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2.5rem;
+  block-size: 2.5rem;
+  border-radius: var(--vds-radius-md);
+  background: var(--vds-primary-container);
+  color: var(--vds-on-primary-container);
+}
+
+.playlist-card-items-pill {
+  font-size: var(--vds-text-sm);
+  font-weight: 600;
+  color: var(--vds-on-surface-variant);
+}
+
+.playlist-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-2);
+}
+
+.playlist-card-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.playlist-card-title a {
+  color: var(--vds-on-surface);
+  text-decoration: none;
+}
+
+.playlist-card-title a:hover {
+  color: var(--vds-primary);
+  text-decoration: underline;
+}
+
+.playlist-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-block-start: auto;
+  padding-block-start: var(--vds-space-2);
+  border-block-start: 1px solid var(--vds-outline-variant);
+}
+
+/* Bandeau Récapitulatif Playlist & Programmation */
+.playlist-summary-strip,
+.schedules-summary-strip {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vds-space-2) var(--vds-space-4);
+  padding: var(--vds-space-2) var(--vds-space-3);
+  border-radius: var(--vds-radius-pill);
+  background: var(--vds-surface-2);
+  margin-block: var(--vds-space-2);
+  font-size: var(--vds-text-sm);
+}
+
+.playlist-summary-stat,
+.schedules-summary-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vds-space-2);
+  font-weight: 500;
+  color: var(--vds-on-surface);
+}
+
+/* Lignes Éléments de Playlist avec Aperçu Visuel */
+.playlist-item-card {
+  display: flex;
+  align-items: center;
+  gap: var(--vds-space-3);
+}
+
+.playlist-item-thumb {
+  inline-size: 5rem;
+  block-size: 3rem;
+  flex: none;
+  border-radius: var(--vds-radius-sm);
+  overflow: hidden;
+}
+
+.playlist-item-thumb .media-thumb {
+  inline-size: 100%;
+  block-size: 100%;
+  aspect-ratio: auto;
+}
+
+.playlist-item-thumb-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 5rem;
+  block-size: 3rem;
+  flex: none;
+  border-radius: var(--vds-radius-sm);
+  background: var(--vds-surface-3);
+  color: var(--vds-on-surface-variant);
+}
+
+/* Carte de Programmation Raffinée */
+.schedules-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vds-space-3);
+}
+
+.schedule-card-row {
+  padding: var(--vds-space-3) var(--vds-space-4);
+  border: 1px solid var(--vds-outline-variant);
+  border-radius: var(--vds-radius-lg);
+  transition: border-color var(--vds-duration-short) ease;
+}
+
+.schedule-card-row:hover {
+  border-color: var(--vds-primary);
+}
+
+.schedule-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vds-space-2);
+  margin-block-end: var(--vds-space-2);
+}
+
+.schedule-card-header h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.schedule-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vds-space-2);
+}
+
+.schedule-target-pill,
+.schedule-content-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vds-space-1);
+  padding: var(--vds-space-1) var(--vds-space-2);
+  border-radius: var(--vds-radius-pill);
+  background: var(--vds-surface-2);
+  font-size: 0.8125rem;
+  color: var(--vds-on-surface);
+}
+
+.schedule-timing-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vds-space-1);
+  margin: var(--vds-space-2) 0 0;
+  font-size: 0.8125rem;
+  color: var(--vds-on-surface-variant);
+}
