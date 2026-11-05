@@ -63,6 +63,12 @@ ADMIN_CSP = (
     "base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 )
 ADMIN_HEADERS = {"Content-Security-Policy": ADMIN_CSP, "X-Content-Type-Options": "nosniff"}
+NO_CACHE_HEADERS = {
+    **ADMIN_HEADERS,
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0",
+}
 
 
 def inject_base_href(html: str, settings: Settings, sub: str = "") -> str:
@@ -81,12 +87,18 @@ def build_router(settings: Settings, auth_info: AuthInfo = no_auth) -> APIRouter
     @router.get("/config.js", include_in_schema=False)
     async def config() -> Response:
         # Évalué à chaque requête : le provider n'est actif qu'après le démarrage.
-        return Response(build_config_js(settings, auth_info), media_type="text/javascript")
+        return Response(
+            build_config_js(settings, auth_info),
+            media_type="text/javascript",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+        )
 
     admin_dir = settings.admin_dir
-    index_html: str | None = None
-    if admin_dir is not None and (admin_dir / "index.html").is_file():
-        index_html = inject_base_href((admin_dir / "index.html").read_text("utf-8"), settings)
+
+    def get_index_html() -> str | None:
+        if admin_dir is not None and (admin_dir / "index.html").is_file():
+            return inject_base_href((admin_dir / "index.html").read_text("utf-8"), settings)
+        return None
 
     def _static(rel: str) -> Path | None:
         if admin_dir is None or not rel:
@@ -143,15 +155,21 @@ def build_router(settings: Settings, auth_info: AuthInfo = no_auth) -> APIRouter
         candidate = (root / rel).resolve()
         if not (candidate.is_file() and candidate.is_relative_to(root)):
             raise HTTPException(status_code=404, detail="errors.not_found")
-        return FileResponse(candidate)
+        return FileResponse(candidate, headers={"Cache-Control": "no-cache, must-revalidate"})
 
     @router.get("/{path:path}", include_in_schema=False)
     async def admin(path: str) -> Response:
-        if path.split("/", 1)[0] in RESERVED or index_html is None:
+        html = get_index_html()
+        if path.split("/", 1)[0] in RESERVED or html is None:
             raise HTTPException(status_code=404, detail="errors.not_found")
         f = _static(path)
         if f is not None:
-            return FileResponse(f, headers=ADMIN_HEADERS)
-        return HTMLResponse(index_html, headers=ADMIN_HEADERS)
+            headers = dict(ADMIN_HEADERS)
+            if "assets/" in path:
+                headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            else:
+                headers["Cache-Control"] = "no-cache, must-revalidate"
+            return FileResponse(f, headers=headers)
+        return HTMLResponse(html, headers=NO_CACHE_HEADERS)
 
     return router

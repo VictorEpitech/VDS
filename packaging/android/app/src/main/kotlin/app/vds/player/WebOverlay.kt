@@ -80,6 +80,7 @@ class WebOverlay(private val context: Context, private val ui: Handler) : WebHos
         e.timeout?.let(ui::removeCallbacks)
         e.timeout = Runnable { fail(id, e, "url_timeout") }.also { ui.postDelayed(it, LOAD_TIMEOUT_MS) }
         e.view.webViewClient = client(id, e)
+        e.view.clearCache(true)
         e.view.loadUrl(url)
     }
 
@@ -205,6 +206,7 @@ class WebOverlay(private val context: Context, private val ui: Handler) : WebHos
             isHorizontalScrollBarEnabled = false
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
             settings.apply {
+                cacheMode = WebSettings.LOAD_NO_CACHE
                 javaScriptEnabled = true
                 domStorageEnabled = true
                 allowFileAccess = false
