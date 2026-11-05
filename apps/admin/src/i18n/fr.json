@@ -225,7 +225,8 @@
         "theoretical": "Aperçu de la programmation, pas une capture réelle",
         "no_item": "Aucun élément programmé",
         "previous": "Capture précédente de {name}, {age}"
-      }
+      },
+      "sent": "Commande {command} envoyée à l'écran {name}"
     },
     "captures": {
       "title": "Captures d'écran",
@@ -239,6 +240,21 @@
       "all_groups": "Tous les groupes",
       "empty": "Aucun écran à afficher.",
       "age": "Capturée {age}"
+    },
+    "view": {
+      "label": "Mode d'affichage",
+      "grid": "Galerie TV",
+      "table": "Tableau"
+    },
+    "table": {
+      "screen": "Écran",
+      "location": "Site & Groupe",
+      "status": "Statut",
+      "broadcast": "Diffusion active",
+      "power": "Alimentation",
+      "actions": "Actions",
+      "select": "Sélectionner {name}",
+      "none_broadcast": "Aucun contenu programmé"
     }
   },
   "errors": {
@@ -2551,5 +2567,25 @@
       "admin_only": "Seul un administrateur peut valider les publications.",
       "link": "{count, plural, =0 {À valider} other {À valider (#)}}"
     }
+  },
+  "quick_publish": {
+    "title": "Diffuser un contenu en 60s",
+    "close": "Fermer",
+    "step1_title": "1. Choisir le média",
+    "step1_hint": "Sélectionnez une image ou une vidéo de votre médiathèque",
+    "search_media": "Rechercher un média par titre...",
+    "select_media": "Sélection du média",
+    "no_media": "Aucun média trouvé",
+    "step2_title": "2. Sélectionner les écrans cibles",
+    "target_all": "Tous les écrans ({count})",
+    "target_custom": "Écrans spécifiques",
+    "step3_title": "3. Période et Priorité",
+    "flash_mode": "Diffusion Flash / Urgente",
+    "flash_hint": "Prend le pas immédiatement sur la programmation habituelle",
+    "cancel": "Annuler",
+    "publish_cta": "Diffuser maintenant",
+    "publishing": "Mise en diffusion...",
+    "success_broadcast": "Diffusion de « {name} » lancée sur {count, plural, one {1 écran} other {# écrans}} !",
+    "cta_button": "Diffuser un contenu"
   }
 }

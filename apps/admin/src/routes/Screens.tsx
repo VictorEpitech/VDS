@@ -12,6 +12,8 @@ import { useProvisioningAvailable } from "../features/provisioning/hooks";
 import { OverrideForm, type OverrideInitial } from "../features/overrides/OverrideForm";
 import { canForce, useOverrides } from "../features/overrides/overrides";
 import { ScreenCard } from "../features/screens/ScreenCard";
+import { ScreenTable } from "../features/screens/ScreenTable";
+import { QuickPublishModal } from "../features/publication/QuickPublishModal";
 import { IncidentsList } from "../features/supervision/IncidentsList";
 import { displayState, ISSUE_STATES } from "../features/supervision/status";
 import { useApi } from "../lib/api";
@@ -39,6 +41,16 @@ export function Screens() {
   const forcer = canForce(session.data?.role);
   const overrides = useOverrides(forcer);
   const [force, setForce] = useState<OverrideInitial | undefined>(undefined);
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "table">(() => {
+    try {
+      const saved = localStorage.getItem("vds_screens_view");
+      if (saved === "table" || saved === "grid") return saved;
+    } catch {
+      /* ignore */
+    }
+    return "grid";
+  });
   const fleetApk = useFleetApk(isAdmin);
   const apk = fleetApk.data;
   const provisionable = useProvisioningAvailable((sites.data ?? []).map((x) => x.id));
@@ -74,6 +86,12 @@ export function Screens() {
         <PageTitle topic="screens">{t("screens.title")}</PageTitle>
         <div className="actions">
           {forcer ? (
+            <button type="button" className="btn btn-filled" onClick={() => setPublishOpen(true)}>
+              <Icon name="schedule" />
+              {t("quick_publish.cta_button")}
+            </button>
+          ) : null}
+          {forcer ? (
             <button type="button" className="btn btn-text" aria-expanded={force !== undefined} onClick={() => setForce(null)}>
               <Icon name="overridden" />
               {t("overrides.force")}
@@ -83,7 +101,7 @@ export function Screens() {
             <Icon name="media" />
             {t("screens.captures.link")}
           </Link>
-          <Link className="btn btn-filled" to="/screens/add">
+          <Link className="btn btn-tonal" to="/screens/add">
             <Icon name="add" />
             {t("screens.pair")}
           </Link>
@@ -105,14 +123,50 @@ export function Screens() {
           }}
         />
       ) : null}
-      <div className="filter-bar" role="group" aria-label={t("screens.filter.label")}>
-        <button type="button" className="btn btn-text" aria-pressed={!issues} onClick={() => setFilter("all")}>
-          {t("screens.filter.all")}
-        </button>
-        <button type="button" className="btn btn-text" aria-pressed={issues} onClick={() => setFilter("issues")}>
-          <Icon name="incident" />
-          {t("screens.filter.issues")}
-        </button>
+      <div className="screens-toolbar">
+        <div className="filter-bar" role="group" aria-label={t("screens.filter.label")}>
+          <button type="button" className="btn btn-text" aria-pressed={!issues} onClick={() => setFilter("all")}>
+            {t("screens.filter.all")}
+          </button>
+          <button type="button" className="btn btn-text" aria-pressed={issues} onClick={() => setFilter("issues")}>
+            <Icon name="incident" />
+            {t("screens.filter.issues")}
+          </button>
+        </div>
+        <div className="view-mode-toggle" role="group" aria-label={t("screens.view.label")}>
+          <button
+            type="button"
+            className={`btn btn-text${viewMode === "grid" ? " active" : ""}`}
+            aria-pressed={viewMode === "grid"}
+            onClick={() => {
+              setViewMode("grid");
+              try {
+                localStorage.setItem("vds_screens_view", "grid");
+              } catch {
+                /* ignore */
+              }
+            }}
+          >
+            <Icon name="screen" />
+            {t("screens.view.grid")}
+          </button>
+          <button
+            type="button"
+            className={`btn btn-text${viewMode === "table" ? " active" : ""}`}
+            aria-pressed={viewMode === "table"}
+            onClick={() => {
+              setViewMode("table");
+              try {
+                localStorage.setItem("vds_screens_view", "table");
+              } catch {
+                /* ignore */
+              }
+            }}
+          >
+            <Icon name="layout" />
+            {t("screens.view.table")}
+          </button>
+        </div>
       </div>
       {issues ? <IncidentsList /> : null}
       <QueryStatus query={screens} />
@@ -132,40 +186,68 @@ export function Screens() {
         </Empty>
       ) : null}
       {issues && screens.isSuccess && active.length > 0 && !visible.length && !powers.some((p) => p.isPending) ? <Empty icon="check">{t("screens.filter.none_to_handle")}</Empty> : null}
-      {isAdmin && visible.length > 0 ? (
+      {isAdmin && visible.length > 0 && viewMode === "grid" ? (
         <label className="select-all">
           <input type="checkbox" className="select-box" checked={allChosen} onChange={(e) => toggleAll(e.target.checked)} />
           <span>{t("screens.select.all", { count: visible.length })}</span>
           {visible.length > MAX_SELECTION ? <span className="meta">{t("actions.bar.cap", { max: MAX_SELECTION })}</span> : null}
         </label>
       ) : null}
-      <ul className={`cards screen-cards-grid list-reset${chosen.length ? " has-selection" : ""}`}>
-        {visible.map(({ s, power, state }) => (
-          <ScreenCard
-            key={s.id}
-            screen={s}
-            siteName={siteName(s.site_id)}
-            groupName={groupName(s.group_id)}
-            state={state}
-            power={power}
-            playback={playback.data?.find((p) => p.screen_id === s.id)}
-            apk={apk?.screens.find((x) => x.screen_id === s.id)}
-            availableApk={apk?.available ?? null}
-            agent={agentOf(agents.data ?? [], s.site_id)}
-            isAdmin={isAdmin}
-            canForce={forcer}
-            override={overrides.data?.find((o) => o.id === playback.data?.find((p) => p.screen_id === s.id)?.override_id)}
-            allScreens={screens.data ?? []}
-            onForce={() => setForce({ type: "screen", id: s.id })}
-            provisionable={provisionable}
-            selected={selection.has(s.id)}
-            selectDisabled={selection.size >= MAX_SELECTION}
-            onSelect={(on) => toggle(s.id, on)}
-            onNotice={setNotice}
-          />
-        ))}
-      </ul>
+
+      {viewMode === "table" ? (
+        <ScreenTable
+          screens={visible}
+          sites={sites.data ?? []}
+          groups={groups.data ?? []}
+          agents={agents.data ?? []}
+          playback={playback.data}
+          apk={apk}
+          isAdmin={isAdmin}
+          canForce={forcer}
+          selection={selection}
+          selectDisabled={selection.size >= MAX_SELECTION}
+          onSelect={toggle}
+          onSelectAll={toggleAll}
+          allSelected={allChosen}
+          onForceScreen={(id) => setForce({ type: "screen", id })}
+          onNotice={setNotice}
+        />
+      ) : (
+        <ul className={`cards screen-cards-grid list-reset${chosen.length ? " has-selection" : ""}`}>
+          {visible.map(({ s, power, state }) => (
+            <ScreenCard
+              key={s.id}
+              screen={s}
+              siteName={siteName(s.site_id)}
+              groupName={groupName(s.group_id)}
+              state={state}
+              power={power}
+              playback={playback.data?.find((p) => p.screen_id === s.id)}
+              apk={apk?.screens.find((x) => x.screen_id === s.id)}
+              availableApk={apk?.available ?? null}
+              agent={agentOf(agents.data ?? [], s.site_id)}
+              isAdmin={isAdmin}
+              canForce={forcer}
+              override={overrides.data?.find((o) => o.id === playback.data?.find((p) => p.screen_id === s.id)?.override_id)}
+              allScreens={screens.data ?? []}
+              onForce={() => setForce({ type: "screen", id: s.id })}
+              provisionable={provisionable}
+              selected={selection.has(s.id)}
+              selectDisabled={selection.size >= MAX_SELECTION}
+              onSelect={(on) => toggle(s.id, on)}
+              onNotice={setNotice}
+            />
+          ))}
+        </ul>
+      )}
+
       {isAdmin && chosen.length ? <SelectionBar selected={chosen} agents={agents.data ?? []} groups={groups.data ?? []} sites={sites.data ?? []} apk={apk} onForce={() => setForce({ selection: chosen })} onClear={() => setSelection(new Set())} /> : null}
+
+      <QuickPublishModal
+        isOpen={publishOpen}
+        onClose={() => setPublishOpen(false)}
+        onSuccess={(m) => setNotice(m)}
+      />
     </>
   );
 }

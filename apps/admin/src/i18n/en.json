@@ -225,7 +225,8 @@
         "theoretical": "Schedule preview, not a real capture",
         "no_item": "Nothing scheduled",
         "previous": "Earlier capture of {name}, {age}"
-      }
+      },
+      "sent": "Command {command} sent to screen {name}"
     },
     "captures": {
       "title": "Screen captures",
@@ -239,6 +240,21 @@
       "all_groups": "All groups",
       "empty": "No screen to show.",
       "age": "Captured {age}"
+    },
+    "view": {
+      "label": "Display view",
+      "grid": "TV Gallery",
+      "table": "Table"
+    },
+    "table": {
+      "screen": "Screen",
+      "location": "Site & Group",
+      "status": "Status",
+      "broadcast": "Active broadcast",
+      "power": "Power",
+      "actions": "Actions",
+      "select": "Select {name}",
+      "none_broadcast": "No scheduled content"
     }
   },
   "errors": {
@@ -2551,5 +2567,25 @@
       "admin_only": "Only an administrator can approve publications.",
       "link": "{count, plural, =0 {To review} other {To review (#)}}"
     }
+  },
+  "quick_publish": {
+    "title": "Quick Broadcast (60s)",
+    "close": "Close",
+    "step1_title": "1. Choose media",
+    "step1_hint": "Select an image or video from your library",
+    "search_media": "Search media by name...",
+    "select_media": "Media selection",
+    "no_media": "No media found",
+    "step2_title": "2. Select target screens",
+    "target_all": "All screens ({count})",
+    "target_custom": "Specific screens",
+    "step3_title": "3. Period and Priority",
+    "flash_mode": "Flash / Urgent Broadcast",
+    "flash_hint": "Overrides regular schedule immediately",
+    "cancel": "Cancel",
+    "publish_cta": "Broadcast now",
+    "publishing": "Broadcasting...",
+    "success_broadcast": "Broadcasting « {name} » to {count, plural, one {1 screen} other {# screens}}!",
+    "cta_button": "Quick Broadcast"
   }
 }

@@ -150,7 +150,11 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
         </div>
         {playback?.next_change_at ? (
           <div className="broadcast-next">
-            <span className="meta">{t("screens.card.next_change")} : {fmt(playback.next_change_at, { timeStyle: "short", dateStyle: "short" })}</span>
+            <dl className="device-facts">
+              <div>
+                <dt>{t("screens.card.next_change")}</dt> <dd>{fmt(playback.next_change_at, { timeStyle: "short", dateStyle: "short" })}</dd>
+              </div>
+            </dl>
           </div>
         ) : null}
       </div>
@@ -169,7 +173,7 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
       <div className="screen-card-technical">
         <div className="screen-subcard screen-section-kiosk">
           <div className="screen-subcard-header">
-            <Icon name="kiosk" />
+            <Icon name="lock" />
             <h4>Kiosque & Sécurité</h4>
           </div>
           <KioskControls screen={screen} />
