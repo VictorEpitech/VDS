@@ -1616,7 +1616,9 @@
       "intro": "Sujets d'aide, glossaire et Premiers pas.",
       "open": "Ouvrir l'aide"
     },
-    "users": "Comptes, rôles et périmètre de chaque éditeur."
+    "users": "Comptes, rôles et périmètre de chaque éditeur.",
+    "section_access": "Organisation & Accès",
+    "section_infra": "Infrastructure & Exploitation"
   },
   "onboarding": {
     "title": "Premiers pas",

@@ -1616,7 +1616,9 @@
       "intro": "Help topics, glossary and Getting started.",
       "open": "Open help"
     },
-    "users": "Accounts, roles and each editor's scope."
+    "users": "Accounts, roles and each editor's scope.",
+    "section_access": "Organization & Access",
+    "section_infra": "Infrastructure & Operations"
   },
   "onboarding": {
     "title": "Getting started",

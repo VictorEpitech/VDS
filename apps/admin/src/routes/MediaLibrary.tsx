@@ -56,7 +56,7 @@ export function MediaLibrary() {
             type="button"
             className="btn btn-text btn-sm"
             onClick={() => setShowUpload(false)}
-            aria-label={t("common.close")}
+            aria-label={t("common.dismiss")}
           >
             ✕
           </button>

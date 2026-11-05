@@ -149,7 +149,7 @@ export function Playlists() {
               <div className="row-actions">
                 <Link className="btn btn-text" to={`/content/playlists/${p.id}`}>
                   <Icon name="playlist" />
-                  {t("playlist.edit", { defaultValue: "Modifier" })}
+                  {t("nav.playlist_edit")}
                 </Link>
                 {canWrite(p.owner) ? (
                   <ConfirmAction
