@@ -70,7 +70,7 @@ Conception et découpage L3-T0…T12 : `docs/architecture-lot3.md` (contrat vds-
 - [ ] Groupes + validation avant diffusion
 
 ### Lot 4 bis — Hébergement dans le Studio Allia
-- [ ] Module `auth.studio-allia` (vérification de session déléguée, correspondance des rôles, création du profil au premier accès)
+- [x] Module `auth.studio-allia` (vérification de session déléguée, correspondance des rôles, création du profil au premier accès ; 13 tests unitaires complets)
 - [ ] Côté Studio : route `/api/espace/vds/session`, entrée « Affichage » du menu, variable `VDS_STUDIO_SECRET` (guide 04 du Studio)
 - [ ] Dokploy : application `vds` sur `allia-innovation.fr/espace/affichage`, base `vds-db`, volume `vds-media`, sauvegardes vers MinIO
 - [ ] Respect des règles du Studio : noindex, no-store, 375 px, ton Allia, logos officiels
