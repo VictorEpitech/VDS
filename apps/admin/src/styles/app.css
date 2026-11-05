@@ -60,8 +60,38 @@ a {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--vds-space-2) var(--vds-space-6);
-  padding: var(--vds-space-3) var(--vds-space-4);
-  background: var(--vds-surface-1);
+  padding: var(--vds-space-2) var(--vds-space-5);
+  background: color-mix(in srgb, var(--vds-surface-1) 85%, transparent);
+  border-block-end: 1px solid var(--vds-outline);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+@media (min-width: 640px) {
+  .app-nav {
+    display: flex;
+    align-items: center;
+    gap: var(--vds-space-1);
+  }
+
+  .app-nav a {
+    flex-direction: row;
+    gap: var(--vds-space-2);
+    padding: var(--vds-space-1) var(--vds-space-3);
+    font-size: var(--vds-text-sm);
+    font-weight: 500;
+    min-block-size: 2.25rem;
+    border-radius: var(--vds-radius-pill);
+  }
+
+  .app-nav a.active {
+    background: var(--vds-surface-3);
+    color: var(--vds-primary);
+    font-weight: 600;
+  }
 }
 
 .vds-logo {
@@ -210,10 +240,12 @@ a {
   gap: var(--vds-space-2);
   min-block-size: 2rem;
   padding: var(--vds-space-1) var(--vds-space-3) var(--vds-space-1) var(--vds-space-2);
-  border: 1px solid var(--state-color);
+  border: 1px solid color-mix(in srgb, var(--state-color) 35%, transparent);
   border-radius: var(--vds-radius-pill);
-  background: var(--vds-surface);
+  background: color-mix(in srgb, var(--state-color) 12%, var(--vds-surface));
   color: var(--vds-on-surface);
+  font-weight: 500;
+  font-size: var(--vds-text-sm);
 }
 
 .status-badge .vds-icon {
@@ -1233,14 +1265,16 @@ fieldset.field > legend {
   flex-direction: column;
   gap: var(--vds-space-3);
   padding: var(--vds-space-4);
-  border: 1px solid var(--vds-outline-variant);
+  border: 1px solid var(--vds-outline);
   border-radius: var(--vds-radius-lg);
-  background: var(--vds-surface-2);
-  transition: border-color var(--vds-duration-short) ease;
+  background: var(--vds-surface-1);
+  transition: border-color var(--vds-duration-short) ease, transform var(--vds-duration-short) ease, background-color var(--vds-duration-short) ease;
 }
 
 .screen-card:hover {
-  border-color: var(--vds-outline);
+  border-color: var(--vds-primary);
+  transform: translateY(-2px);
+  background: var(--vds-surface-2);
 }
 
 .screen-card-head {
@@ -1302,18 +1336,55 @@ fieldset.field > legend {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--vds-space-2);
-  padding-block: var(--vds-space-1);
+  padding-block: var(--vds-space-2);
+}
+
+.screen-card-quick-actions .btn,
+.screen-card-footer .btn {
+  background: var(--vds-surface-1);
+  border: 1px solid var(--vds-outline);
+  border-radius: var(--vds-radius-pill);
+  padding: var(--vds-space-1) var(--vds-space-3);
+  min-block-size: 2rem;
+  font-size: var(--vds-text-sm);
+  color: var(--vds-on-surface);
+  font-weight: 500;
+  transition: background-color var(--vds-duration-short) ease, border-color var(--vds-duration-short) ease, color var(--vds-duration-short) ease;
+}
+
+.screen-card-quick-actions .btn:hover:not(:disabled),
+.screen-card-footer .btn:hover:not(:disabled) {
+  background: var(--vds-surface-3);
+  border-color: var(--vds-primary);
+  color: var(--vds-primary);
+}
+
+.screen-card-quick-actions .btn:disabled,
+.screen-card-footer .btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .screen-card-footer {
   margin-block-start: auto;
   padding-block-start: var(--vds-space-3);
-  border-block-start: 1px solid var(--vds-outline-variant);
+  border-block-start: 1px solid var(--vds-outline);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--vds-space-2);
+}
+
+.screen-card-footer .btn-subtle-danger {
+  color: var(--vds-error);
+  border-color: color-mix(in srgb, var(--vds-error) 40%, var(--vds-outline));
+}
+
+.screen-card-footer .btn-subtle-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--vds-error) 12%, var(--vds-surface-1));
+  border-color: var(--vds-error);
+  color: var(--vds-error);
 }
 
 .footer-links,
@@ -3328,9 +3399,17 @@ fieldset.field > legend {
   width: 100%;
   overflow: hidden;
   border-radius: var(--vds-radius-md);
-  background: var(--vds-surface-3);
-  border: 2px solid var(--vds-outline);
-  transition: border-color var(--vds-duration-short) ease;
+  background: color-mix(in srgb, var(--vds-on-surface) 95%, transparent);
+  border: 3px solid color-mix(in srgb, var(--vds-on-surface) 80%, var(--vds-outline));
+  transition: border-color var(--vds-duration-short) ease, transform var(--vds-duration-short) ease;
+}
+
+.tv-screen.shot-theory {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--vds-primary) 35%, var(--vds-on-surface)), color-mix(in srgb, var(--vds-on-surface) 96%, transparent));
+}
+
+.tv-screen.shot-empty {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--vds-surface-2) 20%, var(--vds-on-surface)), color-mix(in srgb, var(--vds-on-surface) 98%, transparent));
 }
 
 .screen-card:hover .tv-screen {
@@ -3373,6 +3452,14 @@ fieldset.field > legend {
   width: 100%;
 }
 
+.tv-glass-glare {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--vds-surface) 16%, transparent) 0%, transparent 45%);
+  z-index: 2;
+}
+
 .tv-broadcast-tag {
   display: inline-flex;
   align-items: center;
@@ -3381,11 +3468,11 @@ fieldset.field > legend {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  padding: 2px var(--vds-space-2);
+  padding: 3px var(--vds-space-2);
   border-radius: var(--vds-radius-pill);
-  background: var(--vds-surface-1);
-  border: 1px solid var(--vds-outline);
-  color: var(--vds-on-surface-variant);
+  background: color-mix(in srgb, var(--vds-surface) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--vds-surface) 25%, transparent);
+  color: var(--vds-surface);
 }
 
 .tv-broadcast-dot {
@@ -3398,7 +3485,7 @@ fieldset.field > legend {
   align-items: center;
   justify-content: center;
   gap: var(--vds-space-2);
-  color: var(--vds-on-surface);
+  color: var(--vds-surface);
   font-size: 1.125rem;
   font-weight: 600;
   max-width: 90%;
@@ -3406,7 +3493,7 @@ fieldset.field > legend {
 }
 
 .tv-screen.shot-empty .tv-screen-content {
-  color: var(--vds-on-surface-variant);
+  color: color-mix(in srgb, var(--vds-surface) 70%, transparent);
   font-size: 0.875rem;
 }
 
@@ -3836,4 +3923,37 @@ fieldset.field > legend {
   padding: var(--vds-space-4) var(--vds-space-5);
   border-block-start: 1px solid var(--vds-outline);
   background-color: var(--vds-surface-2);
+}
+
+.screens-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vds-space-3);
+  margin-block-end: var(--vds-space-4);
+  padding: var(--vds-space-2) var(--vds-space-3);
+  background: var(--vds-surface-1);
+  border: 1px solid var(--vds-outline);
+  border-radius: var(--vds-radius-pill);
+}
+
+.screens-toolbar .filter-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vds-space-1);
+}
+
+.screens-toolbar .filter-bar .btn {
+  border-radius: var(--vds-radius-pill);
+  padding: var(--vds-space-1) var(--vds-space-3);
+  min-block-size: 2rem;
+  font-size: var(--vds-text-sm);
+  color: var(--vds-on-surface-variant);
+}
+
+.screens-toolbar .filter-bar .btn[aria-pressed="true"] {
+  background: var(--vds-surface-3);
+  color: var(--vds-on-surface);
+  font-weight: 600;
 }

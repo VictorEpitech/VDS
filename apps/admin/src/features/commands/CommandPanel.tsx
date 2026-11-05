@@ -84,7 +84,7 @@ export function CommandPanel({ screen, playback, isAdmin }: Props) {
 
   return (
     <section className="command-panel" aria-labelledby={`${uid}-h`}>
-      <h3 id={`${uid}-h`}>{t("screens.commands.title")}</h3>
+      <h3 id={`${uid}-h`} className="visually-hidden">{t("screens.commands.title")}</h3>
       <ScreenshotView screen={screen} playback={playback} />
       {actions.length ? (
         <div className="actions" role="group" aria-label={t("screens.commands.group", { name: screen.name })}>

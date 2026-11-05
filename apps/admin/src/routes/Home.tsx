@@ -1,13 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import type { Health } from "@vds/sdk-ts";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import { Empty, QueryStatus } from "../components/feedback";
+import { Empty, QueryStatus, SuccessAlert } from "../components/feedback";
 import { Icon, type IconName } from "../components/Icon";
 import { StatusBadge, type ScreenState } from "../components/StatusBadge";
 import { ActiveOverrides } from "../features/overrides/ActiveOverrides";
 import { OnboardingCard } from "../features/onboarding/OnboardingCard";
 import { NextChanges } from "../features/planning/NextChanges";
+import { QuickPublishModal } from "../features/publication/QuickPublishModal";
 import { useAppUrl } from "../lib/runtime-config";
 import { useFleetSummary, useMedia, usePlaylists, useSchedules, useSites } from "../lib/queries";
 
@@ -33,6 +35,9 @@ function Stat({ icon, title, value, to, action, children }: { icon: IconName; ti
 export function Home() {
   const { t } = useTranslation();
   const url = useAppUrl();
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
   const health = useQuery({
     queryKey: ["health"],
     queryFn: async () => {
@@ -67,10 +72,19 @@ export function Home() {
   return (
     <>
       <div className="page-head">
-        <h1>{t("home.title")}</h1>
-        <StatusBadge state={server.state} label={server.label} />
+        <div className="page-head-title-wrap">
+          <h1>{t("home.title")}</h1>
+          <StatusBadge state={server.state} label={server.label} />
+        </div>
+        <div className="actions">
+          <button type="button" className="btn btn-filled" onClick={() => setPublishOpen(true)}>
+            <Icon name="schedule" />
+            {t("quick_publish.cta_button")}
+          </button>
+        </div>
       </div>
       <p className="lead">{t("home.intro")}</p>
+      {notice ? <SuccessAlert>{notice}</SuccessAlert> : null}
       <OnboardingCard />
       <QueryStatus query={summary} />
       {noScreens ? (
@@ -119,6 +133,12 @@ export function Home() {
       </div>
       <NextChanges />
       <ActiveOverrides />
+
+      <QuickPublishModal
+        isOpen={publishOpen}
+        onClose={() => setPublishOpen(false)}
+        onSuccess={(m) => setNotice(m)}
+      />
     </>
   );
 }

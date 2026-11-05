@@ -116,18 +116,19 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
           {isAdmin ? (
             <input type="checkbox" className="select-box" checked={selected} disabled={selectDisabled && !selected} aria-label={t("screens.select.one", { name: screen.name })} onChange={(e) => onSelect(e.target.checked)} />
           ) : null}
-          <h2 id={`screen-${screen.id}`} className="screen-card-title">
-            <Icon name="screen" />
-            <span>{screen.name}</span>
-          </h2>
+          <div className="screen-title-block">
+            <h2 id={`screen-${screen.id}`} className="screen-card-title">
+              <Icon name="screen" />
+              <span>{screen.name}</span>
+            </h2>
+            <p className="meta screen-card-location">{[siteName, groupName].filter(Boolean).join(" › ")}</p>
+          </div>
         </div>
         <div className="screen-card-badges">
           <span className="screen-orientation-pill">{t(`screens.orientation.${screen.orientation}`)}</span>
           {screen.device && ["online", "offline", "pairing", "revoked"].includes(state) ? <PresenceBadge presence={screen.device.presence} /> : <StatusBadge state={state} />}
         </div>
       </div>
-
-      <p className="meta screen-card-location">{[siteName, groupName].filter(Boolean).join(" › ")}</p>
 
       {/* Hero Display Moniteur 16:9 / 9:16 */}
       <div className="screen-hero-display">
