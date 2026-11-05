@@ -146,14 +146,20 @@ export function Playlists() {
                   <OwnerBadge owner={p.owner} />
                 </div>
               </div>
-              {canWrite(p.owner) ? (
-                <ConfirmAction
-                  label={t("playlists.delete.action")}
-                  confirmLabel={t("playlists.delete.confirm", { name: p.name })}
-                  pending={remove.isPending}
-                  onConfirm={() => remove.mutate(p)}
-                />
-              ) : null}
+              <div className="row-actions">
+                <Link className="btn btn-text" to={`/content/playlists/${p.id}`}>
+                  <Icon name="playlist" />
+                  {t("playlist.edit", { defaultValue: "Modifier" })}
+                </Link>
+                {canWrite(p.owner) ? (
+                  <ConfirmAction
+                    label={t("playlists.delete.action")}
+                    confirmLabel={t("playlists.delete.confirm", { name: p.name })}
+                    pending={remove.isPending}
+                    onConfirm={() => remove.mutate(p)}
+                  />
+                ) : null}
+              </div>
             </li>
           ))}
         </ul>

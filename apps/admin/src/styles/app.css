@@ -3122,3 +3122,37 @@ fieldset.field > legend {
   margin: 0;
   font-size: 1.125rem;
 }
+
+/* Actions subtiles sur lignes et cartes (P3) */
+.btn-subtle-danger {
+  color: var(--vds-on-surface-variant);
+  opacity: 0.85;
+  transition: color var(--vds-duration-short) ease, background-color var(--vds-duration-short) ease, opacity var(--vds-duration-short) ease;
+}
+
+.btn-subtle-danger:hover,
+.btn-subtle-danger:focus-visible,
+.row:hover .btn-subtle-danger,
+.card:hover .btn-subtle-danger {
+  color: var(--vds-error);
+  opacity: 1;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--vds-space-2);
+  margin-inline-start: auto;
+}
+
+.row.card {
+  padding: var(--vds-space-3) var(--vds-space-4);
+  border: 1px solid var(--vds-outline-variant);
+  border-radius: var(--vds-radius-lg);
+  background: var(--vds-surface-1);
+  transition: border-color var(--vds-duration-short) ease, box-shadow var(--vds-duration-short) ease;
+}
+
+.row.card:hover {
+  border-color: var(--vds-outline);
+}

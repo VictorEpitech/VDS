@@ -93,7 +93,7 @@ export function ConfirmAction({
   };
   if (!asking) {
     return (
-      <button ref={openRef} type="button" className="btn btn-text btn-danger" onClick={() => setAsking(true)}>
+      <button ref={openRef} type="button" className="btn btn-text btn-danger btn-subtle-danger" onClick={() => setAsking(true)}>
         <Icon name={icon} />
         {label}
       </button>

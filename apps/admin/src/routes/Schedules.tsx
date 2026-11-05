@@ -171,8 +171,9 @@ export function Schedules() {
                 {s.enabled ? "" : ` · ${t("schedules.disabled")}`}
               </p>
             </div>
-            <div className="actions">
+            <div className="actions row-actions">
               <button type="button" className="btn btn-text" onClick={() => { save.reset(); setForm(s); }}>
+                <Icon name="maintenance" />
                 {t("schedules.edit")}
               </button>
               <ConfirmAction
