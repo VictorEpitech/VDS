@@ -5,7 +5,7 @@ import { ConfirmAction, ErrorAlert, SuccessAlert } from "../../components/feedba
 import { Icon } from "../../components/Icon";
 import { PresenceBadge, StatusBadge } from "../../components/StatusBadge";
 import { useApi } from "../../lib/api";
-import { keys, type Agent, type Command, type Screen, type ScreenApk, type FleetApk, type ScreenPlayback, type ScreenPower } from "../../lib/queries";
+import { keys, type Agent, type Command, type Screen, type ScreenApk, type FleetApk, type ScreenPlayback, type ScreenPower, type Incident } from "../../lib/queries";
 import { Link } from "react-router-dom";
 import { ApkUpdateConfirm, needsUpdate, planApkUpdate } from "../actions/apk";
 import { useActionQueue } from "../actions/ActionQueueProvider";
@@ -48,10 +48,11 @@ interface Props {
   selectDisabled: boolean;
   onSelect: (checked: boolean) => void;
   onNotice: (message: string | null) => void;
+  incident?: Incident;
 }
 
-/** Carte écran unique, utilisée sous tous les filtres : état, alimentation, programmation active, actions. */
-export function ScreenCard({ screen, siteName, groupName, state, power, playback, apk, availableApk, agent, isAdmin, canForce = false, override, allScreens = [], onForce, provisionable, selected, selectDisabled, onSelect, onNotice }: Props) {
+/** Carte écran simplifiée et moderne : vitrine visuelle, assistant d'incident et paramètres avancés en tiroir. */
+export function ScreenCard({ screen, siteName, groupName, state, power, playback, apk, availableApk, agent, isAdmin, canForce = false, override, allScreens = [], onForce, provisionable, selected, selectDisabled, onSelect, onNotice, incident }: Props) {
   const { t, i18n } = useTranslation();
   const api = useApi();
   const qc = useQueryClient();
@@ -61,6 +62,7 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
   const [confirmApk, setConfirmApk] = useState(false);
   const [showDetect, setShowDetect] = useState(false);
   const [panel, setPanel] = useState<{ kind: "edit" | "delete"; archive?: boolean } | null>(null);
+
   const revoke = useMutation({
     mutationFn: () => api.delete(`/screens/${screen.id}/device`),
     onMutate: () => onNotice(null),
@@ -70,9 +72,18 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
     },
   });
 
+  const ackIncident = useMutation({
+    mutationFn: (inc: Incident) => api.post<Incident>(`/incidents/${inc.id}/acknowledge`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["incidents"] });
+      onNotice(t("screens.power_issue.acknowledged_notice", { name: screen.name }));
+    },
+  });
+
   const ready = agent?.status === "online";
   const hintId = `hint-${screen.id}`;
   const fmt = (iso: string, opts: Intl.DateTimeFormatOptions = { dateStyle: "medium", timeStyle: "short" }) => new Intl.DateTimeFormat(i18n.language, opts).format(new Date(iso));
+
   const run = (kind: Kind) => {
     if (!agent) return;
     setLast(null);
@@ -88,6 +99,7 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
       },
     );
   };
+
   const updatable = isAdmin && needsUpdate(apk);
   const apkPlan = planApkUpdate([screen], apk && availableApk !== undefined ? { available: availableApk, screens: [apk] } : undefined, agent ? [agent] : []);
   const apkVersion = availableApk ? `${availableApk.version_name} (${availableApk.version_code})` : "";
@@ -96,6 +108,7 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
     setConfirmApk(false);
     queue.enqueue("apk_update", [{ screenId: screen.id, name: screen.name, siteId: screen.site_id, agentId: agent?.id }]);
   };
+
   const result = last && last.kind !== "detect" ? last : null;
   const offSlot = currentOffSlot(power, new Date());
   const powerLine = !power ? null : offSlot ? t("screens.card.power_off_until", { when: fmt(offSlot.to) }) : power.plan_id || power.slots.length ? t("screens.card.power_on") : t("screens.card.power_no_plan");
@@ -109,8 +122,11 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
       </>
     );
 
+  const hasPowerIssue = state === "power_failed" || (incident != null && !incident.resolved_at && !incident.acknowledged_at);
+
   return (
     <li className="card screen-card" aria-labelledby={`screen-${screen.id}`}>
+      {/* En-tête : Identification épurée */}
       <div className="screen-card-head">
         <div className="screen-card-title-group">
           {isAdmin ? (
@@ -130,10 +146,57 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
         </div>
       </div>
 
-      {/* Hero Display Moniteur 16:9 / 9:16 */}
+      {/* Hero Display Moniteur TV 16:9 / 9:16 avec commandes directes */}
       <div className="screen-hero-display">
         <CommandPanel screen={screen} playback={playback} isAdmin={isAdmin} />
       </div>
+
+      {/* Assistant de Résolution d'Incident d'Alimentation (Accessible et Non-Tech) */}
+      {hasPowerIssue ? (
+        <div className="screen-power-incident-box" role="alert">
+          <div className="power-incident-badge-row">
+            <Icon name="warning" />
+            <strong className="power-incident-title">{t("screens.power_issue.title")}</strong>
+          </div>
+          <p className="power-incident-desc">{t("screens.power_issue.desc")}</p>
+          <div className="power-incident-actions">
+            <button
+              type="button"
+              className="btn btn-filled btn-sm"
+              disabled={!ready || cmd.isPending}
+              aria-describedby={ready ? undefined : hintId}
+              onClick={() => run("on")}
+              aria-label={t("screens.power_issue.retry_on_for", { name: screen.name })}
+            >
+              <Icon name="power" />
+              {t("screens.power_issue.retry_on")}
+            </button>
+            <button
+              type="button"
+              className="btn btn-tonal btn-sm"
+              disabled={!ready || cmd.isPending}
+              aria-describedby={ready ? undefined : hintId}
+              onClick={() => run("detect")}
+              aria-label={t("screens.power_issue.detect_for", { name: screen.name })}
+            >
+              <Icon name="detect" />
+              {t("screens.power_issue.detect")}
+            </button>
+            {incident && !incident.acknowledged_at ? (
+              <button
+                type="button"
+                className="btn btn-text btn-sm"
+                disabled={ackIncident.isPending}
+                onClick={() => ackIncident.mutate(incident)}
+                aria-label={t("screens.power_issue.resolve_for", { name: screen.name })}
+              >
+                <Icon name="check" />
+                {t("screens.power_issue.resolve")}
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       {/* Cartouche Récapitulatif Diffusion & Alimentation */}
       <div className="screen-card-broadcast">
@@ -170,63 +233,7 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
         </div>
       ) : null}
 
-      {/* Inspecteurs Techniques Aérés */}
-      <div className="screen-card-technical">
-        <div className="screen-subcard screen-section-kiosk">
-          <div className="screen-subcard-header">
-            <Icon name="lock" />
-            <h4>Kiosque & Sécurité</h4>
-          </div>
-          <KioskControls screen={screen} />
-          {isAdmin ? <KioskSetting level="screen" id={screen.id} /> : null}
-          {isAdmin ? <ExclusiveSetting level="screen" id={screen.id} /> : null}
-        </div>
-
-        {screen.device || (isAdmin && apk && apk.state !== "not_android") ? (
-          <div className="screen-subcard screen-section-device">
-            <div className="screen-subcard-header">
-              <Icon name="screen" />
-              <h4>Matériel & Système</h4>
-            </div>
-            {screen.device ? (
-              <dl className="device-facts">
-                <div>
-                  <dt>{t("screens.device.platform")}</dt> <dd className="mono">{[screen.device.platform, screen.device.model].filter(Boolean).join(" ")}</dd>
-                </div>
-                {screen.device.app_version ? (
-                  <div>
-                    <dt>{t("screens.device.version")}</dt> <dd className="mono">{screen.device.app_version}</dd>
-                  </div>
-                ) : null}
-                <div>
-                  <dt>{t("screens.device.last_seen")}</dt> <dd>{screen.device.last_seen_at ? fmt(screen.device.last_seen_at) : t("screens.device.never_seen")}</dd>
-                </div>
-                {screen.device.revoked_at ? (
-                  <div>
-                    <dt>{t("screens.device.revoked_at")}</dt> <dd>{fmt(screen.device.revoked_at)}</dd>
-                  </div>
-                ) : null}
-              </dl>
-            ) : (
-              <p className="meta">{t("screens.device.none")}</p>
-            )}
-            {isAdmin && apk && apk.state !== "not_android" ? (
-              <dl className="device-facts">
-                <div>
-                  <dt>{t("apk.installed")}</dt>{" "}
-                  <dd className="mono">{apk.installed_version_code != null ? [apk.installed_version_name, `(${apk.installed_version_code})`].filter(Boolean).join(" ") : <span className="meta">{t("apk.unknown_version")}</span>}</dd>
-                </div>
-              </dl>
-            ) : null}
-            {isAdmin && apk?.state === "outdated" ? (
-              <p>
-                <StatusBadge state="pairing" icon="upload" label={t("apk.badge")} />
-              </p>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
-
+      {/* Actions Principales (Allumer / Éteindre, Modifier) */}
       <div className="actions screen-card-quick-actions">
         {isAdmin
           ? (["on", "off"] as const).map((s) => (
@@ -237,25 +244,127 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
             ))
           : null}
         {isAdmin ? (
-          <button type="button" className="btn btn-text" disabled={!ready || cmd.isPending} aria-describedby={ready ? undefined : hintId} onClick={() => run("detect")} aria-label={t("supervision.detect.run_for", { name: screen.name })}>
-            <Icon name="detect" />
-            {t("supervision.detect.run")}
-          </button>
-        ) : null}
-        {canForce && onForce && !screen.archived_at ? (
-          <button type="button" className="btn btn-text" onClick={onForce} aria-label={t("overrides.force_for", { name: screen.name })}>
-            <Icon name="overridden" />
-            {t("overrides.force")}
-          </button>
-        ) : null}
-        {updatable ? (
-          <button type="button" className="btn btn-text" disabled={!!apkReason || confirmApk} aria-describedby={apkReason ? `apk-${screen.id}` : undefined} aria-expanded={confirmApk} onClick={() => setConfirmApk(true)} aria-label={t("apk.action_for", { name: screen.name })}>
-            <Icon name="upload" />
-            {t("apk.action")}
+          <button type="button" className="btn btn-text" aria-label={t("screens.edit.action_for", { name: screen.name })} onClick={() => { onNotice(null); setPanel({ kind: "edit" }); }}>
+            <Icon name="maintenance" />
+            {t("screens.edit.action")}
           </button>
         ) : null}
       </div>
 
+      {/* Tiroir Repliable : Paramètres Avancés, Kiosque, Matériel et Administration */}
+      <details className="screen-tech-drawer">
+        <summary className="screen-tech-summary">
+          <span className="screen-tech-summary-left">
+            <Icon name="maintenance" />
+            <span className="screen-tech-summary-title">{t("screens.technical_drawer_title")}</span>
+          </span>
+          <span className="screen-tech-summary-sub">{t("screens.technical_drawer_summary")}</span>
+        </summary>
+        <div className="screen-card-technical">
+          <div className="screen-subcard screen-section-kiosk">
+            <div className="screen-subcard-header">
+              <Icon name="lock" />
+              <h4>Kiosque & Sécurité</h4>
+            </div>
+            <KioskControls screen={screen} />
+            {isAdmin ? <KioskSetting level="screen" id={screen.id} /> : null}
+            {isAdmin ? <ExclusiveSetting level="screen" id={screen.id} /> : null}
+          </div>
+
+          {screen.device || (isAdmin && apk && apk.state !== "not_android") ? (
+            <div className="screen-subcard screen-section-device">
+              <div className="screen-subcard-header">
+                <Icon name="screen" />
+                <h4>Matériel & Système</h4>
+              </div>
+              {screen.device ? (
+                <dl className="device-facts">
+                  <div>
+                    <dt>{t("screens.device.platform")}</dt> <dd className="mono">{[screen.device.platform, screen.device.model].filter(Boolean).join(" ")}</dd>
+                  </div>
+                  {screen.device.app_version ? (
+                    <div>
+                      <dt>{t("screens.device.version")}</dt> <dd className="mono">{screen.device.app_version}</dd>
+                    </div>
+                  ) : null}
+                  <div>
+                    <dt>{t("screens.device.last_seen")}</dt> <dd>{screen.device.last_seen_at ? fmt(screen.device.last_seen_at) : t("screens.device.never_seen")}</dd>
+                  </div>
+                  {screen.device.revoked_at ? (
+                    <div>
+                      <dt>{t("screens.device.revoked_at")}</dt> <dd>{fmt(screen.device.revoked_at)}</dd>
+                    </div>
+                  ) : null}
+                </dl>
+              ) : (
+                <p className="meta">{t("screens.device.none")}</p>
+              )}
+              {isAdmin && apk && apk.state !== "not_android" ? (
+                <dl className="device-facts">
+                  <div>
+                    <dt>{t("apk.installed")}</dt>{" "}
+                    <dd className="mono">{apk.installed_version_code != null ? [apk.installed_version_name, `(${apk.installed_version_code})`].filter(Boolean).join(" ") : <span className="meta">{t("apk.unknown_version")}</span>}</dd>
+                  </div>
+                </dl>
+              ) : null}
+              {isAdmin && apk?.state === "outdated" ? (
+                <p>
+                  <StatusBadge state="pairing" icon="upload" label={t("apk.badge")} />
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          <div className="actions screen-drawer-actions">
+            {isAdmin ? (
+              <button type="button" className="btn btn-text" disabled={!ready || cmd.isPending} aria-describedby={ready ? undefined : hintId} onClick={() => run("detect")} aria-label={t("supervision.detect.run_for", { name: screen.name })}>
+                <Icon name="detect" />
+                {t("supervision.detect.run")}
+              </button>
+            ) : null}
+            {canForce && onForce && !screen.archived_at ? (
+              <button type="button" className="btn btn-text" onClick={onForce} aria-label={t("overrides.force_for", { name: screen.name })}>
+                <Icon name="overridden" />
+                {t("overrides.force")}
+              </button>
+            ) : null}
+            {updatable ? (
+              <button type="button" className="btn btn-text" disabled={!!apkReason || confirmApk} aria-describedby={apkReason ? `apk-${screen.id}` : undefined} aria-expanded={confirmApk} onClick={() => setConfirmApk(true)} aria-label={t("apk.action_for", { name: screen.name })}>
+                <Icon name="upload" />
+                {t("apk.action")}
+              </button>
+            ) : null}
+          </div>
+
+          <footer className="screen-card-footer">
+            <div className="actions footer-links">
+              <Link className="btn btn-text" to={`/screens/add?screen=${screen.id}`}>
+                <Icon name="pairing" />
+                {t("screens.pair_this")}
+              </Link>
+              {isAdmin && provisionable ? (
+                <Link className="btn btn-text" to={`/screens/add/android?screen=${screen.id}`} aria-label={t("screens.reinstall_for", { name: screen.name })}>
+                  <Icon name="detect" />
+                  {t("screens.reinstall")}
+                </Link>
+              ) : null}
+              {screen.device && !screen.device.revoked_at && screen.device.presence !== "revoked" ? (
+                <ConfirmAction icon="revoke" label={t("screens.revoke.action")} confirmLabel={t("screens.revoke.confirm", { name: screen.name })} pending={revoke.isPending} onConfirm={() => revoke.mutate()} />
+              ) : null}
+            </div>
+            {isAdmin ? (
+              <div className="actions footer-mgmt">
+                <button type="button" className="btn btn-text btn-subtle-danger" aria-label={t("screens.delete.action_for", { name: screen.name })} onClick={() => { onNotice(null); setPanel({ kind: "delete" }); }}>
+                  <Icon name="delete" />
+                  {t("screens.delete.action")}
+                </button>
+              </div>
+            ) : null}
+          </footer>
+        </div>
+      </details>
+
+      {/* Retours et Dialogues Flottants */}
       {updatable && apkReason ? (
         <p className="meta" id={`apk-${screen.id}`}>
           {t(`apk.reason.${apkReason}`, { defaultValue: t("apk.reason.unknown") })}
@@ -286,35 +395,6 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
       ) : null}
       {showDetect && last?.kind === "detect" ? <DetectPanel screenId={screen.id} screenName={screen.name} command={last.command} onClose={() => setShowDetect(false)} /> : null}
 
-      <footer className="screen-card-footer">
-        <div className="actions footer-links">
-          <Link className="btn btn-text" to={`/screens/add?screen=${screen.id}`}>
-            <Icon name="pairing" />
-            {t("screens.pair_this")}
-          </Link>
-          {isAdmin && provisionable ? (
-            <Link className="btn btn-text" to={`/screens/add/android?screen=${screen.id}`} aria-label={t("screens.reinstall_for", { name: screen.name })}>
-              <Icon name="detect" />
-              {t("screens.reinstall")}
-            </Link>
-          ) : null}
-          {screen.device && !screen.device.revoked_at && screen.device.presence !== "revoked" ? (
-            <ConfirmAction icon="revoke" label={t("screens.revoke.action")} confirmLabel={t("screens.revoke.confirm", { name: screen.name })} pending={revoke.isPending} onConfirm={() => revoke.mutate()} />
-          ) : null}
-        </div>
-        {isAdmin ? (
-          <div className="actions footer-mgmt">
-            <button type="button" className="btn btn-text" aria-label={t("screens.edit.action_for", { name: screen.name })} onClick={() => { onNotice(null); setPanel({ kind: "edit" }); }}>
-              <Icon name="maintenance" />
-              {t("screens.edit.action")}
-            </button>
-            <button type="button" className="btn btn-text btn-subtle-danger" aria-label={t("screens.delete.action_for", { name: screen.name })} onClick={() => { onNotice(null); setPanel({ kind: "delete" }); }}>
-              <Icon name="delete" />
-              {t("screens.delete.action")}
-            </button>
-          </div>
-        ) : null}
-      </footer>
       {revoke.isError ? <ErrorAlert error={revoke.error} /> : null}
       {isAdmin && panel?.kind === "edit" ? (
         <ScreenEditForm screen={screen} initialArchived={panel.archive} onClose={() => setPanel(null)} onDone={(m) => { setPanel(null); onNotice(m); }} />

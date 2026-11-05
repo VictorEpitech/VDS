@@ -226,7 +226,8 @@
         "no_item": "Nothing scheduled",
         "previous": "Earlier capture of {name}, {age}"
       },
-      "sent": "Command {command} sent to screen {name}"
+      "sent": "Command {command} sent to screen {name}",
+      "history_toggle": "Command history ({count})"
     },
     "captures": {
       "title": "Screen captures",
@@ -255,7 +256,20 @@
       "actions": "Actions",
       "select": "Select {name}",
       "none_broadcast": "No scheduled content"
-    }
+    },
+    "power_issue": {
+      "title": "Power issue detected",
+      "desc": "The screen did not respond to the automated power command. Check if it is powered on manually, or retry the command.",
+      "retry_on": "Power on screen",
+      "retry_on_for": "Power on screen {name}",
+      "detect": "TV detection wizard",
+      "detect_for": "Detect power protocol for {name}",
+      "resolve": "Mark as resolved",
+      "resolve_for": "Mark power incident for {name} as resolved",
+      "acknowledged_notice": "Power alert for {name} acknowledged."
+    },
+    "technical_drawer_title": "Advanced settings and maintenance",
+    "technical_drawer_summary": "Kiosk, hardware, reinstallation and advanced commands"
   },
   "errors": {
     "not_found": {
@@ -1443,7 +1457,6 @@
       "5": "Validation"
     },
     "tutorial": {
-      "intro": "Do this on the TV before continuing. It takes a few minutes.",
       "1": {
         "title": "Turn on developer options",
         "body": "Settings > System > About: press \"Build\" 7 times."
@@ -1463,7 +1476,8 @@
       "5": {
         "title": "Accept the prompt",
         "body": "During the installation, accept the debugging prompt on the TV and tick \"Always allow\"."
-      }
+      },
+      "intro": "Do this on the TV before continuing. It takes a few minutes."
     },
     "address": {
       "label": "TV IP address",

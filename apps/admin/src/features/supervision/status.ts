@@ -20,7 +20,7 @@ export function displayState(screen: Screen, power: ScreenPower | undefined, inc
   if (d.presence === "revoked") return "revoked";
   if (d.presence === "unseen") return "pairing";
   if (isScheduledOff(power, now)) return "scheduled_off";
-  if (incidents.some((i) => i.kind === "power.failed" && i.subject_id === screen.id && !i.resolved_at)) return "power_failed";
+  if (incidents.some((i) => i.kind === "power.failed" && i.subject_id === screen.id && !i.resolved_at && !i.acknowledged_at)) return "power_failed";
   if (d.presence !== "online") return "offline";
   return playback?.source === "override" ? "overridden" : "online";
 }

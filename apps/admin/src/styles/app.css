@@ -3957,3 +3957,111 @@ fieldset.field > legend {
   color: var(--vds-on-surface);
   font-weight: 600;
 }
+
+/* Assistant de Résolution d'Incident d'Alimentation (Non-Tech) */
+.screen-power-incident-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-2);
+  padding: var(--vds-space-3);
+  border-radius: var(--vds-radius-md);
+  background: color-mix(in srgb, var(--vds-warning) 10%, var(--vds-surface-1));
+  border: 1px solid color-mix(in srgb, var(--vds-warning) 40%, var(--vds-outline));
+  margin-block: var(--vds-space-1);
+}
+
+.power-incident-badge-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vds-space-2);
+  color: var(--vds-warning);
+}
+
+.power-incident-title {
+  font-size: var(--vds-text-sm);
+  font-weight: 600;
+  color: var(--vds-on-surface);
+}
+
+.power-incident-desc {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--vds-on-surface-variant);
+  line-height: 1.4;
+}
+
+.power-incident-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vds-space-2);
+  padding-block-start: var(--vds-space-1);
+}
+
+/* Tiroir Technique Repliable */
+.screen-tech-drawer {
+  border-block-start: 1px solid var(--vds-outline-variant);
+  padding-block-start: var(--vds-space-2);
+  margin-block-start: var(--vds-space-1);
+}
+
+.screen-tech-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vds-space-2);
+  padding: var(--vds-space-2);
+  border-radius: var(--vds-radius-sm);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  color: var(--vds-on-surface-variant);
+  transition: background-color var(--vds-duration-short) ease, color var(--vds-duration-short) ease;
+}
+
+.screen-tech-summary:hover {
+  background: var(--vds-surface-2);
+  color: var(--vds-primary);
+}
+
+.screen-tech-summary-left {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vds-space-2);
+  font-weight: 600;
+}
+
+.screen-tech-summary-sub {
+  font-size: 0.75rem;
+  color: var(--vds-on-surface-variant);
+  opacity: 0.8;
+}
+
+.screen-drawer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vds-space-2);
+  padding-block: var(--vds-space-2);
+}
+
+/* Historique des Commandes en Tiroir */
+.command-history-drawer {
+  margin-block-start: var(--vds-space-2);
+}
+
+.command-history-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vds-space-1);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--vds-on-surface-variant);
+  cursor: pointer;
+  padding: var(--vds-space-1) var(--vds-space-2);
+  border-radius: var(--vds-radius-sm);
+  transition: background-color var(--vds-duration-short) ease;
+}
+
+.command-history-summary:hover {
+  background: var(--vds-surface-3);
+  color: var(--vds-on-surface);
+}

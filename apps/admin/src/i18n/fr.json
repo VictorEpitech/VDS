@@ -226,7 +226,8 @@
         "no_item": "Aucun élément programmé",
         "previous": "Capture précédente de {name}, {age}"
       },
-      "sent": "Commande {command} envoyée à l'écran {name}"
+      "sent": "Commande {command} envoyée à l'écran {name}",
+      "history_toggle": "Historique des commandes ({count})"
     },
     "captures": {
       "title": "Captures d'écran",
@@ -255,7 +256,20 @@
       "actions": "Actions",
       "select": "Sélectionner {name}",
       "none_broadcast": "Aucun contenu programmé"
-    }
+    },
+    "power_issue": {
+      "title": "Incident d'alimentation détecté",
+      "desc": "L'écran n'a pas répondu à l'ordre d'allumage automatique. Vérifiez s'il est allumé manuellement, ou relancez la commande.",
+      "retry_on": "Rallumer l'écran",
+      "retry_on_for": "Rallumer l'écran {name}",
+      "detect": "Assistant de détection TV",
+      "detect_for": "Détecter le bon protocole TV pour {name}",
+      "resolve": "Marquer comme résolu",
+      "resolve_for": "Marquer l'incident d'alimentation de {name} comme résolu",
+      "acknowledged_notice": "L'alerte d'alimentation pour {name} a été acquittée."
+    },
+    "technical_drawer_title": "Paramètres avancés et maintenance",
+    "technical_drawer_summary": "Kiosque, matériel, réinstallation et commandes avancées"
   },
   "errors": {
     "not_found": {
@@ -1443,7 +1457,6 @@
       "5": "Validation"
     },
     "tutorial": {
-      "intro": "À faire sur la TV avant de continuer. Comptez quelques minutes.",
       "1": {
         "title": "Activer les options développeur",
         "body": "Paramètres > Système > À propos : appuyez 7 fois sur « Build »."
@@ -1463,7 +1476,8 @@
       "5": {
         "title": "Accepter l'invite",
         "body": "Pendant l'installation, acceptez l'invite de débogage sur la TV et cochez « Toujours autoriser »."
-      }
+      },
+      "intro": "À faire sur la TV avant de continuer. Comptez quelques minutes."
     },
     "address": {
       "label": "Adresse IP de la TV",

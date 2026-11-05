@@ -235,6 +235,7 @@ export function Screens() {
               selected={selection.has(s.id)}
               selectDisabled={selection.size >= MAX_SELECTION}
               onSelect={(on) => toggle(s.id, on)}
+              incident={incidents.data?.find((i) => i.kind === "power.failed" && i.subject_id === s.id && !i.resolved_at)}
               onNotice={setNotice}
             />
           ))}
