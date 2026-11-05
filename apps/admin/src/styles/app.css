@@ -1227,10 +1227,107 @@ fieldset.field > legend {
 }
 
 /* Actions rapides : sélection multiple, barre d'actions (feuille basse en petit écran), file d'actions. */
+/* Cartes écrans : organisation en sous-cartes structurées et hiérarchie visuelle */
+.screen-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-3);
+  padding: var(--vds-space-4);
+  border: 1px solid var(--vds-outline-variant);
+  border-radius: var(--vds-radius-lg);
+  background: var(--vds-surface-2);
+  transition: border-color var(--vds-duration-short) ease;
+}
+
+.screen-card:hover {
+  border-color: var(--vds-outline);
+}
+
 .screen-card-head {
   display: flex;
   align-items: center;
-  gap: var(--vds-space-3);
+  justify-content: space-between;
+  gap: var(--vds-space-2);
+  flex-wrap: wrap;
+}
+
+.screen-card-title-group {
+  display: flex;
+  align-items: center;
+  gap: var(--vds-space-2);
+  min-inline-size: 0;
+}
+
+.screen-card-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vds-space-2);
+}
+
+.screen-card-badges {
+  display: flex;
+  align-items: center;
+  gap: var(--vds-space-2);
+  margin-inline-start: auto;
+}
+
+.screen-card-location {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--vds-on-surface-variant);
+}
+
+.screen-card-broadcast {
+  padding: var(--vds-space-3);
+  border-radius: var(--vds-radius-md);
+  background: var(--vds-surface-1);
+  border: 1px solid var(--vds-outline-variant);
+}
+
+.screen-subcard {
+  padding: var(--vds-space-3);
+  border-radius: var(--vds-radius-md);
+  background: var(--vds-surface-1);
+  border: 1px solid var(--vds-outline-variant);
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-2);
+}
+
+.screen-card-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vds-space-2);
+  padding-block: var(--vds-space-1);
+}
+
+.screen-card-footer {
+  margin-block-start: auto;
+  padding-block-start: var(--vds-space-3);
+  border-block-start: 1px solid var(--vds-outline-variant);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vds-space-2);
+}
+
+.footer-links,
+.footer-mgmt {
+  display: flex;
+  align-items: center;
+  gap: var(--vds-space-1);
+}
+
+.highlight-override {
+  padding: var(--vds-space-3);
+  border-radius: var(--vds-radius-md);
+  background: var(--vds-surface-1);
+  border: 1px solid var(--vds-outline-variant);
 }
 
 .select-box {

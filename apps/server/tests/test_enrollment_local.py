@@ -177,7 +177,7 @@ async def test_unknown_site_404_and_nothing_written(
     assert not (local_dir / "enroll.json").exists()
 
 
-@pytest.mark.skipif(os.geteuid() == 0, reason="root ignore les droits de dossier")
+@pytest.mark.skipif(getattr(os, "geteuid", lambda: -1)() == 0, reason="root ignore les droits de dossier")
 async def test_write_failure_revokes_code(local_dir: Path, admin: AsyncClient, p: str) -> None:
     presence(local_dir)
     site = await mk_site(admin, p)

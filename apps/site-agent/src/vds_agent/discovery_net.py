@@ -7,7 +7,10 @@ Aucune connexion ADB / WebSocket / HTTP générique : le seul GET est la descrip
 
 import asyncio
 import contextlib
-import fcntl
+try:
+    import fcntl
+except ImportError:
+    fcntl = None  # type: ignore[assignment]
 import logging
 import re
 import socket

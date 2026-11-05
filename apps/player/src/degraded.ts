@@ -3,7 +3,7 @@ import { AssetError } from "./assets";
 import type { AssetStore } from "./assets";
 import { DeviceRevokedError, NetworkError, errorCode, resolveServer } from "./api";
 import { ERR_DEVICE_REVOKED } from "./shared";
-import { sha256Stream } from "./sha256";
+import { sha256Stream, Sha256 } from "./sha256";
 
 /** Budget mémoire des médias en mode dégradé (octets). */
 export const DEGRADED_BUDGET = 128 * 1024 * 1024;
@@ -111,22 +111,23 @@ export class MemoryAssetCache implements AssetStore {
       if (res.status === 401 && (await errorCode(res)) === ERR_DEVICE_REVOKED) throw new DeviceRevokedError();
       throw new AssetError("asset_http", key);
     }
-    let blob: Blob;
+    let buf: ArrayBuffer;
     try {
-      blob = await res.blob();
+      buf = await res.arrayBuffer();
     } catch (e) {
       throw new NetworkError(e instanceof Error ? e.message : "body");
     }
-    if (blob.size === 0 || blob.size > this.budget) throw new AssetError("asset_size", key);
-    if ((await sha256Stream(new Response(blob).body as ReadableStream<Uint8Array>)) !== ref.sha256) {
+    if (buf.byteLength === 0 || buf.byteLength > this.budget) throw new AssetError("asset_size", key);
+    const actualSha = new Sha256().update(new Uint8Array(buf)).hex();
+    if (actualSha !== ref.sha256) {
       throw new AssetError("asset_hash", key);
     }
-    this.drop(key); // même clé, autre sha256 : l'ancien octet n'est libéré qu'une fois le nouveau vérifié
-    this.makeRoom(blob.size);
-    // Le type MIME du serveur (ou du descripteur) permet à <img>/<video> de décoder le blob.
-    const typed = blob.type ? blob : blob.slice(0, blob.size, ref.mime);
-    this.entries.set(key, { blob: typed, url: URL.createObjectURL(typed), bytes: blob.size, sha: ref.sha256 });
-    this.total += blob.size;
+    this.drop(key);
+    this.makeRoom(buf.byteLength);
+    const mime = res.headers.get("content-type") || ref.mime;
+    const typed = new Blob([buf], { type: mime });
+    this.entries.set(key, { blob: typed, url: URL.createObjectURL(typed), bytes: buf.byteLength, sha: ref.sha256 });
+    this.total += buf.byteLength;
   }
 
   /** Évince d'abord les médias hors programmation courante, puis les moins récemment utilisés. */
