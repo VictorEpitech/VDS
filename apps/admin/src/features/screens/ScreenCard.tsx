@@ -122,30 +122,37 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
           </h2>
         </div>
         <div className="screen-card-badges">
+          <span className="screen-orientation-pill">{t(`screens.orientation.${screen.orientation}`)}</span>
           {screen.device && ["online", "offline", "pairing", "revoked"].includes(state) ? <PresenceBadge presence={screen.device.presence} /> : <StatusBadge state={state} />}
         </div>
       </div>
 
-      <p className="meta screen-card-location">{[siteName, groupName, t(`screens.orientation.${screen.orientation}`)].filter(Boolean).join(" · ")}</p>
+      <p className="meta screen-card-location">{[siteName, groupName].filter(Boolean).join(" › ")}</p>
 
+      {/* Hero Display Moniteur 16:9 / 9:16 */}
+      <div className="screen-hero-display">
+        <CommandPanel screen={screen} playback={playback} isAdmin={isAdmin} />
+      </div>
+
+      {/* Cartouche Récapitulatif Diffusion & Alimentation */}
       <div className="screen-card-broadcast">
-        <dl className="device-facts">
-          {schedule ? (
-            <div>
-              <dt>{t("screens.card.schedule")}</dt> <dd>{schedule}</dd>
-            </div>
-          ) : null}
+        <div className="screen-broadcast-row">
+          <div className="broadcast-item">
+            <span className="broadcast-label"><Icon name="schedule" /> {t("screens.card.schedule")}</span>
+            <span className="broadcast-val">{schedule || t("screens.card.no_schedule")}</span>
+          </div>
           {powerLine ? (
-            <div>
-              <dt>{t("screens.card.power")}</dt> <dd>{powerLine}</dd>
+            <div className="broadcast-item">
+              <span className="broadcast-label"><Icon name="power" /> {t("screens.card.power")}</span>
+              <span className="broadcast-val">{powerLine}</span>
             </div>
           ) : null}
-          {playback?.next_change_at ? (
-            <div>
-              <dt>{t("screens.card.next_change")}</dt> <dd>{fmt(playback.next_change_at, { timeStyle: "short", dateStyle: "short" })}</dd>
-            </div>
-          ) : null}
-        </dl>
+        </div>
+        {playback?.next_change_at ? (
+          <div className="broadcast-next">
+            <span className="meta">{t("screens.card.next_change")} : {fmt(playback.next_change_at, { timeStyle: "short", dateStyle: "short" })}</span>
+          </div>
+        ) : null}
       </div>
 
       {playback?.source === "override" ? (
@@ -158,55 +165,62 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
         </div>
       ) : null}
 
-      <div className="screen-subcard screen-section-commands">
-        <CommandPanel screen={screen} playback={playback} isAdmin={isAdmin} />
-      </div>
-
-      <div className="screen-subcard screen-section-kiosk">
-        <KioskControls screen={screen} />
-        {isAdmin ? <KioskSetting level="screen" id={screen.id} /> : null}
-        {isAdmin ? <ExclusiveSetting level="screen" id={screen.id} /> : null}
-      </div>
-
-      {screen.device || (isAdmin && apk && apk.state !== "not_android") ? (
-        <div className="screen-subcard screen-section-device">
-          {screen.device ? (
-            <dl className="device-facts">
-              <div>
-                <dt>{t("screens.device.platform")}</dt> <dd className="mono">{[screen.device.platform, screen.device.model].filter(Boolean).join(" ")}</dd>
-              </div>
-              {screen.device.app_version ? (
-                <div>
-                  <dt>{t("screens.device.version")}</dt> <dd className="mono">{screen.device.app_version}</dd>
-                </div>
-              ) : null}
-              <div>
-                <dt>{t("screens.device.last_seen")}</dt> <dd>{screen.device.last_seen_at ? fmt(screen.device.last_seen_at) : t("screens.device.never_seen")}</dd>
-              </div>
-              {screen.device.revoked_at ? (
-                <div>
-                  <dt>{t("screens.device.revoked_at")}</dt> <dd>{fmt(screen.device.revoked_at)}</dd>
-                </div>
-              ) : null}
-            </dl>
-          ) : (
-            <p className="meta">{t("screens.device.none")}</p>
-          )}
-          {isAdmin && apk && apk.state !== "not_android" ? (
-            <dl className="device-facts">
-              <div>
-                <dt>{t("apk.installed")}</dt>{" "}
-                <dd className="mono">{apk.installed_version_code != null ? [apk.installed_version_name, `(${apk.installed_version_code})`].filter(Boolean).join(" ") : <span className="meta">{t("apk.unknown_version")}</span>}</dd>
-              </div>
-            </dl>
-          ) : null}
-          {isAdmin && apk?.state === "outdated" ? (
-            <p>
-              <StatusBadge state="pairing" icon="upload" label={t("apk.badge")} />
-            </p>
-          ) : null}
+      {/* Inspecteurs Techniques Aérés */}
+      <div className="screen-card-technical">
+        <div className="screen-subcard screen-section-kiosk">
+          <div className="screen-subcard-header">
+            <Icon name="kiosk" />
+            <h4>Kiosque & Sécurité</h4>
+          </div>
+          <KioskControls screen={screen} />
+          {isAdmin ? <KioskSetting level="screen" id={screen.id} /> : null}
+          {isAdmin ? <ExclusiveSetting level="screen" id={screen.id} /> : null}
         </div>
-      ) : null}
+
+        {screen.device || (isAdmin && apk && apk.state !== "not_android") ? (
+          <div className="screen-subcard screen-section-device">
+            <div className="screen-subcard-header">
+              <Icon name="screen" />
+              <h4>Matériel & Système</h4>
+            </div>
+            {screen.device ? (
+              <dl className="device-facts">
+                <div>
+                  <dt>{t("screens.device.platform")}</dt> <dd className="mono">{[screen.device.platform, screen.device.model].filter(Boolean).join(" ")}</dd>
+                </div>
+                {screen.device.app_version ? (
+                  <div>
+                    <dt>{t("screens.device.version")}</dt> <dd className="mono">{screen.device.app_version}</dd>
+                  </div>
+                ) : null}
+                <div>
+                  <dt>{t("screens.device.last_seen")}</dt> <dd>{screen.device.last_seen_at ? fmt(screen.device.last_seen_at) : t("screens.device.never_seen")}</dd>
+                </div>
+                {screen.device.revoked_at ? (
+                  <div>
+                    <dt>{t("screens.device.revoked_at")}</dt> <dd>{fmt(screen.device.revoked_at)}</dd>
+                  </div>
+                ) : null}
+              </dl>
+            ) : (
+              <p className="meta">{t("screens.device.none")}</p>
+            )}
+            {isAdmin && apk && apk.state !== "not_android" ? (
+              <dl className="device-facts">
+                <div>
+                  <dt>{t("apk.installed")}</dt>{" "}
+                  <dd className="mono">{apk.installed_version_code != null ? [apk.installed_version_name, `(${apk.installed_version_code})`].filter(Boolean).join(" ") : <span className="meta">{t("apk.unknown_version")}</span>}</dd>
+                </div>
+              </dl>
+            ) : null}
+            {isAdmin && apk?.state === "outdated" ? (
+              <p>
+                <StatusBadge state="pairing" icon="upload" label={t("apk.badge")} />
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
 
       <div className="actions screen-card-quick-actions">
         {isAdmin
@@ -289,7 +303,7 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
               <Icon name="maintenance" />
               {t("screens.edit.action")}
             </button>
-            <button type="button" className="btn btn-text btn-danger" aria-label={t("screens.delete.action_for", { name: screen.name })} onClick={() => { onNotice(null); setPanel({ kind: "delete" }); }}>
+            <button type="button" className="btn btn-text btn-subtle-danger" aria-label={t("screens.delete.action_for", { name: screen.name })} onClick={() => { onNotice(null); setPanel({ kind: "delete" }); }}>
               <Icon name="delete" />
               {t("screens.delete.action")}
             </button>

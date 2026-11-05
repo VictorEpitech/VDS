@@ -20,28 +20,40 @@ export function ShotImage({ shot, alt, onLoad }: { shot: Screenshot; alt: string
 }
 
 /**
- * Dernière capture de l'écran, ou — si l'appareil ne sait pas capturer (Pi, web, Tizen) —
- * un aperçu théorique de la programmation, libellé comme tel : jamais présenté comme réel.
+ * Moniteur réaliste 16:9 / 9:16 : dernière capture de l'écran, ou — si l'appareil
+ * ne sait pas capturer (Pi, web, Tizen) — aperçu théorique stylisé de la diffusion active.
  */
 export function ScreenshotView({ screen, playback, shot, compact = false }: Props) {
   const { t, i18n } = useTranslation();
   const capable = canScreenshot(screen);
   const last = shot === undefined ? screen.last_screenshot : shot;
+  const isPortrait = screen.orientation === "portrait";
+  const isOnline = screen.device?.presence === "online";
+  const ledStatus = isOnline ? "online" : screen.device ? "offline" : "none";
+
   if (capable) {
     if (!last) {
       return (
-        <figure className={`shot${compact ? " shot-compact" : ""}`} data-kind="none">
-          <div className="shot-empty">
-            <Icon name="media" />
-            <span>{t("screens.commands.shot.none")}</span>
+        <figure className={`shot tv-monitor ${isPortrait ? "tv-portrait" : "tv-landscape"}${compact ? " shot-compact" : ""}`} data-kind="none">
+          <div className="tv-screen shot-empty">
+            <span className={`tv-led tv-led-${ledStatus}`} aria-hidden="true" title={isOnline ? "En ligne" : "Hors ligne"} />
+            <div className="tv-glass-glare" aria-hidden="true" />
+            <div className="tv-screen-content">
+              <Icon name="media" />
+              <span>{t("screens.commands.shot.none")}</span>
+            </div>
           </div>
         </figure>
       );
     }
     const age = relativeAge(last.captured_at, i18n.language);
     return (
-      <figure className={`shot${compact ? " shot-compact" : ""}`} data-kind="real">
-        <ShotImage shot={last} alt={t("screens.commands.shot.alt", { name: screen.name, age })} />
+      <figure className={`shot tv-monitor ${isPortrait ? "tv-portrait" : "tv-landscape"}${compact ? " shot-compact" : ""}`} data-kind="real">
+        <div className="tv-screen shot-real">
+          <span className={`tv-led tv-led-${ledStatus}`} aria-hidden="true" title={isOnline ? "En ligne" : "Hors ligne"} />
+          <div className="tv-glass-glare" aria-hidden="true" />
+          <ShotImage shot={last} alt={t("screens.commands.shot.alt", { name: screen.name, age })} />
+        </div>
         <figcaption className="meta">
           <time dateTime={last.captured_at}>{t("screens.commands.shot.taken", { age })}</time>
           {last.trigger === "periodic" ? ` · ${t("screens.commands.shot.periodic")}` : ""}
@@ -51,10 +63,19 @@ export function ScreenshotView({ screen, playback, shot, compact = false }: Prop
   }
   const what = playback && playback.source !== "none" ? [playback.layout_name, playback.playlist_name].filter(Boolean).join(" · ") : "";
   return (
-    <figure className={`shot${compact ? " shot-compact" : ""}`} data-kind="theoretical" aria-label={t("screens.commands.shot.theoretical")}>
-      <div className="shot-theory">
-        <Icon name="schedule" />
-        <span>{what || t("screens.commands.shot.no_item")}</span>
+    <figure className={`shot tv-monitor ${isPortrait ? "tv-portrait" : "tv-landscape"}${compact ? " shot-compact" : ""}`} data-kind="theoretical" aria-label={t("screens.commands.shot.theoretical")}>
+      <div className="tv-screen shot-theory">
+        <span className={`tv-led tv-led-${ledStatus}`} aria-hidden="true" title={isOnline ? "En ligne" : "Hors ligne"} />
+        <div className="tv-glass-glare" aria-hidden="true" />
+        <div className="tv-screen-content">
+          <div className="tv-broadcast-tag">
+            <span className="tv-broadcast-dot">●</span> {what ? "DIFFUSION ACTIVE" : "EN VEILLE"}
+          </div>
+          <div className="tv-broadcast-title">
+            <Icon name="schedule" />
+            <span>{what || t("screens.commands.shot.no_item")}</span>
+          </div>
+        </div>
       </div>
       <figcaption className="meta">{t("screens.commands.shot.theoretical")}</figcaption>
     </figure>

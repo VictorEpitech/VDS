@@ -139,7 +139,7 @@ export function Screens() {
           {visible.length > MAX_SELECTION ? <span className="meta">{t("actions.bar.cap", { max: MAX_SELECTION })}</span> : null}
         </label>
       ) : null}
-      <ul className={`cards list-reset${chosen.length ? " has-selection" : ""}`}>
+      <ul className={`cards screen-cards-grid list-reset${chosen.length ? " has-selection" : ""}`}>
         {visible.map(({ s, power, state }) => (
           <ScreenCard
             key={s.id}

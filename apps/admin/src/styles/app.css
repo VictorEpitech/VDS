@@ -3258,3 +3258,258 @@ fieldset.field > legend {
   flex-direction: column;
   gap: var(--vds-space-2);
 }
+
+/* ==========================================================================
+   Refonte Visuelle des Écrans Connectés (Châssis TV 16:9 & Grille Élargie)
+   ========================================================================== */
+.cards.screen-cards-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 26rem), 1fr)) !important;
+  gap: var(--vds-space-5) !important;
+  align-items: start;
+}
+
+.screen-orientation-pill {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px var(--vds-space-2);
+  border-radius: var(--vds-radius-pill);
+  background: var(--vds-surface-3);
+  color: var(--vds-on-surface-variant);
+}
+
+.screen-hero-display {
+  width: 100%;
+}
+
+.command-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-3);
+}
+
+.command-panel h3 {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--vds-on-surface-variant);
+  display: flex;
+  align-items: center;
+  gap: var(--vds-space-1);
+}
+
+/* Moniteur TV */
+.tv-monitor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-1);
+  margin: 0;
+  width: 100%;
+}
+
+.tv-monitor.tv-landscape .tv-screen {
+  aspect-ratio: 16 / 9;
+}
+
+.tv-monitor.tv-portrait .tv-screen {
+  aspect-ratio: 9 / 16;
+  max-block-size: 22rem;
+  margin-inline: auto;
+}
+
+.tv-screen {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--vds-radius-md);
+  background: var(--vds-surface-3);
+  border: 2px solid var(--vds-outline);
+  transition: border-color var(--vds-duration-short) ease;
+}
+
+.screen-card:hover .tv-screen {
+  border-color: var(--vds-primary);
+}
+
+.tv-led {
+  position: absolute;
+  top: var(--vds-space-2);
+  right: var(--vds-space-2);
+  width: 8px;
+  height: 8px;
+  border-radius: var(--vds-radius-pill);
+  z-index: 3;
+}
+
+.tv-led-online {
+  background: var(--vds-success);
+}
+
+.tv-led-offline {
+  background: var(--vds-warning);
+}
+
+.tv-led-none {
+  background: var(--vds-outline);
+  opacity: 0.5;
+}
+
+.tv-screen-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--vds-space-2);
+  padding: var(--vds-space-3);
+  text-align: center;
+  width: 100%;
+}
+
+.tv-broadcast-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vds-space-1);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px var(--vds-space-2);
+  border-radius: var(--vds-radius-pill);
+  background: var(--vds-surface-1);
+  border: 1px solid var(--vds-outline);
+  color: var(--vds-on-surface-variant);
+}
+
+.tv-broadcast-dot {
+  color: var(--vds-success);
+  font-size: 0.75rem;
+}
+
+.tv-broadcast-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--vds-space-2);
+  color: var(--vds-on-surface);
+  font-size: 1.125rem;
+  font-weight: 600;
+  max-width: 90%;
+  overflow-wrap: anywhere;
+}
+
+.tv-screen.shot-empty .tv-screen-content {
+  color: var(--vds-on-surface-variant);
+  font-size: 0.875rem;
+}
+
+.tv-screen .shot-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* Bandeau Récapitulatif Diffusion */
+.screen-broadcast-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: var(--vds-space-2);
+}
+
+.broadcast-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.broadcast-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--vds-on-surface-variant);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.broadcast-val {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--vds-on-surface);
+  line-height: 1.3;
+}
+
+.broadcast-next {
+  font-size: 0.8125rem;
+  padding-block-start: var(--vds-space-1);
+  border-top: 1px dashed var(--vds-outline);
+}
+
+/* Inspecteurs Techniques */
+.screen-card-technical {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-3);
+}
+
+.screen-subcard-header {
+  display: flex;
+  align-items: center;
+  gap: var(--vds-space-2);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--vds-on-surface-variant);
+  margin-block-end: var(--vds-space-1);
+}
+
+.screen-subcard-header h4 {
+  margin: 0;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+/* Alertes compactes dans les cartes */
+.screen-card .alert {
+  padding: var(--vds-space-2) var(--vds-space-3);
+  font-size: 0.8125rem;
+  border-radius: var(--vds-radius-sm);
+  line-height: 1.4;
+}
+
+/* Command Items */
+.command-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vds-space-2);
+  padding: var(--vds-space-1) var(--vds-space-2);
+  border-radius: var(--vds-radius-sm);
+  background: var(--vds-surface-3);
+  font-size: 0.8125rem;
+}
+
+.command-item-main {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vds-space-2);
+  font-weight: 500;
+}
+
+.command-meta {
+  font-size: 0.75rem;
+  margin-inline-start: auto;
+}

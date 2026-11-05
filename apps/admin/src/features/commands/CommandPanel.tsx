@@ -145,15 +145,17 @@ function CommandList({ commands, onCancel, cancelling }: { commands: PlayerComma
       {commands.map((c) => {
         const cause = causeOf(t, c);
         return (
-          <li key={c.id}>
-            <span>{t(`screens.commands.name.${c.name.replace(".", "_")}`)}</span> <CommandBadge status={c.status} />{" "}
-            <span className="meta">
+          <li key={c.id} className="command-item">
+            <div className="command-item-main">
+              <span>{t(`screens.commands.name.${c.name.replace(".", "_")}`)}</span> <CommandBadge status={c.status} />
+            </div>
+            <span className="meta command-meta">
               {c.requested_by ? `${c.requested_by} · ` : ""}
               <time dateTime={c.created_at}>{relativeAge(c.created_at, i18n.language)}</time>
+              {cause ? ` · ${cause}` : ""}
             </span>
-            {cause ? <span className="meta"> · {cause}</span> : null}
             {isCancellable(c) ? (
-              <button type="button" className="btn btn-text" disabled={cancelling} aria-label={t("screens.commands.cancel_for", { action: t(`screens.commands.name.${c.name.replace(".", "_")}`) })} onClick={() => onCancel(c.id)}>
+              <button type="button" className="btn btn-text btn-sm" disabled={cancelling} aria-label={t("screens.commands.cancel_for", { action: t(`screens.commands.name.${c.name.replace(".", "_")}`) })} onClick={() => onCancel(c.id)}>
                 <Icon name="back" />
                 {t("screens.commands.cancel")}
               </button>
