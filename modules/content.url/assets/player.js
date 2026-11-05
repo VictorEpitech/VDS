@@ -45,14 +45,25 @@ export class VdsContentUrl extends HTMLElement {
     this.style.cssText = "display:block;width:100%;height:100%;visibility:hidden";
   }
 
+  #targetUrl() {
+    try {
+      const u = new URL(this.#url);
+      u.searchParams.set("_vds_t", Date.now().toString());
+      return u.toString();
+    } catch {
+      return this.#url;
+    }
+  }
+
   prepare() {
     if (isSameOrigin(this.#url)) return Promise.reject(new Error("url_same_origin"));
     if (!isHttps(this.#url)) return Promise.reject(new Error("url_invalid"));
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
       return Promise.reject(new Error("offline"));
     }
+    const target = this.#targetUrl();
     const web = nativeWeb();
-    if (web) return this.#prepareNative(web);
+    if (web) return this.#prepareNative(web, target);
     const frame = document.createElement("iframe");
     frame.setAttribute("sandbox", "allow-scripts allow-same-origin");
     frame.setAttribute("referrerpolicy", "no-referrer");
@@ -73,7 +84,7 @@ export class VdsContentUrl extends HTMLElement {
       }, LOAD_TIMEOUT_MS);
       frame.addEventListener("load", onLoad, { once: true });
       this.replaceChildren(frame);
-      frame.src = this.#url;
+      frame.src = target;
     });
   }
 
@@ -82,15 +93,16 @@ export class VdsContentUrl extends HTMLElement {
     return { x: r.left, y: r.top, w: r.width, h: r.height };
   }
 
-  async #prepareNative(web) {
+  async #prepareNative(web, targetUrl) {
     this.#viewId ??= `u${++nextViewId}`;
     const id = this.#viewId;
+    const url = targetUrl || this.#targetUrl();
     let timer;
     const guard = new Promise((_, reject) => {
       timer = setTimeout(() => reject(new Error("url_timeout")), LOAD_TIMEOUT_MS + 1000);
     });
     try {
-      const raw = await Promise.race([web.prepare(id, this.#url, this.#rect()), guard]);
+      const raw = await Promise.race([web.prepare(id, url, this.#rect()), guard]);
       let res;
       try {
         res = JSON.parse(raw);
@@ -146,7 +158,8 @@ export class VdsContentUrl extends HTMLElement {
     window.addEventListener("offline", this.#onOffline);
     if (this.#reloadMs > 0) {
       this.#timer = setInterval(() => {
-        if (this.#frame) this.#frame.src = this.#url;
+        const fresh = this.#targetUrl();
+        if (this.#frame) this.#frame.src = fresh;
         else if (this.#viewId) this.#reloadNative();
       }, this.#reloadMs);
     }
@@ -155,7 +168,7 @@ export class VdsContentUrl extends HTMLElement {
   #reloadNative() {
     const web = nativeWeb();
     if (!web || !this.#viewId) return;
-    this.#prepareNative(web).then(
+    this.#prepareNative(web, this.#targetUrl()).then(
       () => undefined,
       (e) => this.dispatchEvent(new CustomEvent("vds-error", { detail: { code: e.message } })),
     );
