@@ -3070,3 +3070,55 @@ fieldset.field > legend {
   border-inline-start: 3px solid var(--vds-warning);
   overflow-wrap: anywhere;
 }
+
+/* Barre de création de playlist compacte et épurée (P2) */
+.playlist-create-card {
+  padding: var(--vds-space-3) var(--vds-space-4);
+  margin-block-end: var(--vds-space-4);
+  background: var(--vds-surface-1);
+  border: 1px solid var(--vds-outline-variant);
+  border-radius: var(--vds-radius-lg);
+}
+
+.playlist-create-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--vds-space-3);
+}
+
+.playlist-field-name {
+  flex: 1 1 16rem;
+  margin: 0;
+}
+
+.playlist-field-owner {
+  flex: 0 1 auto;
+  margin: 0;
+}
+
+.playlist-create-btn {
+  margin: 0;
+  padding-block-end: 2px;
+}
+
+/* Section d'upload rapide médiathèque (P2) */
+.media-upload-section {
+  margin-block-end: var(--vds-space-4);
+  border: 1px solid var(--vds-outline-variant);
+  background: var(--vds-surface-1);
+  border-radius: var(--vds-radius-lg);
+  padding: var(--vds-space-4);
+}
+
+.media-upload-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-block-end: var(--vds-space-2);
+}
+
+.media-upload-head h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}

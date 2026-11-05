@@ -18,9 +18,11 @@ export function MediaLibrary() {
   const start = (files: File[]) => send(files, owner.owner);
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
+  const [showUpload, setShowUpload] = useState(false);
   const onDrop = (e: DragEvent) => {
     e.preventDefault();
     setDragging(false);
+    setShowUpload(true);
     start([...e.dataTransfer.files]);
   };
 
@@ -28,15 +30,37 @@ export function MediaLibrary() {
     <>
       <div className="page-head">
         <PageTitle topic="content">{t("media.title")}</PageTitle>
-        <Link className="btn btn-filled" to="/content/media/add">
-          <Icon name="add" />
-          {t("media.add_content")}
-        </Link>
+        <div className="actions">
+          <button
+            type="button"
+            className={`btn ${showUpload ? "btn-tonal" : "btn-text"}`}
+            onClick={() => setShowUpload((prev) => !prev)}
+            aria-expanded={showUpload || jobs.length > 0}
+          >
+            <Icon name="upload" />
+            {t("media.upload.title")}
+          </button>
+          <Link className="btn btn-filled" to="/content/media/add">
+            <Icon name="add" />
+            {t("media.add_content")}
+          </Link>
+        </div>
       </div>
       <p className="lead">{t("media.intro")}</p>
 
-      <section className="card" aria-labelledby="upload-title">
-        <h2 id="upload-title">{t("media.upload.title")}</h2>
+      {(showUpload || jobs.length > 0 || dragging) ? (
+        <section className="card media-upload-section" aria-labelledby="upload-title">
+        <div className="media-upload-head">
+          <h2 id="upload-title">{t("media.upload.title")}</h2>
+          <button
+            type="button"
+            className="btn btn-text btn-sm"
+            onClick={() => setShowUpload(false)}
+            aria-label={t("common.close")}
+          >
+            ✕
+          </button>
+        </div>
         <OwnerField choice={owner} />
         <div
           className="dropzone"
@@ -102,8 +126,9 @@ export function MediaLibrary() {
           </ul>
         ) : null}
       </section>
+      ) : null}
 
-      <MediaBrowser onEmptyAction={() => inputRef.current?.click()} />
+      <MediaBrowser onEmptyAction={() => { setShowUpload(true); inputRef.current?.click(); }} />
     </>
   );
 }

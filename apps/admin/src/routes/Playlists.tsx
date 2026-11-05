@@ -59,30 +59,37 @@ export function Playlists() {
     <>
       <PageTitle topic="playlists">{t("playlists.title")}</PageTitle>
       <p className="lead">{t("playlists.intro")}</p>
-      <form className="card form-narrow" onSubmit={submit} noValidate>
-        <div className="field">
-          <label htmlFor={`${uid}-name`}>{t("playlists.name")}</label>
-          <input
-            id={`${uid}-name`}
-            value={name}
-            maxLength={120}
-            onChange={(e) => setName(e.target.value)}
-            required
-            aria-invalid={missing ? true : undefined}
-          />
-          {missing ? (
-            <p className="field-error">
-              <Icon name="warning" />
-              <span>{t("errors.field_required")}</span>
-            </p>
-          ) : null}
+      <form className="card playlist-create-card" onSubmit={submit} noValidate>
+        <div className="playlist-create-fields">
+          <div className="field playlist-field-name">
+            <label htmlFor={`${uid}-name`}>{t("playlists.name")}</label>
+            <input
+              id={`${uid}-name`}
+              value={name}
+              maxLength={120}
+              placeholder={t("playlists.name")}
+              onChange={(e) => setName(e.target.value)}
+              required
+              aria-invalid={missing ? true : undefined}
+            />
+            {missing ? (
+              <p className="field-error">
+                <Icon name="warning" />
+                <span>{t("errors.field_required")}</span>
+              </p>
+            ) : null}
+          </div>
+          <div className="playlist-field-owner">
+            <OwnerField choice={owner} />
+          </div>
+          <div className="playlist-create-btn">
+            <button type="submit" className="btn btn-filled" disabled={create.isPending}>
+              <Icon name="add" />
+              {t("playlists.create")}
+            </button>
+          </div>
         </div>
-        <OwnerField choice={owner} />
         {create.isError ? <ErrorAlert error={create.error} /> : null}
-        <button type="submit" className="btn btn-filled" disabled={create.isPending}>
-          <Icon name="add" />
-          {t("playlists.create")}
-        </button>
       </form>
       <section className="section" aria-labelledby="pl-list">
         <h2 id="pl-list">{t("playlists.list")}</h2>
