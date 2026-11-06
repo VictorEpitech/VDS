@@ -282,11 +282,21 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
           <div className="screen-subcard screen-section-kiosk">
             <div className="screen-subcard-header">
               <Icon name="lock" />
-              <h4>Kiosque & Sécurité</h4>
+              <h4>{t("screens.kiosk_section_title")}</h4>
             </div>
             <KioskControls screen={screen} />
-            {isAdmin ? <KioskSetting level="screen" id={screen.id} /> : null}
-            {isAdmin ? <ExclusiveSetting level="screen" id={screen.id} /> : null}
+            {isAdmin ? (
+              <details className="screen-subcard-advanced">
+                <summary className="screen-subcard-advanced-summary">
+                  <Icon name="maintenance" />
+                  <span>{t("screens.advanced_kiosk_settings")}</span>
+                </summary>
+                <div className="screen-subcard-advanced-body">
+                  <KioskSetting level="screen" id={screen.id} />
+                  <ExclusiveSetting level="screen" id={screen.id} />
+                </div>
+              </details>
+            ) : null}
           </div>
 
           <div className="screen-subcard screen-section-device">

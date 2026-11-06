@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { Health } from "@vds/sdk-ts";
-import { useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { Empty, QueryStatus, SuccessAlert } from "../components/feedback";
@@ -9,18 +9,21 @@ import { StatusBadge, type ScreenState } from "../components/StatusBadge";
 import { ActiveOverrides } from "../features/overrides/ActiveOverrides";
 import { OnboardingCard } from "../features/onboarding/OnboardingCard";
 import { NextChanges } from "../features/planning/NextChanges";
+import { usePlayback } from "../features/planning/now";
 import { QuickPublishModal } from "../features/publication/QuickPublishModal";
 import { useAppUrl } from "../lib/runtime-config";
-import { useFleetSummary, useMedia, usePlaylists, useSchedules, useSites } from "../lib/queries";
+import { useFleetSummary, useMedia, usePlaylists, useSchedules, useScreens, useSites } from "../lib/queries";
 
 function Stat({ icon, title, value, to, action, children }: { icon: IconName; title: string; value: number | undefined; to: string; action: string; children?: React.ReactNode }) {
   const id = `stat-${to.replace(/\W+/g, "-")}`;
   return (
-    <section className="card" aria-labelledby={id}>
-      <h2 id={id}>
-        <Icon name={icon} />
-        {title}
-      </h2>
+    <section className="card cockpit-pod" aria-labelledby={id}>
+      <div className="cockpit-pod-head">
+        <h2 id={id}>
+          <Icon name={icon} />
+          <span>{title}</span>
+        </h2>
+      </div>
       <p className="stat">{value ?? "–"}</p>
       {children}
       <div className="actions">
@@ -34,6 +37,7 @@ function Stat({ icon, title, value, to, action, children }: { icon: IconName; ti
 
 export function Home() {
   const { t } = useTranslation();
+  const uid = useId();
   const url = useAppUrl();
   const [publishOpen, setPublishOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -52,10 +56,14 @@ export function Home() {
     refetchInterval: 30_000,
   });
   const summary = useFleetSummary({ refetchInterval: 30_000 });
+  const screens = useScreens();
   const sites = useSites();
   const media = useMedia();
   const playlists = usePlaylists();
   const schedules = useSchedules();
+
+  const playback = usePlayback();
+  const playbackList = playback.data ?? [];
 
   const server: { state: ScreenState; label: string } = health.isPending
     ? { state: "pairing", label: t("home.server.checking") }
@@ -68,6 +76,8 @@ export function Home() {
   const waiting = summary.data?.screens.by_status["unseen"] ?? 0;
   const toHandle = summary.data?.to_handle.screens ?? 0;
   const noScreens = summary.isSuccess && total === 0;
+
+  const visibleScreens = useMemo(() => (screens.data ?? []).filter((s) => !s.archived_at), [screens.data]);
 
   return (
     <>
@@ -86,6 +96,29 @@ export function Home() {
       <p className="lead">{t("home.intro")}</p>
       {notice ? <SuccessAlert>{notice}</SuccessAlert> : null}
       <OnboardingCard />
+
+      {/* Cockpit du Matin : Bannière d'accueil et statut du parc */}
+      <div className={`cockpit-hero${toHandle > 0 ? " has-issues" : ""}`}>
+        <div className="cockpit-hero-content">
+          <div className="cockpit-hero-badge">
+            <Icon name={toHandle > 0 ? "warning" : "check"} />
+            <span>{toHandle > 0 ? t("home.cockpit.status_issues", { count: toHandle }) : t("home.cockpit.status_ok")}</span>
+          </div>
+          <h2 className="cockpit-hero-title">
+            {toHandle > 0 ? t("home.cockpit.status_issues", { count: toHandle }) : t("home.cockpit.status_ok")}
+          </h2>
+          <p className="cockpit-hero-sub">
+            {toHandle > 0 ? t("home.cockpit.sub_issues") : t("home.cockpit.sub_ok")}
+          </p>
+        </div>
+        <div className="cockpit-hero-actions">
+          <button type="button" className="btn btn-filled cockpit-cta-btn" onClick={() => setPublishOpen(true)}>
+            <Icon name="schedule" />
+            <span>{t("quick_publish.cta_button")}</span>
+          </button>
+        </div>
+      </div>
+
       <QueryStatus query={summary} />
       {noScreens ? (
         <Empty
@@ -100,7 +133,8 @@ export function Home() {
           {t("home.empty")}
         </Empty>
       ) : null}
-      <div className="cards">
+
+      <div className="cards cockpit-pods-grid">
         <Stat icon="screen" title={t("home.stats.screens")} value={summary.isSuccess ? total : undefined} to="/screens" action={t("home.stats.screens_action")}>
           {summary.isSuccess && total > 0 ? (
             <ul className="badge-list">
@@ -131,6 +165,52 @@ export function Home() {
           <p className="meta">{t("home.stats.sites", { count: sites.data?.length ?? 0 })}</p>
         </Stat>
       </div>
+
+      {/* Aperçu en direct du parc (Live Screen Peeker) */}
+      {visibleScreens.length > 0 ? (
+        <section className="section cockpit-fleet-section" aria-labelledby={`${uid}-fleet`}>
+          <div className="section-head">
+            <div>
+              <h2 id={`${uid}-fleet`} className="cockpit-section-title">
+                <Icon name="screen" />
+                <span>{t("home.cockpit.fleet_title")}</span>
+              </h2>
+              <p className="meta">{t("home.cockpit.fleet_sub")}</p>
+            </div>
+            <Link to="/screens" className="btn btn-text">
+              {t("home.stats.screens_action")}
+            </Link>
+          </div>
+          <div className="cockpit-fleet-grid">
+            {visibleScreens.slice(0, 4).map((s) => {
+              const currentPlayback = playbackList.find((p) => p.screen_id === s.id);
+              const currentItem =
+                currentPlayback?.playlist_name ??
+                (s.device?.presence === "online" ? t("screens.card.no_schedule") : t("screens.device.presence.offline"));
+              return (
+                <div key={s.id} className="card cockpit-screen-card">
+                  <div className="cockpit-screen-preview">
+                    <div className="cockpit-tv-frame" data-orientation={s.orientation}>
+                      <div className="cockpit-tv-screen">
+                        <span className={`cockpit-status-dot dot-${s.device?.presence ?? "offline"}`} />
+                        <span className="cockpit-tv-content-title">{currentItem}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="cockpit-screen-info">
+                    <strong className="cockpit-screen-name">{s.name}</strong>
+                    <span className="cockpit-screen-playing">{currentItem}</span>
+                  </div>
+                  <Link to="/screens" className="btn btn-tonal btn-sm">
+                    {t("home.cockpit.view_screen")}
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
       <NextChanges />
       <ActiveOverrides />
 

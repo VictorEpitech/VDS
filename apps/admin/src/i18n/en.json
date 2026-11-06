@@ -82,6 +82,15 @@
       "title": "Next changes",
       "now": "playing “{name}”",
       "at": "changes {when}"
+    },
+    "cockpit": {
+      "status_ok": "Display fleet fully operational",
+      "sub_ok": "Your screens are broadcasting your scheduled content seamlessly.",
+      "status_issues": "Attention required on {count, plural, one {1 screen} other {# screens}}",
+      "sub_issues": "A screen did not confirm status or is offline. Check it in one click.",
+      "fleet_title": "Live fleet preview",
+      "fleet_sub": "What is currently playing across your screens",
+      "view_screen": "View screen"
     }
   },
   "screens": {
@@ -270,7 +279,9 @@
       "acknowledged_notice": "Power alert for {name} acknowledged."
     },
     "technical_drawer_title": "Advanced settings and maintenance",
-    "technical_drawer_summary": "Kiosk, hardware, reinstallation and advanced commands"
+    "technical_drawer_summary": "Kiosk, hardware, reinstallation and advanced commands",
+    "kiosk_section_title": "Screen Security (Kiosk)",
+    "advanced_kiosk_settings": "Advanced player settings"
   },
   "errors": {
     "not_found": {
@@ -1410,7 +1421,7 @@
       "lock_task": "native lock",
       "soft": "soft lock",
       "web": "browser",
-      "alert_soft": "Soft kiosk: the device cannot fully block the Home or Assistant buttons. Switch the device to managed mode (Device Owner) for a full lock.",
+      "alert_soft": "Soft kiosk: display is secured in foreground. Home and Assistant buttons remain active on this TV without advanced configuration.",
       "alert_web": "Browser kiosk: the device does not block leaving the browser. Use the Android app for a stronger lock."
     },
     "maintenance": {

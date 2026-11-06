@@ -82,6 +82,15 @@
       "title": "Prochains changements",
       "now": "joue « {name} »",
       "at": "change le {when}"
+    },
+    "cockpit": {
+      "status_ok": "Parc d'affichage opérationnel",
+      "sub_ok": "Vos téléviseurs diffusent vos programmations sans incident.",
+      "status_issues": "Attention requise sur {count, plural, one {1 écran} other {# écrans}}",
+      "sub_issues": "Un téléviseur n'a pas répondu ou est hors ligne. Vous pouvez le vérifier d'un simple clic.",
+      "fleet_title": "Aperçu en direct du parc",
+      "fleet_sub": "Ce qui tourne en ce moment sur vos écrans",
+      "view_screen": "Voir la fiche"
     }
   },
   "screens": {
@@ -270,7 +279,9 @@
       "acknowledged_notice": "L'alerte d'alimentation pour {name} a été acquittée."
     },
     "technical_drawer_title": "Paramètres avancés et maintenance",
-    "technical_drawer_summary": "Kiosque, matériel, réinstallation et commandes avancées"
+    "technical_drawer_summary": "Kiosque, matériel, réinstallation et commandes avancées",
+    "kiosk_section_title": "Sécurité de l'écran (Kiosque)",
+    "advanced_kiosk_settings": "Réglages avancés du lecteur"
   },
   "errors": {
     "not_found": {
@@ -1410,7 +1421,7 @@
       "lock_task": "verrouillage natif",
       "soft": "verrouillage doux",
       "web": "navigateur",
-      "alert_soft": "Kiosque doux : l'appareil ne peut pas bloquer totalement les boutons Accueil ou Assistant. Passez l'appareil en mode géré (Device Owner) pour un verrouillage complet.",
+      "alert_soft": "Kiosque doux : l'affichage est sécurisé au premier plan. Les boutons Accueil ou Assistant restent actifs sur cette TV sans configuration avancée.",
       "alert_web": "Kiosque navigateur : la sortie du navigateur n'est pas bloquée par l'appareil. Utilisez l'application Android pour un verrouillage renforcé."
     },
     "maintenance": {

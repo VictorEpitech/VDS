@@ -4515,3 +4515,225 @@ fieldset.field > legend {
   font-size: 0.8125rem;
   margin-block-start: var(--vds-space-2);
 }
+
+/* --- Option A : Cockpit d'Accueil du Matin --- */
+.cockpit-hero {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--vds-space-3);
+  padding: var(--vds-space-4);
+  border-radius: var(--vds-radius-lg);
+  background: color-mix(in srgb, var(--vds-primary) 6%, var(--vds-surface-1));
+  border: 1px solid color-mix(in srgb, var(--vds-primary) 20%, var(--vds-outline-variant));
+  margin-block: var(--vds-space-2) var(--vds-space-4);
+}
+
+.cockpit-hero.has-issues {
+  background: color-mix(in srgb, var(--vds-warning) 8%, var(--vds-surface-1));
+  border-color: color-mix(in srgb, var(--vds-warning) 30%, var(--vds-outline-variant));
+}
+
+.cockpit-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vds-space-1);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--vds-primary);
+  margin-block-end: var(--vds-space-1);
+}
+
+.cockpit-hero.has-issues .cockpit-hero-badge {
+  color: var(--vds-warning);
+}
+
+.cockpit-hero-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--vds-on-surface);
+}
+
+.cockpit-hero-sub {
+  margin: var(--vds-space-1) 0 0;
+  font-size: 0.875rem;
+  color: var(--vds-on-surface-variant);
+}
+
+.cockpit-cta-btn {
+  min-height: 2.75rem;
+  padding-inline: var(--vds-space-4);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.cockpit-pods-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--vds-space-3);
+}
+
+.cockpit-pod {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: var(--vds-space-3);
+  border-radius: var(--vds-radius-md);
+  border: 1px solid var(--vds-outline-variant);
+  background: var(--vds-surface-1);
+}
+
+.cockpit-pod-head h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--vds-space-2);
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+/* Mini Peeker de la flotte d'écrans */
+.cockpit-fleet-section {
+  margin-block-start: var(--vds-space-4);
+}
+
+.cockpit-section-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vds-space-2);
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.cockpit-fleet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: var(--vds-space-3);
+  margin-block-start: var(--vds-space-2);
+}
+
+.cockpit-screen-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-2);
+  padding: var(--vds-space-3);
+  border-radius: var(--vds-radius-md);
+  border: 1px solid var(--vds-outline-variant);
+  background: var(--vds-surface-1);
+}
+
+.cockpit-screen-preview {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.cockpit-tv-frame {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  padding: var(--vds-space-1);
+  background: var(--vds-surface-3);
+  border-radius: var(--vds-radius-sm);
+}
+
+.cockpit-tv-frame[data-orientation="portrait"] {
+  aspect-ratio: 9 / 16;
+  max-block-size: 8rem;
+}
+
+.cockpit-tv-screen {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--vds-surface-inverse);
+  border-radius: var(--vds-radius-sm);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: var(--vds-space-1);
+  text-align: center;
+}
+
+.cockpit-status-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--vds-radius-pill);
+}
+
+.cockpit-status-dot.dot-online {
+  background: var(--vds-success);
+}
+
+.cockpit-status-dot.dot-offline {
+  background: var(--vds-error);
+}
+
+.cockpit-tv-content-title {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--vds-on-surface-inverse);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 90%;
+}
+
+.cockpit-screen-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cockpit-screen-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--vds-on-surface);
+}
+
+.cockpit-screen-playing {
+  font-size: 0.75rem;
+  color: var(--vds-on-surface-variant);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- Option B : Kiosque & Sécurité Simplifiée --- */
+.screen-subcard-advanced {
+  margin-block-start: var(--vds-space-2);
+}
+
+.screen-subcard-advanced-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vds-space-1);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--vds-on-surface-variant);
+  cursor: pointer;
+  padding: var(--vds-space-1) var(--vds-space-2);
+  border-radius: var(--vds-radius-sm);
+  transition: background-color var(--vds-duration-short) ease;
+}
+
+.screen-subcard-advanced-summary:hover {
+  background: var(--vds-surface-2);
+  color: var(--vds-on-surface);
+}
+
+.screen-subcard-advanced-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-2);
+  padding-block-start: var(--vds-space-2);
+}
