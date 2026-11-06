@@ -72,13 +72,33 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
     },
   });
 
+  const activeIncident =
+    incident ??
+    qc
+      .getQueryData<Incident[]>(["incidents", "open"])
+      ?.find((i) => i.kind === "power.failed" && i.subject_id === screen.id && !i.resolved_at && !i.acknowledged_at);
+
   const ackIncident = useMutation({
     mutationFn: (inc: Incident) => api.post<Incident>(`/incidents/${inc.id}/acknowledge`),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["incidents"] });
+      void qc.invalidateQueries({ queryKey: ["power"] });
+      void qc.invalidateQueries({ queryKey: keys.screens });
       onNotice(t("screens.power_issue.acknowledged_notice", { name: screen.name }));
     },
   });
+
+  const handleResolvePower = () => {
+    if (activeIncident) {
+      ackIncident.mutate(activeIncident);
+    } else {
+      run("detect");
+      void qc.invalidateQueries({ queryKey: ["incidents"] });
+      void qc.invalidateQueries({ queryKey: ["power"] });
+      void qc.invalidateQueries({ queryKey: keys.screens });
+      onNotice(t("screens.power_issue.acknowledged_notice", { name: screen.name }));
+    }
+  };
 
   const ready = agent?.status === "online";
   const hintId = `hint-${screen.id}`;
@@ -163,6 +183,16 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
             <button
               type="button"
               className="btn btn-filled btn-sm"
+              disabled={ackIncident.isPending}
+              onClick={handleResolvePower}
+              aria-label={t("screens.power_issue.resolve_for", { name: screen.name })}
+            >
+              <Icon name="check" />
+              {t("screens.power_issue.resolve")}
+            </button>
+            <button
+              type="button"
+              className="btn btn-tonal btn-sm"
               disabled={!ready || cmd.isPending}
               aria-describedby={ready ? undefined : hintId}
               onClick={() => run("on")}
@@ -173,7 +203,7 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
             </button>
             <button
               type="button"
-              className="btn btn-tonal btn-sm"
+              className="btn btn-text btn-sm"
               disabled={!ready || cmd.isPending}
               aria-describedby={ready ? undefined : hintId}
               onClick={() => run("detect")}
@@ -182,18 +212,6 @@ export function ScreenCard({ screen, siteName, groupName, state, power, playback
               <Icon name="detect" />
               {t("screens.power_issue.detect")}
             </button>
-            {incident && !incident.acknowledged_at ? (
-              <button
-                type="button"
-                className="btn btn-text btn-sm"
-                disabled={ackIncident.isPending}
-                onClick={() => ackIncident.mutate(incident)}
-                aria-label={t("screens.power_issue.resolve_for", { name: screen.name })}
-              >
-                <Icon name="check" />
-                {t("screens.power_issue.resolve")}
-              </button>
-            ) : null}
           </div>
         </div>
       ) : null}

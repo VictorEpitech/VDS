@@ -58,6 +58,17 @@ export function ZoneProps({ zone, playlists, otherKeys, onChange }: Props) {
           ))}
         </select>
         {zone.playlist_id === null ? <p className="field-help">{t("layouts.props.no_playlist_help")}</p> : null}
+        {zone.h <= 0.22 ? (
+          <p className="field-hint zone-widget-hint">
+            <Icon name="playlist" />
+            <span>{t("layouts.props.widget_hint_banner")}</span>
+          </p>
+        ) : zone.w <= 0.35 && zone.h >= 0.4 ? (
+          <p className="field-hint zone-widget-hint">
+            <Icon name="layout" />
+            <span>{t("layouts.props.widget_hint_side")}</span>
+          </p>
+        ) : null}
       </div>
       <fieldset className="field coords">
         <legend>{t("layouts.props.position")}</legend>

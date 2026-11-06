@@ -4377,3 +4377,141 @@ fieldset.field > legend {
   font-size: 0.8125rem;
   color: var(--vds-on-surface-variant);
 }
+
+/* --- Lot 4 : Mises en page studio et sélecteur de modèles multi-zones --- */
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: var(--vds-space-3);
+  margin-block-start: var(--vds-space-2);
+}
+
+.template-item {
+  display: flex;
+  flex-direction: column;
+  padding: var(--vds-space-3);
+  border: 1px solid var(--vds-outline-variant);
+  border-radius: var(--vds-radius-md);
+  background: var(--vds-surface-1);
+  cursor: pointer;
+  transition: border-color var(--vds-duration-short) ease, background-color var(--vds-duration-short) ease;
+}
+
+.template-item:hover {
+  background: var(--vds-surface-2);
+  border-color: var(--vds-outline);
+}
+
+.template-item.is-selected,
+.template-item:has(input:checked) {
+  border-color: var(--vds-primary);
+  background: color-mix(in srgb, var(--vds-primary) 8%, var(--vds-surface-1));
+}
+
+.template-preview-box {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--vds-space-2);
+  border-radius: var(--vds-radius-sm);
+  background: var(--vds-surface-2);
+  margin-block-end: var(--vds-space-2);
+  min-height: 5.5rem;
+}
+
+.template-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-1);
+}
+
+.template-name {
+  font-size: var(--vds-text-sm);
+  font-weight: 600;
+  color: var(--vds-on-surface);
+}
+
+.template-desc {
+  font-size: 0.75rem;
+  color: var(--vds-on-surface-variant);
+  line-height: 1.35;
+}
+
+/* Galerie des Mises en page */
+.layout-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: var(--vds-space-3);
+  margin-block-start: var(--vds-space-3);
+}
+
+.layout-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: var(--vds-space-3);
+  border-radius: var(--vds-radius-lg);
+  background: var(--vds-surface-1);
+  border: 1px solid var(--vds-outline-variant);
+  transition: border-color var(--vds-duration-short) ease, background-color var(--vds-duration-short) ease;
+}
+
+.layout-card:hover {
+  border-color: var(--vds-primary);
+}
+
+.layout-card-thumb-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--vds-surface-2);
+  border-radius: var(--vds-radius-md);
+  padding: var(--vds-space-3);
+  min-height: 8rem;
+  overflow: hidden;
+}
+
+.layout-orientation-badge {
+  position: absolute;
+  inset-block-start: var(--vds-space-2);
+  inset-inline-end: var(--vds-space-2);
+  padding: 2px var(--vds-space-2);
+  border-radius: var(--vds-radius-pill);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--vds-surface-inverse) 80%, transparent);
+  color: var(--vds-surface);
+}
+
+.layout-card-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-block: var(--vds-space-2);
+}
+
+.layout-card-content h3 {
+  margin: 0 0 var(--vds-space-1);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.layout-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-block-start: var(--vds-space-2);
+}
+
+/* Zone Widget Hints */
+.zone-widget-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vds-space-2);
+  padding: var(--vds-space-2) var(--vds-space-3);
+  border-radius: var(--vds-radius-sm);
+  background: color-mix(in srgb, var(--vds-primary) 8%, var(--vds-surface-2));
+  color: var(--vds-primary);
+  font-size: 0.8125rem;
+  margin-block-start: var(--vds-space-2);
+}

@@ -73,10 +73,15 @@ export function Layouts() {
             <legend>{t("layouts.create_template")}</legend>
             <div className="template-grid" role="radiogroup" aria-label={t("layouts.create_template")}>
               {TEMPLATE_IDS.map((id) => (
-                <label key={id} className="template-item">
-                  <input type="radio" name={`${uid}-tpl`} value={id} checked={template === id} onChange={() => setTemplate(id)} />
-                  <LayoutThumb orientation={orientation} zones={templateZones(id, () => "").map((z) => ({ key: z.key, x: z.x, y: z.y, w: z.w, h: z.h, z: z.z }))} />
-                  <span>{t(`layouts.templates.${id}.name`)}</span>
+                <label key={id} className={`template-item${template === id ? " is-selected" : ""}`}>
+                  <input type="radio" name={`${uid}-tpl`} value={id} checked={template === id} aria-label={t(`layouts.templates.${id}.name`)} onChange={() => setTemplate(id)} />
+                  <div className="template-preview-box">
+                    <LayoutThumb orientation={orientation} zones={templateZones(id, () => "").map((z) => ({ key: z.key, x: z.x, y: z.y, w: z.w, h: z.h, z: z.z }))} />
+                  </div>
+                  <div className="template-info">
+                    <strong className="template-name">{t(`layouts.templates.${id}.name`)}</strong>
+                    <span className="template-desc">{t(`layouts.templates.${id}.desc`)}</span>
+                  </div>
                 </label>
               ))}
             </div>
@@ -141,16 +146,27 @@ export function Layouts() {
         <ul className="layout-cards list-reset">
           {items.map((l) => (
             <li key={l.id} className="card layout-card">
-              <LayoutThumb zones={l.zones} orientation={l.orientation} />
-              <h3>
-                <Link to={`/content/layouts/${l.id}`}>{l.name}</Link>
-              </h3>
-              <p className="meta">
-                {t(`layouts.orientation.${l.orientation}`)} · {t("layouts.zone_count", { count: l.zone_count })} · {t("layouts.usage_count", { count: l.usage_count })}
-              </p>
-              <div className="badges">
-                <PublicationBadge publication={pubs.get(l.id)} />
-                <OwnerBadge owner={l.owner} />
+              <div className="layout-card-thumb-wrap">
+                <LayoutThumb zones={l.zones} orientation={l.orientation} />
+                <span className="layout-orientation-badge">{t(`layouts.orientation.${l.orientation}`)}</span>
+              </div>
+              <div className="layout-card-content">
+                <h3>
+                  <Link to={`/content/layouts/${l.id}`}>{l.name}</Link>
+                </h3>
+                <p className="meta">
+                  {t(`layouts.orientation.${l.orientation}`)} · {t("layouts.zone_count", { count: l.zone_count })} · {t("layouts.usage_count", { count: l.usage_count })}
+                </p>
+                <div className="badges">
+                  <PublicationBadge publication={pubs.get(l.id)} />
+                  <OwnerBadge owner={l.owner} />
+                </div>
+              </div>
+              <div className="layout-card-actions">
+                <Link to={`/content/layouts/${l.id}`} className="btn btn-tonal btn-sm">
+                  <Icon name="maintenance" />
+                  {t("layouts.open_editor")}
+                </Link>
               </div>
             </li>
           ))}

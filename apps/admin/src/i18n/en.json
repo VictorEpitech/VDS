@@ -227,7 +227,8 @@
         "previous": "Earlier capture of {name}, {age}"
       },
       "sent": "Command {command} sent to screen {name}",
-      "history_toggle": "Command history ({count})"
+      "history_toggle": "Command history ({count})",
+      "history_summary": "{count, plural, one {1 past command} other {# past commands}}"
     },
     "captures": {
       "title": "Screen captures",
@@ -259,12 +260,12 @@
     },
     "power_issue": {
       "title": "Power issue detected",
-      "desc": "The screen did not respond to the automated power command. Check if it is powered on manually, or retry the command.",
+      "desc": "The TV did not confirm the last automatic power command. If the display is working normally, clear this alert in one click.",
       "retry_on": "Power on screen",
       "retry_on_for": "Power on screen {name}",
       "detect": "TV detection wizard",
       "detect_for": "Detect power protocol for {name}",
-      "resolve": "Mark as resolved",
+      "resolve": "Working properly (Clear alert)",
       "resolve_for": "Mark power incident for {name} as resolved",
       "acknowledged_notice": "Power alert for {name} acknowledged."
     },
@@ -2157,33 +2158,39 @@
     "templates": {
       "full": {
         "name": "Full screen",
-        "main": "Main"
+        "main": "Main",
+        "desc": "Single full screen zone for high-impact media or videos"
       },
       "two_columns": {
         "name": "2 columns",
         "left": "Left",
-        "right": "Right"
+        "right": "Right",
+        "desc": "Screen split into two equal columns (50% / 50%)"
       },
       "two_rows": {
         "name": "2 rows",
         "top": "Top",
-        "bottom": "Bottom"
+        "bottom": "Bottom",
+        "desc": "Screen split into two horizontal rows (50% / 50%)"
       },
       "bottom_banner": {
         "name": "Bottom banner",
         "main": "Main",
-        "banner": "Banner"
+        "banner": "Banner",
+        "desc": "Main 16:9 zone + scrolling bottom ticker for RSS news or alerts"
       },
       "l_shape": {
         "name": "L shape",
         "main": "Main",
         "side": "Side",
-        "banner": "Banner"
+        "banner": "Banner",
+        "desc": "Main zone + right weather/news column + bottom ticker"
       },
       "corner_inset": {
         "name": "Corner inset",
         "main": "Main",
-        "inset": "Inset"
+        "inset": "Inset",
+        "desc": "Full screen with corner inset (logo or video stream)"
       }
     },
     "editor": {
@@ -2235,7 +2242,9 @@
       "duration": "Default item duration (seconds)",
       "duration_help": "For items without their own duration. Empty: inherited value.",
       "active_from": "Zone shown from",
-      "active_until": "Zone shown until"
+      "active_until": "Zone shown until",
+      "widget_hint_banner": "Ideal for the RSS News widget in scrolling ticker mode or notice board.",
+      "widget_hint_side": "Ideal for the Weather widget or news list."
     },
     "warnings": {
       "videos": "{count, plural, one {# zone contains videos} other {# zones contain videos}}: this screen plays only {max} at a time, the other videos will be skipped. Remove videos or raise the limit."
@@ -2263,7 +2272,8 @@
       "title": "Simultaneous elements",
       "intro": "How many videos a screen can play at once. Most TVs play only one.",
       "form_label": "Simultaneous elements"
-    }
+    },
+    "open_editor": "Edit zones"
   },
   "scope": {
     "owner": {

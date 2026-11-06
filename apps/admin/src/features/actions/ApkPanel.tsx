@@ -31,6 +31,9 @@ export function ApkPanel({ apk, screens, sites, agents }: Props) {
   const open = rows.find((r) => r.site.id === siteId);
   const version = apk.available ? `${apk.available.version_name} (${apk.available.version_code})` : "";
 
+  // Ne pas encombrer l'écran avec un panneau technique si tout est déjà à jour
+  if (apk.available && !rows.length) return null;
+
   const start = () => {
     if (!open) return;
     const targets: Target[] = open.plan.eligible.map((s) => ({ screenId: s.id, name: s.name, siteId: s.site_id, agentId: agents.find((a) => a.site_id === s.site_id && a.status === "online")?.id }));

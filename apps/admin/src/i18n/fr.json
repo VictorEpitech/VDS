@@ -227,7 +227,8 @@
         "previous": "Capture précédente de {name}, {age}"
       },
       "sent": "Commande {command} envoyée à l'écran {name}",
-      "history_toggle": "Historique des commandes ({count})"
+      "history_toggle": "Historique des commandes ({count})",
+      "history_summary": "{count, plural, one {1 commande passée} other {# commandes passées}}"
     },
     "captures": {
       "title": "Captures d'écran",
@@ -259,12 +260,12 @@
     },
     "power_issue": {
       "title": "Incident d'alimentation détecté",
-      "desc": "L'écran n'a pas répondu à l'ordre d'allumage automatique. Vérifiez s'il est allumé manuellement, ou relancez la commande.",
+      "desc": "Le téléviseur n'a pas confirmé le dernier ordre d'alimentation automatique. Si l'écran diffuse normalement, effacez l'alerte d'un simple clic.",
       "retry_on": "Rallumer l'écran",
       "retry_on_for": "Rallumer l'écran {name}",
       "detect": "Assistant de détection TV",
       "detect_for": "Détecter le bon protocole TV pour {name}",
-      "resolve": "Marquer comme résolu",
+      "resolve": "Tout fonctionne (Effacer l'alerte)",
       "resolve_for": "Marquer l'incident d'alimentation de {name} comme résolu",
       "acknowledged_notice": "L'alerte d'alimentation pour {name} a été acquittée."
     },
@@ -2157,33 +2158,39 @@
     "templates": {
       "full": {
         "name": "Plein écran",
-        "main": "Principale"
+        "main": "Principale",
+        "desc": "Zone unique en plein écran pour affiches ou vidéos percutantes"
       },
       "two_columns": {
         "name": "2 colonnes",
         "left": "Gauche",
-        "right": "Droite"
+        "right": "Droite",
+        "desc": "Écran scindé en deux colonnes égales (50% / 50%)"
       },
       "two_rows": {
         "name": "2 lignes",
         "top": "Haut",
-        "bottom": "Bas"
+        "bottom": "Bas",
+        "desc": "Écran scindé en deux rangées horizontales (50% / 50%)"
       },
       "bottom_banner": {
         "name": "Bandeau bas",
         "main": "Principale",
-        "banner": "Bandeau"
+        "banner": "Bandeau",
+        "desc": "Zone principale 16:9 + bandeau défilant pour actualités RSS ou alertes"
       },
       "l_shape": {
         "name": "En L",
         "main": "Principale",
         "side": "Côté",
-        "banner": "Bandeau"
+        "banner": "Bandeau",
+        "desc": "Zone principale + colonne météo/infos à droite + bandeau défilant"
       },
       "corner_inset": {
         "name": "Incrustation coin",
         "main": "Principale",
-        "inset": "Incrustation"
+        "inset": "Incrustation",
+        "desc": "Plein écran avec incrustation en coin (logo ou flux vidéo)"
       }
     },
     "editor": {
@@ -2235,7 +2242,9 @@
       "duration": "Durée par défaut des éléments (secondes)",
       "duration_help": "Pour les éléments sans durée propre. Vide : valeur héritée.",
       "active_from": "Zone affichée à partir du",
-      "active_until": "Zone affichée jusqu'au"
+      "active_until": "Zone affichée jusqu'au",
+      "widget_hint_banner": "Idéal pour le widget Actualités RSS en mode bandeau défilant ou un message d'information.",
+      "widget_hint_side": "Idéal pour le widget Météo ou une liste de nouvelles actualités."
     },
     "warnings": {
       "videos": "{count, plural, one {# zone contient des vidéos} other {# zones contiennent des vidéos}} : cet écran n'en lit que {max} à la fois, les autres vidéos seront sautées. Retirez des vidéos ou relevez la limite."
@@ -2263,7 +2272,8 @@
       "title": "Éléments lus en même temps",
       "intro": "Nombre de vidéos qu'un écran peut lire simultanément. La plupart des TV n'en lisent qu'une.",
       "form_label": "Éléments lus en même temps"
-    }
+    },
+    "open_editor": "Modifier les zones"
   },
   "scope": {
     "owner": {
