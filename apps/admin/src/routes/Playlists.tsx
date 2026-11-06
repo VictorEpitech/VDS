@@ -157,7 +157,7 @@ export function Playlists() {
         {viewMode === "grid" ? (
           <ul className="playlist-grid list-reset" aria-label={t("playlists.list")}>
             {playlists.data?.items.map((p) => (
-              <li key={p.id} className="card playlist-card">
+              <li key={p.id} className="card playlist-card row playlist-item">
                 <div className="playlist-card-hero">
                   <div className="playlist-card-icon-stack">
                     <Icon name="playlist" />
@@ -197,7 +197,7 @@ export function Playlists() {
         ) : (
           <ul className="rows list-reset">
             {playlists.data?.items.map((p) => (
-              <li key={p.id} className="row card">
+              <li key={p.id} className="row card playlist-item">
                 <div className="row-main">
                   <h3>
                     <Link to={`/content/playlists/${p.id}`}>{p.name}</Link>

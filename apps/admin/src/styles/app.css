@@ -4737,3 +4737,67 @@ fieldset.field > legend {
   gap: var(--vds-space-2);
   padding-block-start: var(--vds-space-2);
 }
+
+/* --- Automatisations Alimentation & Rôles Simplifiés --- */
+.power-jump-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vds-space-2);
+  margin-block: var(--vds-space-2) var(--vds-space-4);
+  padding: var(--vds-space-1) var(--vds-space-2);
+  background: var(--vds-surface-2);
+  border-radius: var(--vds-radius-pill);
+  width: fit-content;
+}
+
+.power-jump-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vds-space-1);
+  padding: var(--vds-space-1) var(--vds-space-3);
+  border-radius: var(--vds-radius-pill);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--vds-on-surface);
+  text-decoration: none;
+  transition: background-color var(--vds-duration-short) ease, color var(--vds-duration-short) ease;
+}
+
+.power-jump-link:hover {
+  background: var(--vds-surface-1);
+  color: var(--vds-primary);
+}
+
+.power-section-wrap {
+  scroll-margin-top: var(--vds-space-4);
+  margin-block-end: var(--vds-space-4);
+}
+
+.power-presets-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vds-space-2);
+  margin-block: var(--vds-space-2) var(--vds-space-3);
+  padding: var(--vds-space-3);
+  background: var(--vds-surface-2);
+  border-radius: var(--vds-radius-md);
+}
+
+.power-presets-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vds-space-2);
+}
+
+.role-desc-hint {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--vds-space-2);
+  padding: var(--vds-space-2) var(--vds-space-3);
+  border-radius: var(--vds-radius-sm);
+  background: color-mix(in srgb, var(--vds-primary) 8%, var(--vds-surface-2));
+  color: var(--vds-on-surface);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  margin-block-start: var(--vds-space-2);
+}

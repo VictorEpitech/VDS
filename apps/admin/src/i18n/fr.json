@@ -1218,7 +1218,17 @@
       "rules_empty": "Sans plage, l'écran reste éteint.",
       "rules_empty_short": "Toujours éteint",
       "rules_help": "L'écran est allumé pendant ces plages, heure du site.",
-      "empty": "Aucun plan. Créez-en un pour programmer les allumages."
+      "empty": "Aucun plan. Créez-en un pour programmer les allumages.",
+      "presets_title": "Modèles d'horaires prêts à l'emploi",
+      "preset_office": "Bureaux (Lun-Ven 8h-18h30)",
+      "preset_office_name": "Horaires de bureau",
+      "preset_office_desc": "Du lundi au vendredi de 08:00 à 18:30",
+      "preset_retail": "Commerce (Lun-Sam 8h30-20h)",
+      "preset_retail_name": "Commerce & Accueil",
+      "preset_retail_desc": "Du lundi au samedi de 08:30 à 20:00",
+      "preset_247": "Continu 24/7",
+      "preset_247_name": "Diffusion continue 24/7",
+      "preset_247_desc": "Allumé en continu tous les jours"
     },
     "exceptions": {
       "title": "Exceptions",
@@ -1295,7 +1305,12 @@
         "add_short": "Ajouter à la cascade",
         "add_driver": "Ajouter {driver} à la cascade"
       }
-    }
+    },
+    "sections_nav": "Navigation dans les réglages d'alimentation",
+    "nav_plans": "Horaires d'allumage",
+    "nav_attachments": "Assignation par site",
+    "nav_exceptions": "Jours fériés & Vacances",
+    "nav_drivers": "Pilotes TV & Réseau"
   },
   "supervision": {
     "last_seen": "Dernier signal : {when}",
@@ -2355,6 +2370,10 @@
       "conflict": "Ce périmètre a été modifié par quelqu'un d'autre. Rechargez pour reprendre la version actuelle.",
       "reload": "Recharger",
       "saved": "Périmètre enregistré."
+    },
+    "role_desc": {
+      "admin": "Administrateur : Accès complet au système, réglages du matériel, écrans et gestion des utilisateurs.",
+      "editor": "Éditeur (Communication) : Création et diffusion de contenus (affiches, vidéos, playlists et plannings) sans accès aux réglages techniques du matériel."
     }
   },
   "wizard": {

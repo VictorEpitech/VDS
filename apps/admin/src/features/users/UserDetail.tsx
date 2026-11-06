@@ -61,6 +61,10 @@ function AccountSection({ user }: { user: UserOut }) {
           <option value="admin">{t("users.role.admin")}</option>
           <option value="editor">{t("users.role.editor")}</option>
         </select>
+        <p className="field-hint role-desc-hint">
+          <Icon name={role === "admin" ? "lock" : "user"} />
+          <span>{t(`users.role_desc.${role}`)}</span>
+        </p>
         {hint ? (
           <p className="field-help" id={`${uid}-role-h`}>
             <Icon name="lock" /> {t(hint)}

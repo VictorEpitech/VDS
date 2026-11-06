@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * Échoue si une clé manque dans une langue, si une clé est inutilisée ou utilisée sans exister
  * (admin), ou si les i18n des modules (modules/<id>/i18n/{fr,en}.json) divergent.

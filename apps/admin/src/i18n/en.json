@@ -1218,7 +1218,17 @@
       "rules_empty": "With no range, the screen stays off.",
       "rules_empty_short": "Always off",
       "rules_help": "The screen is on during these ranges, site time.",
-      "empty": "No plans. Create one to schedule power-on times."
+      "empty": "No plans. Create one to schedule power-on times.",
+      "presets_title": "Ready-to-use schedule templates",
+      "preset_office": "Office (Mon-Fri 8am-6:30pm)",
+      "preset_office_name": "Office hours",
+      "preset_office_desc": "Monday to Friday from 08:00 to 18:30",
+      "preset_retail": "Retail (Mon-Sat 8:30am-8pm)",
+      "preset_retail_name": "Retail & Welcome",
+      "preset_retail_desc": "Monday to Saturday from 08:30 to 20:00",
+      "preset_247": "Continuous 24/7",
+      "preset_247_name": "Continuous 24/7 broadcast",
+      "preset_247_desc": "Always on every day"
     },
     "exceptions": {
       "title": "Exceptions",
@@ -1295,7 +1305,12 @@
         "add_short": "Add to cascade",
         "add_driver": "Add {driver} to the cascade"
       }
-    }
+    },
+    "sections_nav": "Power settings navigation",
+    "nav_plans": "Power schedules",
+    "nav_attachments": "Site assignments",
+    "nav_exceptions": "Holidays & Closures",
+    "nav_drivers": "TV Drivers & Network"
   },
   "supervision": {
     "last_seen": "Last signal: {when}",
@@ -2355,6 +2370,10 @@
       "conflict": "Someone else changed this scope. Reload to pick up the current version.",
       "reload": "Reload",
       "saved": "Scope saved."
+    },
+    "role_desc": {
+      "admin": "Administrator: Full system access, hardware setup, screens and user management.",
+      "editor": "Editor (Communications): Content creation and broadcasting (media, playlists, schedules) without technical hardware configuration access."
     }
   },
   "wizard": {

@@ -47,6 +47,47 @@ function PlanForm({ plan, onDone }: { plan?: Plan; onDone: () => void }) {
         <label htmlFor={`${uid}-desc`}>{t("power.plans.description")}</label>
         <input id={`${uid}-desc`} value={description} maxLength={500} autoComplete="off" onChange={(e) => setDescription(e.target.value)} />
       </div>
+      <div className="power-presets-group">
+        <span className="field-label">{t("power.plans.presets_title")}</span>
+        <div className="power-presets-pills">
+          <button
+            type="button"
+            className="btn btn-tonal btn-sm"
+            onClick={() => {
+              setName(t("power.plans.preset_office_name"));
+              setDescription(t("power.plans.preset_office_desc"));
+              setRules([{ weekdays: 31, start: "08:00", end: "18:30" }]);
+            }}
+          >
+            <Icon name="schedule" />
+            <span>{t("power.plans.preset_office")}</span>
+          </button>
+          <button
+            type="button"
+            className="btn btn-tonal btn-sm"
+            onClick={() => {
+              setName(t("power.plans.preset_retail_name"));
+              setDescription(t("power.plans.preset_retail_desc"));
+              setRules([{ weekdays: 63, start: "08:30", end: "20:00" }]);
+            }}
+          >
+            <Icon name="site" />
+            <span>{t("power.plans.preset_retail")}</span>
+          </button>
+          <button
+            type="button"
+            className="btn btn-tonal btn-sm"
+            onClick={() => {
+              setName(t("power.plans.preset_247_name"));
+              setDescription(t("power.plans.preset_247_desc"));
+              setRules([{ weekdays: 127, start: "00:00", end: "23:59" }]);
+            }}
+          >
+            <Icon name="online" />
+            <span>{t("power.plans.preset_247")}</span>
+          </button>
+        </div>
+      </div>
       <RulesEditor rules={rules} onChange={setRules} invalid={invalid} legend={t("power.plans.rules")} emptyHelp={t("power.plans.rules_empty")} help={t("power.plans.rules_help")} />
       {save.isError ? <ErrorAlert error={save.error} /> : null}
       <div className="actions">

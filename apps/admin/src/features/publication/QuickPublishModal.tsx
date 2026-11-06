@@ -229,6 +229,7 @@ export function QuickPublishModal({ isOpen, onClose, onSuccess, initialScreenId 
               <h3 id={`${uid}-step3`}>{t("quick_publish.step3_title")}</h3>
               <div className="duration-options">
                 {[
+                  { hours: 1, label: "1 h" },
                   { hours: 4, label: "4 h" },
                   { hours: 24, label: "24 h" },
                   { hours: 72, label: "3 j" },
